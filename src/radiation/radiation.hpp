@@ -21,6 +21,20 @@ class ParameterInput;
 
 class Radiation {
 public:
+  Radiation(MeshBlock *pmb, ParameterInput *pin);
+  ~Radiation();
+    
+  AthenaArray<Real> ir, ir1; // radiation specific intensity
+  AthenaArray<Real> sigma_s, sigma_a; //   opacity
+  AthenaArray<Real> mu, wmu; // angles and weight
+  
+  Real prat, crat; // prat=aT^4/P_0, crat=c/c_s
+  Real reduced_c; // reduced speed of light
+  
+  int nang, nfreq;
+
 private:
+
+
 };
 #endif // RADIATION_HPP
