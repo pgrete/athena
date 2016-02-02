@@ -46,6 +46,7 @@
 #include "task_list.hpp"
 #include "mesh_refinement/mesh_refinement.hpp"
 #include "utils/buffer_utils.hpp"
+#include "radiation/radiation.hpp"
 
 // this class header
 #include "mesh.hpp"
@@ -933,6 +934,8 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
+  if (RADIATION_ENABLED)
+    prad = new Radiation(this, pin);
   pbval  = new BoundaryValues(this, pin);
   if (block_bcs[INNER_X2] == POLAR_BNDRY) {
     int level = loc.level - pmy_mesh->root_level;
@@ -944,6 +947,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     int num_south_polar_blocks = pmy_mesh->nrbx3 * (1 << level);
     polar_neighbor_south = new PolarNeighborBlock[num_south_polar_blocks];
   }
+
   return;
 }
 
@@ -1024,6 +1028,8 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
+  if (RADIATION_ENABLED)
+    prad = new Radiation(this, pin);
   pbval  = new BoundaryValues(this, pin);
   if (block_bcs[INNER_X2] == POLAR_BNDRY) {
     int level = loc.level - pmy_mesh->root_level;
@@ -1063,8 +1069,10 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     memcpy(pfield->b1.x3f.GetArrayPointer(), pfield->b.x3f.GetArrayPointer(),
            pfield->b.x3f.GetSize()*sizeof(Real));
   }
-
-
+  if (RADIATION_ENABLED) {
+    if(resfile.Read(prad->ir.GetArrayPointer(),sizeof(Real),
+                    prad->ir.GetSize())!=prad->ir.GetSize()) nerr++;
+  }
   if(nerr>0) {
     msg << "### FATAL ERROR in MeshBlock constructor" << std::endl
         << "The restarting file is broken." << std::endl;
@@ -1313,6 +1321,9 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
     size+=sizeof(Real)*(pfield->b.x1f.GetSize()+pfield->b.x2f.GetSize()
                        +pfield->b.x3f.GetSize());
   // please add the size counter here when new physics is introduced
+  if (RADIATION_ENABLED){
+    size+=sizeof(Real)*prad->ir.GetSize();
+  }
 
   return size;
 }

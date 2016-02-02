@@ -34,6 +34,7 @@
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
 #include "../mesh.hpp"
+#include "../radiation/radiation.hpp"
 
 //this class header
 #include "outputs.hpp"
@@ -55,8 +56,8 @@ HistoryOutput::HistoryOutput(OutputParameters oparams)
 
 void HistoryOutput::LoadOutputData(OutputData *pod, MeshBlock *pmb)
 {
-  Hydro *phyd = pmb->phydro;;
-  Field *pfld = pmb->pfield;;
+  Hydro *phyd = pmb->phydro;
+  Field *pfld = pmb->pfield;
   Mesh *pmm = pmb->pmy_mesh;
   int tid=0;
 
@@ -82,6 +83,7 @@ void HistoryOutput::LoadOutputData(OutputData *pod, MeshBlock *pmb)
 
   int nvars = 12;
   if (NON_BAROTROPIC_EOS) nvars++;
+  if (RADIATION_ENABLED) nvars += 4;
 
   OutputVariable *pvar = new OutputVariable;
   pvar->data.NewAthenaArray(nvars,1,1,1);
@@ -101,6 +103,13 @@ void HistoryOutput::LoadOutputData(OutputData *pod, MeshBlock *pmb)
     pvar->name.append("[11]=1-ME    ");
     pvar->name.append("[12]=2-ME    ");
     pvar->name.append("[13]=3-ME    ");
+  }
+  if (RADIATION_ENABLED) {
+    pvar->name.append("[14]=Er      ");
+    pvar->name.append("[15]=1-Fr    ");
+    pvar->name.append("[16]=2-Fr    ");
+    pvar->name.append("[17]=3-Fr    ");
+    
   }
 
 // Add time, time step
@@ -144,6 +153,13 @@ void HistoryOutput::LoadOutputData(OutputData *pod, MeshBlock *pmb)
         partial_sum[8]  += vol(i)*0.5*bcc1*bcc1;
         partial_sum[9]  += vol(i)*0.5*bcc2*bcc2;
         partial_sum[10] += vol(i)*0.5*bcc3*bcc3;
+      }
+      if (RADIATION_ENABLED){
+        partial_sum[11] += vol(i)*pmb->prad->rad_mom(ER,k,j,i);
+        partial_sum[12] += vol(i)*pmb->prad->rad_mom(FR1,k,j,i);
+        partial_sum[13] += vol(i)*pmb->prad->rad_mom(FR2,k,j,i);
+        partial_sum[14] += vol(i)*pmb->prad->rad_mom(FR3,k,j,i);
+        
       }
     }
     for (int n=0; n<(nvars-2); ++n) pvar->data(n+2,0,0,0) += partial_sum[n];

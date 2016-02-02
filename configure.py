@@ -24,6 +24,9 @@
 #   -omp              enable parallelization with OpenMP
 #   -hdf5             enable HDF5 output (requires the HDF5 library)
 #   --ifov=N          enable N internal hydro output variables
+#   -debug            enable debug flags (-g -O0); override other compiler options
+#   -vis              enable viscosity
+#   -radiation        enable radiative transfer
 #---------------------------------------------------------------------------------------
 
 # Modules
@@ -148,6 +151,25 @@ parser.add_argument('--ifov',
     default=0,
     help='number of internal hydro output variables')
 
+
+# -debug argument
+parser.add_argument('-debug',
+    action='store_true',
+    default=False,
+    help='enable debug flags; override other compiler options')
+
+# -vis argument
+parser.add_argument('-vis',
+    action='store_true',
+    default=False,
+    help='enable viscosity')
+    
+# -radiation argument
+parser.add_argument('-radiation',
+    action='store_true',
+    default=False,
+    help='enable radiative transfer')
+
 # Parse command-line inputs
 args = vars(parser.parse_args())
 
@@ -244,6 +266,13 @@ if args['vis']:
 else:
   definitions['VISCOSITY'] = '0'
   makefile_options['VIS_FILE'] = '*.cpp'
+  
+# -radiation argument
+definitions['RADIATION_ENABLED'] = '1' if args['radiation'] else '0'
+if args['radiation']:
+  makefile_options['RADIATION_FILE'] = '*.cpp'
+else:
+  makefile_options['RADIATION_FILE'] = '*.cpp'
 
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
@@ -397,4 +426,7 @@ print('  Linker flags:            ' + makefile_options['LINKER_FLAGS'] + ' ' \
 print('  MPI parallelism:         ' + ('ON' if args['mpi'] else 'OFF'))
 print('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF'))
 print('  HDF5 Output:             ' + ('ON' if args['hdf5'] else 'OFF'))
+print('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF'))
+print('  Viscosity:               ' + ('ON' if args['vis'] else 'OFF'))
+print('  Radiative Transfer:      ' + ('ON' if args['radiation'] else 'OFF'))
 print('  Internal hydro outvars:  ' + str(args['ifov']))

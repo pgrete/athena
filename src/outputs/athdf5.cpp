@@ -157,10 +157,14 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
   rhoid = new hid_t[nbl];
   if (NON_BAROTROPIC_EOS)
     eid = new hid_t[nbl];
+  if (RADIATION_ENABLED)
+    erid = new hid_t[nbl];
   for(int n=0;n<3;n++) {
     mid[n] = new hid_t[nbl];
     if (MAGNETIC_FIELDS_ENABLED)
       bid[n] = new hid_t[nbl];
+    if (RADIATION_ENABLED)
+      frid[n] = new hid_t[nbl];
   }
   if (NIFOV > 0)
     ifovid = new hid_t *[NIFOV];
@@ -297,21 +301,55 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
           output_params.variable.compare("prim") == 0 ||
           output_params.variable.compare("cons") == 0) {
         dsid = H5Screate_simple(dim, dims, NULL);
-        tid = H5Dcreate2(tgid,"cc-B1",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        tid = H5Dcreate2(tgid,"cc-B1",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+                        H5P_DEFAULT);
         if(b>=nbs && b<=nbe) bid[0][b-nbs]=tid;
         else H5Dclose(tid);
         H5Sclose(dsid);
         dsid = H5Screate_simple(dim, dims, NULL);
-        tid = H5Dcreate2(tgid,"cc-B2",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        tid = H5Dcreate2(tgid,"cc-B2",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+                         H5P_DEFAULT);
         if(b>=nbs && b<=nbe) bid[1][b-nbs]=tid;
         else H5Dclose(tid);
         H5Sclose(dsid);
         dsid = H5Screate_simple(dim, dims, NULL);
-        tid = H5Dcreate2(tgid,"cc-B3",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        tid = H5Dcreate2(tgid,"cc-B3",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+                         H5P_DEFAULT);
         if(b>=nbs && b<=nbe) bid[2][b-nbs]=tid;
         else H5Dclose(tid);
         H5Sclose(dsid);
       }
+    }
+    if (RADIATION_ENABLED){
+      if (output_params.variable.compare("Er") == 0 ||
+          output_params.variable.compare("prim") == 0 ||
+          output_params.variable.compare("cons") == 0) {
+        dsid = H5Screate_simple(dim, dims, NULL);
+        tid = H5Dcreate2(tgid,"Er",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        if(b>=nbs && b<=nbe) erid[b-nbs]=tid;
+        else H5Dclose(tid);
+        H5Sclose(dsid);
+      }
+      if (output_params.variable.compare("Fr") == 0 ||
+          output_params.variable.compare("prim") == 0 ||
+          output_params.variable.compare("cons") == 0) {
+        dsid = H5Screate_simple(dim, dims, NULL);
+        tid = H5Dcreate2(tgid,"Fr1",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        if(b>=nbs && b<=nbe) frid[0][b-nbs]=tid;
+        else H5Dclose(tid);
+        H5Sclose(dsid);
+        dsid = H5Screate_simple(dim, dims, NULL);
+        tid = H5Dcreate2(tgid,"Fr2",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        if(b>=nbs && b<=nbe) frid[1][b-nbs]=tid;
+        else H5Dclose(tid);
+        H5Sclose(dsid);
+        dsid = H5Screate_simple(dim, dims, NULL);
+        tid = H5Dcreate2(tgid,"Fr3",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        if(b>=nbs && b<=nbe) frid[2][b-nbs]=tid;
+        else H5Dclose(tid);
+        H5Sclose(dsid);
+      }
+      
     }
     if (output_params.variable.compare("ifov") == 0) {
       for (int n=0; n<(NIFOV); ++n) {
@@ -472,6 +510,38 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
                    << "    </Attribute>" << std::endl;
         }
       }
+      if (RADIATION_ENABLED){
+        if (output_params.variable.compare("Er") == 0 ||
+            output_params.variable.compare("prim") == 0 ||
+            output_params.variable.compare("cons") == 0) {
+          xdmf << "    <Attribute Name=\"radiation_energy\" AttributeType=\"Scalar\" "
+          << "Center=\"Cell\">" << std::endl
+          << "      <DataItem Dimensions=\"" << sdim << "\" NumberType=\"Float\" "
+          << "Precision=\"4\" Format=\"HDF\">" << fname << ":/" << bn << "/Er"
+          << "</DataItem>" << std::endl << "    </Attribute>" << std::endl;
+        }
+        if (output_params.variable.compare("Fr") == 0 ||
+            output_params.variable.compare("prim") == 0 ||
+            output_params.variable.compare("cons") == 0) {
+          xdmf << "    <Attribute Name=\"radiation_flux_x1\" AttributeType=\"Scalar\" "
+          << "Center=\"Cell\">" << std::endl << "      <DataItem Dimensions=\""
+          << sdim << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">"
+          << fname << ":/" << bn << "/Fr1" << "</DataItem>" << std::endl
+          << "    </Attribute>" << std::endl;
+          xdmf << "    <Attribute Name=\"radiation_flux_x2\" AttributeType=\"Scalar\" "
+          << "Center=\"Cell\">" << std::endl << "      <DataItem Dimensions=\""
+          << sdim << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">"
+          << fname << ":/" << bn << "/Fr2" << "</DataItem>" << std::endl
+          << "    </Attribute>" << std::endl;
+          xdmf << "    <Attribute Name=\"radiation_flux_x3\" AttributeType=\"Scalar\" "
+          << "Center=\"Cell\">" << std::endl << "      <DataItem Dimensions=\""
+          << sdim << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">"
+          << fname << ":/" << bn << "/Fr3" << "</DataItem>" << std::endl
+          << "    </Attribute>" << std::endl;
+        }
+
+        
+      }
 
       if (output_params.variable.compare("ifov") == 0) {
         for (int n=0; n<(NIFOV); ++n) {
@@ -509,10 +579,14 @@ void ATHDF5Output::Finalize(ParameterInput *pin)
   delete [] rhoid;
   if (NON_BAROTROPIC_EOS)
     delete [] eid;
+  if (RADIATION_ENABLED)
+    delete [] erid;
   for(int n=0;n<3;n++) {
     delete [] mid[n];
     if (MAGNETIC_FIELDS_ENABLED)
       delete [] bid[n];
+    if (RADIATION_ENABLED)
+      delete [] frid[n];
   }
   for(int n=0;n<NIFOV;n++)
     delete [] ifovid[n];
@@ -572,6 +646,10 @@ void ATHDF5Output::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
         did=mid[n][pmb->lid];
       else if(pvar->name.compare("cc-B")==0)
         did=bid[n][pmb->lid];
+      else if(pvar->name.compare("Er")==0)
+        did=erid[pmb->lid];
+      else if(pvar->name.compare("Fr")==0)
+        did=frid[n][pmb->lid];
       else if(pvar->name.compare("ifov")==0)
         did=ifovid[n][pmb->lid];
       else continue;

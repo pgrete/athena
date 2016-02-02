@@ -38,7 +38,10 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/mesh_refinement/*.cpp) \
 	     $(wildcard src/outputs/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
-	     src/pgen/$(PROBLEM_FILE)
+	     src/pgen/$(PROBLEM_FILE) \
+             $(wildcard src/radiation/*.cpp) \
+             $(wildcard src/radiation/integrators/*.cpp)
+ 
 SRC_DIR := $(dir $(SRC_FILES))
 OBJ_DIR := obj/
 OBJ_FILES := $(addprefix $(OBJ_DIR),$(notdir $(SRC_FILES:.cpp=.o)))
