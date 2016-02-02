@@ -32,6 +32,7 @@ class Field;
 class BoundaryValues;
 class TaskList;
 class MeshBlockTree;
+class Radiation;
 
 //! \struct NeighborBlock
 //  \brief neighbor rank, level, and ids
@@ -80,6 +81,7 @@ private:
   friend class Mesh;
   friend class Hydro;
   friend class TaskList;
+  friend class Radiation;
 #ifdef HDF5OUTPUT
   friend class ATHDF5Output;
 #endif
@@ -109,6 +111,7 @@ public:
   Coordinates *pcoord;
   Hydro *phydro;
   Field *pfield;
+  Radiation *prad;
   BoundaryValues *pbval;
   MeshRefinement *pmr;
 

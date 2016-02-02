@@ -46,6 +46,7 @@
 #include "task_list.hpp"
 #include "mesh_refinement/mesh_refinement.hpp"
 #include "utils/buffer_utils.hpp"
+#include "radiation/radiation.hpp"
 
 // this class header
 #include "mesh.hpp"
@@ -933,7 +934,10 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
+  if (RADIATION_ENABLED)
+    prad = new Radiation(this, pin);
   pbval  = new BoundaryValues(this, pin);
+  
 
   return;
 }
@@ -1015,6 +1019,8 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
+  if (RADIATION_ENABLED)
+    prad = new Radiation(this, pin);
   pbval  = new BoundaryValues(this, pin);
 
   // load hydro and field data
@@ -1034,6 +1040,10 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
                pfield->b.x2f.GetSize())!=pfield->b.x2f.GetSize()) nerr++;
     if(resfile.Read(pfield->b.x3f.GetArrayPointer(),sizeof(Real),
                pfield->b.x3f.GetSize())!=pfield->b.x3f.GetSize()) nerr++;
+  }
+  if (RADIATION_ENABLED) {
+    if(resfile.Read(prad->ir.GetArrayPointer(),sizeof(Real),
+                    prad->ir.GetSize())!=prad->ir.GetSize()) nerr++;
   }
   if(nerr>0) {
     msg << "### FATAL ERROR in MeshBlock constructor" << std::endl
@@ -1279,6 +1289,9 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
     size+=sizeof(Real)*(pfield->b.x1f.GetSize()+pfield->b.x2f.GetSize()
                        +pfield->b.x3f.GetSize());
   // please add the size counter here when new physics is introduced
+  if (RADIATION_ENABLED){
+    size+=sizeof(Real)*prad->ir.GetSize();
+  }
 
   return size;
 }

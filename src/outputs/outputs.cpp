@@ -73,6 +73,7 @@
 #include "../mesh.hpp"
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
+#include "../radiation/radiation.hpp"
 #include "../coordinates/coordinates.hpp" // Coordinates
 
 // this class header
@@ -491,6 +492,46 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
       var_added+=3;
     }
   }
+  // add radiation varables, default only output Er[0], Fr[3] and Pr[9]
+  // specific intensity is added separately
+  if(RADIATION_ENABLED){
+    if (output_params.variable.compare("Er") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pov = new OutputVariable;
+      pov->type = "SCALARS";
+      pov->name = "Er";
+      pov->data.InitWithShallowSlice(pmb->prad->rad_mom,4,0,1);
+      pod->AppendNode(pov); // magnetic field vector
+      var_added += 1;
+    }
+    
+    
+    if (output_params.variable.compare("Fr") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pov = new OutputVariable;
+      pov->type = "VECTORS";
+      pov->name = "Fr";
+      pov->data.InitWithShallowSlice(pmb->prad->rad_mom,4,1,3);
+      pod->AppendNode(pov); // magnetic field vector
+      var_added += 1;
+    }
+    
+    
+    if (output_params.variable.compare("Pr") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pov = new OutputVariable;
+      pov->type = "TENSORS";
+      pov->name = "Pr";
+      pov->data.InitWithShallowSlice(pmb->prad->rad_mom,4,4,9);
+      pod->AppendNode(pov); // magnetic field vector
+      var_added += 1;
+    }
+
+  }
+
 
   if (output_params.variable.compare("ifov") == 0) {
     for (int n=0; n<(NIFOV); ++n) {
@@ -764,6 +805,10 @@ void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin)
       ptype->Initialize(pm,pin);
       pmb=pm->pblock;
       while (pmb != NULL)  {
+         // for radiation, need to calculate the radiation moments
+        if(RADIATION_ENABLED){
+          pmb->prad->CalculateMoment();
+        }
         // Create new OutputData container, load and transform data, then write to file
         OutputData* pod = new OutputData;
         ptype->LoadOutputData(pod,pmb);

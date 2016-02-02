@@ -174,6 +174,10 @@ private:
   int mbsize[3];
   hid_t *grpid, *x1fid, *x2fid, *x3fid, *rhoid, *eid;
   hid_t *mid[3], *bid[3], *ifovid[NIFOV];
+  // for radiation quantities
+  hid_t *erid;
+  hid_t *frid[3];
+  
   hsize_t dim, dims[3];
 
 public:
@@ -197,6 +201,7 @@ public:
   Outputs(Mesh *pm, ParameterInput *pin);
   ~Outputs();
 
+  
   void MakeOutputs(Mesh *pm, ParameterInput *pin);
 
 private:

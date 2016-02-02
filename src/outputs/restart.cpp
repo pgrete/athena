@@ -35,6 +35,7 @@
 #include "../parameter_input.hpp"
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
+#include "../radiation/radiation.hpp"
 
 // This class header
 #include "outputs.hpp"
@@ -212,6 +213,11 @@ void RestartOutput::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
                          pmb->pfield->b.x2f.GetSize());
     resfile.Write(pmb->pfield->b.x3f.GetArrayPointer(),sizeof(Real),
                          pmb->pfield->b.x3f.GetSize());
+  }
+  if (RADIATION_ENABLED) {
+    resfile.Write(pmb->prad->ir.GetArrayPointer(),sizeof(Real),
+                        pmb->prad->ir.GetSize());
+
   }
   return;
 }

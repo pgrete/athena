@@ -125,8 +125,10 @@ void VTKOutput::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
   float *data;
   int ndata = std::max(ncoord1,ncoord2);
   ndata = std::max(ndata,ncoord3);
-  data = new float[3*ndata];
-
+  // radiation pressure tenor needs 9 * ndata
+  if (RADIATION_ENABLED) data = new float[9*ndata];
+  else data = new float[3*ndata];
+  
 // Specify the type of data, dimensions, and coordinates.  If N>1, then write N+1 cell
 // faces as binary floats.  If N=1, then write 1 cell center position.
 

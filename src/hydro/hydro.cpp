@@ -33,6 +33,7 @@
 #include "../mesh.hpp"                  // MeshBlock, Mesh
 #include "../coordinates/coordinates.hpp" // CenterWidth()
 #include "../field/field.hpp"             // B-fields
+#include "../radiation/radiation.hpp" // reduced speed of light
 
 // this class header
 #include "hydro.hpp"
@@ -139,6 +140,9 @@ Real Hydro::NewBlockTimeStep(MeshBlock *pmb)
     b_x2f.InitWithShallowCopy(pmb->pfield->b.x2f);
     b_x3f.InitWithShallowCopy(pmb->pfield->b.x3f);
   }
+  Real cspeed = 0.0;
+  if (RADIATION_ENABLED)
+    cspeed = pmb->prad->reduced_c;
 
   int nthreads = pmb->pmy_mesh->GetNumMeshThreads();
   Real *pthread_min_dt;
@@ -207,6 +211,13 @@ Real Hydro::NewBlockTimeStep(MeshBlock *pmb)
           dt1(i)=std::min(pmb->phydro->pf_viscosity->VisDt(pmy_block->pcoord->CenterWidth1(k,j,i),k,j,i),dt1(i));
           dt2(i)=std::min(pmb->phydro->pf_viscosity->VisDt(pmy_block->pcoord->CenterWidth2(k,j,i),k,j,i),dt2(i));
           dt3(i)=std::min(pmb->phydro->pf_viscosity->VisDt(pmy_block->pcoord->CenterWidth3(k,j,i),k,j,i),dt3(i));
+        }
+        if(RADIATION_ENABLED){
+          dt1(i)=std::min(pmy_block->pcoord->CenterWidth1(k,j,i)/cspeed,dt1(i));
+          dt2(i)=std::min(pmy_block->pcoord->CenterWidth2(k,j,i)/cspeed,dt2(i));
+          dt3(i)=std::min(pmy_block->pcoord->CenterWidth3(k,j,i)/cspeed,dt3(i));
+          
+          
         }
       }
 

@@ -105,7 +105,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           prad->sigma_s(ifre,k,j,i) = 0.0;
           prad->sigma_a(ifre,k,j,i) = 0.0;
           for(int n=0; n<nang; ++n){
-              prad->ir(ifre,k,j,i,n) = 0.0;
+              prad->ir(ifre,k,j,i,n) = 1.0;
           }
         }
       }

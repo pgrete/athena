@@ -29,7 +29,7 @@
 
 void Radiation::FrequencyGrid()
 {
-  for(int i=1; i<nfreq; ++i)
+  for(int i=0; i<nfreq; ++i)
     wfreq(i) = 1.0/nfreq;
   
 }
