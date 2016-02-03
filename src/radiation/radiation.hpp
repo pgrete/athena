@@ -24,8 +24,8 @@ class ParameterInput;
 typedef void (*Opacity_t)(MeshBlock *pmb, AthenaArray<Real> &prim);
 
 // Array indices for radiation moments
-enum {ER=0, FR1=1, FR2=2, FR3=3, PR11=4, PR12=5, PR13=6, PR21=7,
-      PR22=8, PR23=9, PR31=10, PR32=11, PR33=12};
+enum {IER=0, IFR1=1, IFR2=2, IFR3=3, IPR11=4, IPR12=5, IPR13=6, IPR21=7,
+      IPR22=8, IPR23=9, IPR31=10, IPR32=11, IPR33=12};
 
 class Radiation {
 public:
