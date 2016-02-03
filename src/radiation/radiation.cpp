@@ -198,19 +198,19 @@ void Radiation::CalculateMoment()
           prxz *= wfreq(ifr);
           pryz *= wfreq(ifr);
           //assign the moments
-          i_mom(ER,k,j,i) += er * 4.0 * PI;
-          i_mom(FR1,k,j,i) += frx * 4.0 * PI;
-          i_mom(FR2,k,j,i) += fry * 4.0 * PI;
-          i_mom(FR3,k,j,i) += frz * 4.0 * PI;
-          i_mom(PR11,k,j,i) += prxx * 4.0 * PI;
-          i_mom(PR12,k,j,i) += prxy * 4.0 * PI;
-          i_mom(PR13,k,j,i) += prxz * 4.0 * PI;
-          i_mom(PR21,k,j,i) += prxy * 4.0 * PI;
-          i_mom(PR22,k,j,i) += pryy * 4.0 * PI;
-          i_mom(PR23,k,j,i) += pryz * 4.0 * PI;
-          i_mom(PR31,k,j,i) += prxz * 4.0 * PI;
-          i_mom(PR32,k,j,i) += pryz * 4.0 * PI;
-          i_mom(PR33,k,j,i) += przz * 4.0 * PI;
+          i_mom(IER,k,j,i) += er;
+          i_mom(IFR1,k,j,i) += frx;
+          i_mom(IFR2,k,j,i) += fry;
+          i_mom(IFR3,k,j,i) += frz;
+          i_mom(IPR11,k,j,i) += prxx;
+          i_mom(IPR12,k,j,i) += prxy;
+          i_mom(IPR13,k,j,i) += prxz;
+          i_mom(IPR21,k,j,i) += prxy;
+          i_mom(IPR22,k,j,i) += pryy;
+          i_mom(IPR23,k,j,i) += pryz;
+          i_mom(IPR31,k,j,i) += prxz;
+          i_mom(IPR32,k,j,i) += pryz;
+          i_mom(IPR33,k,j,i) += przz;
           
         }
       }
