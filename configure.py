@@ -274,6 +274,7 @@ if args['radiation']:
 else:
   makefile_options['RADIATION_FILE'] = '*.cpp'
 
+
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
   definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'g++'

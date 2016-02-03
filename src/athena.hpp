@@ -88,6 +88,7 @@ enum direction {x1dir=0, x2dir=1, x3dir=2};
 enum mpitag {tag_hydro=0, tag_field=1, tag_flcor=2, tag_emfcor=3, tag_amr=4,
     tag_emfpole=5}; // mpitag must be < 16 and unique
 
+
 enum neighbor_type {neighbor_none, neighbor_face, neighbor_edge, neighbor_corner};
 
 enum mbtflag {mbt_node=0, mbt_refined=1, mbt_deref=2, mbt_newr=3, mbt_newd=4,

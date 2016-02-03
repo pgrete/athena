@@ -948,6 +948,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     polar_neighbor_south = new PolarNeighborBlock[num_south_polar_blocks];
   }
 
+
   return;
 }
 
@@ -1068,6 +1069,10 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
            pfield->b.x2f.GetSize()*sizeof(Real));
     memcpy(pfield->b1.x3f.GetArrayPointer(), pfield->b.x3f.GetArrayPointer(),
            pfield->b.x3f.GetSize()*sizeof(Real));
+  }
+  if (RADIATION_ENABLED) {
+    if(resfile.Read(prad->ir.GetArrayPointer(),sizeof(Real),
+                    prad->ir.GetSize())!=prad->ir.GetSize()) nerr++;
   }
   if (RADIATION_ENABLED) {
     if(resfile.Read(prad->ir.GetArrayPointer(),sizeof(Real),
