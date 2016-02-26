@@ -70,6 +70,7 @@ Mesh::Mesh(ParameterInput *pin, int test_flag)
   MeshBlockTree *neibt;
   MeshBlock *pfirst;
   enum BoundaryFlag block_bcs[6];
+  enum BoundaryFlag block_rad_bcs[6];
   int nbmax, dim;
 
 // mesh test
@@ -205,6 +206,21 @@ Mesh::Mesh(ParameterInput *pin, int test_flag)
   mesh_bcs[OUTER_X2] = GetBoundaryFlag(pin->GetOrAddString("mesh","ox2_bc","none"));
   mesh_bcs[INNER_X3] = GetBoundaryFlag(pin->GetOrAddString("mesh","ix3_bc","none"));
   mesh_bcs[OUTER_X3] = GetBoundaryFlag(pin->GetOrAddString("mesh","ox3_bc","none"));
+  
+  if (RADIATION_ENABLED){
+    mesh_rad_bcs[INNER_X1] = GetBoundaryFlag(
+            pin->GetOrAddString("mesh","ix1_rad_bc","none"));
+    mesh_rad_bcs[OUTER_X1] = GetBoundaryFlag(
+            pin->GetOrAddString("mesh","ox1_rad_bc","none"));
+    mesh_rad_bcs[INNER_X2] = GetBoundaryFlag(
+            pin->GetOrAddString("mesh","ix2_rad_bc","none"));
+    mesh_rad_bcs[OUTER_X2] = GetBoundaryFlag(
+            pin->GetOrAddString("mesh","ox2_rad_bc","none"));
+    mesh_rad_bcs[INNER_X3] = GetBoundaryFlag(
+            pin->GetOrAddString("mesh","ix3_rad_bc","none"));
+    mesh_rad_bcs[OUTER_X3] = GetBoundaryFlag(
+            pin->GetOrAddString("mesh","ox3_rad_bc","none"));
+  }
 
 // read MeshBlock parameters
   block_size.nx1 = pin->GetOrAddInteger("meshblock","nx1",mesh_size.nx1);
@@ -283,8 +299,10 @@ Mesh::Mesh(ParameterInput *pin, int test_flag)
   MeshGenerator_[x1dir]=DefaultMeshGeneratorX1;
   MeshGenerator_[x2dir]=DefaultMeshGeneratorX2;
   MeshGenerator_[x3dir]=DefaultMeshGeneratorX3;
-  for(int dir=0; dir<6; dir++)
+  for(int dir=0; dir<6; dir++){
     BoundaryFunction_[dir]=NULL;
+    RadBoundaryFunction_[dir]=NULL;
+  }
   AMRFlag_=NULL;
   UserSourceTerm_=NULL;
   InitUserMeshProperties(pin);
@@ -491,14 +509,16 @@ Mesh::Mesh(ParameterInput *pin, int test_flag)
   int nbe=nbs+nblist[Globals::my_rank]-1;
 // create MeshBlock list for this process
   for(int i=nbs;i<=nbe;i++) {
-    SetBlockSizeAndBoundaries(loclist[i], block_size, block_bcs);
+    SetBlockSizeAndBoundaries(loclist[i], block_size, block_bcs, block_rad_bcs);
     // create a block and add into the link list
     if(i==nbs) {
-      pblock = new MeshBlock(i, i-nbs, loclist[i], block_size, block_bcs, this, pin);
+      pblock = new MeshBlock(i, i-nbs, loclist[i], block_size, block_bcs,
+                            block_rad_bcs, this, pin);
       pfirst = pblock;
     }
     else {
-      pblock->next = new MeshBlock(i, i-nbs, loclist[i], block_size, block_bcs, this, pin);
+      pblock->next = new MeshBlock(i, i-nbs, loclist[i], block_size, block_bcs,
+                                   block_rad_bcs, this, pin);
       pblock->next->prev = pblock;
       pblock = pblock->next;
     }
@@ -551,6 +571,8 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   current_level=root_level;
   if(resfile.Read(&mesh_size, sizeof(RegionSize), 1)!=1) nerr++;
   if(resfile.Read(mesh_bcs, sizeof(enum BoundaryFlag), 6)!=6) nerr++;
+  if(RADIATION_ENABLED)
+    if(resfile.Read(mesh_rad_bcs, sizeof(enum BoundaryFlag), 6)!=6) nerr++;
   if(resfile.Read(&time, sizeof(Real), 1)!=1) nerr++;
   if(resfile.Read(&dt, sizeof(Real), 1)!=1) nerr++;
   if(resfile.Read(&ncycle, sizeof(int), 1)!=1) nerr++;
@@ -636,8 +658,10 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   MeshGenerator_[x1dir]=DefaultMeshGeneratorX1;
   MeshGenerator_[x2dir]=DefaultMeshGeneratorX2;
   MeshGenerator_[x3dir]=DefaultMeshGeneratorX3;
-  for(int dir=0; dir<6; dir++)
+  for(int dir=0; dir<6; dir++){
     BoundaryFunction_[dir]=NULL;
+    RadBoundaryFunction_[dir]=NULL;
+  }
   AMRFlag_=NULL;
   UserSourceTerm_=NULL;
   InitUserMeshProperties(pin);
@@ -868,7 +892,8 @@ void Mesh::MeshTest(int dim)
 // constructs coordinate, boundary condition, hydro and field objects.
 
 MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_block,
-                     enum BoundaryFlag *input_bcs, Mesh *pm, ParameterInput *pin)
+                     enum BoundaryFlag *input_bcs, enum BoundaryFlag *input_rad_bcs,
+                    Mesh *pm, ParameterInput *pin)
 {
   std::stringstream msg;
   int root_level;
@@ -876,6 +901,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   root_level = pm->root_level;
   block_size = input_block;
   for(int i=0; i<6; i++) block_bcs[i] = input_bcs[i];
+  for(int i=0; i<6; i++) block_rad_bcs[i] = input_rad_bcs[i];
   prev=NULL;
   next=NULL;
   gid=igid;
@@ -975,6 +1001,8 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   // load block structure
   if(resfile.Read(&block_size, sizeof(RegionSize), 1)!=1) nerr++;
   if(resfile.Read(block_bcs, sizeof(int), 6)!=6) nerr++;
+  if(RADIATION_ENABLED)
+    if(resfile.Read(block_rad_bcs, sizeof(int), 6)!=6) nerr++;
 
   if(nerr>0) {
     msg << "### FATAL ERROR in MeshBlock constructor" << std::endl
@@ -1154,6 +1182,26 @@ void Mesh::EnrollUserBoundaryFunction(enum BoundaryFace dir, BValFunc_t my_bc)
 }
 
 
+void Mesh::EnrollUserRadBoundaryFunction(enum BoundaryFace dir, RadBValFunc_t my_bc)
+{
+  std::stringstream msg;
+  if(dir<0 || dir>5) {
+    msg << "### FATAL ERROR in EnrollRadBoundaryCondition function" << std::endl
+        << "dirName = " << dir << " not valid" << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+  if(mesh_rad_bcs[dir]!=USER_BNDRY) {
+    msg << "### FATAL ERROR in EnrollUserRadBoundaryFunction" << std::endl
+        << "The boundary condition flag must be set to the string 'user' in the "
+        << " <mesh> block in the input file to use user-enrolled radiation BCs"
+        << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+  RadBoundaryFunction_[dir]=my_bc;
+  return;
+}
+
+
 //--------------------------------------------------------------------------------------
 //! \fn void Mesh::EnrollUserRefinementCondition(AMRFlag_t amrflag)
 //  \brief Enroll a user-defined function for checking refinement criteria
@@ -1202,6 +1250,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
   MeshBlock *pmb;
   Hydro *phydro;
   Field *pfield;
+  Radiation *prad;
   BoundaryValues *pbval;
   std::stringstream msg;
   int inb=nbtotal;
@@ -1229,7 +1278,11 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       phydro=pmb->phydro;
       pfield=pmb->pfield;
       pbval=pmb->pbval;
-      pbval->SendHydroBoundaryBuffers(phydro->u,0);
+      pbval->SendCenterBoundaryBuffers(phydro->u,HYDRO,0);
+      if(RADIATION_ENABLED){
+        prad=pmb->prad;
+        pbval->SendCenterBoundaryBuffers(prad->ir,RAD,0);
+      }
       if (MAGNETIC_FIELDS_ENABLED)
         pbval->SendFieldBoundaryBuffers(pfield->b,0);
       pmb=pmb->next;
@@ -1238,9 +1291,13 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
     pmb = pblock;
     while (pmb != NULL)  {
       phydro=pmb->phydro;
+      prad=pmb->prad;
       pfield=pmb->pfield;
       pbval=pmb->pbval;
-      pbval->ReceiveHydroBoundaryBuffersWithWait(phydro->u ,0);
+      pbval->ReceiveCenterBoundaryBuffersWithWait(phydro->u,HYDRO,0);
+      if(RADIATION_ENABLED){
+        pbval->ReceiveCenterBoundaryBuffersWithWait(prad->ir,RAD,0);
+      }
       if (MAGNETIC_FIELDS_ENABLED)
         pbval->ReceiveFieldBoundaryBuffersWithWait(pfield->b ,0);
       pmb->pbval->ClearBoundaryForInit();
@@ -1262,6 +1319,8 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
                                          phydro->w, pfield->bcc, pmb->pcoord,
                                          is, ie, js, je, ks, ke);
       pbval->ApplyPhysicalBoundaries(phydro->w, phydro->u, pfield->b, pfield->bcc);
+      if(RADIATION_ENABLED)
+        pbval->ApplyRadPhysicalBoundaries(prad->ir);
       pmb=pmb->next;
     }
     if((res_flag==0) && (adaptive==true)) {
@@ -1327,6 +1386,7 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
                        +pfield->b.x3f.GetSize());
   // please add the size counter here when new physics is introduced
   if (RADIATION_ENABLED){
+    size+=sizeof(int)*6; // for radiation boundary flag mesh_rad_bcs
     size+=sizeof(Real)*prad->ir.GetSize();
   }
 
@@ -1615,7 +1675,8 @@ void MeshBlock::SearchAndSetNeighbors(MeshBlockTree &tree, int *ranklist, int *n
   // x1x3 edge
   for(int m=-1; m<=1; m+=2) {
     for(int n=-1; n<=1; n+=2) {
-      neibt=tree.FindNeighbor(loc,n,0,m,block_bcs,nrbx1,nrbx2,nrbx3,pmy_mesh->root_level);
+      neibt=tree.FindNeighbor(loc,n,0,m,block_bcs,nrbx1,nrbx2,nrbx3,
+                          pmy_mesh->root_level);
       if(neibt==NULL) { bufid+=nf1; continue;}
       if(neibt->flag==false) { // neighbor at finer level
         int ff1=1-(n+1)/2; // 0 for OUTER_X1, 1 for INNER_X1
@@ -1703,7 +1764,8 @@ void MeshBlock::SearchAndSetNeighbors(MeshBlockTree &tree, int *ranklist, int *n
   for(int l=-1; l<=1; l+=2) {
     for(int m=-1; m<=1; m+=2) {
       for(int n=-1; n<=1; n+=2) {
-        neibt=tree.FindNeighbor(loc,n,m,l,block_bcs,nrbx1,nrbx2,nrbx3,pmy_mesh->root_level);
+        neibt=tree.FindNeighbor(loc,n,m,l,block_bcs,nrbx1,nrbx2,nrbx3,
+                                pmy_mesh->root_level);
         if(neibt==NULL) { bufid++; continue;}
         bool polar=false;
         if ((m == -1 and block_bcs[INNER_X2] == POLAR_BNDRY)
@@ -1815,7 +1877,8 @@ void MeshBlock::IntegrateConservative(Real *tcons)
 
 
 //--------------------------------------------------------------------------------------
-// \!fn void Mesh::LoadBalancing(Real *clist, int *rlist, int *slist, int *nlist, int nb)
+// \!fn void Mesh::LoadBalancing(Real *clist, int *rlist, int *slist, int *nlist,
+//   int nb)
 // \brief Calculate distribution of MeshBlocks based on the cost list
 void Mesh::LoadBalancing(Real *clist, int *rlist, int *slist, int *nlist, int nb)
 {
@@ -1874,7 +1937,7 @@ void Mesh::LoadBalancing(Real *clist, int *rlist, int *slist, int *nlist, int nb
 //                 RegionSize &block_size, enum BundaryFlag *block_bcs)
 // \brief Set the physical part of a block_size structure and block boundary conditions
 void Mesh::SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size,
-                                     enum BoundaryFlag *block_bcs)
+                  enum BoundaryFlag *block_bcs, enum BoundaryFlag *block_rad_bcs)
 {
   long int &lx1=loc.lx1;
   long int &lx2=loc.lx2;
@@ -1884,20 +1947,24 @@ void Mesh::SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size
   if(lx1==0) {
     block_size.x1min=mesh_size.x1min;
     block_bcs[INNER_X1]=mesh_bcs[INNER_X1];
+    block_rad_bcs[INNER_X1]=mesh_rad_bcs[INNER_X1];
   }
   else {
     Real rx=(Real)lx1/(Real)(nrbx1<<(ll-root_level));
     block_size.x1min=MeshGenerator_[x1dir](rx,mesh_size);
     block_bcs[INNER_X1]=BLOCK_BNDRY;
+    block_rad_bcs[INNER_X1]=BLOCK_BNDRY;
   }
   if(lx1==(nrbx1<<(ll-root_level))-1) {
     block_size.x1max=mesh_size.x1max;
     block_bcs[OUTER_X1]=mesh_bcs[OUTER_X1];
+    block_rad_bcs[OUTER_X1]=mesh_rad_bcs[OUTER_X1];
   }
   else {
     Real rx=(Real)(lx1+1)/(Real)(nrbx1<<(ll-root_level));
     block_size.x1max=MeshGenerator_[x1dir](rx,mesh_size);
     block_bcs[OUTER_X1]=BLOCK_BNDRY;
+    block_rad_bcs[OUTER_X1]=BLOCK_BNDRY;
   }
 
   // calculate physical block size, x2
@@ -1906,25 +1973,31 @@ void Mesh::SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size
     block_size.x2max=mesh_size.x2max;
     block_bcs[INNER_X2]=mesh_bcs[INNER_X2];
     block_bcs[OUTER_X2]=mesh_bcs[OUTER_X2];
+    block_rad_bcs[INNER_X2]=mesh_rad_bcs[INNER_X2];
+    block_rad_bcs[OUTER_X2]=mesh_rad_bcs[OUTER_X2];
   }
   else {
     if(lx2==0) {
       block_size.x2min=mesh_size.x2min;
       block_bcs[INNER_X2]=mesh_bcs[INNER_X2];
+      block_rad_bcs[INNER_X2] = mesh_rad_bcs[INNER_X2];
     }
     else {
       Real rx=(Real)lx2/(Real)(nrbx2<<(ll-root_level));
       block_size.x2min=MeshGenerator_[x2dir](rx,mesh_size);
       block_bcs[INNER_X2]=BLOCK_BNDRY;
+      block_rad_bcs[INNER_X2] = BLOCK_BNDRY;
     }
     if(lx2==(nrbx2<<(ll-root_level))-1) {
       block_size.x2max=mesh_size.x2max;
       block_bcs[OUTER_X2]=mesh_bcs[OUTER_X2];
+      block_rad_bcs[OUTER_X2]=mesh_rad_bcs[OUTER_X2];
     }
     else {
       Real rx=(Real)(lx2+1)/(Real)(nrbx2<<(ll-root_level));
       block_size.x2max=MeshGenerator_[x2dir](rx,mesh_size);
       block_bcs[OUTER_X2]=BLOCK_BNDRY;
+      block_rad_bcs[OUTER_X2] = BLOCK_BNDRY;
     }
   }
 
@@ -1934,25 +2007,31 @@ void Mesh::SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size
     block_size.x3max=mesh_size.x3max;
     block_bcs[INNER_X3]=mesh_bcs[INNER_X3];
     block_bcs[OUTER_X3]=mesh_bcs[OUTER_X3];
+    block_rad_bcs[INNER_X3]=mesh_rad_bcs[INNER_X3];
+    block_rad_bcs[OUTER_X3]=mesh_rad_bcs[OUTER_X3];
   }
   else {
     if(lx3==0) {
       block_size.x3min=mesh_size.x3min;
       block_bcs[INNER_X3]=mesh_bcs[INNER_X3];
+      block_rad_bcs[INNER_X3]=mesh_rad_bcs[INNER_X3];
     }
     else {
       Real rx=(Real)lx3/(Real)(nrbx3<<(ll-root_level));
       block_size.x3min=MeshGenerator_[x3dir](rx,mesh_size);
       block_bcs[INNER_X3]=BLOCK_BNDRY;
+      block_rad_bcs[INNER_X3]=BLOCK_BNDRY;
     }
     if(lx3==(nrbx3<<(ll-root_level))-1) {
       block_size.x3max=mesh_size.x3max;
       block_bcs[OUTER_X3]=mesh_bcs[OUTER_X3];
+      block_rad_bcs[OUTER_X3]=mesh_rad_bcs[OUTER_X3];
     }
     else {
       Real rx=(Real)(lx3+1)/(Real)(nrbx3<<(ll-root_level));
       block_size.x3max=MeshGenerator_[x3dir](rx,mesh_size);
       block_bcs[OUTER_X3]=BLOCK_BNDRY;
+      block_rad_bcs[OUTER_X3]=BLOCK_BNDRY;
     }
   }
   return;
@@ -1983,8 +2062,8 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   }
 #ifdef MPI_PARALLEL
   // if this does not work due to a version issue, replace these with blocking AllGather
-  MPI_Iallgather(MPI_IN_PLACE, 1, MPI_INT, nref,   1, MPI_INT, MPI_COMM_WORLD, &areq[0]);
-  MPI_Iallgather(MPI_IN_PLACE, 1, MPI_INT, nderef, 1, MPI_INT, MPI_COMM_WORLD, &areq[1]);
+  MPI_Iallgather(MPI_IN_PLACE, 1, MPI_INT, nref, 1, MPI_INT, MPI_COMM_WORLD, &areq[0]);
+  MPI_Iallgather(MPI_IN_PLACE, 1, MPI_INT, nderef,1, MPI_INT, MPI_COMM_WORLD, &areq[1]);
   MPI_Waitall(2, areq, MPI_STATUSES_IGNORE);
 #endif
 
@@ -2354,6 +2433,7 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   MeshBlock *newlist=NULL;
   RegionSize block_size=pblock->block_size;
   enum BoundaryFlag block_bcs[6];
+  enum BoundaryFlag block_rad_bcs[6];
 
   for(int n=nbs; n<=nbe; n++) {
     int on=newtoold[n];
@@ -2377,13 +2457,15 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
     }
     else {
       // on a different level or node - create a new block
-      SetBlockSizeAndBoundaries(newloc[n], block_size, block_bcs);
+      SetBlockSizeAndBoundaries(newloc[n], block_size, block_bcs, block_rad_bcs);
       if(n==nbs) { // first
-        newlist = new MeshBlock(n, n-nbs, newloc[n], block_size, block_bcs, this, pin);
+        newlist = new MeshBlock(n, n-nbs, newloc[n], block_size, block_bcs,
+                      block_rad_bcs, this, pin);
         pmb=newlist;
       }
       else {
-        pmb->next = new MeshBlock(n, n-nbs, newloc[n], block_size, block_bcs, this, pin);
+        pmb->next = new MeshBlock(n, n-nbs, newloc[n], block_size, block_bcs,
+                      block_rad_bcs, this, pin);
         pmb->next->prev=pmb;
         pmb=pmb->next;
       }

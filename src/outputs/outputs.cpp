@@ -529,7 +529,29 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
       pod->AppendNode(pov); // magnetic field vector
       var_added += 1;
     }
+    
+  
+    if (output_params.variable.compare("Sigma_s") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pov = new OutputVariable;
+      pov->type = "SCALARS";
+      pov->name = "Sigma_s";
+      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma_s,3,0,1);
+      pod->AppendNode(pov); // scattering opacity
+      var_added += 1;
+    }
 
+    if (output_params.variable.compare("Sigma_a") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pov = new OutputVariable;
+      pov->type = "SCALARS";
+      pov->name = "Sigma_a";
+      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma_a,3,0,1);
+      pod->AppendNode(pov); // absorption opacity
+      var_added += 1;
+    }
   }
 
 

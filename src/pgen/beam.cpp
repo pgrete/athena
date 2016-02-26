@@ -98,18 +98,18 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   if(RADIATION_ENABLED){
     int nfreq = prad->nfreq;
     int nang = prad->nang;
-    for (int ifre=0; ifre < nfreq; ++ifre){
     for(int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
         for (int i=is; i<=ie; ++i) {
-          prad->sigma_s(ifre,k,j,i) = 0.0;
-          prad->sigma_a(ifre,k,j,i) = 0.0;
-          for(int n=0; n<nang; ++n){
-              prad->ir(ifre,k,j,i,n) = 1.0;
+          for (int ifr=0; ifr < nfreq; ++ifr){
+            prad->sigma_s(k,j,i,ifr) = 0.0;
+            prad->sigma_a(k,j,i,ifr) = 0.0;
+          }
+          for(int n=0; n<prad->n_fre_ang; ++n){
+              prad->ir(k,j,i,n) = 1.0;
           }
         }
       }
-    }
     }
   }
   

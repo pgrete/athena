@@ -32,6 +32,8 @@
 #include "hydro/eos/eos.hpp"
 #include "hydro/integrators/hydro_integrator.hpp"
 #include "field/integrators/field_integrator.hpp"
+#include "radiation/radiation.hpp"
+
 
 // this class header
 #include "task_list.hpp"
@@ -75,6 +77,10 @@ TaskList::TaskList(Mesh *pm)
       AddTask(1,CON2PRIM,1,(HYD_INT|HYD_RECV|FLD_INT|FLD_RECV));
     }
     AddTask(1,PHY_BVAL,1,CON2PRIM);
+    
+    AddTask(1,RAD_SEND,1,PHY_BVAL);
+    AddTask(1,RAD_RECV,1,NONE);
+    AddTask(1,RAD_BVAL,1,PHY_BVAL);
 
     // MHD correct
     AddTask(2,CALC_FLX,1,PHY_BVAL);
@@ -106,6 +112,10 @@ TaskList::TaskList(Mesh *pm)
       AddTask(2,CON2PRIM,2,(HYD_INT|HYD_RECV|FLD_INT|FLD_RECV));
     }
     AddTask(2,PHY_BVAL,2,CON2PRIM);
+    
+    AddTask(2,RAD_SEND,2,PHY_BVAL);
+    AddTask(2,RAD_RECV,2,NONE);
+    AddTask(2,RAD_BVAL,2,PHY_BVAL);
   }
   else {
     // Hydro predict
@@ -127,6 +137,11 @@ TaskList::TaskList(Mesh *pm)
       AddTask(1,CON2PRIM,1,(HYD_INT|HYD_RECV));
     }
     AddTask(1,PHY_BVAL,1,CON2PRIM);
+    
+    AddTask(1,RAD_SEND,1,PHY_BVAL);
+    AddTask(1,RAD_RECV,1,NONE);
+    AddTask(1,RAD_BVAL,1,PHY_BVAL);
+
 
     // Hydro correct
     AddTask(2,CALC_FLX,1,PHY_BVAL);
@@ -147,8 +162,12 @@ TaskList::TaskList(Mesh *pm)
       AddTask(2,CON2PRIM,2,(HYD_INT|HYD_RECV));
     }
     AddTask(2,PHY_BVAL,2,CON2PRIM);
+    
+    AddTask(2,RAD_SEND,2,PHY_BVAL);
+    AddTask(2,RAD_RECV,2,NONE);
+    AddTask(2,RAD_BVAL,2,PHY_BVAL);
   }
-
+  
   AddTask(2,USERWORK,2,PHY_BVAL);
 
   // New timestep on mesh block
@@ -281,9 +300,9 @@ enum TaskStatus HydroSend(MeshBlock *pmb, unsigned long int task_id, int step)
   Hydro *phydro=pmb->phydro;
   BoundaryValues *pbval=pmb->pbval;
   if(step == 1) {
-    pbval->SendHydroBoundaryBuffers(phydro->u1,1);
+    pbval->SendCenterBoundaryBuffers(phydro->u1,HYDRO,1);
   } else if(step == 2) {
-    pbval->SendHydroBoundaryBuffers(phydro->u,0);
+    pbval->SendCenterBoundaryBuffers(phydro->u,HYDRO,0);
   } else {
     return TASK_FAIL;
   }
@@ -296,9 +315,9 @@ enum TaskStatus HydroReceive(MeshBlock *pmb, unsigned long int task_id, int step
   BoundaryValues *pbval=pmb->pbval;
   bool ret;
   if(step == 1) {
-    ret=pbval->ReceiveHydroBoundaryBuffers(phydro->u1,1);
+    ret=pbval->ReceiveCenterBoundaryBuffers(phydro->u1,HYDRO,1);
   } else if(step == 2) {
-    ret=pbval->ReceiveHydroBoundaryBuffers(phydro->u,0);
+    ret=pbval->ReceiveCenterBoundaryBuffers(phydro->u,HYDRO,0);
   } else {
     return TASK_FAIL;
   }
@@ -433,6 +452,54 @@ enum TaskStatus CheckRefinement(MeshBlock *pmb, unsigned long int task_id, int s
   return TASK_SUCCESS;
 }
 
+
+enum TaskStatus RadSend(MeshBlock *pmb, unsigned long int task_id, int step)
+{
+  Radiation *prad=pmb->prad;
+  BoundaryValues *pbval=pmb->pbval;
+  if(step == 1) {
+    pbval->SendCenterBoundaryBuffers(prad->ir1,RAD,1);
+  } else if(step == 2) {
+    pbval->SendCenterBoundaryBuffers(prad->ir,RAD,0);
+  } else {
+    return TASK_FAIL;
+  }
+  return TASK_SUCCESS;
+}
+
+enum TaskStatus RadReceive(MeshBlock *pmb, unsigned long int task_id, int step)
+{
+  Radiation *prad=pmb->prad;
+  BoundaryValues *pbval=pmb->pbval;
+  bool ret;
+  if(step == 1) {
+    ret=pbval->ReceiveCenterBoundaryBuffers(prad->ir1,RAD,1);
+  } else if(step == 2) {
+    ret=pbval->ReceiveCenterBoundaryBuffers(prad->ir,RAD,0);
+  } else {
+    return TASK_FAIL;
+  }
+  if(ret==true) {
+    return TASK_SUCCESS;
+  } else {
+    return TASK_FAIL;
+  }
+}
+
+enum TaskStatus RadPhysicalBoundary(MeshBlock *pmb, unsigned long int task_id, int step)
+{
+  Radiation *prad=pmb->prad;
+  BoundaryValues *pbval=pmb->pbval;
+  if(step == 1) {
+    pbval->ApplyRadPhysicalBoundaries(prad->ir1);
+  } else if(step == 2) {
+    pbval->ApplyRadPhysicalBoundaries(prad->ir);
+  } else {
+    return TASK_FAIL;
+  }
+  return TASK_SUCCESS;
+}
+
 } // namespace TaskFunctions
 
 
@@ -516,7 +583,20 @@ void TaskList::AddTask(int stp_t,unsigned long int id,int stp_d,unsigned long in
   case (AMR_FLAG):
     task_list_[ntasks].TaskFunc=TaskFunctions::CheckRefinement;
     break;
-
+    
+  case (RAD_SEND):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadSend;
+    break;
+    
+  case (RAD_RECV):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadReceive;
+    break;
+    
+  case (RAD_BVAL):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadPhysicalBoundary;
+    break;
+    
+    
   default:
     std::stringstream msg;
     msg << "### FATAL ERROR in AddTask" << std::endl

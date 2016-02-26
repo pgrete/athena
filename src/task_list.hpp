@@ -46,6 +46,9 @@ enum HydroTasks {
   USERWORK=1L<<15,
   NEW_DT  =1L<<16,
   AMR_FLAG=1L<<17,
+  RAD_SEND=1L<<18,
+  RAD_RECV=1L<<19,
+  RAD_BVAL=1L<<20,
 };
 
 //!   \struct Task

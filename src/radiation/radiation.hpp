@@ -35,13 +35,14 @@ public:
   AthenaArray<Real> ir, ir1; // radiation specific intensity
   AthenaArray<Real> rad_mom; // frequency integrated radiation moments
   AthenaArray<Real> sigma_s, sigma_a; //   opacity
+  AthenaArray<Real> grey_sigma_s, grey_sigma_a; // frequency integrated opacity
   AthenaArray<Real> mu, wmu; // angles and weight
   AthenaArray<Real> wfreq; // weight in frequency space
   
   Real prat, crat; // prat=aT^4/P_0, crat=c/c_s
   Real reduced_c; // reduced speed of light
   
-  int nang, nfreq, noct;
+  int nang, nfreq, noct, n_fre_ang; // n_fre_ang=nang*nfreq
 
   MeshBlock* pmy_block;    // ptr to MeshBlock containing this Fluid
 

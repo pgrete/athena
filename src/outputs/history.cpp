@@ -155,10 +155,10 @@ void HistoryOutput::LoadOutputData(OutputData *pod, MeshBlock *pmb)
         partial_sum[10] += vol(i)*0.5*bcc3*bcc3;
       }
       if (RADIATION_ENABLED){
-        partial_sum[11] += vol(i)*pmb->prad->rad_mom(ER,k,j,i);
-        partial_sum[12] += vol(i)*pmb->prad->rad_mom(FR1,k,j,i);
-        partial_sum[13] += vol(i)*pmb->prad->rad_mom(FR2,k,j,i);
-        partial_sum[14] += vol(i)*pmb->prad->rad_mom(FR3,k,j,i);
+        partial_sum[11] += vol(i)*pmb->prad->rad_mom(IER,k,j,i);
+        partial_sum[12] += vol(i)*pmb->prad->rad_mom(IFR1,k,j,i);
+        partial_sum[13] += vol(i)*pmb->prad->rad_mom(IFR2,k,j,i);
+        partial_sum[14] += vol(i)*pmb->prad->rad_mom(IFR3,k,j,i);
         
       }
     }

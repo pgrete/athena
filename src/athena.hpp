@@ -53,6 +53,9 @@ typedef struct LogicalLocation {
 // prototype for boundary condition function pointer
 typedef void (*BValFunc_t)(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
                    FaceField &buf2, int is, int ie, int js, int je, int ks, int ke);
+// prototype for radiation boundary function pointer
+typedef void (*RadBValFunc_t)(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                   int is, int ie, int js, int je, int ks, int ke);
 // prototype for amr flagging function pointer
 typedef int (*AMRFlag_t)(MeshBlock *pmb);
 // prototype for MeshGenerator function pointer
@@ -86,7 +89,7 @@ enum edgeid {edgeid_undefined = -1, em2m1=0, em2p1=1, ep2m1=2, ep2p2=3,
 enum face {x1face=0, x2face=1, x3face=2};
 enum direction {x1dir=0, x2dir=1, x3dir=2};
 enum mpitag {tag_hydro=0, tag_field=1, tag_flcor=2, tag_emfcor=3, tag_amr=4,
-    tag_emfpole=5}; // mpitag must be < 16 and unique
+    tag_emfpole=5, tag_rad=6}; // mpitag must be < 16 and unique
 
 
 enum neighbor_type {neighbor_none, neighbor_face, neighbor_edge, neighbor_corner};

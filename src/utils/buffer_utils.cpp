@@ -31,14 +31,14 @@ namespace BufferUtility
 //! \fn void Pack4DData(AthenaArray<Real> &src, Real *buf, int sn, int en,
 //                     int si, int ei, int sj, int ej, int sk, int ek, int &offset)
 //  \brief pack a 4D AthenaArray into a one-dimensional buffer
-void Pack4DData(AthenaArray<Real> &src, Real *buf, int sn, int en,
-                int si, int ei, int sj, int ej, int sk, int ek, int &offset)
+void Pack4DData(AthenaArray<Real> &src, Real *buf, int s4, int e4,
+                int s3, int e3, int s2, int e2, int s1, int e1, int &offset)
 {
-  for (int n=sn; n<=en; ++n) {
-    for (int k=sk; k<=ek; k++) {
-      for (int j=sj; j<=ej; j++) {
+  for (int n=s4; n<=e4; ++n) {
+    for (int k=s3; k<=e3; k++) {
+      for (int j=s2; j<=e2; j++) {
 #pragma simd
-        for (int i=si; i<=ei; i++)
+        for (int i=s1; i<=e1; i++)
             buf[offset++]=src(n,k,j,i);
       }
     }
@@ -50,14 +50,14 @@ void Pack4DData(AthenaArray<Real> &src, Real *buf, int sn, int en,
 //! \fn void Unpack4DData(Real *buf, AthenaArray<Real> &dst, int sn, int en,
 //                        int si, int ei, int sj, int ej, int sk, int ek, int &offset)
 //  \brief unpack a one-dimensional buffer into a 4D AthenaArray
-void Unpack4DData(Real *buf, AthenaArray<Real> &dst, int sn, int en,
-                  int si, int ei, int sj, int ej, int sk, int ek, int &offset)
+void Unpack4DData(Real *buf, AthenaArray<Real> &dst, int s4, int e4,
+                  int s3, int e3, int s2, int e2, int s1, int e1, int &offset)
 {
-  for (int n=sn; n<=en; ++n) {
-    for (int k=sk; k<=ek; ++k) {
-      for (int j=sj; j<=ej; ++j) {
+  for (int n=s4; n<=e4; ++n) {
+    for (int k=s3; k<=e3; ++k) {
+      for (int j=s2; j<=e2; ++j) {
 #pragma simd
-        for (int i=si; i<=ei; ++i)
+        for (int i=s1; i<=e1; ++i)
           dst(n,k,j,i) = buf[offset++];
       }
     }

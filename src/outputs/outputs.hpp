@@ -175,8 +175,11 @@ private:
   hid_t *grpid, *x1fid, *x2fid, *x3fid, *rhoid, *eid;
   hid_t *mid[3], *bid[3], **ifovid;
   // for radiation quantities
-  hid_t *erid;
-  hid_t *frid[3];
+  hid_t *erid; // Er
+  hid_t *frid[3]; // Fr
+  hid_t *prid[9]; // Pr
+  hid_t *sigmasid; // scattering
+  hid_t *sigmaaid; // absorption
 
   hsize_t dim, dims[3];
 

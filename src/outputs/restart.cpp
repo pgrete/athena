@@ -96,6 +96,8 @@ void RestartOutput::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag)
     resfile.Write(&(pM->root_level), sizeof(int), 1);
     resfile.Write(&(pM->mesh_size), sizeof(RegionSize), 1);
     resfile.Write(pM->mesh_bcs, sizeof(enum BoundaryFlag), 6);
+    if (RADIATION_ENABLED)
+      resfile.Write(pM->mesh_rad_bcs, sizeof(enum BoundaryFlag), 6);
     resfile.Write(&(pM->time), sizeof(Real), 1);
     resfile.Write(&(pM->dt), sizeof(Real), 1);
     resfile.Write(&(pM->ncycle), sizeof(int), 1);
@@ -203,6 +205,9 @@ void RestartOutput::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
   resfile.Seek(offset[pmb->lid]);
   resfile.Write(&(pmb->block_size), sizeof(RegionSize), 1);
   resfile.Write(pmb->block_bcs, sizeof(int), 6);
+  if(RADIATION_ENABLED)
+    resfile.Write(pmb->block_rad_bcs, sizeof(int), 6);
+  
   resfile.Write(pmb->phydro->u.GetArrayPointer(),sizeof(Real),
                        pmb->phydro->u.GetSize());
   if (GENERAL_RELATIVITY) {

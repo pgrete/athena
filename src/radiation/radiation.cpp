@@ -84,14 +84,20 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   
   nang = n_ang * noct;
   
+  n_fre_ang = nang * nfreq;
+  
   
   // allocate arrays
-  ir.NewAthenaArray(nfreq,n3z,n2z,n1z,nang);
-  ir1.NewAthenaArray(nfreq,n3z,n2z,n1z,nang);
+  // store frequency and angles as [nfre][ang]
+  ir.NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
+  ir1.NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
   
   rad_mom.NewAthenaArray(13,n3z,n2z,n1z);
-  sigma_s.NewAthenaArray(nfreq,n3z,n2z,n1z);
-  sigma_a.NewAthenaArray(nfreq,n3z,n2z,n1z);
+  sigma_s.NewAthenaArray(n3z,n2z,n1z,nfreq);
+  sigma_a.NewAthenaArray(n3z,n2z,n1z,nfreq);
+  
+  grey_sigma_s.NewAthenaArray(n3z,n2z,n1z);
+  grey_sigma_a.NewAthenaArray(n3z,n2z,n1z);
   
   mu.NewAthenaArray(3,n3z,n2z,n1z,nang);
   wmu.NewAthenaArray(nang);
@@ -119,6 +125,8 @@ Radiation::~Radiation()
   rad_mom.DeleteAthenaArray();
   sigma_s.DeleteAthenaArray();
   sigma_a.DeleteAthenaArray();
+  grey_sigma_s.DeleteAthenaArray();
+  grey_sigma_a.DeleteAthenaArray();
   mu.DeleteAthenaArray();
   wmu.DeleteAthenaArray();
   wfreq.DeleteAthenaArray();
@@ -152,7 +160,7 @@ void Radiation::CalculateMoment()
 
   
   // reset the moment arrays to be zero
-  // There are 12 3D arrays
+  // There are 13 3D arrays
   for(int n=0; n<13; ++n)
     for(int k=0; k<n3z; ++k)
       for(int j=0; j<n2z; ++j)
@@ -162,14 +170,14 @@ void Radiation::CalculateMoment()
         }
   
   
-  for(int ifr=0; ifr<nfreq; ++ifr){
-    for(int k=0; k<n3z; ++k){
-      for(int j=0; j<n2z; ++j){
-        for(int i=0; i<n1z; ++i){
+  for(int k=0; k<n3z; ++k){
+    for(int j=0; j<n2z; ++j){
+      for(int i=0; i<n1z; ++i){
+        for(int ifr=0; ifr<nfreq; ++ifr){
           er=0.0; frx=0.0; fry=0.0; frz=0.0;
           prxx=0.0; pryy=0.0; przz=0.0; prxy=0.0;
           prxz=0.0; pryz=0.0;
-          Real *intensity = &(ir(ifr,k,j,i,0));
+          Real *intensity = &(ir(k,j,i,ifr*nang));
           Real *cosx = &(mu(0,k,j,i,0));
           Real *cosy = &(mu(1,k,j,i,0));
           Real *cosz = &(mu(2,k,j,i,0));
@@ -197,6 +205,9 @@ void Radiation::CalculateMoment()
           prxy *= wfreq(ifr);
           prxz *= wfreq(ifr);
           pryz *= wfreq(ifr);
+          
+
+          
           //assign the moments
           i_mom(IER,k,j,i) += er;
           i_mom(IFR1,k,j,i) += frx;
@@ -212,7 +223,18 @@ void Radiation::CalculateMoment()
           i_mom(IPR32,k,j,i) += pryz;
           i_mom(IPR33,k,j,i) += przz;
           
+        }// End frequency loop
+        // Now calculate frequency inetgrated opacity
+        Real sum_sigma_s=0.0, sum_sigma_a = 0.0;
+        Real *sigmas=&(sigma_s(k,j,i,0));
+        Real *sigmaa=&(sigma_a(k,j,i,0));
+#pragma simd
+        for(int ifr=0; ifr<nfreq; ++ifr){
+          sum_sigma_s += sigmas[ifr] * wfreq(ifr);
+          sum_sigma_a += sigmaa[ifr] * wfreq(ifr);
         }
+        grey_sigma_s(k,j,i) = sum_sigma_s;
+        grey_sigma_a(k,j,i) = sum_sigma_a;
       }
     }
     

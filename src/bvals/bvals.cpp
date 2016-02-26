@@ -39,6 +39,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "../parameter_input.hpp"
 #include "../utils/buffer_utils.hpp"
+#include "../radiation/radiation.hpp"
 
 // this class header
 #include "bvals.hpp"
@@ -63,8 +64,10 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
   int f2d=0, f3d=0;
   if(pmb->block_size.nx2 > 1) f2d=1;
   if(pmb->block_size.nx3 > 1) f3d=1;
-  for(int i=0; i<6; i++)
+  for(int i=0; i<6; i++){
     BoundaryFunction_[i]=NULL;
+    RadBoundaryFunction_[i]=NULL;
+  }
 
 // Set BC functions for each of the 6 boundaries in turn -------------------------------
   // Inner x1
@@ -110,6 +113,54 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
       msg << "### FATAL ERROR in BoundaryValues constructor" << std::endl
           << "Flag ox1_bc=" << pmb->block_bcs[OUTER_X1] << " not valid" << std::endl;
       throw std::runtime_error(msg.str().c_str());
+  }
+  
+  // Radiation boundary
+  if(RADIATION_ENABLED){
+    switch(pmb->block_rad_bcs[INNER_X1]){
+      case REFLECTING_BNDRY:
+        RadBoundaryFunction_[INNER_X1] = RadReflectInnerX1;
+        break;
+      case OUTFLOW_BNDRY:
+        RadBoundaryFunction_[INNER_X1] = RadOutflowInnerX1;
+        break;
+      case BLOCK_BNDRY: // block boundary
+      case PERIODIC_BNDRY: // periodic boundary
+        RadBoundaryFunction_[INNER_X1] = NULL;
+        break;
+      case USER_BNDRY: // user-enrolled BCs
+        RadBoundaryFunction_[INNER_X1] = pmb->pmy_mesh->RadBoundaryFunction_[INNER_X1];
+        break;
+      default:
+        std::stringstream msg;
+        msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
+          << "Flag ix1_rad_bc=" << pmb->block_rad_bcs[INNER_X1] << " not valid"
+          << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+    }
+
+  // Outer x1
+    switch(pmb->block_rad_bcs[OUTER_X1]){
+      case REFLECTING_BNDRY:
+        RadBoundaryFunction_[OUTER_X1] = RadReflectOuterX1;
+        break;
+      case OUTFLOW_BNDRY:
+        RadBoundaryFunction_[OUTER_X1] = RadOutflowOuterX1;
+        break;
+      case BLOCK_BNDRY: // block boundary
+      case PERIODIC_BNDRY: // periodic boundary
+        RadBoundaryFunction_[OUTER_X1] = NULL;
+        break;
+      case USER_BNDRY: // user-enrolled BCs
+        RadBoundaryFunction_[OUTER_X1] = pmb->pmy_mesh->RadBoundaryFunction_[OUTER_X1];
+        break;
+      default:
+        std::stringstream msg;
+        msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
+          << "Flag ox1_rad_bc=" << pmb->block_rad_bcs[OUTER_X1] << " not valid"
+          << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+    }
   }
 
   if (pmb->block_size.nx2 > 1) {
@@ -159,6 +210,56 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
             << "Flag ox2_bc=" << pmb->block_bcs[OUTER_X2] << " not valid" << std::endl;
         throw std::runtime_error(msg.str().c_str());
     }
+    if(RADIATION_ENABLED){
+      switch(pmb->block_rad_bcs[INNER_X2]){
+        case REFLECTING_BNDRY:
+          RadBoundaryFunction_[INNER_X2] = RadReflectInnerX2;
+          break;
+        case OUTFLOW_BNDRY:
+          RadBoundaryFunction_[INNER_X2] = RadOutflowInnerX2;
+          break;
+        case BLOCK_BNDRY: // block boundary
+        case PERIODIC_BNDRY: // periodic boundary
+        case POLAR_BNDRY: // polar boundary
+          RadBoundaryFunction_[INNER_X2] = NULL;
+          break;
+        case USER_BNDRY: // user-enrolled BCs
+          RadBoundaryFunction_[INNER_X2]
+                              = pmb->pmy_mesh->RadBoundaryFunction_[INNER_X2];
+          break;
+        default:
+          std::stringstream msg;
+          msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
+            << "Flag ix2_rad_bc=" << pmb->block_rad_bcs[INNER_X2] << " not valid"
+            << std::endl;
+          throw std::runtime_error(msg.str().c_str());
+       }
+
+    // Outer x2
+      switch(pmb->block_rad_bcs[OUTER_X2]){
+        case REFLECTING_BNDRY:
+          RadBoundaryFunction_[OUTER_X2] = RadReflectOuterX2;
+          break;
+        case OUTFLOW_BNDRY:
+          RadBoundaryFunction_[OUTER_X2] = RadOutflowOuterX2;
+          break;
+        case BLOCK_BNDRY: // block boundary
+        case PERIODIC_BNDRY: // periodic boundary
+        case POLAR_BNDRY: // polar boundary
+          RadBoundaryFunction_[OUTER_X2] = NULL;
+          break;
+        case USER_BNDRY: // user-enrolled BCs
+          RadBoundaryFunction_[OUTER_X2]
+                              = pmb->pmy_mesh->RadBoundaryFunction_[OUTER_X2];
+          break;
+        default:
+          std::stringstream msg;
+          msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
+            << "Flag ox2_rad_bc=" << pmb->block_rad_bcs[OUTER_X2] << " not valid"
+            << std::endl;
+          throw std::runtime_error(msg.str().c_str());
+      }
+    }
   }
 
   if (pmb->block_size.nx3 > 1) {
@@ -206,6 +307,54 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
             << "Flag ox3_bc=" << pmb->block_bcs[OUTER_X3] << " not valid" << std::endl;
         throw std::runtime_error(msg.str().c_str());
     }
+    if(RADIATION_ENABLED){
+      switch(pmb->block_rad_bcs[INNER_X3]){
+        case REFLECTING_BNDRY:
+          RadBoundaryFunction_[INNER_X3] = RadReflectInnerX3;
+          break;
+        case OUTFLOW_BNDRY:
+          RadBoundaryFunction_[INNER_X3] = RadOutflowInnerX3;
+          break;
+        case BLOCK_BNDRY: // block boundary
+        case PERIODIC_BNDRY: // periodic boundary
+          RadBoundaryFunction_[INNER_X3] = NULL;
+          break;
+        case USER_BNDRY: // user-enrolled BCs
+          RadBoundaryFunction_[INNER_X3]
+                               = pmb->pmy_mesh->RadBoundaryFunction_[INNER_X3];
+          break;
+        default:
+          std::stringstream msg;
+          msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
+            << "Flag ix3_rad_bc=" << pmb->block_rad_bcs[INNER_X3] << " not valid"
+            << std::endl;
+          throw std::runtime_error(msg.str().c_str());
+       }
+
+    // Outer x3
+      switch(pmb->block_rad_bcs[OUTER_X3]){
+        case REFLECTING_BNDRY:
+          RadBoundaryFunction_[OUTER_X3] = RadReflectOuterX3;
+          break;
+        case OUTFLOW_BNDRY:
+          RadBoundaryFunction_[OUTER_X3] = RadOutflowOuterX3;
+          break;
+        case BLOCK_BNDRY: // block boundary
+        case PERIODIC_BNDRY: // periodic boundary
+          RadBoundaryFunction_[OUTER_X3] = NULL;
+          break;
+        case USER_BNDRY: // user-enrolled BCs
+          RadBoundaryFunction_[OUTER_X3]
+                              = pmb->pmy_mesh->RadBoundaryFunction_[OUTER_X3];
+          break;
+        default:
+          std::stringstream msg;
+          msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
+            << "Flag ox3_rad_bc=" << pmb->block_rad_bcs[OUTER_X3] << " not valid"
+            << std::endl;
+          throw std::runtime_error(msg.str().c_str());
+      }
+    }
   }
 
   // Count number of blocks wrapping around pole
@@ -227,13 +376,18 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
     for(int i=0;i<56;i++){
       hydro_flag_[l][i]=boundary_waiting;
       field_flag_[l][i]=boundary_waiting;
+      rad_flag_[l][i]=boundary_waiting;
       hydro_send_[l][i]=NULL;
       hydro_recv_[l][i]=NULL;
       field_send_[l][i]=NULL;
       field_recv_[l][i]=NULL;
+      rad_send_[l][i]=NULL;
+      rad_recv_[l][i]=NULL;
 #ifdef MPI_PARALLEL
       req_hydro_send_[l][i]=MPI_REQUEST_NULL;
       req_hydro_recv_[l][i]=MPI_REQUEST_NULL;
+      req_rad_send_[l][i]=MPI_REQUEST_NULL;
+      req_rad_recv_[l][i]=MPI_REQUEST_NULL;
 #endif
     }
     for(int i=0;i<48;i++){
@@ -314,6 +468,13 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
         size=std::max(size,c2f);
         size=std::max(size,f2c);
       }
+      if (RADIATION_ENABLED){
+        // use size for radiation first
+        int rad_size = size * pmb->prad->n_fre_ang;
+        rad_send_[l][n] = new Real[rad_size];
+        rad_recv_[l][n] = new Real[rad_size];
+      }
+      
       size*=NHYDRO;
       hydro_send_[l][n]=new Real[size];
       hydro_recv_[l][n]=new Real[size];
@@ -471,6 +632,10 @@ BoundaryValues::~BoundaryValues()
     for(int i=0;i<pmb->pmy_mesh->maxneighbor_;i++) {
       delete [] hydro_send_[l][i];
       delete [] hydro_recv_[l][i];
+      if(RADIATION_ENABLED){
+        delete [] rad_send_[l][i];
+        delete [] rad_recv_[l][i];
+      }
     }
   }
   if (MAGNETIC_FIELDS_ENABLED) {
@@ -657,6 +822,18 @@ void BoundaryValues::Initialize(void)
                *((nb.ox2==0)?((pmb->block_size.nx2+1)/2):NGHOST)
                *((nb.ox3==0)?((pmb->block_size.nx3+1)/2):NGHOST);
         }
+        //use ssize and rsize for radiation before it gets modified
+        if (RADIATION_ENABLED){
+           int rad_ssize = ssize * pmb->prad->n_fre_ang;
+           int rad_rsize = rsize * pmb->prad->n_fre_ang;
+           tag=CreateMPITag(nb.lid, l, tag_rad, nb.targetid);
+           MPI_Send_init(rad_send_[l][nb.bufid],rad_ssize,MPI_ATHENA_REAL,
+                      nb.rank,tag,MPI_COMM_WORLD,&req_rad_send_[l][nb.bufid]);
+           tag=CreateMPITag(pmb->lid, l, tag_rad, nb.bufid);
+           MPI_Recv_init(rad_recv_[l][nb.bufid],rad_rsize,MPI_ATHENA_REAL,
+                      nb.rank,tag,MPI_COMM_WORLD,&req_rad_recv_[l][nb.bufid]);
+        }
+        
         ssize*=NHYDRO; rsize*=NHYDRO;
         // specify the offsets in the view point of the target block: flip ox? signs
         tag=CreateMPITag(nb.lid, l, tag_hydro, nb.targetid);
@@ -876,6 +1053,16 @@ void BoundaryValues::CheckBoundary(void)
         throw std::runtime_error(msg.str().c_str());
       }
     }
+    if(RADIATION_ENABLED && pmb->block_rad_bcs[i]==USER_BNDRY){
+      if(RadBoundaryFunction_[i]==NULL) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in BoundaryValues::CheckBoundary" << std::endl
+            << "A user-defined boundary is specified but the radiation"
+            << " boundary function "
+            << "is not enrolled in direction " << i  << "." << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
+    }
   }
 }
 
@@ -891,6 +1078,8 @@ void BoundaryValues::StartReceivingForInit(void)
     NeighborBlock& nb = pmb->neighbor[n];
     if(nb.rank!=Globals::my_rank) { 
       MPI_Start(&req_hydro_recv_[0][nb.bufid]);
+      if(RADIATION_ENABLED)
+        MPI_Start(&req_rad_recv_[0][nb.bufid]);
       if (MAGNETIC_FIELDS_ENABLED)
         MPI_Start(&req_field_recv_[0][nb.bufid]);
     }
@@ -914,6 +1103,8 @@ void BoundaryValues::StartReceivingAll(void)
       NeighborBlock& nb = pmb->neighbor[n];
       if(nb.rank!=Globals::my_rank) { 
         MPI_Start(&req_hydro_recv_[l][nb.bufid]);
+        if(RADIATION_ENABLED)
+          MPI_Start(&req_rad_recv_[l][nb.bufid]);
         if(nb.type==neighbor_face && nb.level>mylevel)
           MPI_Start(&req_flcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
         if (MAGNETIC_FIELDS_ENABLED) {
@@ -945,376 +1136,6 @@ void BoundaryValues::StartReceivingAll(void)
   return;
 }
 
-
-//--------------------------------------------------------------------------------------
-//! \fn int BoundaryValues::LoadHydroBoundaryBufferSameLevel(AthenaArray<Real> &src,
-//                                                 Real *buf, const NeighborBlock& nb)
-//  \brief Set hydro boundary buffers for sending to a block on the same level
-int BoundaryValues::LoadHydroBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
-                                                     const NeighborBlock& nb)
-{
-  MeshBlock *pmb=pmy_mblock_;
-  int si, sj, sk, ei, ej, ek;
-
-  si=(nb.ox1>0)?(pmb->ie-NGHOST+1):pmb->is;
-  ei=(nb.ox1<0)?(pmb->is+NGHOST-1):pmb->ie;
-  sj=(nb.ox2>0)?(pmb->je-NGHOST+1):pmb->js;
-  ej=(nb.ox2<0)?(pmb->js+NGHOST-1):pmb->je;
-  sk=(nb.ox3>0)?(pmb->ke-NGHOST+1):pmb->ks;
-  ek=(nb.ox3<0)?(pmb->ks+NGHOST-1):pmb->ke;
-  int p=0;
-  BufferUtility::Pack4DData(src, buf, 0, NHYDRO-1, si, ei, sj, ej, sk, ek, p);
-  return p;
-}
-
-
-//--------------------------------------------------------------------------------------
-//! \fn int BoundaryValues::LoadHydroBoundaryBufferToCoarser(AthenaArray<Real> &src,
-//                                                 Real *buf, const NeighborBlock& nb)
-//  \brief Set hydro boundary buffers for sending to a block on the coarser level
-int BoundaryValues::LoadHydroBoundaryBufferToCoarser(AthenaArray<Real> &src, Real *buf,
-                                                     const NeighborBlock& nb)
-{
-  MeshBlock *pmb=pmy_mblock_;
-  MeshRefinement *pmr=pmb->pmr;
-  int si, sj, sk, ei, ej, ek;
-  int cn=pmb->cnghost-1;
-
-  si=(nb.ox1>0)?(pmb->cie-cn):pmb->cis;
-  ei=(nb.ox1<0)?(pmb->cis+cn):pmb->cie;
-  sj=(nb.ox2>0)?(pmb->cje-cn):pmb->cjs;
-  ej=(nb.ox2<0)?(pmb->cjs+cn):pmb->cje;
-  sk=(nb.ox3>0)?(pmb->cke-cn):pmb->cks;
-  ek=(nb.ox3<0)?(pmb->cks+cn):pmb->cke;
-
-  // restrict the data before sending
-  pmr->RestrictCellCenteredValues(src, pmr->coarse_cons_, 0, NHYDRO-1,
-                                  si, ei, sj, ej, sk, ek);
-  int p=0;
-  BufferUtility::Pack4DData(pmr->coarse_cons_, buf, 0, NHYDRO-1,
-                            si, ei, sj, ej, sk, ek, p);
-  return p;
-}
-
-
-//--------------------------------------------------------------------------------------
-//! \fn int BoundaryValues::LoadHydroBoundaryBufferToFiner(AthenaArray<Real> &src,
-//                                                 Real *buf, const NeighborBlock& nb)
-//  \brief Set hydro boundary buffers for sending to a block on the finer level
-int BoundaryValues::LoadHydroBoundaryBufferToFiner(AthenaArray<Real> &src, Real *buf,
-                                                   const NeighborBlock& nb)
-{
-  MeshBlock *pmb=pmy_mblock_;
-  int si, sj, sk, ei, ej, ek;
-  int cn=pmb->cnghost-1;
-
-  si=(nb.ox1>0)?(pmb->ie-cn):pmb->is;
-  ei=(nb.ox1<0)?(pmb->is+cn):pmb->ie;
-  sj=(nb.ox2>0)?(pmb->je-cn):pmb->js;
-  ej=(nb.ox2<0)?(pmb->js+cn):pmb->je;
-  sk=(nb.ox3>0)?(pmb->ke-cn):pmb->ks;
-  ek=(nb.ox3<0)?(pmb->ks+cn):pmb->ke;
-
-  // send the data first and later prolongate on the target block
-  // need to add edges for faces, add corners for edges
-  if(nb.ox1==0) {
-    if(nb.fi1==1)   si+=pmb->block_size.nx1/2-pmb->cnghost;
-    else            ei-=pmb->block_size.nx1/2-pmb->cnghost;
-  }
-  if(nb.ox2==0 && pmb->block_size.nx2 > 1) {
-    if(nb.ox1!=0) {
-      if(nb.fi1==1) sj+=pmb->block_size.nx2/2-pmb->cnghost;
-      else          ej-=pmb->block_size.nx2/2-pmb->cnghost;
-    }
-    else {
-      if(nb.fi2==1) sj+=pmb->block_size.nx2/2-pmb->cnghost;
-      else          ej-=pmb->block_size.nx2/2-pmb->cnghost;
-    }
-  }
-  if(nb.ox3==0 && pmb->block_size.nx3 > 1) {
-    if(nb.ox1!=0 && nb.ox2!=0) {
-      if(nb.fi1==1) sk+=pmb->block_size.nx3/2-pmb->cnghost;
-      else          ek-=pmb->block_size.nx3/2-pmb->cnghost;
-    }
-    else {
-      if(nb.fi2==1) sk+=pmb->block_size.nx3/2-pmb->cnghost;
-      else          ek-=pmb->block_size.nx3/2-pmb->cnghost;
-    }
-  }
-
-  int p=0;
-  BufferUtility::Pack4DData(src, buf, 0, NHYDRO-1, si, ei, sj, ej, sk, ek, p);
-  return p;
-}
-
-
-//--------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::SendHydroBoundaryBuffers(AthenaArray<Real> &src, int step)
-//  \brief Send boundary buffers
-void BoundaryValues::SendHydroBoundaryBuffers(AthenaArray<Real> &src, int step)
-{
-  MeshBlock *pmb=pmy_mblock_;
-  int mylevel=pmb->loc.level;
-
-  for(int n=0; n<pmb->nneighbor; n++) {
-    NeighborBlock& nb = pmb->neighbor[n];
-    int ssize;
-    if(nb.level==mylevel)
-      ssize=LoadHydroBoundaryBufferSameLevel(src, hydro_send_[step][nb.bufid],nb);
-    else if(nb.level<mylevel)
-      ssize=LoadHydroBoundaryBufferToCoarser(src, hydro_send_[step][nb.bufid],nb);
-    else
-      ssize=LoadHydroBoundaryBufferToFiner(src, hydro_send_[step][nb.bufid], nb);
-    if(nb.rank == Globals::my_rank) { // on the same process
-      MeshBlock *pbl=pmb->pmy_mesh->FindMeshBlock(nb.gid);
-      std::memcpy(pbl->pbval->hydro_recv_[step][nb.targetid],
-                  hydro_send_[step][nb.bufid], ssize*sizeof(Real));
-      pbl->pbval->hydro_flag_[step][nb.targetid]=boundary_arrived;
-    }
-#ifdef MPI_PARALLEL
-    else // MPI
-      MPI_Start(&req_hydro_send_[step][nb.bufid]);
-#endif
-  }
-
-  return;
-}
-
-
-//--------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::SetHydroBoundarySameLevel(AthenaArray<Real> &dst,
-//                                           Real *buf, const NeighborBlock& nb)
-//  \brief Set hydro boundary received from a block on the same level
-void BoundaryValues::SetHydroBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
-                                               const NeighborBlock& nb)
-{
-  MeshBlock *pmb=pmy_mblock_;
-  int si, sj, sk, ei, ej, ek;
-
-  if(nb.ox1==0)     si=pmb->is,        ei=pmb->ie;
-  else if(nb.ox1>0) si=pmb->ie+1,      ei=pmb->ie+NGHOST;
-  else              si=pmb->is-NGHOST, ei=pmb->is-1;
-  if(nb.ox2==0)     sj=pmb->js,        ej=pmb->je;
-  else if(nb.ox2>0) sj=pmb->je+1,      ej=pmb->je+NGHOST;
-  else              sj=pmb->js-NGHOST, ej=pmb->js-1;
-  if(nb.ox3==0)     sk=pmb->ks,        ek=pmb->ke;
-  else if(nb.ox3>0) sk=pmb->ke+1,      ek=pmb->ke+NGHOST;
-  else              sk=pmb->ks-NGHOST, ek=pmb->ks-1;
-
-  int p=0;
-  if (nb.polar) {
-    for (int n=0; n<(NHYDRO); ++n) {
-      Real sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
-      for (int k=sk; k<=ek; ++k) {
-        for (int j=ej; j>=sj; --j) {
-#pragma simd
-          for (int i=si; i<=ei; ++i)
-            dst(n,k,j,i) = sign * buf[p++];
-        }
-      }
-    }
-  }
-  else
-    BufferUtility::Unpack4DData(buf, dst, 0, NHYDRO-1, si, ei, sj, ej, sk, ek, p);
-  return;
-}
-
-
-//--------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::SetHydroBoundaryFromCoarser(Real *buf,
-//                                                       const NeighborBlock& nb)
-//  \brief Set hydro prolongation buffer received from a block on a coarser level
-void BoundaryValues::SetHydroBoundaryFromCoarser(Real *buf, const NeighborBlock& nb)
-{
-  MeshBlock *pmb=pmy_mblock_;
-  MeshRefinement *pmr=pmb->pmr;
-
-  int si, sj, sk, ei, ej, ek;
-  int cng=pmb->cnghost;
-
-  if(nb.ox1==0) {
-    si=pmb->cis, ei=pmb->cie;
-    if((pmb->loc.lx1&1L)==0L) ei+=cng;
-    else             si-=cng; 
-  }
-  else if(nb.ox1>0)  si=pmb->cie+1,   ei=pmb->cie+cng;
-  else               si=pmb->cis-cng, ei=pmb->cis-1;
-  if(nb.ox2==0) {
-    sj=pmb->cjs, ej=pmb->cje;
-    if(pmb->block_size.nx2 > 1) {
-      if((pmb->loc.lx2&1L)==0L) ej+=cng;
-      else             sj-=cng; 
-    }
-  }
-  else if(nb.ox2>0)  sj=pmb->cje+1,   ej=pmb->cje+cng;
-  else               sj=pmb->cjs-cng, ej=pmb->cjs-1;
-  if(nb.ox3==0) {
-    sk=pmb->cks, ek=pmb->cke;
-    if(pmb->block_size.nx3 > 1) {
-      if((pmb->loc.lx3&1L)==0L) ek+=cng;
-      else             sk-=cng; 
-    }
-  }
-  else if(nb.ox3>0)  sk=pmb->cke+1,   ek=pmb->cke+cng;
-  else               sk=pmb->cks-cng, ek=pmb->cks-1;
-
-  int p=0;
-  if (nb.polar) {
-    for (int n=0; n<(NHYDRO); ++n) {
-      Real sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
-      for (int k=sk; k<=ek; ++k) {
-        for (int j=ej; j>=sj; --j) {
-#pragma simd
-          for (int i=si; i<=ei; ++i)
-            pmr->coarse_cons_(n,k,j,i) = sign * buf[p++];
-        }
-      }
-    }
-  }
-  else
-    BufferUtility::Unpack4DData(buf, pmr->coarse_cons_, 0, NHYDRO-1,
-                                si, ei, sj, ej, sk, ek, p);    
-  return;
-}
-
-
-//--------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::SetHydroBoundaryFromFiner(AthenaArray<Real> &dst,
-//                                               Real *buf, const NeighborBlock& nb)
-//  \brief Set hydro boundary received from a block on a finer level
-void BoundaryValues::SetHydroBoundaryFromFiner(AthenaArray<Real> &dst, Real *buf,
-                                               const NeighborBlock& nb)
-{
-  MeshBlock *pmb=pmy_mblock_;
-  // receive already restricted data
-  int si, sj, sk, ei, ej, ek;
-
-  if(nb.ox1==0) {
-    si=pmb->is, ei=pmb->ie;
-    if(nb.fi1==1)   si+=pmb->block_size.nx1/2;
-    else            ei-=pmb->block_size.nx1/2;
-  }
-  else if(nb.ox1>0) si=pmb->ie+1,      ei=pmb->ie+NGHOST;
-  else              si=pmb->is-NGHOST, ei=pmb->is-1;
-  if(nb.ox2==0) {
-    sj=pmb->js, ej=pmb->je;
-    if(pmb->block_size.nx2 > 1) {
-      if(nb.ox1!=0) {
-        if(nb.fi1==1) sj+=pmb->block_size.nx2/2;
-        else          ej-=pmb->block_size.nx2/2;
-      }
-      else {
-        if(nb.fi2==1) sj+=pmb->block_size.nx2/2;
-        else          ej-=pmb->block_size.nx2/2;
-      }
-    }
-  }
-  else if(nb.ox2>0) sj=pmb->je+1,      ej=pmb->je+NGHOST;
-  else              sj=pmb->js-NGHOST, ej=pmb->js-1;
-  if(nb.ox3==0) {
-    sk=pmb->ks, ek=pmb->ke;
-    if(pmb->block_size.nx3 > 1) {
-      if(nb.ox1!=0 && nb.ox2!=0) {
-        if(nb.fi1==1) sk+=pmb->block_size.nx3/2;
-        else          ek-=pmb->block_size.nx3/2;
-      }
-      else {
-        if(nb.fi2==1) sk+=pmb->block_size.nx3/2;
-        else          ek-=pmb->block_size.nx3/2;
-      }
-    }
-  }
-  else if(nb.ox3>0) sk=pmb->ke+1,      ek=pmb->ke+NGHOST;
-  else              sk=pmb->ks-NGHOST, ek=pmb->ks-1;
-
-  int p=0;
-  if (nb.polar) {
-    for (int n=0; n<(NHYDRO); ++n) {
-      Real sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
-      for (int k=sk; k<=ek; ++k) {
-        for (int j=sj; j<=ej; ++j) {
-#pragma simd
-          for (int i=si; i<=ei; ++i)
-            dst(n,k,j,i) = sign * buf[p++];
-        }
-      }
-    }
-  }
-  else 
-    BufferUtility::Unpack4DData(buf, dst, 0, NHYDRO-1, si, ei, sj, ej, sk, ek, p);
-  return;
-}
-
-
-//--------------------------------------------------------------------------------------
-//! \fn bool BoundaryValues::ReceiveHydroBoundaryBuffers(AthenaArray<Real> &dst, int step)
-//  \brief receive the boundary data
-bool BoundaryValues::ReceiveHydroBoundaryBuffers(AthenaArray<Real> &dst, int step)
-{
-  MeshBlock *pmb=pmy_mblock_;
-  bool flag=true;
-
-  for(int n=0; n<pmb->nneighbor; n++) {
-    NeighborBlock& nb = pmb->neighbor[n];
-    if(hydro_flag_[step][nb.bufid]==boundary_completed) continue;
-    if(hydro_flag_[step][nb.bufid]==boundary_waiting) {
-      if(nb.rank==Globals::my_rank) {// on the same process
-        flag=false;
-        continue;
-      }
-#ifdef MPI_PARALLEL
-      else { // MPI boundary
-        int test;
-        MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&test,MPI_STATUS_IGNORE);
-        MPI_Test(&req_hydro_recv_[step][nb.bufid],&test,MPI_STATUS_IGNORE);
-        if(test==false) {
-          flag=false;
-          continue;
-        }
-        hydro_flag_[step][nb.bufid] = boundary_arrived;
-      }
-#endif
-    }
-    if(nb.level==pmb->loc.level)
-      SetHydroBoundarySameLevel(dst, hydro_recv_[step][nb.bufid], nb);
-    else if(nb.level<pmb->loc.level) // this set only the prolongation buffer
-      SetHydroBoundaryFromCoarser(hydro_recv_[step][nb.bufid], nb);
-    else
-      SetHydroBoundaryFromFiner(dst, hydro_recv_[step][nb.bufid], nb);
-    hydro_flag_[step][nb.bufid] = boundary_completed; // completed
-  }
-
-  if(flag&&(pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY)) PolarSingleHydro(dst);
-  return flag;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::ReceiveHydroBoundaryBuffersWithWait(AthenaArray<Real> &dst,
-//                                                               int step)
-//  \brief receive the boundary data for initialization
-void BoundaryValues::ReceiveHydroBoundaryBuffersWithWait(AthenaArray<Real> &dst, int step)
-{
-  MeshBlock *pmb=pmy_mblock_;
-
-  for(int n=0; n<pmb->nneighbor; n++) {
-    NeighborBlock& nb = pmb->neighbor[n];
-#ifdef MPI_PARALLEL
-    if(nb.rank!=Globals::my_rank)
-      MPI_Wait(&req_hydro_recv_[0][nb.bufid],MPI_STATUS_IGNORE);
-#endif
-    if(nb.level==pmb->loc.level)
-      SetHydroBoundarySameLevel(dst, hydro_recv_[0][nb.bufid], nb);
-    else if(nb.level<pmb->loc.level)
-      SetHydroBoundaryFromCoarser(hydro_recv_[0][nb.bufid], nb);
-    else
-      SetHydroBoundaryFromFiner(dst, hydro_recv_[0][nb.bufid], nb);
-    hydro_flag_[0][nb.bufid] = boundary_completed; // completed
-  }
- 
-  if (pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY) PolarSingleHydro(dst);
-
-  return;
-}
 
 
 //--------------------------------------------------------------------------------------
@@ -3673,6 +3494,8 @@ void BoundaryValues::ClearBoundaryForInit(void)
   for(int n=0;n<pmb->nneighbor;n++) {
     NeighborBlock& nb = pmb->neighbor[n];
     hydro_flag_[0][nb.bufid] = boundary_waiting;
+    if(RADIATION_ENABLED)
+      rad_flag_[0][nb.bufid] = boundary_waiting;
     if (MAGNETIC_FIELDS_ENABLED)
       field_flag_[0][nb.bufid] = boundary_waiting;
 #ifdef MPI_PARALLEL
@@ -3680,6 +3503,8 @@ void BoundaryValues::ClearBoundaryForInit(void)
       MPI_Wait(&req_hydro_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
       if (MAGNETIC_FIELDS_ENABLED)
         MPI_Wait(&req_field_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+      if (RADIATION_ENABLED)
+        MPI_Wait(&req_rad_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Rad Wait for Isend
     }
 #endif
   }
@@ -3697,6 +3522,8 @@ void BoundaryValues::ClearBoundaryAll(void)
     for(int n=0;n<pmb->nneighbor;n++) {
       NeighborBlock& nb = pmb->neighbor[n];
       hydro_flag_[l][nb.bufid] = boundary_waiting;
+      if(RADIATION_ENABLED)
+        rad_flag_[l][nb.bufid] = boundary_waiting;
       if(nb.type==neighbor_face)
         flcor_flag_[l][nb.fid][nb.fi2][nb.fi1] = boundary_waiting;
       if (MAGNETIC_FIELDS_ENABLED) {
@@ -3707,6 +3534,8 @@ void BoundaryValues::ClearBoundaryAll(void)
 #ifdef MPI_PARALLEL
       if(nb.rank!=Globals::my_rank) {
         MPI_Wait(&req_hydro_send_[l][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+        if(RADIATION_ENABLED)
+           MPI_Wait(&req_rad_send_[l][nb.bufid],MPI_STATUS_IGNORE);
         if(nb.type==neighbor_face && nb.level<pmb->loc.level)
           MPI_Wait(&req_flcor_send_[l][nb.fid],MPI_STATUS_IGNORE); // Wait for Isend
         if (MAGNETIC_FIELDS_ENABLED) {
@@ -3719,6 +3548,7 @@ void BoundaryValues::ClearBoundaryAll(void)
               MPI_Wait(&req_emfcor_send_[l][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
           }
         }
+        
       }
 #endif
     }
@@ -3819,6 +3649,72 @@ void BoundaryValues::ApplyPhysicalBoundaries(AthenaArray<Real> &pdst,
       }
       pmb->phydro->peos->PrimitiveToConserved(pdst, bcdst, cdst, pco,
         bis, bie, bjs, bje, pmb->ke+1, pmb->ke+NGHOST);
+    }
+  }
+
+  return;
+}
+
+
+
+//--------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst)
+//
+//  \brief Apply all the physical boundary conditions for radiation
+void BoundaryValues::ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst)
+{
+  MeshBlock *pmb=pmy_mblock_;
+  Coordinates *pco=pmb->pcoord;
+  int bis=pmb->is, bie=pmb->ie, bjs=pmb->js, bje=pmb->je, bks=pmb->ks, bke=pmb->ke;
+  if(pmb->pmy_mesh->face_only==false) { // extend the ghost zone
+    bis=pmb->is-NGHOST;
+    bie=pmb->ie+NGHOST;
+    if(RadBoundaryFunction_[INNER_X2]==NULL && pmb->block_size.nx2>1)
+       bjs=pmb->js-NGHOST;
+    if(RadBoundaryFunction_[OUTER_X2]==NULL && pmb->block_size.nx2>1)
+       bje=pmb->je+NGHOST;
+    if(RadBoundaryFunction_[INNER_X3]==NULL && pmb->block_size.nx3>1)
+       bks=pmb->ks-NGHOST;
+    if(RadBoundaryFunction_[OUTER_X3]==NULL && pmb->block_size.nx3>1)
+       bke=pmb->ke+NGHOST;
+  }
+  // Apply boundary function on inner-x1
+  if (RadBoundaryFunction_[INNER_X1] != NULL) {
+    RadBoundaryFunction_[INNER_X1](pmb, pco, pdst,pmb->is, pmb->ie, bjs,bje,bks,bke);
+  }
+
+  // Apply boundary function on outer-x1
+  if (RadBoundaryFunction_[OUTER_X1] != NULL) {
+    RadBoundaryFunction_[OUTER_X1](pmb, pco, pdst, pmb->is, pmb->ie, bjs,bje,bks,bke);
+  }
+
+  if(pmb->block_size.nx2>1) { // 2D or 3D
+
+    // Apply boundary function on inner-x2
+    if (RadBoundaryFunction_[INNER_X2] != NULL) {
+      RadBoundaryFunction_[INNER_X2](pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
+    }
+    // Apply boundary function on outer-x2
+    if (RadBoundaryFunction_[OUTER_X2] != NULL) {
+      RadBoundaryFunction_[OUTER_X2](pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
+
+    }
+  }
+
+  if(pmb->block_size.nx3>1) { // 3D
+    if(pmb->pmy_mesh->face_only==false) {
+      bjs=pmb->js-NGHOST;
+      bje=pmb->je+NGHOST;
+    }
+
+    // Apply boundary function on inner-x3
+    if (RadBoundaryFunction_[INNER_X3] != NULL) {
+      RadBoundaryFunction_[INNER_X3](pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
+    }
+
+    // Apply boundary function on outer-x3
+    if (RadBoundaryFunction_[OUTER_X3] != NULL) {
+      RadBoundaryFunction_[OUTER_X3](pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
     }
   }
 

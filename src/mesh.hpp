@@ -96,7 +96,8 @@ private:
 public:
   LogicalLocation loc;
   MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_size,
-            enum BoundaryFlag *input_bcs, Mesh *pm, ParameterInput *pin);
+            enum BoundaryFlag *input_bcs, enum BoundaryFlag *input_rad_bcs,
+            Mesh *pm, ParameterInput *pin);
   MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin, LogicalLocation iloc,
   IOWrapper& resfile, IOWrapperSize_t offset, Real icost, int *ranklist, int *nslist);
   ~MeshBlock();
@@ -108,6 +109,7 @@ public:
 
   RegionSize block_size;
   enum BoundaryFlag block_bcs[6];
+  enum BoundaryFlag block_rad_bcs[6];
   int nblevel[3][3][3];
   Mesh *pmy_mesh;  // ptr to Mesh containing this MeshBlock
 
@@ -146,6 +148,7 @@ private:
   MeshGenFunc_t MeshGenerator_[3];
   SrcTermFunc_t UserSourceTerm_;
   BValFunc_t BoundaryFunction_[6];
+  RadBValFunc_t RadBoundaryFunction_[6]; // Function Pointer for radiation
   AMRFlag_t AMRFlag_;
 
   void MeshTest(int dim);
@@ -155,6 +158,7 @@ private:
   void TerminateUserMeshProperties(void);
 
   void EnrollUserBoundaryFunction (enum BoundaryFace face, BValFunc_t my_func);
+  void EnrollUserRadBoundaryFunction (enum BoundaryFace face, RadBValFunc_t my_func);
   void EnrollUserRefinementCondition(AMRFlag_t amrflag);
   void EnrollUserMeshGenerator(enum direction dir, MeshGenFunc_t my_mg);
   void EnrollUserSourceTermFunction(SrcTermFunc_t my_func);
@@ -178,6 +182,7 @@ public:
 
   RegionSize mesh_size;
   enum BoundaryFlag mesh_bcs[6];
+  enum BoundaryFlag mesh_rad_bcs[6];
 
   Real start_time, tlim, cfl_number, time, dt;
   int nlim, ncycle;
@@ -191,7 +196,7 @@ public:
 
   void Initialize(int res_flag, ParameterInput *pin);
   void SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size,
-                                 enum BoundaryFlag *block_bcs);
+             enum BoundaryFlag *block_bcs, enum BoundaryFlag *block_rad_bcs);
   void UpdateOneStep(void);
   void NewTimeStep(void);
   void AdaptiveMeshRefinement(ParameterInput *pin);

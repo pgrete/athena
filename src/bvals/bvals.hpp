@@ -27,6 +27,7 @@ class Hydro;
 class Field;
 class ParameterInput;
 class Coordinates;
+class Radiation;
 struct FaceField;
 struct NeighborBlock;
 struct PolarNeighborBlock;
@@ -37,7 +38,10 @@ enum BoundaryFace {FACE_UNDEF=-1, INNER_X1=0, OUTER_X1=1, INNER_X2=2, OUTER_X2=3
 
 // identifiers for boundary conditions
 enum BoundaryFlag {BLOCK_BNDRY=-1, BNDRY_UNDEF=0, REFLECTING_BNDRY=1, OUTFLOW_BNDRY=2,
-  USER_BNDRY=3, PERIODIC_BNDRY=4, POLAR_BNDRY=5};
+  USER_BNDRY=3, PERIODIC_BNDRY=4, POLAR_BNDRY=5, VACUUM_BNDRY=6};
+
+// identifiers for different Cell Center Variables
+enum CellCenterPhysics {HYDRO=1, RAD=2};
 
 //-------------------- prototypes for all BC functions ---------------------------------
 void ReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
@@ -66,6 +70,33 @@ void OutflowOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
 void OutflowOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
                     FaceField &buf2, int is, int ie, int js, int je, int ks, int ke);
 
+// For radiation boundary condition
+void RadReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadReflectInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadReflectOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+
+void RadOutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadOutflowInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadOutflowInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadOutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadOutflowOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadOutflowOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+
 // function to return boundary flag given input string
 enum BoundaryFlag GetBoundaryFlag(std::string input_string);
 
@@ -84,20 +115,22 @@ public:
 
   void CheckBoundary(void);
 
-  int LoadHydroBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
-                                       const NeighborBlock& nb);
-  int LoadHydroBoundaryBufferToCoarser(AthenaArray<Real> &src, Real *buf,
-                                       const NeighborBlock& nb);
-  int LoadHydroBoundaryBufferToFiner(AthenaArray<Real> &src, Real *buf,
-                                     const NeighborBlock& nb);
-  void SendHydroBoundaryBuffers(AthenaArray<Real> &src, int step);
-  void SetHydroBoundarySameLevel(AthenaArray<Real> &dst, Real *buf, const NeighborBlock& nb);
-  void SetHydroBoundaryFromCoarser(Real *buf, const NeighborBlock& nb);
-  void SetHydroBoundaryFromFiner(AthenaArray<Real> &dst, Real *buf, const NeighborBlock& nb);
-  bool ReceiveHydroBoundaryBuffers(AthenaArray<Real> &dst, int step);
-  void ReceiveHydroBoundaryBuffersWithWait(AthenaArray<Real> &dst, int step);
-  void RestrictHydro(AthenaArray<Real> &src,
-                     int si, int ei, int sj, int ej, int sk, int ek);
+
+
+  
+  void SendCenterBoundaryBuffers(AthenaArray<Real> &src, int phys, int step);
+  bool ReceiveCenterBoundaryBuffers(AthenaArray<Real> &dst, int phys, int step);
+  void ReceiveCenterBoundaryBuffersWithWait(AthenaArray<Real> &dst,
+                                              int phys, int step);
+  void SetCenterBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
+                                    int phys, const NeighborBlock& nb);
+  
+  void SetCenterBoundaryFromCoarser(Real *buf, int phys,
+                                        const NeighborBlock& nb);
+  
+  void SetCenterBoundaryFromFiner(AthenaArray<Real> &dst, Real *buf,
+                                      int phys, const NeighborBlock& nb);
+
 
   void SendFluxCorrection(int step);
   bool ReceiveFluxCorrection(int step);
@@ -135,6 +168,8 @@ public:
   void ApplyPhysicalBoundaries(AthenaArray<Real> &pdst, AthenaArray<Real> &cdst,
                                FaceField &bfdst, AthenaArray<Real> &bcdst);
 
+  void ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst);
+
   void ClearBoundaryForInit(void);
   void ClearBoundaryAll(void);
 
@@ -142,6 +177,8 @@ private:
   MeshBlock *pmy_mblock_;  // ptr to MeshBlock containing this BVals
 
   BValFunc_t BoundaryFunction_[6];
+  
+  RadBValFunc_t RadBoundaryFunction_[6]; // Function Pointer for radiation
 
   int nface_, nedge_;
   bool edge_flag_[12];
@@ -149,11 +186,13 @@ private:
   bool firsttime_[NSTEP];
 
   enum boundary_status hydro_flag_[NSTEP][56], field_flag_[NSTEP][56];
+  enum boundary_status rad_flag_[NSTEP][56];
   enum boundary_status flcor_flag_[NSTEP][6][2][2];
   enum boundary_status emfcor_flag_[NSTEP][48];
   enum boundary_status *emf_north_flag_[NSTEP];
   enum boundary_status *emf_south_flag_[NSTEP];
   Real *hydro_send_[NSTEP][56],  *hydro_recv_[NSTEP][56];
+  Real *rad_send_[NSTEP][56], *rad_recv_[NSTEP][56];
   Real *field_send_[NSTEP][56],  *field_recv_[NSTEP][56];
   Real *flcor_send_[NSTEP][6],   *flcor_recv_[NSTEP][6][2][2];
   Real *emfcor_send_[NSTEP][48], *emfcor_recv_[NSTEP][48];
@@ -165,6 +204,7 @@ private:
 
 #ifdef MPI_PARALLEL
   MPI_Request req_hydro_send_[NSTEP][56],  req_hydro_recv_[NSTEP][56];
+  MPI_Request req_rad_send_[NSTEP][56], req_rad_recv_[NSTEP][56];
   MPI_Request req_field_send_[NSTEP][56],  req_field_recv_[NSTEP][56];
   MPI_Request req_flcor_send_[NSTEP][6],   req_flcor_recv_[NSTEP][6][2][2];
   MPI_Request req_emfcor_send_[NSTEP][48], req_emfcor_recv_[NSTEP][48];

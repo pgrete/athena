@@ -24,8 +24,6 @@
 #   -omp              enable parallelization with OpenMP
 #   -hdf5             enable HDF5 output (requires the HDF5 library)
 #   --ifov=N          enable N internal hydro output variables
-#   -debug            enable debug flags (-g -O0); override other compiler options
-#   -vis              enable viscosity
 #   -radiation        enable radiative transfer
 #---------------------------------------------------------------------------------------
 
@@ -152,17 +150,6 @@ parser.add_argument('--ifov',
     help='number of internal hydro output variables')
 
 
-# -debug argument
-parser.add_argument('-debug',
-    action='store_true',
-    default=False,
-    help='enable debug flags; override other compiler options')
-
-# -vis argument
-parser.add_argument('-vis',
-    action='store_true',
-    default=False,
-    help='enable viscosity')
     
 # -radiation argument
 parser.add_argument('-radiation',
@@ -427,7 +414,33 @@ print('  Linker flags:            ' + makefile_options['LINKER_FLAGS'] + ' ' \
 print('  MPI parallelism:         ' + ('ON' if args['mpi'] else 'OFF'))
 print('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF'))
 print('  HDF5 Output:             ' + ('ON' if args['hdf5'] else 'OFF'))
-print('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF'))
-print('  Viscosity:               ' + ('ON' if args['vis'] else 'OFF'))
 print('  Radiative Transfer:      ' + ('ON' if args['radiation'] else 'OFF'))
 print('  Internal hydro outvars:  ' + str(args['ifov']))
+
+# write the configuration optitions into a log file
+flog=open('./configure.log', 'w')
+flog.write('Your Athena++ distribution has now been configured ' \
+                         + 'with the following options:\n')
+flog.write('  Problem generator:       ' + args['prob'] + '\n')
+flog.write('  Coordinate system:       ' + args['coord'] + '\n')
+flog.write('  Equation of state:       ' + args['eos'] + '\n')
+flog.write('  Riemann solver:          ' + args['flux'] + '\n')
+flog.write('  Reconstruction method:   ' + args['order'] + '\n')
+flog.write('  Hydro integrator:        ' + args['fint'] + '\n')
+flog.write('  Magnetic fields:         ' + ('ON' if args['b'] else 'OFF') + '\n')
+flog.write('  Special relativity:      ' + ('ON' if args['s'] else 'OFF') + '\n')
+flog.write('  General relativity:      ' + ('ON' if args['g'] else 'OFF') + '\n')
+flog.write('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF') + '\n')
+flog.write('  Viscosity:               ' + ('ON' if args['vis'] else 'OFF') + '\n')
+flog.write('  Compiler and flags:      ' + makefile_options['COMPILER_CHOICE'] + ' ' \
+    + makefile_options['PREPROCESSOR_FLAGS'] + ' ' + makefile_options['COMPILER_FLAGS']\
+                                         + '\n')
+flog.write('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF') + '\n')
+flog.write('  Linker flags:            ' + makefile_options['LINKER_FLAGS'] + ' ' \
+    + makefile_options['LIBRARY_FLAGS'] + '\n')
+flog.write('  MPI parallelism:         ' + ('ON' if args['mpi'] else 'OFF') + '\n')
+flog.write('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF') + '\n')
+flog.write('  HDF5 Output:             ' + ('ON' if args['hdf5'] else 'OFF') + '\n')
+flog.write('  Radiative Transfer:      ' + ('ON' if args['radiation'] else 'OFF') + '\n')
+flog.write('  Internal hydro outvars:  ' + str(args['ifov']) + '\n')
+
