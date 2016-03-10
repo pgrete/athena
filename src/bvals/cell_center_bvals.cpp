@@ -83,13 +83,15 @@ void BoundaryValues::SendCenterBoundaryBuffers(AthenaArray<Real> &src, int phys,
       
       // restrict the data before sending
       if(phys==HYDRO){
-         pmr->RestrictCellCenteredValues(src, pmr->coarse_cons_, 0, NHYDRO-1,
-                                  si, ei, sj, ej, sk, ek);
+         pmr->RestrictCellCenteredValues(src, pmr->coarse_cons_, HYDRO,
+                                    0, NHYDRO-1,sk, ek, sj, ej, si, ei);
          BufferUtility::Pack4DData(pmr->coarse_cons_, hydro_send_[step][nb.bufid],
                 0, NHYDRO-1, sk, ek, sj, ej, si, ei, ssize);
       }else if(phys==RAD){
-        // To be modified for restriction
-
+         pmr->RestrictCellCenteredValues(src, pmr->coarse_ir_, RAD,
+                            sk, ek, sj, ej, si, ei, 0, pmb->prad->n_fre_ang-1);
+         BufferUtility::Pack4DData(pmr->coarse_ir_, rad_send_[step][nb.bufid],
+                sk, ek, sj, ej, si, ei, 0, pmb->prad->n_fre_ang-1, ssize);
       }
     }else{
       int cn=pmb->cnghost-1;
@@ -387,9 +389,14 @@ void BoundaryValues::SetCenterBoundaryFromCoarser(Real *buf, int phys,
       }
     }
   }
-  else
-    BufferUtility::Unpack4DData(buf, pmr->coarse_cons_, s4, e4, s3,
+  else{
+    if(phys==HYDRO)
+      BufferUtility::Unpack4DData(buf, pmr->coarse_cons_, s4, e4, s3,
                    e3, s2, e2, s1, e1, p);
+    else if(phys==RAD)
+      BufferUtility::Unpack4DData(buf, pmr->coarse_ir_, s4, e4, s3,
+                   e3, s2, e2, s1, e1, p);
+  }
   return;
 }
 

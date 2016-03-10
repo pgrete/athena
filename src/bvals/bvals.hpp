@@ -132,8 +132,8 @@ public:
                                       int phys, const NeighborBlock& nb);
 
 
-  void SendFluxCorrection(int step);
-  bool ReceiveFluxCorrection(int step);
+  void SendFluxCorrection(int step, int phys);
+  bool ReceiveFluxCorrection(int step, int phys);
 
   int LoadFieldBoundaryBufferSameLevel(FaceField &src, Real *buf,
                                        const NeighborBlock& nb);
@@ -164,6 +164,8 @@ public:
 
   void ProlongateBoundaries(AthenaArray<Real> &pdst, AthenaArray<Real> &cdst, 
                             FaceField &bfdst, AthenaArray<Real> &bcdst);
+  void ProlongateRadBoundaries(AthenaArray<Real> &dst);
+
 
   void ApplyPhysicalBoundaries(AthenaArray<Real> &pdst, AthenaArray<Real> &cdst,
                                FaceField &bfdst, AthenaArray<Real> &bcdst);
@@ -191,10 +193,12 @@ private:
   enum boundary_status emfcor_flag_[NSTEP][48];
   enum boundary_status *emf_north_flag_[NSTEP];
   enum boundary_status *emf_south_flag_[NSTEP];
+  enum boundary_status radfcor_flag_[NSTEP][6][2][2]; // flux correction for radiation
   Real *hydro_send_[NSTEP][56],  *hydro_recv_[NSTEP][56];
   Real *rad_send_[NSTEP][56], *rad_recv_[NSTEP][56];
   Real *field_send_[NSTEP][56],  *field_recv_[NSTEP][56];
   Real *flcor_send_[NSTEP][6],   *flcor_recv_[NSTEP][6][2][2];
+  Real *radfcor_send_[NSTEP][6], *radfcor_recv_[NSTEP][6][2][2];
   Real *emfcor_send_[NSTEP][48], *emfcor_recv_[NSTEP][48];
   Real **emf_north_send_[NSTEP], **emf_north_recv_[NSTEP];
   Real **emf_south_send_[NSTEP], **emf_south_recv_[NSTEP];
@@ -208,6 +212,7 @@ private:
   MPI_Request req_field_send_[NSTEP][56],  req_field_recv_[NSTEP][56];
   MPI_Request req_flcor_send_[NSTEP][6],   req_flcor_recv_[NSTEP][6][2][2];
   MPI_Request req_emfcor_send_[NSTEP][48], req_emfcor_recv_[NSTEP][48];
+  MPI_Request req_radfcor_send_[NSTEP][6], req_radfcor_recv_[NSTEP][6][2][2];
   MPI_Request *req_emf_north_send_[NSTEP], *req_emf_north_recv_[NSTEP];
   MPI_Request *req_emf_south_send_[NSTEP], *req_emf_south_recv_[NSTEP];
 #endif

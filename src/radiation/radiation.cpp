@@ -24,6 +24,7 @@
 #include "radiation.hpp"
 #include "../parameter_input.hpp"
 #include "../mesh.hpp"
+#include "integrators/rad_integrators.hpp"
 
 // constructor, initializes data structures and parameters
 
@@ -106,11 +107,18 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   
   AngularGrid(angle_flag, nmu);
   
+  //allocate memory to store the flux
+  flux[x1face].NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
+  if(n2z > 1) flux[x2face].NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
+  if(n3z > 1) flux[x3face].NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
+  
   // Initialize the frequency weight
   FrequencyGrid();
   
   // set a default opacity function
   UpdateOpacity = DefaultOpacity;
+  
+  pradintegrator = new RadIntegrator(this, pin);
 
 
 
@@ -130,6 +138,13 @@ Radiation::~Radiation()
   mu.DeleteAthenaArray();
   wmu.DeleteAthenaArray();
   wfreq.DeleteAthenaArray();
+  
+  flux[x1face].DeleteAthenaArray();
+  if(pmy_block->block_size.nx2 > 1) flux[x2face].DeleteAthenaArray();
+  if(pmy_block->block_size.nx3 > 1) flux[x3face].DeleteAthenaArray();
+  
+  delete pradintegrator;
+  
 }
 
 

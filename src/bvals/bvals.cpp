@@ -401,15 +401,20 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
     }
     for(int i=0;i<6;i++){
       flcor_send_[l][i]=NULL;
+      radfcor_send_[l][i]=NULL;
 #ifdef MPI_PARALLEL
       req_flcor_send_[l][i]=MPI_REQUEST_NULL;
+      req_radfcor_send_[l][i]=MPI_REQUEST_NULL;
 #endif
       for(int j=0;j<=1;j++) {
         for(int k=0;k<=1;k++) {
           flcor_recv_[l][i][j][k]=NULL;
           flcor_flag_[l][i][j][k]=boundary_waiting;
+          radfcor_recv_[l][i][j][k]=NULL;
+          radfcor_flag_[l][i][j][k]=boundary_waiting;
 #ifdef MPI_PARALLEL
           req_flcor_recv_[l][i][j][k]=MPI_REQUEST_NULL;
+          req_radfcor_recv_[l][i][j][k]=MPI_REQUEST_NULL;
 #endif
         }
       }
@@ -613,6 +618,31 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
         }
       }
     }
+    // create buffer for radiation
+    if(RADIATION_ENABLED){
+        // allocate flux correction buffer
+      size[0]=size[1]=(pmb->block_size.nx2+1)/2*(pmb->block_size.nx3+1)/2
+                       *pmb->prad->n_fre_ang;
+      size[2]=size[3]=(pmb->block_size.nx1+1)/2*(pmb->block_size.nx3+1)/2
+                       *pmb->prad->n_fre_ang;
+      size[4]=size[5]=(pmb->block_size.nx1+1)/2*(pmb->block_size.nx2+1)/2
+                       *pmb->prad->n_fre_ang;
+      if(pmb->block_size.nx3>1) // 3D
+        jm=2, km=2;
+      else if(pmb->block_size.nx2>1) // 2D
+        jm=1, km=2;
+      else // 1D
+        jm=1, km=1;
+      for(int l=0;l<NSTEP;l++) {
+        for(int i=0;i<nface_;i++){
+          radfcor_send_[l][i]=new Real[size[i]];
+          for(int j=0;j<jm;j++) {
+            for(int k=0;k<km;k++)
+              radfcor_recv_[l][i][j][k]=new Real[size[i]];
+          }
+        }
+      }
+    }// End for radiation buffer
   }
 
  /* single CPU in the azimuthal direction with the polar boundary*/
@@ -674,9 +704,14 @@ BoundaryValues::~BoundaryValues()
     for(int l=0;l<NSTEP;l++) {
       for(int i=0;i<nface_;i++){
         delete [] flcor_send_[l][i];
+        if(RADIATION_ENABLED)
+          delete [] radfcor_send_[l][i];
         for(int j=0;j<2;j++) {
-          for(int k=0;k<2;k++)
+          for(int k=0;k<2;k++){
             delete [] flcor_recv_[l][i][j][k];
+            if(RADIATION_ENABLED)
+              delete [] radfcor_recv_[l][i][j][k];
+          }
         }
       }
     }
@@ -847,11 +882,28 @@ void BoundaryValues::Initialize(void)
         if(pmb->pmy_mesh->multilevel==true && nb.type==neighbor_face) {
           int fi1, fi2, size;
           if(nb.fid==0 || nb.fid==1)
-            fi1=myox2, fi2=myox3, size=((pmb->block_size.nx2+1)/2)*((pmb->block_size.nx3+1)/2);
+            fi1=myox2, fi2=myox3,
+            size=((pmb->block_size.nx2+1)/2)*((pmb->block_size.nx3+1)/2);
           else if(nb.fid==2 || nb.fid==3)
-            fi1=myox1, fi2=myox3, size=((pmb->block_size.nx1+1)/2)*((pmb->block_size.nx3+1)/2);
+            fi1=myox1, fi2=myox3,
+            size=((pmb->block_size.nx1+1)/2)*((pmb->block_size.nx3+1)/2);
           else if(nb.fid==4 || nb.fid==5)
-            fi1=myox1, fi2=myox2, size=((pmb->block_size.nx1+1)/2)*((pmb->block_size.nx2+1)/2);
+            fi1=myox1, fi2=myox2,
+            size=((pmb->block_size.nx1+1)/2)*((pmb->block_size.nx2+1)/2);
+          // do radiation first
+          if(RADIATION_ENABLED){
+            int rad_size = size * pmb->prad->n_fre_ang;
+            if(nb.level<mylevel){
+               tag=CreateMPITag(nb.lid, l, tag_radfcor, nb.targetid);
+               MPI_Send_init(radfcor_send_[l][nb.fid],rad_size,MPI_ATHENA_REAL,
+                nb.rank,tag,MPI_COMM_WORLD,&req_radfcor_send_[l][nb.fid]);
+            }else if(nb.level>mylevel){
+               tag=CreateMPITag(pmb->lid, l, tag_radfcor, nb.bufid);
+               MPI_Recv_init(radfcor_recv_[l][nb.fid][nb.fi2][nb.fi1],rad_size,
+                MPI_ATHENA_REAL,nb.rank,tag,MPI_COMM_WORLD,
+                &req_radfcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
+            }
+          }
           size*=NHYDRO;
           if(nb.level<mylevel) { // send to coarser
             tag=CreateMPITag(nb.lid, l, tag_flcor, nb.targetid);
@@ -981,7 +1033,8 @@ void BoundaryValues::Initialize(void)
             continue;
 
           if(nb.level==mylevel) { // the same level
-            if((nb.type==neighbor_face) || ((nb.type==neighbor_edge) && (edge_flag_[nb.eid]==true))) {
+            if((nb.type==neighbor_face) || ((nb.type==neighbor_edge)
+                              && (edge_flag_[nb.eid]==true))) {
               tag=CreateMPITag(nb.lid, l, tag_emfcor, nb.targetid);
               MPI_Send_init(emfcor_send_[l][nb.bufid],size,MPI_ATHENA_REAL,
                             nb.rank,tag,MPI_COMM_WORLD,&req_emfcor_send_[l][nb.bufid]);
@@ -1105,8 +1158,12 @@ void BoundaryValues::StartReceivingAll(void)
         MPI_Start(&req_hydro_recv_[l][nb.bufid]);
         if(RADIATION_ENABLED)
           MPI_Start(&req_rad_recv_[l][nb.bufid]);
-        if(nb.type==neighbor_face && nb.level>mylevel)
+        if(nb.type==neighbor_face && nb.level>mylevel){
           MPI_Start(&req_flcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
+          if(RADIATION_ENABLED){
+            MPI_Start(&req_radfcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
+          }
+        }
         if (MAGNETIC_FIELDS_ENABLED) {
           MPI_Start(&req_field_recv_[l][nb.bufid]);
           if(nb.type==neighbor_face || nb.type==neighbor_edge) {
@@ -1188,15 +1245,24 @@ void BoundaryValues::PolarSingleHydro(AthenaArray<Real> &dst)
 
 
 //--------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::SendFluxCorrection(int step)
+//! \fn void BoundaryValues::SendFluxCorrection(int step, int phys)
 //  \brief Restrict, pack and send the surace flux to the coarse neighbor(s)
-void BoundaryValues::SendFluxCorrection(int step)
+void BoundaryValues::SendFluxCorrection(int step, int phys)
 {
   MeshBlock *pmb=pmy_mblock_;
   Coordinates *pco=pmb->pcoord;
-  AthenaArray<Real> &x1flux=pmb->phydro->flux[x1face];
-  AthenaArray<Real> &x2flux=pmb->phydro->flux[x2face];
-  AthenaArray<Real> &x3flux=pmb->phydro->flux[x3face];
+  AthenaArray<Real> x1flux, x2flux, x3flux;
+  
+  if(phys == HYDRO){
+     x1flux.InitWithShallowCopy(pmb->phydro->flux[x1face]);
+     x2flux.InitWithShallowCopy(pmb->phydro->flux[x2face]);
+     x3flux.InitWithShallowCopy(pmb->phydro->flux[x3face]);
+  }else if(phys == RAD){
+     x1flux.InitWithShallowCopy(pmb->prad->flux[x1face]);
+     x2flux.InitWithShallowCopy(pmb->prad->flux[x2face]);
+     x3flux.InitWithShallowCopy(pmb->prad->flux[x3face]);
+  }
+  
   int fx1=pmb->loc.lx1&1L, fx2=pmb->loc.lx2&1L, fx3=pmb->loc.lx3&1L;
   int fi1, fi2;
 
@@ -1210,7 +1276,27 @@ void BoundaryValues::SendFluxCorrection(int step)
         int i=pmb->is+(pmb->ie-pmb->is+1)*nb.fid;
         fi1=fx2, fi2=fx3;
         if(pmb->block_size.nx3>1) { // 3D
-          for(int nn=0; nn<NHYDRO; nn++) {
+          
+          if(phys==HYDRO){
+            for(int nn=0; nn<NHYDRO; nn++) {
+              for(int k=pmb->ks; k<=pmb->ke; k+=2) {
+                for(int j=pmb->js; j<=pmb->je; j+=2) {
+                  Real amm=pco->GetFace1Area(k,   j,   i);
+                  Real amp=pco->GetFace1Area(k,   j+1, i);
+                  Real apm=pco->GetFace1Area(k+1, j,   i);
+                  Real app=pco->GetFace1Area(k+1, j+1, i);
+                  Real tarea=amm+amp+apm+app;
+                  flcor_send_[step][nb.fid][p++]=
+                           (x1flux(nn, k  , j  , i)*amm
+                           +x1flux(nn, k  , j+1, i)*amp
+                           +x1flux(nn, k+1, j  , i)*apm
+                           +x1flux(nn, k+1, j+1, i)*app)/tarea;
+                
+                }
+              }
+            }
+          }else if(phys==RAD){
+
             for(int k=pmb->ks; k<=pmb->ke; k+=2) {
               for(int j=pmb->js; j<=pmb->je; j+=2) {
                 Real amm=pco->GetFace1Area(k,   j,   i);
@@ -1218,32 +1304,54 @@ void BoundaryValues::SendFluxCorrection(int step)
                 Real apm=pco->GetFace1Area(k+1, j,   i);
                 Real app=pco->GetFace1Area(k+1, j+1, i);
                 Real tarea=amm+amp+apm+app;
-                flcor_send_[step][nb.fid][p++]=
-                           (x1flux(nn, k  , j  , i)*amm
-                           +x1flux(nn, k  , j+1, i)*amp
-                           +x1flux(nn, k+1, j  , i)*apm
-                           +x1flux(nn, k+1, j+1, i)*app)/tarea;
+                for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
+                  radfcor_send_[step][nb.fid][p++]=
+                           (x1flux(k  , j  , i, nn)*amm
+                           +x1flux(k  , j+1, i, nn)*amp
+                           +x1flux(k+1, j  , i, nn)*apm
+                           +x1flux(k+1, j+1, i, nn)*app)/tarea;
+                }
               }
             }
           }
         }
         else if(pmb->block_size.nx2>1) { // 2D
           int k=pmb->ks;
-          for(int nn=0; nn<NHYDRO; nn++) {
+          if(phys==HYDRO){
+          
+            for(int nn=0; nn<NHYDRO; nn++) {
+              for(int j=pmb->js; j<=pmb->je; j+=2) {
+                Real am=pco->GetFace1Area(k, j,   i);
+                Real ap=pco->GetFace1Area(k, j+1, i);
+                Real tarea=am+ap;
+                flcor_send_[step][nb.fid][p++]=
+                         (x1flux(nn, k, j  , i)*am
+                         +x1flux(nn, k, j+1, i)*ap)/tarea;
+              }
+            }
+          }else if(phys==RAD){
+
             for(int j=pmb->js; j<=pmb->je; j+=2) {
               Real am=pco->GetFace1Area(k, j,   i);
               Real ap=pco->GetFace1Area(k, j+1, i);
               Real tarea=am+ap;
-              flcor_send_[step][nb.fid][p++]=
-                         (x1flux(nn, k, j  , i)*am
-                         +x1flux(nn, k, j+1, i)*ap)/tarea;
+              for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
+                radfcor_send_[step][nb.fid][p++]=
+                         (x1flux(k, j  , i, nn)*am
+                         +x1flux(k, j+1, i, nn)*ap)/tarea;
+              }
             }
           }
         }
         else { // 1D
           int k=pmb->ks, j=pmb->js;
-          for(int nn=0; nn<NHYDRO; nn++)
-            flcor_send_[step][nb.fid][p++]=x1flux(nn, k, j, i);
+          if(phys==HYDRO){
+            for(int nn=0; nn<NHYDRO; nn++)
+              flcor_send_[step][nb.fid][p++]=x1flux(nn, k, j, i);
+          }else if(phys==RAD){
+            for(int nn=0; nn<pmb->prad->n_fre_ang; nn++)
+              radfcor_send_[step][nb.fid][p++]=x1flux(k, j, i, nn);
+          }
         }
       }
       // x2 direction
@@ -1251,62 +1359,122 @@ void BoundaryValues::SendFluxCorrection(int step)
         int j=pmb->js+(pmb->je-pmb->js+1)*(nb.fid&1);
         fi1=fx1, fi2=fx3;
         if(pmb->block_size.nx3>1) { // 3D
-          for(int nn=0; nn<NHYDRO; nn++) {
+        
+          if(phys==HYDRO){
+            for(int nn=0; nn<NHYDRO; nn++) {
+              for(int k=pmb->ks; k<=pmb->ke; k+=2) {
+                pco->Face2Area(k  , j, pmb->is, pmb->ie, sarea_[0]);
+                pco->Face2Area(k+1, j, pmb->is, pmb->ie, sarea_[1]);
+                for(int i=pmb->is; i<=pmb->ie; i+=2) {
+                  Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
+                  flcor_send_[step][nb.fid][p++]=
+                           (x2flux(nn, k  , j, i  )*sarea_[0](i  )
+                           +x2flux(nn, k  , j, i+1)*sarea_[0](i+1)
+                           +x2flux(nn, k+1, j, i  )*sarea_[1](i  )
+                           +x2flux(nn, k+1, j, i+1)*sarea_[1](i+1))/tarea;
+                }
+              }
+            }
+          }else if(phys==RAD){
+
             for(int k=pmb->ks; k<=pmb->ke; k+=2) {
               pco->Face2Area(k  , j, pmb->is, pmb->ie, sarea_[0]);
               pco->Face2Area(k+1, j, pmb->is, pmb->ie, sarea_[1]);
               for(int i=pmb->is; i<=pmb->ie; i+=2) {
                 Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
-                flcor_send_[step][nb.fid][p++]=
-                           (x2flux(nn, k  , j, i  )*sarea_[0](i  )
-                           +x2flux(nn, k  , j, i+1)*sarea_[0](i+1)
-                           +x2flux(nn, k+1, j, i  )*sarea_[1](i  )
-                           +x2flux(nn, k+1, j, i+1)*sarea_[1](i+1))/tarea;
+                for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
+                  radfcor_send_[step][nb.fid][p++]=
+                           (x2flux(k  , j, i  , nn)*sarea_[0](i  )
+                           +x2flux(k  , j, i+1, nn)*sarea_[0](i+1)
+                           +x2flux(k+1, j, i  , nn)*sarea_[1](i  )
+                           +x2flux(k+1, j, i+1, nn)*sarea_[1](i+1))/tarea;
+                }
               }
             }
-          }
+          }// End RAD
         }
         else if(pmb->block_size.nx2>1) { // 2D
           int k=pmb->ks;
-          for(int nn=0; nn<NHYDRO; nn++) {
+          if(phys==HYDRO){
+            for(int nn=0; nn<NHYDRO; nn++) {
+              pco->Face2Area(0, j, pmb->is ,pmb->ie, sarea_[0]);
+              for(int i=pmb->is; i<=pmb->ie; i+=2) {
+                Real tarea=sarea_[0](i)+sarea_[0](i+1);
+                flcor_send_[step][nb.fid][p++]=
+                         (x2flux(nn, k, j, i  )*sarea_[0](i  )
+                         +x2flux(nn, k, j, i+1)*sarea_[0](i+1))/tarea;
+              }
+            }
+          }else if(phys==RAD){
             pco->Face2Area(0, j, pmb->is ,pmb->ie, sarea_[0]);
             for(int i=pmb->is; i<=pmb->ie; i+=2) {
               Real tarea=sarea_[0](i)+sarea_[0](i+1);
-              flcor_send_[step][nb.fid][p++]=
-                         (x2flux(nn, k, j, i  )*sarea_[0](i  )
-                         +x2flux(nn, k, j, i+1)*sarea_[0](i+1))/tarea;
+              for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
+                radfcor_send_[step][nb.fid][p++]=
+                         (x2flux(k, j, i  , nn)*sarea_[0](i  )
+                         +x2flux(k, j, i+1, nn)*sarea_[0](i+1))/tarea;
+              }
             }
-          }
+          }// End phys==RAD
         }
       }
       // x3 direction - 3D only
       else if(nb.fid==INNER_X3 || nb.fid==OUTER_X3) {
         int k=pmb->ks+(pmb->ke-pmb->ks+1)*(nb.fid&1);
         fi1=fx1, fi2=fx2;
-        for(int nn=0; nn<NHYDRO; nn++) {
+        if(phys==HYDRO){
+          for(int nn=0; nn<NHYDRO; nn++) {
+            for(int j=pmb->js; j<=pmb->je; j+=2) {
+              pco->Face3Area(k, j,   pmb->is, pmb->ie, sarea_[0]);
+              pco->Face3Area(k, j+1, pmb->is, pmb->ie, sarea_[1]);
+              for(int i=pmb->is; i<=pmb->ie; i+=2) {
+                Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
+                flcor_send_[step][nb.fid][p++]=
+                         (x3flux(nn, k, j  , i  )*sarea_[0](i  )
+                         +x3flux(nn, k, j  , i+1)*sarea_[0](i+1)
+                         +x3flux(nn, k, j+1, i  )*sarea_[1](i  )
+                         +x3flux(nn, k, j+1, i+1)*sarea_[1](i+1))/tarea;
+              }
+            }
+          }
+        }else if(phys==RAD){
+
           for(int j=pmb->js; j<=pmb->je; j+=2) {
             pco->Face3Area(k, j,   pmb->is, pmb->ie, sarea_[0]);
             pco->Face3Area(k, j+1, pmb->is, pmb->ie, sarea_[1]);
             for(int i=pmb->is; i<=pmb->ie; i+=2) {
               Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
-              flcor_send_[step][nb.fid][p++]=
-                         (x3flux(nn, k, j  , i  )*sarea_[0](i  )
-                         +x3flux(nn, k, j  , i+1)*sarea_[0](i+1)
-                         +x3flux(nn, k, j+1, i  )*sarea_[1](i  )
-                         +x3flux(nn, k, j+1, i+1)*sarea_[1](i+1))/tarea;
+              for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
+                radfcor_send_[step][nb.fid][p++]=
+                         (x3flux(k, j  , i  ,nn)*sarea_[0](i  )
+                         +x3flux(k, j  , i+1,nn)*sarea_[0](i+1)
+                         +x3flux(k, j+1, i  ,nn)*sarea_[1](i  )
+                         +x3flux(k, j+1, i+1,nn)*sarea_[1](i+1))/tarea;
+              }
             }
           }
-        }
+        }// End phys==RAD
       }
       if(nb.rank==Globals::my_rank) { // on the same node
         MeshBlock *pbl=pmb->pmy_mesh->FindMeshBlock(nb.gid);
-        std::memcpy(pbl->pbval->flcor_recv_[step][(nb.fid^1)][fi2][fi1],
+        if(phys==HYDRO){
+          std::memcpy(pbl->pbval->flcor_recv_[step][(nb.fid^1)][fi2][fi1],
                     flcor_send_[step][nb.fid], p*sizeof(Real));
-        pbl->pbval->flcor_flag_[step][(nb.fid^1)][fi2][fi1]=boundary_arrived;
+          pbl->pbval->flcor_flag_[step][(nb.fid^1)][fi2][fi1]=boundary_arrived;
+        }else if(phys==RAD){
+          std::memcpy(pbl->pbval->radfcor_recv_[step][(nb.fid^1)][fi2][fi1],
+                    radfcor_send_[step][nb.fid], p*sizeof(Real));
+          pbl->pbval->radfcor_flag_[step][(nb.fid^1)][fi2][fi1]=boundary_arrived;
+        }
       }
 #ifdef MPI_PARALLEL
-      else
-        MPI_Start(&req_flcor_send_[step][nb.fid]);
+      else{
+        if(phys==HYDRO){
+          MPI_Start(&req_flcor_send_[step][nb.fid]);
+        }else if(phys==RAD){
+          MPI_Start(&req_radfcor_send_[step][nb.fid]);
+        }
+      }
 #endif
     }
   }
@@ -1315,42 +1483,89 @@ void BoundaryValues::SendFluxCorrection(int step)
 
 
 //--------------------------------------------------------------------------------------
-//! \fn bool BoundaryValues::ReceiveFluxCorrection(int step)
+//! \fn bool BoundaryValues::ReceiveFluxCorrection(int step, int phys)
 //  \brief Receive and apply the surace flux from the finer neighbor(s)
-bool BoundaryValues::ReceiveFluxCorrection(int step)
+bool BoundaryValues::ReceiveFluxCorrection(int step, int phys)
 {
   MeshBlock *pmb=pmy_mblock_;
   Coordinates *pco=pmb->pcoord;
-  AthenaArray<Real> &x1flux=pmb->phydro->flux[x1face];
-  AthenaArray<Real> &x2flux=pmb->phydro->flux[x2face];
-  AthenaArray<Real> &x3flux=pmb->phydro->flux[x3face];
+  
+  AthenaArray<Real> x1flux, x2flux, x3flux;
+  
+  if(phys == HYDRO){
+     x1flux.InitWithShallowCopy(pmb->phydro->flux[x1face]);
+     x2flux.InitWithShallowCopy(pmb->phydro->flux[x2face]);
+     x3flux.InitWithShallowCopy(pmb->phydro->flux[x3face]);
+  }else if(phys == RAD){
+     x1flux.InitWithShallowCopy(pmb->prad->flux[x1face]);
+     x2flux.InitWithShallowCopy(pmb->prad->flux[x2face]);
+     x3flux.InitWithShallowCopy(pmb->prad->flux[x3face]);
+  }
+  
   bool flag=true;
 
   for(int n=0; n<pmb->nneighbor; n++) {
     NeighborBlock& nb = pmb->neighbor[n];
     if(nb.type!=neighbor_face) break;
     if(nb.level==pmb->loc.level+1) {
-      if(flcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_completed) continue;
-      if(flcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_waiting) {
-        if(nb.rank==Globals::my_rank) {// on the same process
-          flag=false;
-          continue;
-        }
-#ifdef MPI_PARALLEL
-        else { // MPI boundary
-          int test;
-          MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&test,MPI_STATUS_IGNORE);
-          MPI_Test(&req_flcor_recv_[step][nb.fid][nb.fi2][nb.fi1],&test,MPI_STATUS_IGNORE);
-          if(test==false) {
+      
+      if(phys==HYDRO){
+    
+        if(flcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_completed) continue;
+        if(flcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_waiting) {
+          if(nb.rank==Globals::my_rank) {// on the same process
             flag=false;
             continue;
           }
-          flcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_arrived;
-        }
+#ifdef MPI_PARALLEL
+          else { // MPI boundary
+            int test;
+            MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,
+                       &test,MPI_STATUS_IGNORE);
+            MPI_Test(&req_flcor_recv_[step][nb.fid][nb.fi2][nb.fi1],&test,
+                       MPI_STATUS_IGNORE);
+            if(test==false) {
+              flag=false;
+              continue;
+            }
+            flcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_arrived;
+          }
 #endif
-      }
+        }
+      
+      }else if(phys==RAD){
+      
+        if(radfcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_completed) continue;
+        if(radfcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_waiting) {
+          if(nb.rank==Globals::my_rank) {// on the same process
+            flag=false;
+            continue;
+          }
+#ifdef MPI_PARALLEL
+          else { // MPI boundary
+            int test;
+            MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,
+                       &test,MPI_STATUS_IGNORE);
+            MPI_Test(&req_radfcor_recv_[step][nb.fid][nb.fi2][nb.fi1],&test,
+                       MPI_STATUS_IGNORE);
+            if(test==false) {
+              flag=false;
+              continue;
+            }
+            radfcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_arrived;
+          }
+#endif
+        }
+      }// End phys==rad
+      
       // boundary arrived; apply flux correction
-      Real *buf=flcor_recv_[step][nb.fid][nb.fi2][nb.fi1];
+      Real *buf;
+      if(phys==HYDRO){
+        buf=flcor_recv_[step][nb.fid][nb.fi2][nb.fi1];
+      }else if(phys==RAD){
+        buf=radfcor_recv_[step][nb.fid][nb.fi2][nb.fi1];
+      }
+      
       int p=0;
       if(nb.fid==INNER_X1 || nb.fid==OUTER_X1) {
         int is=pmb->is+(pmb->ie-pmb->is)*nb.fid+nb.fid;
@@ -1359,12 +1574,23 @@ bool BoundaryValues::ReceiveFluxCorrection(int step)
         else          js+=pmb->block_size.nx2/2;
         if(nb.fi2==0) ke-=pmb->block_size.nx3/2;
         else          ks+=pmb->block_size.nx3/2;
-        for(int nn=0; nn<NHYDRO; nn++) {
+        
+        if(phys==HYDRO){
+          for(int nn=0; nn<NHYDRO; nn++) {
+            for(int k=ks; k<=ke; k++) {
+              for(int j=js; j<=je; j++)
+                x1flux(nn,k,j,is)=buf[p++];
+            }
+          }
+        }else if(phys==RAD){
+          
           for(int k=ks; k<=ke; k++) {
             for(int j=js; j<=je; j++)
-              x1flux(nn,k,j,is)=buf[p++];
+              for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
+                 x1flux(k,j,is,nn)=buf[p++];
+              }
           }
-        }
+        }// end phys==RAD
       }
       else if(nb.fid==INNER_X2 || nb.fid==OUTER_X2) {
         int js=pmb->js+(pmb->je-pmb->js)*(nb.fid&1)+(nb.fid&1);
@@ -1373,12 +1599,23 @@ bool BoundaryValues::ReceiveFluxCorrection(int step)
         else          is+=pmb->block_size.nx1/2;
         if(nb.fi2==0) ke-=pmb->block_size.nx3/2;
         else          ks+=pmb->block_size.nx3/2;
-        for(int nn=0; nn<NHYDRO; nn++) {
+        
+        if(phys==HYDRO){
+          for(int nn=0; nn<NHYDRO; nn++) {
+            for(int k=ks; k<=ke; k++) {
+              for(int i=is; i<=ie; i++)
+                x2flux(nn,k,js,i)=buf[p++];
+            }
+          }
+        }else if(phys==RAD){
+          
           for(int k=ks; k<=ke; k++) {
             for(int i=is; i<=ie; i++)
-              x2flux(nn,k,js,i)=buf[p++];
+               for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
+                  x2flux(k,js,i,nn)=buf[p++];
+               }
           }
-        }
+        }//end phys==RAD
       }
       else if(nb.fid==INNER_X3 || nb.fid==OUTER_X3) {
         int ks=pmb->ks+(pmb->ke-pmb->ks)*(nb.fid&1)+(nb.fid&1);
@@ -1387,17 +1624,31 @@ bool BoundaryValues::ReceiveFluxCorrection(int step)
         else          is+=pmb->block_size.nx1/2;
         if(nb.fi2==0) je-=pmb->block_size.nx2/2;
         else          js+=pmb->block_size.nx2/2;
-        for(int nn=0; nn<NHYDRO; nn++) {
+        
+        if(phys==HYDRO){
+        
+          for(int nn=0; nn<NHYDRO; nn++) {
+            for(int j=js; j<=je; j++) {
+              for(int i=is; i<=ie; i++)
+                x3flux(nn,ks,j,i)=buf[p++];
+            }
+          }
+        }else if(phys==RAD){
+        
           for(int j=js; j<=je; j++) {
             for(int i=is; i<=ie; i++)
-              x3flux(nn,ks,j,i)=buf[p++];
+              for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
+                x3flux(ks,j,i,nn)=buf[p++];
+             }
           }
-        }
+        }// end phys==RAD
       }
-
-      flcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_completed;
-    }
-  }
+      if(phys==HYDRO)
+        flcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_completed;
+      else if(phys==RAD)
+        radfcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_completed;
+    }// end nb.level=loc.level+1
+  }// end nneighbor
 
   return flag;
 }
@@ -2131,7 +2382,9 @@ bool BoundaryValues::ReceiveFieldBoundaryBuffers(FaceField &dst, int step)
     field_flag_[step][nb.bufid] = boundary_completed; // completed
   }
 
-  if(flag&&(pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY)) PolarSingleField(dst);
+  if(flag&&(pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]
+      ==POLAR_BNDRY))
+     PolarSingleField(dst);
 
   return flag;
 }
@@ -2160,7 +2413,8 @@ void BoundaryValues::ReceiveFieldBoundaryBuffersWithWait(FaceField &dst, int ste
     field_flag_[0][nb.bufid] = boundary_completed; // completed
   }
 
-  if(pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY) PolarSingleField(dst);
+  if(pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY)
+     PolarSingleField(dst);
   return;
 }
 
@@ -3478,7 +3732,8 @@ bool BoundaryValues::ReceiveEMFCorrection(int step)
       SetEMFBoundaryPolar(emf_south_recv_[step], num_south_polar_blocks_, false);
     for (int n = 0; n < num_south_polar_blocks_; ++n)
       emf_south_flag_[step][n] = boundary_completed;
-    if (pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY) PolarSingleEMF();
+    if (pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY)
+       PolarSingleEMF();
   }
   return flag;
 }
@@ -3524,8 +3779,12 @@ void BoundaryValues::ClearBoundaryAll(void)
       hydro_flag_[l][nb.bufid] = boundary_waiting;
       if(RADIATION_ENABLED)
         rad_flag_[l][nb.bufid] = boundary_waiting;
-      if(nb.type==neighbor_face)
+      if(nb.type==neighbor_face){
         flcor_flag_[l][nb.fid][nb.fi2][nb.fi1] = boundary_waiting;
+        if(RADIATION_ENABLED){
+          radfcor_flag_[l][nb.fid][nb.fi2][nb.fi1]=boundary_waiting;
+        }
+      }
       if (MAGNETIC_FIELDS_ENABLED) {
         field_flag_[l][nb.bufid] = boundary_waiting;
         if((nb.type==neighbor_face) || (nb.type==neighbor_edge))
@@ -3536,16 +3795,21 @@ void BoundaryValues::ClearBoundaryAll(void)
         MPI_Wait(&req_hydro_send_[l][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
         if(RADIATION_ENABLED)
            MPI_Wait(&req_rad_send_[l][nb.bufid],MPI_STATUS_IGNORE);
-        if(nb.type==neighbor_face && nb.level<pmb->loc.level)
+        if(nb.type==neighbor_face && nb.level<pmb->loc.level){
           MPI_Wait(&req_flcor_send_[l][nb.fid],MPI_STATUS_IGNORE); // Wait for Isend
+          if(RADIATION_ENABLED)
+            MPI_Wait(&req_radfcor_send_[l][nb.fid],MPI_STATUS_IGNORE);
+        }
         if (MAGNETIC_FIELDS_ENABLED) {
           MPI_Wait(&req_field_send_[l][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
           if(nb.type==neighbor_face || nb.type==neighbor_edge) {
             if(nb.level < pmb->loc.level)
-              MPI_Wait(&req_emfcor_send_[l][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+              MPI_Wait(&req_emfcor_send_[l][nb.bufid],MPI_STATUS_IGNORE);
+              // Wait for Isend
             else if((nb.level==pmb->loc.level) && ((nb.type==neighbor_face)
                 || ((nb.type==neighbor_edge) && (edge_flag_[nb.eid]==true))))
-              MPI_Wait(&req_emfcor_send_[l][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+              MPI_Wait(&req_emfcor_send_[l][nb.bufid],MPI_STATUS_IGNORE);
+              // Wait for Isend
           }
         }
         
@@ -3578,7 +3842,8 @@ void BoundaryValues::ApplyPhysicalBoundaries(AthenaArray<Real> &pdst,
   }
   // Apply boundary function on inner-x1
   if (BoundaryFunction_[INNER_X1] != NULL) {
-    BoundaryFunction_[INNER_X1](pmb, pco, pdst, bfdst, pmb->is, pmb->ie, bjs,bje,bks,bke);
+    BoundaryFunction_[INNER_X1](pmb, pco, pdst, bfdst, pmb->is, pmb->ie,
+                                bjs,bje,bks,bke);
     if(MAGNETIC_FIELDS_ENABLED) {
       pmb->pfield->CalculateCellCenteredField(bfdst, bcdst, pco,
         pmb->is-NGHOST, pmb->is-1, bjs, bje, bks, bke);
@@ -3589,7 +3854,8 @@ void BoundaryValues::ApplyPhysicalBoundaries(AthenaArray<Real> &pdst,
 
   // Apply boundary function on outer-x1
   if (BoundaryFunction_[OUTER_X1] != NULL) {
-    BoundaryFunction_[OUTER_X1](pmb, pco, pdst, bfdst, pmb->is, pmb->ie, bjs,bje,bks,bke);
+    BoundaryFunction_[OUTER_X1](pmb, pco, pdst, bfdst, pmb->is, pmb->ie,
+                                bjs,bje,bks,bke);
     if(MAGNETIC_FIELDS_ENABLED) {
       pmb->pfield->CalculateCellCenteredField(bfdst, bcdst, pco,
         pmb->ie+1, pmb->ie+NGHOST, bjs, bje, bks, bke);
@@ -3602,7 +3868,8 @@ void BoundaryValues::ApplyPhysicalBoundaries(AthenaArray<Real> &pdst,
 
     // Apply boundary function on inner-x2
     if (BoundaryFunction_[INNER_X2] != NULL) {
-      BoundaryFunction_[INNER_X2](pmb, pco, pdst, bfdst, bis,bie, pmb->js, pmb->je, bks,bke);
+      BoundaryFunction_[INNER_X2](pmb, pco, pdst, bfdst, bis,bie, pmb->js, pmb->je,
+                                 bks,bke);
       if(MAGNETIC_FIELDS_ENABLED) {
         pmb->pfield->CalculateCellCenteredField(bfdst, bcdst, pco,
           bis, bie, pmb->js-NGHOST, pmb->js-1, bks, bke);
@@ -3613,7 +3880,8 @@ void BoundaryValues::ApplyPhysicalBoundaries(AthenaArray<Real> &pdst,
 
     // Apply boundary function on outer-x2
     if (BoundaryFunction_[OUTER_X2] != NULL) {
-      BoundaryFunction_[OUTER_X2](pmb, pco, pdst, bfdst, bis,bie, pmb->js, pmb->je, bks,bke);
+      BoundaryFunction_[OUTER_X2](pmb, pco, pdst, bfdst, bis,bie, pmb->js, pmb->je,
+                                 bks,bke);
       if(MAGNETIC_FIELDS_ENABLED) {
         pmb->pfield->CalculateCellCenteredField(bfdst, bcdst, pco,
           bis, bie, pmb->je+1, pmb->je+NGHOST, bks, bke);
@@ -3631,7 +3899,8 @@ void BoundaryValues::ApplyPhysicalBoundaries(AthenaArray<Real> &pdst,
 
     // Apply boundary function on inner-x3
     if (BoundaryFunction_[INNER_X3] != NULL) {
-      BoundaryFunction_[INNER_X3](pmb, pco, pdst, bfdst, bis,bie,bjs,bje, pmb->ks, pmb->ke);
+      BoundaryFunction_[INNER_X3](pmb, pco, pdst, bfdst, bis,bie,bjs,bje,
+                                  pmb->ks, pmb->ke);
       if(MAGNETIC_FIELDS_ENABLED) {
         pmb->pfield->CalculateCellCenteredField(bfdst, bcdst, pco,
           bis, bie, bjs, bje, pmb->ks-NGHOST, pmb->ks-1);
@@ -3642,7 +3911,8 @@ void BoundaryValues::ApplyPhysicalBoundaries(AthenaArray<Real> &pdst,
 
     // Apply boundary function on outer-x3
     if (BoundaryFunction_[OUTER_X3] != NULL) {
-      BoundaryFunction_[OUTER_X3](pmb, pco, pdst, bfdst, bis,bie,bjs,bje, pmb->ks, pmb->ke);
+      BoundaryFunction_[OUTER_X3](pmb, pco, pdst, bfdst, bis,bie,bjs,bje,
+                                  pmb->ks, pmb->ke);
       if(MAGNETIC_FIELDS_ENABLED) {
         pmb->pfield->CalculateCellCenteredField(bfdst, bcdst, pco,
           bis, bie, bjs, bje, pmb->ke+1, pmb->ke+NGHOST);
@@ -3903,29 +4173,34 @@ void BoundaryValues::ProlongateBoundaries(AthenaArray<Real> &pdst,
           else if(nk== 1) rks=pmb->cke+1, rke=pmb->cke+1;
           else if(nk==-1) rks=pmb->cks-1, rke=pmb->cks-1;
 
-          pmb->pmr->RestrictCellCenteredValues(cdst, pmr->coarse_cons_, 0, NHYDRO-1,
-                                               ris, rie, rjs, rje, rks, rke);
+          pmb->pmr->RestrictCellCenteredValues(cdst, pmr->coarse_cons_, HYDRO,
+                                   0, NHYDRO-1, rks, rke, rjs, rje, ris, rie);
           if (MAGNETIC_FIELDS_ENABLED) {
             int rs=ris, re=rie+1;
             if(rs==pmb->cis   && pmb->nblevel[nk+1][nj+1][ni  ]<mylevel) rs++;
             if(re==pmb->cie+1 && pmb->nblevel[nk+1][nj+1][ni+2]<mylevel) re--;
-            pmr->RestrictFieldX1(bfdst.x1f, pmr->coarse_b_.x1f, rs, re, rjs, rje, rks, rke);
+            pmr->RestrictFieldX1(bfdst.x1f, pmr->coarse_b_.x1f, rs, re, rjs, rje,
+                                 rks, rke);
             if(pmb->block_size.nx2 > 1) {
               rs=rjs, re=rje+1;
               if(rs==pmb->cjs   && pmb->nblevel[nk+1][nj  ][ni+1]<mylevel) rs++;
               if(re==pmb->cje+1 && pmb->nblevel[nk+1][nj+2][ni+1]<mylevel) re--;
-              pmr->RestrictFieldX2(bfdst.x2f, pmr->coarse_b_.x2f, ris, rie, rs, re, rks, rke);
+              pmr->RestrictFieldX2(bfdst.x2f, pmr->coarse_b_.x2f, ris, rie, rs, re,
+                                 rks, rke);
             }
             else 
-              pmr->RestrictFieldX2(bfdst.x2f, pmr->coarse_b_.x2f, ris, rie, rjs, rje, rks, rke);
+              pmr->RestrictFieldX2(bfdst.x2f, pmr->coarse_b_.x2f, ris, rie, rjs, rje,
+                                 rks, rke);
             if(pmb->block_size.nx3 > 1) {
               rs=rks, re=rke+1;
               if(rs==pmb->cks   && pmb->nblevel[nk  ][nj+1][ni+1]<mylevel) rs++;
               if(re==pmb->cke+1 && pmb->nblevel[nk+2][nj+1][ni+1]<mylevel) re--;
-              pmr->RestrictFieldX3(bfdst.x3f, pmr->coarse_b_.x3f, ris, rie, rjs, rje, rs, re);
+              pmr->RestrictFieldX3(bfdst.x3f, pmr->coarse_b_.x3f, ris, rie, rjs, rje,
+                                 rs, re);
             }
             else
-              pmr->RestrictFieldX3(bfdst.x3f, pmr->coarse_b_.x3f, ris, rie, rjs, rje, rks, rke);
+              pmr->RestrictFieldX3(bfdst.x3f, pmr->coarse_b_.x3f, ris, rie, rjs, rje,
+                                 rks, rke);
           }
         }
       }
@@ -4030,8 +4305,8 @@ void BoundaryValues::ProlongateBoundaries(AthenaArray<Real> &pdst,
     else fsk=pmb->ks, fek=pmb->ke;
 
     // prolongate hydro variables using primitive
-    pmr->ProlongateCellCenteredValues(pmr->coarse_prim_, pdst, 0, NHYDRO-1,
-                                      si, ei, sj, ej, sk, ek);
+    pmr->ProlongateCellCenteredValues(pmr->coarse_prim_, pdst, HYDRO, 0, NHYDRO-1,
+                                      sk, ek, sj, ej, si, ei);
     // prollongate magnetic fields
     if (MAGNETIC_FIELDS_ENABLED) {
       int il, iu, jl, ju, kl, ku;
@@ -4052,11 +4327,14 @@ void BoundaryValues::ProlongateBoundaries(AthenaArray<Real> &pdst,
       else kl=sk, ku=ek;
 
       // step 1. calculate x1 outer surface fields and slopes
-      pmr->ProlongateSharedFieldX1(pmr->coarse_b_.x1f, bfdst.x1f, il, iu, sj, ej, sk, ek);
+      pmr->ProlongateSharedFieldX1(pmr->coarse_b_.x1f, bfdst.x1f, il, iu, sj, ej,
+                                   sk, ek);
       // step 2. calculate x2 outer surface fields and slopes
-      pmr->ProlongateSharedFieldX2(pmr->coarse_b_.x2f, bfdst.x2f, si, ei, jl, ju, sk, ek);
+      pmr->ProlongateSharedFieldX2(pmr->coarse_b_.x2f, bfdst.x2f, si, ei, jl, ju,
+                                   sk, ek);
       // step 3. calculate x3 outer surface fields and slopes
-      pmr->ProlongateSharedFieldX3(pmr->coarse_b_.x3f, bfdst.x3f, si, ei, sj, ej, kl, ku);
+      pmr->ProlongateSharedFieldX3(pmr->coarse_b_.x3f, bfdst.x3f, si, ei, sj, ej,
+                                   kl, ku);
       // step 4. calculate the internal finer fields using the Toth & Roe method
       pmr->ProlongateInternalField(bfdst, si, ei, sj, ej, sk, ek);
 
@@ -4069,3 +4347,147 @@ void BoundaryValues::ProlongateBoundaries(AthenaArray<Real> &pdst,
                                             fsi, fei, fsj, fej, fsk, fek);
   }
 }
+
+
+//--------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::ProlongateRadBoundaries(AthenaArray<Real> &dst)
+//  \brief Prolongate the level boundary using the coarse data
+void BoundaryValues::ProlongateRadBoundaries(AthenaArray<Real> &dst)
+{
+  MeshBlock *pmb=pmy_mblock_;
+  MeshRefinement *pmr=pmb->pmr;
+  long int &lx1=pmb->loc.lx1;
+  long int &lx2=pmb->loc.lx2;
+  long int &lx3=pmb->loc.lx3;
+  int &mylevel=pmb->loc.level;
+
+
+  for(int n=0; n<pmb->nneighbor; n++) {
+    NeighborBlock& nb = pmb->neighbor[n];
+    if(nb.level >= mylevel) continue;
+
+    int mytype=std::abs(nb.ox1)+std::abs(nb.ox2)+std::abs(nb.ox3);
+    // fill the required ghost-ghost zone
+    int nis, nie, njs, nje, nks, nke;
+    nis=std::max(nb.ox1-1,-1), nie=std::min(nb.ox1+1,1);
+    if(pmb->block_size.nx2==1) njs=0, nje=0;
+    else njs=std::max(nb.ox2-1,-1), nje=std::min(nb.ox2+1,1);
+    if(pmb->block_size.nx3==1) nks=0, nke=0;
+    else nks=std::max(nb.ox3-1,-1), nke=std::min(nb.ox3+1,1);
+    for(int nk=nks; nk<=nke; nk++) {
+      for(int nj=njs; nj<=nje; nj++) {
+        for(int ni=nis; ni<=nie; ni++) {
+          int ntype=std::abs(ni)+std::abs(nj)+std::abs(nk);
+          // skip myself or coarse levels; only the same level must be restricted
+          if(ntype==0 || pmb->nblevel[nk+1][nj+1][ni+1]!=mylevel) continue;
+
+          // this neighbor block is on the same level
+          // and needs to be restricted for prolongation
+          int ris, rie, rjs, rje, rks, rke;
+          if(ni==0) {
+            ris=pmb->cis, rie=pmb->cie;
+            if(nb.ox1==1) ris=pmb->cie;
+            else if(nb.ox1==-1) rie=pmb->cis;
+          }
+          else if(ni== 1) ris=pmb->cie+1, rie=pmb->cie+1;
+          else if(ni==-1) ris=pmb->cis-1, rie=pmb->cis-1;
+          if(nj==0) {
+            rjs=pmb->cjs, rje=pmb->cje;
+            if(nb.ox2==1) rjs=pmb->cje;
+            else if(nb.ox2==-1) rje=pmb->cjs;
+          }
+          else if(nj== 1) rjs=pmb->cje+1, rje=pmb->cje+1;
+          else if(nj==-1) rjs=pmb->cjs-1, rje=pmb->cjs-1;
+          if(nk==0) {
+            rks=pmb->cks, rke=pmb->cke;
+            if(nb.ox3==1) rks=pmb->cke;
+            else if(nb.ox3==-1) rke=pmb->cks;
+          }
+          else if(nk== 1) rks=pmb->cke+1, rke=pmb->cke+1;
+          else if(nk==-1) rks=pmb->cks-1, rke=pmb->cks-1;
+
+          pmb->pmr->RestrictCellCenteredValues(dst, pmr->coarse_ir_, RAD,
+                          rks, rke, rjs, rje, ris, rie, 0, pmb->prad->n_fre_ang-1);
+        }
+      }
+    }
+
+
+    // calculate the loop limits for the ghost zones
+    int cn = (NGHOST+1)/2;
+    int si, ei, sj, ej, sk, ek, fsi, fei, fsj, fej, fsk, fek;
+    if(nb.ox1==0) {
+      si=pmb->cis, ei=pmb->cie;
+      if((lx1&1L)==0L) ei++;
+      else             si--;
+    }
+    else if(nb.ox1>0) si=pmb->cie+1,  ei=pmb->cie+cn;
+    else              si=pmb->cis-cn, ei=pmb->cis-1;
+    if(nb.ox2==0) {
+      sj=pmb->cjs, ej=pmb->cje;
+      if(pmb->block_size.nx2 > 1) {
+        if((lx2&1L)==0L) ej++;
+        else             sj--;
+      }
+    }
+    else if(nb.ox2>0) sj=pmb->cje+1,  ej=pmb->cje+cn;
+    else              sj=pmb->cjs-cn, ej=pmb->cjs-1;
+    if(nb.ox3==0) {
+      sk=pmb->cks, ek=pmb->cke;
+      if(pmb->block_size.nx3 > 1) {
+        if((lx3&1L)==0L) ek++;
+        else             sk--;
+      }
+    }
+    else if(nb.ox3>0) sk=pmb->cke+1,  ek=pmb->cke+cn;
+    else              sk=pmb->cks-cn, ek=pmb->cks-1;
+
+
+    // Apply physical boundaries
+    if(nb.ox1==0) {
+      if(RadBoundaryFunction_[INNER_X1]!=NULL) {
+        RadBoundaryFunction_[INNER_X1](pmb, pmr->pcoarsec,
+                          pmr->coarse_ir_, pmb->cis, pmb->cie, sj, ej, sk, ek);
+      }
+      if(RadBoundaryFunction_[OUTER_X1]!=NULL) {
+        RadBoundaryFunction_[OUTER_X1](pmb, pmr->pcoarsec,
+                          pmr->coarse_ir_, pmb->cis, pmb->cie, sj, ej, sk, ek);
+      }
+    }
+    if(nb.ox2==0 && pmb->block_size.nx2 > 1) {
+      if(RadBoundaryFunction_[INNER_X2]!=NULL) {
+        RadBoundaryFunction_[INNER_X2](pmb, pmr->pcoarsec,
+                          pmr->coarse_ir_, si, ei, pmb->cjs, pmb->cje, sk, ek);
+      }
+      if(RadBoundaryFunction_[OUTER_X2]!=NULL) {
+        RadBoundaryFunction_[OUTER_X2](pmb, pmr->pcoarsec,
+                          pmr->coarse_ir_, si, ei, pmb->cjs, pmb->cje, sk, ek);
+      }
+    }
+    if(nb.ox3==0 && pmb->block_size.nx3 > 1) {
+      if(RadBoundaryFunction_[INNER_X3]!=NULL) {
+        RadBoundaryFunction_[INNER_X3](pmb, pmr->pcoarsec,
+                          pmr->coarse_ir_, si, ei, sj, ej, pmb->cks, pmb->cke);
+      }
+      if(RadBoundaryFunction_[OUTER_X3]!=NULL) {
+        RadBoundaryFunction_[OUTER_X3](pmb, pmr->pcoarsec,
+                          pmr->coarse_ir_, si, ei, sj, ej, pmb->cks, pmb->cke);
+      }
+    }
+
+    // now that the ghost-ghost zones are filled
+    // calculate the loop limits for the finer grid
+    fsi=(si-pmb->cis)*2+pmb->is,   fei=(ei-pmb->cis)*2+pmb->is+1;
+    if(pmb->block_size.nx2 > 1)
+      fsj=(sj-pmb->cjs)*2+pmb->js, fej=(ej-pmb->cjs)*2+pmb->js+1;
+    else fsj=pmb->js, fej=pmb->je;
+    if(pmb->block_size.nx3 > 1)
+      fsk=(sk-pmb->cks)*2+pmb->ks, fek=(ek-pmb->cks)*2+pmb->ks+1;
+    else fsk=pmb->ks, fek=pmb->ke;
+
+    pmr->ProlongateCellCenteredValues(pmr->coarse_ir_, dst, RAD,
+                          sk, ek, sj, ej, si, ei, 0, pmb->prad->n_fre_ang-1);
+
+ }
+}
+

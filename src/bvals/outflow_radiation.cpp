@@ -84,8 +84,8 @@ void RadOutflowInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
   // copy rad variables into ghost zones
   for (int k=ks; k<=ke; ++k) {
     for (int j=1; j<=(NGHOST); ++j) {
-#pragma simd
       for (int i=is; i<=ie; ++i) {
+#pragma simd
         for(int n=0; n<pmb->prad->n_fre_ang; n++){
           a(k,js-j,i,n) = a(k,js,i,n);
         }

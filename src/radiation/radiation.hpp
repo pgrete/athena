@@ -13,8 +13,11 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 
+
+
 class MeshBlock;
 class ParameterInput;
+class RadIntegrator;
 
 //! \class Radiation
 //  \brief radiation data and functions
@@ -39,13 +42,16 @@ public:
   AthenaArray<Real> mu, wmu; // angles and weight
   AthenaArray<Real> wfreq; // weight in frequency space
   
+  AthenaArray<Real> flux[3]; // store transport flux, also need for refinement
+  
   Real prat, crat; // prat=aT^4/P_0, crat=c/c_s
   Real reduced_c; // reduced speed of light
   
   int nang, nfreq, noct, n_fre_ang; // n_fre_ang=nang*nfreq
 
   MeshBlock* pmy_block;    // ptr to MeshBlock containing this Fluid
-
+  
+  RadIntegrator *pradintegrator;
   
   
   //Function in problem generators to update opacity

@@ -342,7 +342,8 @@ Mesh::Mesh(ParameterInput *pin, int test_flag)
       }
       if(lrlev > max_level) {
         msg << "### FATAL ERROR in Mesh constructor" << std::endl
-            << "Refinement level exceeds the maximum level (specify maxlevel in <mesh> if adaptive)."
+            << "Refinement level exceeds the maximum level (specify maxlevel in <mesh> "
+            << "if adaptive)."
             << std::endl;
         throw std::runtime_error(msg.str().c_str());
       }
@@ -875,7 +876,8 @@ void Mesh::MeshTest(int dim)
       nbt++;
     }
     else if(ranklist[i]!=j) {
-      std::cout << "Rank " << j << ": " << nbt <<" MeshBlocks, cost = " << mycost << std::endl;
+      std::cout << "Rank " << j << ": " << nbt <<" MeshBlocks, cost = " << mycost
+      << std::endl;
       mycost=costlist[i];
       nbt=1;
       j++;
@@ -955,13 +957,15 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
 // in the Hydro constructor
  
   pcoord = new Coordinates(this, pin);
+  // Need to create prad before pmr, as pmr needs prad
+  if (RADIATION_ENABLED)
+    prad = new Radiation(this, pin);
+
   if(pm->multilevel==true)
     pmr = new MeshRefinement(this, pin);
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
-  if (RADIATION_ENABLED)
-    prad = new Radiation(this, pin);
   pbval  = new BoundaryValues(this, pin);
   if (block_bcs[INNER_X2] == POLAR_BNDRY) {
     int level = loc.level - pmy_mesh->root_level;
@@ -1052,13 +1056,15 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
 
   // create coordinates, hydro, field, and boundary conditions
   pcoord = new Coordinates(this, pin);
+  if (RADIATION_ENABLED)
+    prad = new Radiation(this, pin);
+  
   if(pm->multilevel==true)
     pmr = new MeshRefinement(this, pin);
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
-  if (RADIATION_ENABLED)
-    prad = new Radiation(this, pin);
+
   pbval  = new BoundaryValues(this, pin);
   if (block_bcs[INNER_X2] == POLAR_BNDRY) {
     int level = loc.level - pmy_mesh->root_level;
@@ -1301,8 +1307,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       if (MAGNETIC_FIELDS_ENABLED)
         pbval->ReceiveFieldBoundaryBuffersWithWait(pfield->b ,0);
       pmb->pbval->ClearBoundaryForInit();
-      if(multilevel==true)
+      if(multilevel==true){
         pbval->ProlongateBoundaries(phydro->w, phydro->u, pfield->b, pfield->bcc);
+        if(RADIATION_ENABLED){
+          pbval->ProlongateRadBoundaries(prad->ir);
+        }
+      }
 
       int is=pmb->is, ie=pmb->ie, js=pmb->js, je=pmb->je, ks=pmb->ks, ke=pmb->ke;
       if(pmb->nblevel[1][1][0]!=-1) is-=NGHOST;
@@ -1335,12 +1345,14 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       if(nbtotal==onb) iflag=true;
       else if(nbtotal < onb && Globals::my_rank==0) {
          std::cout << "### Warning in Mesh::Initialize" << std::endl
-         << "The number of MeshBlocks decreased during AMR grid initialization." << std::endl
+         << "The number of MeshBlocks decreased during AMR grid initialization."
+         << std::endl
          << "Possibly the refinement criteria have a problem." << std::endl;
       }
       if(nbtotal > 2*inb && Globals::my_rank==0) {
          std::cout << "### Warning in Mesh::Initialize" << std::endl
-         << "The number of MeshBlocks increased more than twice during initialization."<< std::endl
+         << "The number of MeshBlocks increased more than twice during initialization."
+         << std::endl
          << "More computing power than you expected may be required." << std::endl;
       }
     }
@@ -1364,7 +1376,8 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
 
 int64_t Mesh::GetTotalCells(void)
 {
-  return (int64_t)nbtotal*pblock->block_size.nx1*pblock->block_size.nx2*pblock->block_size.nx3;
+  return (int64_t)nbtotal*pblock->block_size.nx1*pblock->block_size.nx2
+                  *pblock->block_size.nx3;
 }
 
 //--------------------------------------------------------------------------------------
@@ -2043,6 +2056,11 @@ void Mesh::SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size
 void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
 {
   MeshBlock *pmb;
+  int n_fre_ang=0;
+  //number of radiation variables in each cell
+  if(RADIATION_ENABLED){
+    n_fre_ang = pblock->prad->n_fre_ang;
+  }
 #ifdef MPI_PARALLEL
   MPI_Request areq[3];
   // start sharing the cost list
@@ -2163,12 +2181,6 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   if(ctnd>1)
     std::sort(clderef, &(clderef[ctnd-1]), LogicalLocation::Greater);
 
-/*  if(Globals::my_rank==0) {
-    for(int n=0; n<tnref; n++)
-      std::cout << "Refine flag:" << lref[n].lx1 << " " << lref[n].lx2 << " " << lref[n].lx3 << " " << lref[n].level << std::endl;
-    for(int n=0; n<ctnd; n++)
-      std::cout << "Derefine flag:" << clderef[n].lx1 << " " << clderef[n].lx2 << " " << clderef[n].lx3 << " " << clderef[n].level << std::endl;
-  }*/
 
   if(tnderef>nlbl)
     delete [] lderef;
@@ -2296,7 +2308,12 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
           +(bnx1/2+2)*(((bnx2+1)/2)+f2+2*f2)*((bnx3+1)/2+2*f3)
           +(bnx1/2+2)*((bnx2+1)/2+2*f2)*(((bnx3+1)/2)+f3+2*f3);
   }
-
+  if(RADIATION_ENABLED){
+    bssame+=bnx1*bnx2*bnx3*n_fre_ang;
+    bsf2c +=(bnx1/2)*((bnx2+1)/2)*((bnx3+1)/2)*n_fre_ang;
+    bsc2f=(bnx1/2+2)*((bnx2+1)/2+2*f2)*((bnx3+1)/2+2*f3)*n_fre_ang;
+  }
+  
   MPI_Request *req_send, *req_recv;
   // Step 5. allocate and start receiving buffers
   if(nrecv!=0) {
@@ -2348,7 +2365,7 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
         // pack
         int p=0;
         BufferUtility::Pack4DData(pb->phydro->u, sendbuf[k], 0, NHYDRO-1,
-                       pb->is, pb->ie, pb->js, pb->je, pb->ks, pb->ke, p);
+                       pb->ks, pb->ke, pb->js, pb->je, pb->is, pb->ie, p);
         if(MAGNETIC_FIELDS_ENABLED) {
           BufferUtility::Pack3DData(pb->pfield->b.x1f, sendbuf[k],
                          pb->is, pb->ie+1, pb->js, pb->je, pb->ks, pb->ke, p);
@@ -2356,6 +2373,10 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
                          pb->is, pb->ie+1, pb->js, pb->je, pb->ks, pb->ke, p);
           BufferUtility::Pack3DData(pb->pfield->b.x3f, sendbuf[k],
                          pb->is, pb->ie+1, pb->js, pb->je, pb->ks, pb->ke, p);
+        }
+        if(RADIATION_ENABLED){
+          BufferUtility::Pack4DData(pb->prad->ir, sendbuf[k], pb->ks, pb->ke,
+                      pb->js, pb->je, pb->is, pb->ie, 0, n_fre_ang-1, p);
         }
         int tag=CreateAMRMPITag(nn-nslist[newrank[nn]], 0, 0, 0);
         MPI_Isend(sendbuf[k], bssame, MPI_ATHENA_REAL, newrank[nn],
@@ -2379,7 +2400,7 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
           else       ks=pb->ks+pb->block_size.nx3/2-f3, ke=pb->ke+f3;
           int p=0;
           BufferUtility::Pack4DData(pb->phydro->u, sendbuf[k], 0, NHYDRO-1,
-                                    is, ie, js, je, ks, ke, p);
+                                  ks, ke, js, je, is, ie, p);
           if(MAGNETIC_FIELDS_ENABLED) {
             BufferUtility::Pack3DData(pb->pfield->b.x1f, sendbuf[k],
                                       is, ie+1, js, je, ks, ke, p);
@@ -2388,6 +2409,14 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
             BufferUtility::Pack3DData(pb->pfield->b.x3f, sendbuf[k],
                                       is, ie, js, je, ks, ke+f3, p);
           }
+          if(RADIATION_ENABLED){
+
+            BufferUtility::Pack4DData(pb->prad->ir, sendbuf[k], ks, ke,
+                           js, je, is, ie, 0, n_fre_ang-1, p);
+          
+          }
+          
+          
           int tag=CreateAMRMPITag(nn+l-nslist[newrank[nn+l]], 0, 0, 0);
           MPI_Isend(sendbuf[k], bsc2f, MPI_ATHENA_REAL, newrank[nn+l],
                     tag, MPI_COMM_WORLD, &(req_send[k]));
@@ -2401,10 +2430,10 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
         // restrict and pack
         MeshRefinement *pmr=pb->pmr;
         pmr->RestrictCellCenteredValues(pb->phydro->u, pmr->coarse_cons_,
-             0, NHYDRO-1, pb->cis, pb->cie, pb->cjs, pb->cje, pb->cks, pb->cke);
+             HYDRO, 0, NHYDRO-1, pb->cks,pb->cke, pb->cjs, pb->cje, pb->cis, pb->cie);
         int p=0;
         BufferUtility::Pack4DData(pmr->coarse_cons_, sendbuf[k], 0, NHYDRO-1,
-                       pb->cis, pb->cie, pb->cjs, pb->cje, pb->cks, pb->cke, p);
+                       pb->cks, pb->cke, pb->cjs, pb->cje, pb->cis, pb->cie, p);
         if(MAGNETIC_FIELDS_ENABLED) {
           pmr->RestrictFieldX1(pb->pfield->b.x1f, pmr->coarse_b_.x1f,
                                pb->cis, pb->cie+1, pb->cjs, pb->cje, pb->cks, pb->cke);
@@ -2418,6 +2447,14 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
                                pb->cis, pb->cie, pb->cjs, pb->cje, pb->cks, pb->cke+f3);
           BufferUtility::Pack3DData(pmr->coarse_b_.x3f, sendbuf[k],
                          pb->cis, pb->cie, pb->cjs, pb->cje, pb->cks, pb->cke+f3, p);
+        }
+        if(RADIATION_ENABLED){
+          pmr->RestrictCellCenteredValues(pb->prad->ir, pmr->coarse_ir_,
+             RAD, pb->cks,pb->cke, pb->cjs, pb->cje, pb->cis, pb->cie, 0, n_fre_ang-1);
+          
+          BufferUtility::Pack4DData(pmr->coarse_ir_, sendbuf[k], pb->cks, pb->cke,
+             pb->cjs, pb->cje, pb->cis, pb->cie, 0, n_fre_ang-1, p);
+        
         }
         int tag=CreateAMRMPITag(nn-nslist[newrank[nn]], ox1, ox2, ox3);
         MPI_Isend(sendbuf[k], bsf2c, MPI_ATHENA_REAL, newrank[nn],
@@ -2476,8 +2513,8 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
           // on the same node - restriction
           MeshBlock* pob=FindMeshBlock(on+ll);
           MeshRefinement *pmr=pob->pmr;
-          pmr->RestrictCellCenteredValues(pob->phydro->u, pmr->coarse_cons_,
-               0, NHYDRO-1, pob->cis, pob->cie, pob->cjs, pob->cje, pob->cks, pob->cke);
+          pmr->RestrictCellCenteredValues(pob->phydro->u, pmr->coarse_cons_, HYDRO,
+               0, NHYDRO-1, pob->cks,pob->cke, pob->cjs, pob->cje, pob->cis, pob->cie);
           int is=pmb->is+(loclist[on+ll].lx1&1L)*pmb->block_size.nx1/2;
           int js=pmb->js+(loclist[on+ll].lx2&1L)*pmb->block_size.nx2/2;
           int ks=pmb->ks+(loclist[on+ll].lx3&1L)*pmb->block_size.nx3/2;
@@ -2525,7 +2562,23 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
                   dst.x3f(pmb->ks+1, j, i)=dst.x3f(pmb->ks, j, i);
               }
             }
-          }
+          }// End MHD
+          if(RADIATION_ENABLED){
+          
+            pmr->RestrictCellCenteredValues(pob->prad->ir, pmr->coarse_ir_, RAD,
+              pob->cks,pob->cke, pob->cjs, pob->cje, pob->cis, pob->cie, 0, n_fre_ang-1);
+
+            AthenaArray<Real> &rad_src=pmr->coarse_ir_;
+            AthenaArray<Real> &rad_dst=pmb->prad->ir;
+            for(int k=ks, fk=pob->cks; fk<=pob->cke; k++, fk++) {
+               for(int j=js, fj=pob->cjs; fj<=pob->cje; j++, fj++) {
+                 for(int i=is, fi=pob->cis; fi<=pob->cie; i++, fi++){
+                    for(int nn=0; nn<n_fre_ang; nn++)
+                      rad_dst(k, j, i, nn)=rad_src(fk, fj, fi, nn);
+            }}}
+          
+          
+          }// End Radiation
         }
       }
       else if((loclist[on].level < newloc[n].level) && (ranklist[on]==Globals::my_rank)) {
@@ -2547,8 +2600,8 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
               for(int i=is, ci=cis; i<=ie; i++, ci++)
                 dst(nn, k, j, i)=src(nn, ck, cj, ci);
         }}}
-        pmr->ProlongateCellCenteredValues(dst, pmb->phydro->u, 0, NHYDRO-1,
-                                          is, ie, js, je, ks, ke);
+        pmr->ProlongateCellCenteredValues(dst, pmb->phydro->u, HYDRO, 0, NHYDRO-1,
+                                          ks, ke, js, je, is, ie);
         if(MAGNETIC_FIELDS_ENABLED) {
           FaceField &src=pob->pfield->b;
           FaceField &dst=pmr->coarse_b_;
@@ -2574,7 +2627,22 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
           pmr->ProlongateSharedFieldX3(dst.x3f, pmb->pfield->b.x3f,
                                        is, ie, js, je, ks, ke+f3);
           pmr->ProlongateInternalField(pmb->pfield->b, is, ie, js, je, ks, ke);
-        }
+        }// end MHD
+        
+        if(RADIATION_ENABLED){
+          AthenaArray<Real> &rad_src=pob->prad->ir;
+          AthenaArray<Real> &rad_dst=pmr->coarse_ir_;
+          // fill the coarse buffer
+          for(int k=ks, ck=cks; k<=ke; k++, ck++) {
+            for(int j=js, cj=cjs; j<=je; j++, cj++) {
+              for(int i=is, ci=cis; i<=ie; i++, ci++){
+                for(int nn=0; nn<n_fre_ang; nn++)
+                    rad_dst(k, j, i, nn)=rad_src(ck, cj, ci, nn);
+          }}}
+          pmr->ProlongateCellCenteredValues(rad_dst, pmb->prad->ir, RAD, ks, ke,
+                             js, je, is, ie, 0, n_fre_ang-1);
+        
+        }// End Radiation
       }
     }
   }
@@ -2605,7 +2673,7 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
         MPI_Wait(&(req_recv[k]), MPI_STATUS_IGNORE);
         int p=0;
         BufferUtility::Unpack4DData(recvbuf[k], pb->phydro->u, 0, NHYDRO-1,
-                       pb->is, pb->ie, pb->js, pb->je, pb->ks, pb->ke, p);
+                       pb->ks, pb->ke, pb->js, pb->je, pb->is, pb->ie, p);
         if(MAGNETIC_FIELDS_ENABLED) {
           FaceField &dst=pb->pfield->b;
           BufferUtility::Unpack3DData(recvbuf[k], dst.x1f,
@@ -2624,7 +2692,12 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
                 dst.x3f(pb->ks+1, j, i)=dst.x3f(pb->ks, j, i);
             }
           }
+        }// End MHD
+        if(RADIATION_ENABLED){
+           BufferUtility::Unpack4DData(recvbuf[k], pb->prad->ir, pb->ks, pb->ke,
+                pb->js, pb->je, pb->is, pb->ie, 0, n_fre_ang-1, p);
         }
+        
         k++;
       }
       else if(oloc.level>nloc.level) { // f2c
@@ -2641,7 +2714,7 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
           else       ks=pb->ks+pb->block_size.nx3/2, ke=pb->ke;
           MPI_Wait(&(req_recv[k]), MPI_STATUS_IGNORE);
           BufferUtility::Unpack4DData(recvbuf[k], pb->phydro->u, 0, NHYDRO-1,
-                         is, ie, js, je, ks, ke, p);
+                        ks, ke, js, je, is, ie, p);
           if(MAGNETIC_FIELDS_ENABLED) {
             FaceField &dst=pb->pfield->b;
             BufferUtility::Unpack3DData(recvbuf[k], dst.x1f,
@@ -2660,6 +2733,11 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
                   dst.x3f(pb->ks+1, j, i)=dst.x3f(pb->ks, j, i);
               }
             }
+          }// End MHD
+          if(RADIATION_ENABLED){
+            BufferUtility::Unpack4DData(recvbuf[k], pb->prad->ir, ks, ke,
+                  js, je, is, ie, 0, n_fre_ang-1, p);
+          
           }
           k++;
         }
@@ -2672,9 +2750,9 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
             je=pb->cje+f2, ks=pb->cks-f3, ke=pb->cke+f3;
         MPI_Wait(&(req_recv[k]), MPI_STATUS_IGNORE);
         BufferUtility::Unpack4DData(recvbuf[k], pmr->coarse_cons_,
-                                    0, NHYDRO-1, is, ie, js, je, ks, ke, p);
-        pmr->ProlongateCellCenteredValues(pmr->coarse_cons_, pb->phydro->u, 0, NHYDRO-1,
-                                          is, ie, js, je, ks, ke);
+                                    0, NHYDRO-1, ks, ke, js, je, is, ie, p);
+        pmr->ProlongateCellCenteredValues(pmr->coarse_cons_, pb->phydro->u, HYDRO,
+                                    0, NHYDRO-1, ks, ke, js, je, is, ie);
         if(MAGNETIC_FIELDS_ENABLED) {
           BufferUtility::Unpack3DData(recvbuf[k], pmr->coarse_b_.x1f,
                                       is, ie+1, js, je, ks, ke, p);
@@ -2689,7 +2767,16 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
           pmr->ProlongateSharedFieldX3(pmr->coarse_b_.x3f, pb->pfield->b.x3f,
                                        is, ie, js, je, ks, ke+f3);
           pmr->ProlongateInternalField(pb->pfield->b, is, ie, js, je, ks, ke);
+        }// End MHD
+        if(RADIATION_ENABLED){
+        
+          BufferUtility::Unpack4DData(recvbuf[k], pmr->coarse_ir_,
+                                ks, ke, js, je, is, ie, 0, n_fre_ang-1, p);
+          pmr->ProlongateCellCenteredValues(pmr->coarse_ir_, pb->prad->ir, RAD,
+                                ks, ke, js, je, is, ie, 0, n_fre_ang-1);
+        
         }
+        
         k++;
       }
     }

@@ -40,7 +40,8 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
 	     src/pgen/$(PROBLEM_FILE) \
              $(wildcard src/radiation/*.cpp) \
-             $(wildcard src/radiation/integrators/*.cpp)
+             $(wildcard src/radiation/integrators/*.cpp) \
+             $(wildcard src/radiation/integrators/radflux/*.cpp)
  
 SRC_DIR := $(dir $(SRC_FILES))
 OBJ_DIR := obj/

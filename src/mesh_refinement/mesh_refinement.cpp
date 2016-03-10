@@ -29,6 +29,8 @@
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../parameter_input.hpp"
+#include "../bvals/bvals.hpp" //for the flag phys
+#include "../radiation/radiation.hpp"
 
 // this class
 #include "mesh_refinement.hpp"
@@ -58,6 +60,9 @@ MeshRefinement::MeshRefinement(MeshBlock *pmb, ParameterInput *pin)
   if(pmb->block_size.nx3>1) ncc3=pmb->block_size.nx3/2+2*pmb->cnghost;
   coarse_cons_.NewAthenaArray(NHYDRO,ncc3,ncc2,ncc1);
   coarse_prim_.NewAthenaArray(NHYDRO,ncc3,ncc2,ncc1);
+  if(RADIATION_ENABLED){
+    coarse_ir_.NewAthenaArray(ncc3,ncc2,ncc1,pmb->prad->n_fre_ang);
+  }
 
   int nc1=pmb->block_size.nx1+2*NGHOST;
   fvol_[0][0].NewAthenaArray(nc1);
@@ -95,6 +100,8 @@ MeshRefinement::~MeshRefinement()
 {
   coarse_cons_.DeleteAthenaArray();
   coarse_prim_.DeleteAthenaArray();
+  if(RADIATION_ENABLED)
+    coarse_ir_.DeleteAthenaArray();
   fvol_[0][0].DeleteAthenaArray();
   fvol_[0][1].DeleteAthenaArray();
   fvol_[1][0].DeleteAthenaArray();
@@ -125,70 +132,135 @@ MeshRefinement::~MeshRefinement()
 
 //--------------------------------------------------------------------------------------
 //! \fn void MeshRefinement::RestrictCellCenteredValues(const AthenaArray<Real> &fine,
-//                           AthenaArray<Real> &coarse, int sn, int en,
+//                           AthenaArray<Real> &coarse, int phys, int sn, int en,
 //                           int csi, int cei, int csj, int cej, int csk, int cek)
 //  \brief restrict cell centered values
 void MeshRefinement::RestrictCellCenteredValues(const AthenaArray<Real> &fine,
-                     AthenaArray<Real> &coarse, int sn, int en,
-                     int csi, int cei, int csj, int cej, int csk, int cek)
+                     AthenaArray<Real> &coarse, int phys, int cs4, int ce4,
+                     int cs3, int ce3, int cs2, int ce2, int cs1, int ce1)
 {
   MeshBlock *pmb=pmy_mblock_;
   Coordinates *pco=pmb->pcoord;
-  int si=(csi-pmb->cis)*2+pmb->is, ei=(cei-pmb->cis)*2+pmb->is+1;
 
   // store the restricted data in the prolongation buffer for later use
-  if(pmb->block_size.nx3>1) { // 3D
-    for (int n=sn; n<=en; ++n) {
-      for (int ck=csk; ck<=cek; ck++) {
-        int k=(ck-pmb->cks)*2+pmb->ks;
-        for (int cj=csj; cj<=cej; cj++) {
-          int j=(cj-pmb->cjs)*2+pmb->js;
-          pco->CellVolume(k,j,si,ei,fvol_[0][0]);
-          pco->CellVolume(k,j+1,si,ei,fvol_[0][1]);
-          pco->CellVolume(k+1,j,si,ei,fvol_[1][0]);
-          pco->CellVolume(k+1,j+1,si,ei,fvol_[1][1]);
-          for (int ci=csi; ci<=cei; ci++) {
-            int i=(ci-pmb->cis)*2+pmb->is;
-            Real tvol=fvol_[0][0](i)+fvol_[0][0](i+1)+fvol_[0][1](i)+fvol_[0][1](i+1)
+  if(phys == HYDRO){
+  
+   int si=(cs1-pmb->cis)*2+pmb->is, ei=(ce1-pmb->cis)*2+pmb->is+1;
+   
+   if(pmb->block_size.nx3>1) { // 3D
+     for (int n=cs4; n<=ce4; ++n) {
+       for (int ck=cs3; ck<=ce3; ck++) {
+         int k=(ck-pmb->cks)*2+pmb->ks;
+         for (int cj=cs2; cj<=ce2; cj++) {
+           int j=(cj-pmb->cjs)*2+pmb->js;
+           pco->CellVolume(k,j,si,ei,fvol_[0][0]);
+           pco->CellVolume(k,j+1,si,ei,fvol_[0][1]);
+           pco->CellVolume(k+1,j,si,ei,fvol_[1][0]);
+           pco->CellVolume(k+1,j+1,si,ei,fvol_[1][1]);
+           for (int ci=cs1; ci<=ce1; ci++) {
+             int i=(ci-pmb->cis)*2+pmb->is;
+             Real tvol=fvol_[0][0](i)+fvol_[0][0](i+1)+fvol_[0][1](i)+fvol_[0][1](i+1)
                      +fvol_[1][0](i)+fvol_[1][0](i+1)+fvol_[1][1](i)+fvol_[1][1](i+1);
-            coarse(n,ck,cj,ci)=
+             coarse(n,ck,cj,ci)=
               (fine(n,k  ,j  ,i)*fvol_[0][0](i)+fine(n,k  ,j  ,i+1)*fvol_[0][0](i+1)
               +fine(n,k  ,j+1,i)*fvol_[0][1](i)+fine(n,k  ,j+1,i+1)*fvol_[0][1](i+1)
               +fine(n,k+1,j  ,i)*fvol_[1][0](i)+fine(n,k+1,j  ,i+1)*fvol_[1][0](i+1)
-              +fine(n,k+1,j+1,i)*fvol_[1][1](i)+fine(n,k+1,j+1,i+1)*fvol_[1][1](i+1))/tvol;
+              +fine(n,k+1,j+1,i)*fvol_[1][1](i)+fine(n,k+1,j+1,i+1)*fvol_[1][1](i+1))
+                  /tvol;
+           }
+         }
+       }
+     }
+   }
+   else if(pmb->block_size.nx2>1) { // 2D
+      for (int n=cs4; n<=ce4; ++n) {
+        for (int cj=cs2; cj<=ce2; cj++) {
+          int j=(cj-pmb->cjs)*2+pmb->js;
+          pco->CellVolume(0,j  ,si,ei,fvol_[0][0]);
+          pco->CellVolume(0,j+1,si,ei,fvol_[0][1]);
+          for (int ci=cs1; ci<=ce1; ci++) {
+            int i=(ci-pmb->cis)*2+pmb->is;
+            Real tvol=fvol_[0][0](i)+fvol_[0][0](i+1)+fvol_[0][1](i)+fvol_[0][1](i+1);
+            coarse(n,0,cj,ci)=
+              (fine(n,0,j  ,i)*fvol_[0][0](i)+fine(n,0,j  ,i+1)*fvol_[0][0](i+1)
+              +fine(n,0,j+1,i)*fvol_[0][1](i)+fine(n,0,j+1,i+1)*fvol_[0][1](i+1))/tvol;
           }
         }
       }
-    }
-  }
-  else if(pmb->block_size.nx2>1) { // 2D
-    for (int n=sn; n<=en; ++n) {
-      for (int cj=csj; cj<=cej; cj++) {
+   }
+   else { // 1D
+     int j=pmb->js, cj=pmb->cjs, k=pmb->ks, ck=pmb->cks;
+     for (int n=cs4; n<=ce4; ++n) {
+       pco->CellVolume(k,j,si,ei,fvol_[0][0]);
+       for (int ci=cs1; ci<=ce1; ci++) {
+         int i=(ci-pmb->cis)*2+pmb->is;
+         Real tvol=fvol_[0][0](i)+fvol_[0][0](i+1);
+         coarse(n,ck,cj,ci)
+           =(fine(n,k,j,i)*fvol_[0][0](i)+fine(n,k,j,i+1)*fvol_[0][0](i+1))/tvol;
+       }
+     }
+   }
+  }// End for Hydro
+  else if(phys == RAD){
+  
+   int si=(cs2-pmb->cis)*2+pmb->is, ei=(ce2-pmb->cis)*2+pmb->is+1;
+   
+   if(pmb->block_size.nx3>1) { // 3D
+     for (int ck=cs4; ck<=ce4; ++ck) {
+       int k=(ck-pmb->cks)*2+pmb->ks;
+       for (int cj=cs3; cj<=ce3; cj++) {
+         int j=(cj-pmb->cjs)*2+pmb->js;
+           pco->CellVolume(k,j,si,ei,fvol_[0][0]);
+           pco->CellVolume(k,j+1,si,ei,fvol_[0][1]);
+           pco->CellVolume(k+1,j,si,ei,fvol_[1][0]);
+           pco->CellVolume(k+1,j+1,si,ei,fvol_[1][1]);
+           for (int ci=cs2; ci<=ce2; ci++) {
+            int i=(ci-pmb->cis)*2+pmb->is;
+            Real tvol=fvol_[0][0](i)+fvol_[0][0](i+1)+fvol_[0][1](i)+fvol_[0][1](i+1)
+                      +fvol_[1][0](i)+fvol_[1][0](i+1)+fvol_[1][1](i)+fvol_[1][1](i+1);
+            for (int n=cs1; n<=ce1; n++) {
+             coarse(ck,cj,ci,n)=
+               (fine(k  ,j  ,i,n)*fvol_[0][0](i)+fine(k  ,j  ,i+1,n)*fvol_[0][0](i+1)
+               +fine(k  ,j+1,i,n)*fvol_[0][1](i)+fine(k  ,j+1,i+1,n)*fvol_[0][1](i+1)
+               +fine(k+1,j  ,i,n)*fvol_[1][0](i)+fine(k+1,j  ,i+1,n)*fvol_[1][0](i+1)
+               +fine(k+1,j+1,i,n)*fvol_[1][1](i)+fine(k+1,j+1,i+1,n)*fvol_[1][1](i+1))
+                /tvol;
+           }
+         }
+       }
+     }
+   }
+   else if(pmb->block_size.nx2>1) { // 2D
+
+     for (int cj=cs3; cj<=ce3; cj++) {
         int j=(cj-pmb->cjs)*2+pmb->js;
         pco->CellVolume(0,j  ,si,ei,fvol_[0][0]);
         pco->CellVolume(0,j+1,si,ei,fvol_[0][1]);
-        for (int ci=csi; ci<=cei; ci++) {
+        for (int ci=cs2; ci<=ce2; ci++) {
           int i=(ci-pmb->cis)*2+pmb->is;
           Real tvol=fvol_[0][0](i)+fvol_[0][0](i+1)+fvol_[0][1](i)+fvol_[0][1](i+1);
-          coarse(n,0,cj,ci)=
-            (fine(n,0,j  ,i)*fvol_[0][0](i)+fine(n,0,j  ,i+1)*fvol_[0][0](i+1)
-            +fine(n,0,j+1,i)*fvol_[0][1](i)+fine(n,0,j+1,i+1)*fvol_[0][1](i+1))/tvol;
+          for (int n=cs1; n<=ce1; ++n) {
+            coarse(0,cj,ci,n)=
+              (fine(0,j  ,i,n)*fvol_[0][0](i)+fine(0,j  ,i+1,n)*fvol_[0][0](i+1)
+              +fine(0,j+1,i,n)*fvol_[0][1](i)+fine(0,j+1,i+1,n)*fvol_[0][1](i+1))/tvol;
+          }
         }
-      }
-    }
-  }
-  else { // 1D
-    int j=pmb->js, cj=pmb->cjs, k=pmb->ks, ck=pmb->cks; 
-    for (int n=sn; n<=en; ++n) {
-      pco->CellVolume(k,j,si,ei,fvol_[0][0]);
-      for (int ci=csi; ci<=cei; ci++) {
-        int i=(ci-pmb->cis)*2+pmb->is;
-        Real tvol=fvol_[0][0](i)+fvol_[0][0](i+1);
-        coarse(n,ck,cj,ci)
-          =(fine(n,k,j,i)*fvol_[0][0](i)+fine(n,k,j,i+1)*fvol_[0][0](i+1))/tvol;
-      }
-    }
-  }
+     }
+   }
+   else { // 1D
+     int j=pmb->js, cj=pmb->cjs, k=pmb->ks, ck=pmb->cks;
+     pco->CellVolume(k,j,si,ei,fvol_[0][0]);
+     for (int ci=cs2; ci<=ce2; ci++) {
+       int i=(ci-pmb->cis)*2+pmb->is;
+       Real tvol=fvol_[0][0](i)+fvol_[0][0](i+1);
+       for (int n=cs1; n<=ce1; ++n) {
+         coarse(ck,cj,ci,n)
+           =(fine(k,j,i,n)*fvol_[0][0](i)+fine(k,j,i+1,n)*fvol_[0][0](i+1))/tvol;
+       }
+     }
+   }
+  
+  }// End rad
 }
 
 
@@ -363,30 +435,88 @@ void MeshRefinement::RestrictFieldX3(const AthenaArray<Real> &fine,
 
 
 //--------------------------------------------------------------------------------------
-//! \fn void MeshRefinement::ProlongateCellCenteredValues(const AthenaArray<Real> &coarse,
-//                           AthenaArray<Real> &fine, int sn, int en,,
+//! \fn void MeshRefinement::ProlongateCellCenteredValues(const AthenaArray<Real>
+//                     &coarse, AthenaArray<Real> &fine, int phys, int sn, int en,
 //                           int si, int ei, int sj, int ej, int sk, int ek)
 //  \brief Prolongate cell centered values 
 void MeshRefinement::ProlongateCellCenteredValues(const AthenaArray<Real> &coarse,
-                     AthenaArray<Real> &fine, int sn, int en,
-                     int si, int ei, int sj, int ej, int sk, int ek)
+                     AthenaArray<Real> &fine, int phys, int s4, int e4,
+                     int s3, int e3, int s2, int e2, int s1, int e1)
 {
   MeshBlock *pmb=pmy_mblock_;
   Coordinates *pco=pmb->pcoord;
-  if(pmb->block_size.nx3 > 1) {
-    for(int n=sn; n<=en; n++) {
-      for(int k=sk; k<=ek; k++) {
-        int fk=(k-pmb->cks)*2+pmb->ks;
-        const Real& x3m = pcoarsec->x3v(k-1);
-        const Real& x3c = pcoarsec->x3v(k);
-        const Real& x3p = pcoarsec->x3v(k+1);
-        Real dx3m = x3c - x3m;
-        Real dx3p = x3p - x3c;
-        const Real& fx3m = pco->x3v(fk);
-        const Real& fx3p = pco->x3v(fk+1);
-        Real dx3fm= x3c-fx3m;
-        Real dx3fp= fx3p-x3c;
-        for(int j=sj; j<=ej; j++) {
+  
+  if(phys ==HYDRO){
+  
+    if(pmb->block_size.nx3 > 1) {
+      for(int n=s4; n<=e4; n++) {
+        for(int k=s3; k<=e3; k++) {
+          int fk=(k-pmb->cks)*2+pmb->ks;
+          const Real& x3m = pcoarsec->x3v(k-1);
+          const Real& x3c = pcoarsec->x3v(k);
+          const Real& x3p = pcoarsec->x3v(k+1);
+          Real dx3m = x3c - x3m;
+          Real dx3p = x3p - x3c;
+          const Real& fx3m = pco->x3v(fk);
+          const Real& fx3p = pco->x3v(fk+1);
+          Real dx3fm= x3c-fx3m;
+          Real dx3fp= fx3p-x3c;
+          for(int j=s2; j<=e2; j++) {
+            int fj=(j-pmb->cjs)*2+pmb->js;
+            const Real& x2m = pcoarsec->x2v(j-1);
+            const Real& x2c = pcoarsec->x2v(j);
+            const Real& x2p = pcoarsec->x2v(j+1);
+            Real dx2m = x2c - x2m;
+            Real dx2p = x2p - x2c;
+            const Real& fx2m = pco->x2v(fj);
+            const Real& fx2p = pco->x2v(fj+1);
+            Real dx2fm= x2c-fx2m;
+            Real dx2fp= fx2p-x2c;
+            for(int i=s1; i<=e1; i++) {
+              int fi=(i-pmb->cis)*2+pmb->is;
+              const Real& x1m = pcoarsec->x1v(i-1);
+              const Real& x1c = pcoarsec->x1v(i);
+              const Real& x1p = pcoarsec->x1v(i+1);
+              Real dx1m = x1c - x1m;
+              Real dx1p = x1p - x1c;
+              const Real& fx1m = pco->x1v(fi);
+              const Real& fx1p = pco->x1v(fi+1);
+              Real dx1fm= x1c-fx1m;
+              Real dx1fp= fx1p-x1c;
+              Real ccval=coarse(n,k,j,i);
+
+              // calculate 3D gradients using the minmod limiter
+              Real gx1m = (ccval-coarse(n,k,j,i-1))/dx1m;
+              Real gx1p = (coarse(n,k,j,i+1)-ccval)/dx1p;
+              Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),
+                          std::abs(gx1p));
+              Real gx2m = (ccval-coarse(n,k,j-1,i))/dx2m;
+              Real gx2p = (coarse(n,k,j+1,i)-ccval)/dx2p;
+              Real gx2c = 0.5*(SIGN(gx2m)+SIGN(gx2p))*std::min(std::abs(gx2m),
+                          std::abs(gx2p));
+              Real gx3m = (ccval-coarse(n,k-1,j,i))/dx3m;
+              Real gx3p = (coarse(n,k+1,j,i)-ccval)/dx3p;
+              Real gx3c = 0.5*(SIGN(gx3m)+SIGN(gx3p))*std::min(std::abs(gx3m),
+                          std::abs(gx3p));
+
+            // interpolate onto the finer grid
+              fine(n,fk  ,fj  ,fi  )=ccval-gx1c*dx1fm-gx2c*dx2fm-gx3c*dx3fm;
+              fine(n,fk  ,fj  ,fi+1)=ccval+gx1c*dx1fp-gx2c*dx2fm-gx3c*dx3fm;
+              fine(n,fk  ,fj+1,fi  )=ccval-gx1c*dx1fm+gx2c*dx2fp-gx3c*dx3fm;
+              fine(n,fk  ,fj+1,fi+1)=ccval+gx1c*dx1fp+gx2c*dx2fp-gx3c*dx3fm;
+              fine(n,fk+1,fj  ,fi  )=ccval-gx1c*dx1fm-gx2c*dx2fm+gx3c*dx3fp;
+              fine(n,fk+1,fj  ,fi+1)=ccval+gx1c*dx1fp-gx2c*dx2fm+gx3c*dx3fp;
+              fine(n,fk+1,fj+1,fi  )=ccval-gx1c*dx1fm+gx2c*dx2fp+gx3c*dx3fp;
+              fine(n,fk+1,fj+1,fi+1)=ccval+gx1c*dx1fp+gx2c*dx2fp+gx3c*dx3fp;
+            }
+          }
+        }
+      }
+    }
+    else if(pmb->block_size.nx2 > 1) {
+      int k=pmb->cks, fk=pmb->ks;
+      for(int n=s4; n<=e4; n++) {
+        for(int j=s2; j<=e2; j++) {
           int fj=(j-pmb->cjs)*2+pmb->js;
           const Real& x2m = pcoarsec->x2v(j-1);
           const Real& x2c = pcoarsec->x2v(j);
@@ -397,7 +527,7 @@ void MeshRefinement::ProlongateCellCenteredValues(const AthenaArray<Real> &coars
           const Real& fx2p = pco->x2v(fj+1);
           Real dx2fm= x2c-fx2m;
           Real dx2fp= fx2p-x2c;
-          for(int i=si; i<=ei; i++) {
+          for(int i=s1; i<=e1; i++) {
             int fi=(i-pmb->cis)*2+pmb->is;
             const Real& x1m = pcoarsec->x1v(i-1);
             const Real& x1c = pcoarsec->x1v(i);
@@ -410,35 +540,125 @@ void MeshRefinement::ProlongateCellCenteredValues(const AthenaArray<Real> &coars
             Real dx1fp= fx1p-x1c;
             Real ccval=coarse(n,k,j,i);
 
-            // calculate 3D gradients using the minmod limiter
+          // calculate 2D gradients using the minmod limiter
             Real gx1m = (ccval-coarse(n,k,j,i-1))/dx1m;
             Real gx1p = (coarse(n,k,j,i+1)-ccval)/dx1p;
-            Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),std::abs(gx1p));
+            Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),
+                 std::abs(gx1p));
             Real gx2m = (ccval-coarse(n,k,j-1,i))/dx2m;
             Real gx2p = (coarse(n,k,j+1,i)-ccval)/dx2p;
-            Real gx2c = 0.5*(SIGN(gx2m)+SIGN(gx2p))*std::min(std::abs(gx2m),std::abs(gx2p));
-            Real gx3m = (ccval-coarse(n,k-1,j,i))/dx3m;
-            Real gx3p = (coarse(n,k+1,j,i)-ccval)/dx3p;
-            Real gx3c = 0.5*(SIGN(gx3m)+SIGN(gx3p))*std::min(std::abs(gx3m),std::abs(gx3p));
+            Real gx2c = 0.5*(SIGN(gx2m)+SIGN(gx2p))*std::min(std::abs(gx2m),
+                 std::abs(gx2p));
 
-            // interpolate onto the finer grid
-            fine(n,fk  ,fj  ,fi  )=ccval-gx1c*dx1fm-gx2c*dx2fm-gx3c*dx3fm;
-            fine(n,fk  ,fj  ,fi+1)=ccval+gx1c*dx1fp-gx2c*dx2fm-gx3c*dx3fm;
-            fine(n,fk  ,fj+1,fi  )=ccval-gx1c*dx1fm+gx2c*dx2fp-gx3c*dx3fm;
-            fine(n,fk  ,fj+1,fi+1)=ccval+gx1c*dx1fp+gx2c*dx2fp-gx3c*dx3fm;
-            fine(n,fk+1,fj  ,fi  )=ccval-gx1c*dx1fm-gx2c*dx2fm+gx3c*dx3fp;
-            fine(n,fk+1,fj  ,fi+1)=ccval+gx1c*dx1fp-gx2c*dx2fm+gx3c*dx3fp;
-            fine(n,fk+1,fj+1,fi  )=ccval-gx1c*dx1fm+gx2c*dx2fp+gx3c*dx3fp;
-            fine(n,fk+1,fj+1,fi+1)=ccval+gx1c*dx1fp+gx2c*dx2fp+gx3c*dx3fp;
+          // interpolate on to the finer grid
+            fine(n,fk  ,fj  ,fi  )=ccval-gx1c*dx1fm-gx2c*dx2fm;
+            fine(n,fk  ,fj  ,fi+1)=ccval+gx1c*dx1fp-gx2c*dx2fm;
+            fine(n,fk  ,fj+1,fi  )=ccval-gx1c*dx1fm+gx2c*dx2fp;
+            fine(n,fk  ,fj+1,fi+1)=ccval+gx1c*dx1fp+gx2c*dx2fp;
           }
         }
       }
     }
-  }
-  else if(pmb->block_size.nx2 > 1) {
-    int k=pmb->cks, fk=pmb->ks;
-    for(int n=sn; n<=en; n++) {
-      for(int j=sj; j<=ej; j++) {
+    else { // 1D
+      int k=pmb->cks, fk=pmb->ks, j=pmb->cjs, fj=pmb->js;
+       for(int n=s4; n<=e4; n++) {
+         for(int i=s1; i<=e1; i++) {
+            int fi=(i-pmb->cis)*2+pmb->is;
+            const Real& x1m = pcoarsec->x1v(i-1);
+            const Real& x1c = pcoarsec->x1v(i);
+            const Real& x1p = pcoarsec->x1v(i+1);
+            Real dx1m = x1c - x1m;
+            Real dx1p = x1p - x1c;
+            const Real& fx1m = pco->x1v(fi);
+            const Real& fx1p = pco->x1v(fi+1);
+            Real dx1fm= x1c-fx1m;
+            Real dx1fp= fx1p-x1c;
+            Real ccval=coarse(n,k,j,i);
+
+        // calculate 1D gradient using the min-mod limiter
+            Real gx1m = (ccval-coarse(n,k,j,i-1))/dx1m;
+            Real gx1p = (coarse(n,k,j,i+1)-ccval)/dx1p;
+            Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),std::abs(gx1p));
+
+        // interpolate on to the finer grid
+            fine(n,fk  ,fj  ,fi  )=ccval-gx1c*dx1fm;
+            fine(n,fk  ,fj  ,fi+1)=ccval+gx1c*dx1fp;
+          }
+        }
+     }
+  }  // end hydro = phys
+  else if(phys==RAD){
+  
+  
+    if(pmb->block_size.nx3 > 1) {
+
+      for(int k=s4; k<=e4; k++) {
+        int fk=(k-pmb->cks)*2+pmb->ks;
+        const Real& x3m = pcoarsec->x3v(k-1);
+        const Real& x3c = pcoarsec->x3v(k);
+        const Real& x3p = pcoarsec->x3v(k+1);
+        Real dx3m = x3c - x3m;
+        Real dx3p = x3p - x3c;
+        const Real& fx3m = pco->x3v(fk);
+        const Real& fx3p = pco->x3v(fk+1);
+        Real dx3fm= x3c-fx3m;
+        Real dx3fp= fx3p-x3c;
+        for(int j=s3; j<=e3; j++) {
+          int fj=(j-pmb->cjs)*2+pmb->js;
+          const Real& x2m = pcoarsec->x2v(j-1);
+          const Real& x2c = pcoarsec->x2v(j);
+          const Real& x2p = pcoarsec->x2v(j+1);
+          Real dx2m = x2c - x2m;
+          Real dx2p = x2p - x2c;
+          const Real& fx2m = pco->x2v(fj);
+          const Real& fx2p = pco->x2v(fj+1);
+          Real dx2fm= x2c-fx2m;
+          Real dx2fp= fx2p-x2c;
+          for(int i=s2; i<=e2; i++) {
+            int fi=(i-pmb->cis)*2+pmb->is;
+            const Real& x1m = pcoarsec->x1v(i-1);
+            const Real& x1c = pcoarsec->x1v(i);
+            const Real& x1p = pcoarsec->x1v(i+1);
+            Real dx1m = x1c - x1m;
+            Real dx1p = x1p - x1c;
+            const Real& fx1m = pco->x1v(fi);
+            const Real& fx1p = pco->x1v(fi+1);
+            Real dx1fm= x1c-fx1m;
+            Real dx1fp= fx1p-x1c;
+            for(int n=s1; n<=e1; n++) {
+              Real ccval=coarse(k,j,i,n);
+
+                // calculate 3D gradients using the minmod limiter
+              Real gx1m = (ccval-coarse(k,j,i-1,n))/dx1m;
+              Real gx1p = (coarse(k,j,i+1,n)-ccval)/dx1p;
+              Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),
+                            std::abs(gx1p));
+              Real gx2m = (ccval-coarse(k,j-1,i,n))/dx2m;
+              Real gx2p = (coarse(k,j+1,i,n)-ccval)/dx2p;
+              Real gx2c = 0.5*(SIGN(gx2m)+SIGN(gx2p))*std::min(std::abs(gx2m),
+                            std::abs(gx2p));
+              Real gx3m = (ccval-coarse(k-1,j,i,n))/dx3m;
+              Real gx3p = (coarse(k+1,j,i,n)-ccval)/dx3p;
+              Real gx3c = 0.5*(SIGN(gx3m)+SIGN(gx3p))*std::min(std::abs(gx3m),
+                            std::abs(gx3p));
+
+            // interpolate onto the finer grid
+              fine(fk  ,fj  ,fi  ,n)=ccval-gx1c*dx1fm-gx2c*dx2fm-gx3c*dx3fm;
+              fine(fk  ,fj  ,fi+1,n)=ccval+gx1c*dx1fp-gx2c*dx2fm-gx3c*dx3fm;
+              fine(fk  ,fj+1,fi  ,n)=ccval-gx1c*dx1fm+gx2c*dx2fp-gx3c*dx3fm;
+              fine(fk  ,fj+1,fi+1,n)=ccval+gx1c*dx1fp+gx2c*dx2fp-gx3c*dx3fm;
+              fine(fk+1,fj  ,fi  ,n)=ccval-gx1c*dx1fm-gx2c*dx2fm+gx3c*dx3fp;
+              fine(fk+1,fj  ,fi+1,n)=ccval+gx1c*dx1fp-gx2c*dx2fm+gx3c*dx3fp;
+              fine(fk+1,fj+1,fi  ,n)=ccval-gx1c*dx1fm+gx2c*dx2fp+gx3c*dx3fp;
+              fine(fk+1,fj+1,fi+1,n)=ccval+gx1c*dx1fp+gx2c*dx2fp+gx3c*dx3fp;
+            }
+          }
+        }
+      }
+    }
+    else if(pmb->block_size.nx2 > 1) {
+      int k=pmb->cks, fk=pmb->ks;
+      for(int j=s3; j<=e3; j++) {
         int fj=(j-pmb->cjs)*2+pmb->js;
         const Real& x2m = pcoarsec->x2v(j-1);
         const Real& x2c = pcoarsec->x2v(j);
@@ -449,7 +669,7 @@ void MeshRefinement::ProlongateCellCenteredValues(const AthenaArray<Real> &coars
         const Real& fx2p = pco->x2v(fj+1);
         Real dx2fm= x2c-fx2m;
         Real dx2fp= fx2p-x2c;
-        for(int i=si; i<=ei; i++) {
+        for(int i=s2; i<=e2; i++) {
           int fi=(i-pmb->cis)*2+pmb->is;
           const Real& x1m = pcoarsec->x1v(i-1);
           const Real& x1c = pcoarsec->x1v(i);
@@ -460,29 +680,32 @@ void MeshRefinement::ProlongateCellCenteredValues(const AthenaArray<Real> &coars
           const Real& fx1p = pco->x1v(fi+1);
           Real dx1fm= x1c-fx1m;
           Real dx1fp= fx1p-x1c;
-          Real ccval=coarse(n,k,j,i);
+          for(int n=s1; n<=e1; n++) {
+            Real ccval=coarse(k,j,i,n);
 
           // calculate 2D gradients using the minmod limiter
-          Real gx1m = (ccval-coarse(n,k,j,i-1))/dx1m;
-          Real gx1p = (coarse(n,k,j,i+1)-ccval)/dx1p;
-          Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),std::abs(gx1p));
-          Real gx2m = (ccval-coarse(n,k,j-1,i))/dx2m;
-          Real gx2p = (coarse(n,k,j+1,i)-ccval)/dx2p;
-          Real gx2c = 0.5*(SIGN(gx2m)+SIGN(gx2p))*std::min(std::abs(gx2m),std::abs(gx2p));
+            Real gx1m = (ccval-coarse(k,j,i-1,n))/dx1m;
+            Real gx1p = (coarse(k,j,i+1,n)-ccval)/dx1p;
+            Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),
+                 std::abs(gx1p));
+            Real gx2m = (ccval-coarse(k,j-1,i,n))/dx2m;
+            Real gx2p = (coarse(k,j+1,i,n)-ccval)/dx2p;
+            Real gx2c = 0.5*(SIGN(gx2m)+SIGN(gx2p))*std::min(std::abs(gx2m),
+                 std::abs(gx2p));
 
           // interpolate on to the finer grid
-          fine(n,fk  ,fj  ,fi  )=ccval-gx1c*dx1fm-gx2c*dx2fm;
-          fine(n,fk  ,fj  ,fi+1)=ccval+gx1c*dx1fp-gx2c*dx2fm;
-          fine(n,fk  ,fj+1,fi  )=ccval-gx1c*dx1fm+gx2c*dx2fp;
-          fine(n,fk  ,fj+1,fi+1)=ccval+gx1c*dx1fp+gx2c*dx2fp;
+            fine(fk  ,fj  ,fi  ,n)=ccval-gx1c*dx1fm-gx2c*dx2fm;
+            fine(fk  ,fj  ,fi+1,n)=ccval+gx1c*dx1fp-gx2c*dx2fm;
+            fine(fk  ,fj+1,fi  ,n)=ccval-gx1c*dx1fm+gx2c*dx2fp;
+            fine(fk  ,fj+1,fi+1,n)=ccval+gx1c*dx1fp+gx2c*dx2fp;
+          }
         }
       }
     }
-  }
-  else { // 1D
-    int k=pmb->cks, fk=pmb->ks, j=pmb->cjs, fj=pmb->js;
-    for(int n=sn; n<=en; n++) {
-      for(int i=si; i<=ei; i++) {
+    else { // 1D
+      int k=pmb->cks, fk=pmb->ks, j=pmb->cjs, fj=pmb->js;
+
+      for(int i=s2; i<=e2; i++) {
         int fi=(i-pmb->cis)*2+pmb->is;
         const Real& x1m = pcoarsec->x1v(i-1);
         const Real& x1c = pcoarsec->x1v(i);
@@ -493,18 +716,22 @@ void MeshRefinement::ProlongateCellCenteredValues(const AthenaArray<Real> &coars
         const Real& fx1p = pco->x1v(fi+1);
         Real dx1fm= x1c-fx1m;
         Real dx1fp= fx1p-x1c;
-        Real ccval=coarse(n,k,j,i);
+          for(int n=s1; n<=e1; n++) {
+            Real ccval=coarse(k,j,i,n);
 
         // calculate 1D gradient using the min-mod limiter
-        Real gx1m = (ccval-coarse(n,k,j,i-1))/dx1m;
-        Real gx1p = (coarse(n,k,j,i+1)-ccval)/dx1p;
-        Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),std::abs(gx1p));
+            Real gx1m = (ccval-coarse(k,j,i-1,n))/dx1m;
+            Real gx1p = (coarse(k,j,i+1,n)-ccval)/dx1p;
+            Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),
+                        std::abs(gx1p));
 
         // interpolate on to the finer grid
-        fine(n,fk  ,fj  ,fi  )=ccval-gx1c*dx1fm;
-        fine(n,fk  ,fj  ,fi+1)=ccval+gx1c*dx1fp;
-      }
+            fine(fk  ,fj  ,fi  ,n)=ccval-gx1c*dx1fm;
+            fine(fk  ,fj  ,fi+1,n)=ccval+gx1c*dx1fp;
+          }
+        }
     }
+  
   }
   return;
 }
@@ -708,10 +935,12 @@ void MeshRefinement::ProlongateSharedFieldX3(const AthenaArray<Real> &coarse,
 
           Real gx1m = (ccval-coarse(k,j,i-1))/dx1m;
           Real gx1p = (coarse(k,j,i+1)-ccval)/dx1p;
-          Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),std::abs(gx1p));
+          Real gx1c = 0.5*(SIGN(gx1m)+SIGN(gx1p))*std::min(std::abs(gx1m),
+                      std::abs(gx1p));
           Real gx2m = (ccval-coarse(k,j-1,i))/dx2m;
           Real gx2p = (coarse(k,j+1,i)-ccval)/dx2p;
-          Real gx2c = 0.5*(SIGN(gx2m)+SIGN(gx2p))*std::min(std::abs(gx2m),std::abs(gx2p));
+          Real gx2c = 0.5*(SIGN(gx2m)+SIGN(gx2p))*std::min(std::abs(gx2m),
+                      std::abs(gx2p));
 
           fine(fk,fj  ,fi  )=ccval-gx1c*(x1c-fx1m)-gx2c*(x2c-fx2m);
           fine(fk,fj  ,fi+1)=ccval+gx1c*(fx1p-x1c)-gx2c*(x2c-fx2m);
@@ -766,8 +995,10 @@ void MeshRefinement::ProlongateSharedFieldX3(const AthenaArray<Real> &coarse,
   else {
     for(int i=si; i<=ei; i++) {
       int fi=(si-pmb->cis)*2+pmb->is;
-      Real gxm = (coarse(0,0,si)-coarse(0,0,si-1))/(pcoarsec->x1s3(si)-pcoarsec->x1s3(si-1));
-      Real gxp = (coarse(0,0,si+1)-coarse(0,0,si))/(pcoarsec->x1s3(si+1)-pcoarsec->x1s3(si));
+      Real gxm = (coarse(0,0,si)-coarse(0,0,si-1))/(pcoarsec->x1s3(si)
+                 -pcoarsec->x1s3(si-1));
+      Real gxp = (coarse(0,0,si+1)-coarse(0,0,si))/(pcoarsec->x1s3(si+1)
+                 -pcoarsec->x1s3(si));
       Real gxc = 0.5*(SIGN(gxm)+SIGN(gxp))*std::min(std::abs(gxm),std::abs(gxp));
       fine(0,0,fi  )=fine(1,0,fi  )
                     =coarse(0,0,si)-gxc*(pcoarsec->x1s3(si)-pco->x1s3(fi));
@@ -819,47 +1050,71 @@ void MeshRefinement::ProlongateInternalField(FaceField &fine,
 #pragma unroll
             for(int ii=0; ii<2; ii++){
               int is=2*ii-1, fii=fi+ii, fip=fi+2*ii;
-              Uxx += is*(js*(fine.x2f(fk  ,fjp,fii)*sarea_x2_[0][2*jj](fii) + fine.x2f(fk+1,fjp,fii)*sarea_x2_[1][2*jj](fii))
-                           +(fine.x3f(fk+2,fjj,fii)*sarea_x3_[2][  jj](fii) - fine.x3f(fk  ,fjj,fii)*sarea_x3_[0][  jj](fii)));
-              Vyy += js*(   (fine.x3f(fk+2,fjj,fii)*sarea_x3_[2][  jj](fii) - fine.x3f(fk  ,fjj,fii)*sarea_x3_[0][  jj](fii))
-                        +is*(fine.x1f(fk  ,fjj,fip)*sarea_x1_[0][  jj](fip) + fine.x1f(fk+1,fjj,fip)*sarea_x1_[1][  jj](fip)));
-              Wzz +=     is*(fine.x1f(fk+1,fjj,fip)*sarea_x1_[1][  jj](fip) - fine.x1f(fk  ,fjj,fip)*sarea_x1_[0][  jj](fip))
-                        +js*(fine.x2f(fk+1,fjp,fii)*sarea_x2_[1][2*jj](fii) - fine.x2f(fk  ,fjp,fii)*sarea_x2_[0][2*jj](fii));
-              Uxyz += js*js*(fine.x1f(fk+1,fjj,fip)*sarea_x1_[1][  jj](fip) - fine.x1f(fk  ,fjj,fip)*sarea_x1_[0][  jj](fip));
-              Vxyz += is*js*(fine.x2f(fk+1,fjp,fii)*sarea_x2_[1][2*jj](fii) - fine.x2f(fk  ,fjp,fii)*sarea_x2_[0][2*jj](fii));
-              Wxyz += is*js*(fine.x3f(fk+2,fjj,fii)*sarea_x3_[2][  jj](fii) - fine.x3f(fk  ,fjj,fii)*sarea_x3_[0][  jj](fii));
+              Uxx += is*(js*(fine.x2f(fk  ,fjp,fii)*sarea_x2_[0][2*jj](fii)
+                           + fine.x2f(fk+1,fjp,fii)*sarea_x2_[1][2*jj](fii))
+                           +(fine.x3f(fk+2,fjj,fii)*sarea_x3_[2][  jj](fii)
+                           - fine.x3f(fk  ,fjj,fii)*sarea_x3_[0][  jj](fii)));
+              Vyy += js*(   (fine.x3f(fk+2,fjj,fii)*sarea_x3_[2][  jj](fii)
+                        - fine.x3f(fk  ,fjj,fii)*sarea_x3_[0][  jj](fii))
+                        +is*(fine.x1f(fk  ,fjj,fip)*sarea_x1_[0][  jj](fip)
+                        + fine.x1f(fk+1,fjj,fip)*sarea_x1_[1][  jj](fip)));
+              Wzz +=     is*(fine.x1f(fk+1,fjj,fip)*sarea_x1_[1][  jj](fip)
+                        - fine.x1f(fk  ,fjj,fip)*sarea_x1_[0][  jj](fip))
+                        +js*(fine.x2f(fk+1,fjp,fii)*sarea_x2_[1][2*jj](fii)
+                        - fine.x2f(fk  ,fjp,fii)*sarea_x2_[0][2*jj](fii));
+              Uxyz += js*js*(fine.x1f(fk+1,fjj,fip)*sarea_x1_[1][  jj](fip)
+                        - fine.x1f(fk  ,fjj,fip)*sarea_x1_[0][  jj](fip));
+              Vxyz += is*js*(fine.x2f(fk+1,fjp,fii)*sarea_x2_[1][2*jj](fii)
+                        - fine.x2f(fk  ,fjp,fii)*sarea_x2_[0][2*jj](fii));
+              Wxyz += is*js*(fine.x3f(fk+2,fjj,fii)*sarea_x3_[2][  jj](fii)
+                        - fine.x3f(fk  ,fjj,fii)*sarea_x3_[0][  jj](fii));
             }
           }
           Real Sdx1=SQR(pco->dx1f(fi)+pco->dx1f(fi+1));
-          Real Sdx2=SQR(pco->GetEdge2Length(fk+1,fj,fi+1)+pco->GetEdge2Length(fk+1,fj+1,fi+1));
-          Real Sdx3=SQR(pco->GetEdge3Length(fk,fj+1,fi+1)+pco->GetEdge3Length(fk+1,fj+1,fi+1));
+          Real Sdx2=SQR(pco->GetEdge2Length(fk+1,fj,fi+1)
+                    +pco->GetEdge2Length(fk+1,fj+1,fi+1));
+          Real Sdx3=SQR(pco->GetEdge3Length(fk,fj+1,fi+1)
+                    +pco->GetEdge3Length(fk+1,fj+1,fi+1));
           Uxx *= 0.125; Vyy *= 0.125; Wzz *= 0.125;
-          Uxyz *= 0.125/(Sdx2+Sdx3); Vxyz *= 0.125/(Sdx1+Sdx3); Wxyz *= 0.125/(Sdx1+Sdx2);
-          fine.x1f(fk  ,fj  ,fi+1)=(0.5*(fine.x1f(fk  ,fj  ,fi  )*sarea_x1_[0][0](fi  )+fine.x1f(fk  ,fj  ,fi+2)*sarea_x1_[0][0](fi+2))
+          Uxyz *= 0.125/(Sdx2+Sdx3); Vxyz *= 0.125/(Sdx1+Sdx3);
+          Wxyz *= 0.125/(Sdx1+Sdx2);
+          fine.x1f(fk  ,fj  ,fi+1)=(0.5*(fine.x1f(fk  ,fj  ,fi  )*sarea_x1_[0][0](fi  )
+                                 +fine.x1f(fk  ,fj  ,fi+2)*sarea_x1_[0][0](fi+2))
                                  + Uxx - Sdx3*Vxyz - Sdx2*Wxyz) / sarea_x1_[0][0](fi+1);
-          fine.x1f(fk  ,fj+1,fi+1)=(0.5*(fine.x1f(fk  ,fj+1,fi  )*sarea_x1_[0][1](fi  )+fine.x1f(fk  ,fj+1,fi+2)*sarea_x1_[0][1](fi+2))
+          fine.x1f(fk  ,fj+1,fi+1)=(0.5*(fine.x1f(fk  ,fj+1,fi  )*sarea_x1_[0][1](fi  )
+                                 +fine.x1f(fk  ,fj+1,fi+2)*sarea_x1_[0][1](fi+2))
                                  + Uxx - Sdx3*Vxyz + Sdx2*Wxyz) / sarea_x1_[0][1](fi+1);
-          fine.x1f(fk+1,fj  ,fi+1)=(0.5*(fine.x1f(fk+1,fj  ,fi  )*sarea_x1_[1][0](fi  )+fine.x1f(fk+1,fj  ,fi+2)*sarea_x1_[1][0](fi+2))
+          fine.x1f(fk+1,fj  ,fi+1)=(0.5*(fine.x1f(fk+1,fj  ,fi  )*sarea_x1_[1][0](fi  )
+                                 +fine.x1f(fk+1,fj  ,fi+2)*sarea_x1_[1][0](fi+2))
                                  + Uxx + Sdx3*Vxyz - Sdx2*Wxyz) / sarea_x1_[1][0](fi+1);
-          fine.x1f(fk+1,fj+1,fi+1)=(0.5*(fine.x1f(fk+1,fj+1,fi  )*sarea_x1_[1][1](fi  )+fine.x1f(fk+1,fj+1,fi+2)*sarea_x1_[1][1](fi+2))
+          fine.x1f(fk+1,fj+1,fi+1)=(0.5*(fine.x1f(fk+1,fj+1,fi  )*sarea_x1_[1][1](fi  )
+                                 +fine.x1f(fk+1,fj+1,fi+2)*sarea_x1_[1][1](fi+2))
                                  + Uxx + Sdx3*Vxyz + Sdx2*Wxyz) / sarea_x1_[1][1](fi+1);
 
-          fine.x2f(fk  ,fj+1,fi  )=(0.5*(fine.x2f(fk  ,fj  ,fi  )*sarea_x2_[0][0](fi  )+fine.x2f(fk  ,fj+2,fi  )*sarea_x2_[0][2](fi  ))
+          fine.x2f(fk  ,fj+1,fi  )=(0.5*(fine.x2f(fk  ,fj  ,fi  )*sarea_x2_[0][0](fi  )
+                                 +fine.x2f(fk  ,fj+2,fi  )*sarea_x2_[0][2](fi  ))
                                  + Vyy - Sdx3*Uxyz - Sdx1*Wxyz) / sarea_x2_[0][1](fi  );
-          fine.x2f(fk  ,fj+1,fi+1)=(0.5*(fine.x2f(fk  ,fj  ,fi+1)*sarea_x2_[0][0](fi+1)+fine.x2f(fk  ,fj+2,fi+1)*sarea_x2_[0][2](fi+1))
+          fine.x2f(fk  ,fj+1,fi+1)=(0.5*(fine.x2f(fk  ,fj  ,fi+1)*sarea_x2_[0][0](fi+1)
+                                 +fine.x2f(fk  ,fj+2,fi+1)*sarea_x2_[0][2](fi+1))
                                  + Vyy - Sdx3*Uxyz + Sdx1*Wxyz) / sarea_x2_[0][1](fi+1);
-          fine.x2f(fk+1,fj+1,fi  )=(0.5*(fine.x2f(fk+1,fj  ,fi  )*sarea_x2_[1][0](fi  )+fine.x2f(fk+1,fj+2,fi  )*sarea_x2_[1][2](fi  ))
+          fine.x2f(fk+1,fj+1,fi  )=(0.5*(fine.x2f(fk+1,fj  ,fi  )*sarea_x2_[1][0](fi  )
+                                 +fine.x2f(fk+1,fj+2,fi  )*sarea_x2_[1][2](fi  ))
                                  + Vyy + Sdx3*Uxyz - Sdx1*Wxyz) / sarea_x2_[1][1](fi  );
-          fine.x2f(fk+1,fj+1,fi+1)=(0.5*(fine.x2f(fk+1,fj  ,fi+1)*sarea_x2_[1][0](fi+1)+fine.x2f(fk+1,fj+2,fi+1)*sarea_x2_[1][2](fi+1))
+          fine.x2f(fk+1,fj+1,fi+1)=(0.5*(fine.x2f(fk+1,fj  ,fi+1)*sarea_x2_[1][0](fi+1)
+                                 +fine.x2f(fk+1,fj+2,fi+1)*sarea_x2_[1][2](fi+1))
                                  + Vyy + Sdx3*Uxyz + Sdx1*Wxyz) / sarea_x2_[1][1](fi+1);
-
-          fine.x3f(fk+1,fj  ,fi  )=(0.5*(fine.x3f(fk+2,fj  ,fi  )*sarea_x3_[2][0](fi  )+fine.x3f(fk  ,fj  ,fi  )*sarea_x3_[0][0](fi  ))
+          
+          fine.x3f(fk+1,fj  ,fi  )=(0.5*(fine.x3f(fk+2,fj  ,fi  )*sarea_x3_[2][0](fi  )
+                                 +fine.x3f(fk  ,fj  ,fi  )*sarea_x3_[0][0](fi  ))
                                  + Wzz - Sdx2*Uxyz - Sdx1*Vxyz) / sarea_x3_[1][0](fi  );
-          fine.x3f(fk+1,fj  ,fi+1)=(0.5*(fine.x3f(fk+2,fj  ,fi+1)*sarea_x3_[2][0](fi+1)+fine.x3f(fk  ,fj  ,fi+1)*sarea_x3_[0][0](fi+1))
+          fine.x3f(fk+1,fj  ,fi+1)=(0.5*(fine.x3f(fk+2,fj  ,fi+1)*sarea_x3_[2][0](fi+1)
+                                 +fine.x3f(fk  ,fj  ,fi+1)*sarea_x3_[0][0](fi+1))
                                  + Wzz - Sdx2*Uxyz + Sdx1*Vxyz) / sarea_x3_[1][0](fi+1);
-          fine.x3f(fk+1,fj+1,fi  )=(0.5*(fine.x3f(fk+2,fj+1,fi  )*sarea_x3_[2][1](fi  )+fine.x3f(fk  ,fj+1,fi  )*sarea_x3_[0][1](fi  ))
+          fine.x3f(fk+1,fj+1,fi  )=(0.5*(fine.x3f(fk+2,fj+1,fi  )*sarea_x3_[2][1](fi  )
+                                 +fine.x3f(fk  ,fj+1,fi  )*sarea_x3_[0][1](fi  ))
                                  + Wzz + Sdx2*Uxyz - Sdx1*Vxyz) / sarea_x3_[1][1](fi  );
-          fine.x3f(fk+1,fj+1,fi+1)=(0.5*(fine.x3f(fk+2,fj+1,fi+1)*sarea_x3_[2][1](fi+1)+fine.x3f(fk  ,fj+1,fi+1)*sarea_x3_[0][1](fi+1))
+          fine.x3f(fk+1,fj+1,fi+1)=(0.5*(fine.x3f(fk+2,fj+1,fi+1)*sarea_x3_[2][1](fi+1)
+                                 +fine.x3f(fk  ,fj+1,fi+1)*sarea_x3_[0][1](fi+1))
                                  + Wzz + Sdx2*Uxyz + Sdx1*Vxyz) / sarea_x3_[1][1](fi+1);
         }
       }
@@ -885,13 +1140,17 @@ void MeshRefinement::ProlongateInternalField(FaceField &fine,
                        -fine.x1f(fk,fj+1,fi  )*sarea_x1_[0][1](fi  )
                        +fine.x1f(fk,fj+1,fi+2)*sarea_x1_[0][1](fi+2));
         fine.x1f(fk,fj  ,fi+1)=(0.5*(fine.x1f(fk,fj,  fi  )*sarea_x1_[0][0](fi  )
-                                    +fine.x1f(fk,fj,  fi+2)*sarea_x1_[0][0](fi+2))+tmp1)/sarea_x1_[0][0](fi+1);
+                                    +fine.x1f(fk,fj,  fi+2)*sarea_x1_[0][0](fi+2))+tmp1)
+                                     /sarea_x1_[0][0](fi+1);
         fine.x1f(fk,fj+1,fi+1)=(0.5*(fine.x1f(fk,fj+1,fi  )*sarea_x1_[0][1](fi  )
-                                    +fine.x1f(fk,fj+1,fi+2)*sarea_x1_[0][1](fi+2))+tmp1)/sarea_x1_[0][1](fi+1);
+                                    +fine.x1f(fk,fj+1,fi+2)*sarea_x1_[0][1](fi+2))+tmp1)
+                                    /sarea_x1_[0][1](fi+1);
         fine.x2f(fk,fj+1,fi  )=(0.5*(fine.x2f(fk,fj,  fi  )*sarea_x2_[0][0](fi  )
-                                    +fine.x2f(fk,fj+2,fi  )*sarea_x2_[0][2](fi  ))+tmp2)/sarea_x2_[0][1](fi  );
+                                    +fine.x2f(fk,fj+2,fi  )*sarea_x2_[0][2](fi  ))+tmp2)
+                                    /sarea_x2_[0][1](fi  );
         fine.x2f(fk,fj+1,fi+1)=(0.5*(fine.x2f(fk,fj,  fi+1)*sarea_x2_[0][0](fi+1)
-                                    +fine.x2f(fk,fj+2,fi+1)*sarea_x2_[0][2](fi+1))+tmp2)/sarea_x2_[0][1](fi+1);
+                                    +fine.x2f(fk,fj+2,fi+1)*sarea_x2_[0][2](fi+1))+tmp2)
+                                    /sarea_x2_[0][1](fi+1);
       }
     }
   }

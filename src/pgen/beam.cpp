@@ -46,10 +46,17 @@ static int octnum;
  *
  *====================================================================================*/
 
+void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+                     int is, int ie, int js, int je, int ks, int ke);
+
 void Mesh::InitUserMeshProperties(ParameterInput *pin)
 {
   ang = pin->GetOrAddInteger("problem","ang",0);
   octnum = pin->GetOrAddInteger("problem","octnum",0);
+  
+    // Enroll boundary functions
+  if(RADIATION_ENABLED)
+  EnrollUserRadBoundaryFunction(INNER_X2, TwoBeams);
 
   return;
 }
@@ -106,7 +113,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
             prad->sigma_a(k,j,i,ifr) = 0.0;
           }
           for(int n=0; n<prad->n_fre_ang; ++n){
-              prad->ir(k,j,i,n) = 1.0;
+              prad->ir(k,j,i,n) = 0.0;
           }
         }
       }
@@ -124,6 +131,45 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 void MeshBlock::UserWorkInLoop(void)
 {
   // nothing to do
+  return;
+}
+
+
+void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+                     int is, int ie, int js, int je, int ks, int ke)
+{
+  Radiation *prad=pmb->prad;
+  int nang=prad->nang;
+  int noct=prad->noct;
+  int nfreq=prad->nfreq;
+  int ang_oct=nang/noct;
+  
+  for (int k=ks; k<=ke; ++k) {
+    for (int j=1; j<=(NGHOST); ++j) {
+      for (int i=is; i<=ie; ++i) {
+        Real &x1 = pco->x1v(i);
+        Real &x2 = pco->x2v(j);
+        for(int ifr=0; ifr<nfreq; ++ifr){
+        for(int l=0; l<noct; ++l){
+        for(int n=0; n<ang_oct; ++n){
+          int n_ang=l*ang_oct + n;
+          Real slope1=prad->mu(1,k,j,i,0)/prad->mu(0,k,j,i,0);
+          Real slope2=prad->mu(1,k,j,i,n_ang)/prad->mu(0,k,j,i,n_ang);
+          Real dis1=fabs(slope1*(x1-0.1)+(x2+2.0));
+          Real dis2=fabs(slope2*(x1+0.1)+(x2+2.0));
+          if(((l==0)&&(n==0)&&(dis1<pco->dx1v(i))) ||
+               ((l==1)&&(n==0)&&(dis2<pco->dx1v(i)))){
+            a(k,js-j,i,n_ang+ifr*nang) = 10.0;
+          }else{
+            a(k,js-j,i,n_ang+ifr*nang) = 0.0;
+          }
+        }
+        }
+        }
+
+    }}
+  }
+
   return;
 }
 

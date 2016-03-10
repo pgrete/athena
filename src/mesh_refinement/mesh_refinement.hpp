@@ -31,6 +31,7 @@ private:
   MeshBlock *pmy_mblock_;
   Coordinates *pcoarsec;
   AthenaArray<Real> coarse_cons_, coarse_prim_, coarse_bcc_;
+  AthenaArray<Real> coarse_ir_; // radiation variable in the coarse grid
   FaceField coarse_b_;
   AthenaArray<Real> fvol_[2][2], sarea_x1_[2][2], sarea_x2_[2][3], sarea_x3_[3][2];
 
@@ -46,8 +47,8 @@ public:
   ~MeshRefinement();
 
   void RestrictCellCenteredValues(const AthenaArray<Real> &fine,
-                                  AthenaArray<Real> &coarse, int sn, int en,
-                                  int csi, int cei, int csj, int cej, int csk, int cek);
+                                  AthenaArray<Real> &coarse, int phys, int s4, int e4,
+                                  int cs3, int ce3, int cs2, int ce2, int cs1, int ce1);
   void RestrictFieldX1(const AthenaArray<Real> &fine, AthenaArray<Real> &coarse,
                        int csi, int cei, int csj, int cej, int csk, int cek);
   void RestrictFieldX2(const AthenaArray<Real> &fine, AthenaArray<Real> &coarse,
@@ -55,8 +56,8 @@ public:
   void RestrictFieldX3(const AthenaArray<Real> &fine, AthenaArray<Real> &coarse,
                        int csi, int cei, int csj, int cej, int csk, int cek);
   void ProlongateCellCenteredValues(const AthenaArray<Real> &coarse,
-                                    AthenaArray<Real> &fine, int sn, int en,
-                                    int si, int ei, int sj, int ej, int sk, int ek);
+                                    AthenaArray<Real> &fine, int phys, int s4, int e4,
+                                    int s3, int e3, int s2, int e2, int s1, int e1);
   void ProlongateSharedFieldX1(const AthenaArray<Real> &coarse, AthenaArray<Real> &fine,
                                int si, int ei, int sj, int ej, int sk, int ek);
   void ProlongateSharedFieldX2(const AthenaArray<Real> &coarse, AthenaArray<Real> &fine,

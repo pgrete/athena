@@ -33,6 +33,7 @@
 #include "hydro/integrators/hydro_integrator.hpp"
 #include "field/integrators/field_integrator.hpp"
 #include "radiation/radiation.hpp"
+#include "radiation/integrators/rad_integrators.hpp"
 
 
 // this class header
@@ -76,12 +77,36 @@ TaskList::TaskList(Mesh *pm)
     else {
       AddTask(1,CON2PRIM,1,(HYD_INT|HYD_RECV|FLD_INT|FLD_RECV));
     }
+    
     AddTask(1,PHY_BVAL,1,CON2PRIM);
     
-    AddTask(1,RAD_SEND,1,PHY_BVAL);
-    AddTask(1,RAD_RECV,1,NONE);
-    AddTask(1,RAD_BVAL,1,PHY_BVAL);
+    // The radiation steps
+    if (RADIATION_ENABLED){
+      
+      AddTask(1,RAD_FLX,1,NONE);
+      
+      if(pmy_mesh_->multilevel==true){
+    
+        AddTask(1,RADFLX_SEND,1,RAD_FLX);
+        AddTask(1,RADFLX_RECV,1,RAD_FLX);
+        AddTask(1,RAD_INT,1,RADFLX_RECV);
+        AddTask(1,RAD_SEND,1,RAD_INT);
+      }else{
+        AddTask(1,RAD_INT,1,RAD_FLX);
+        AddTask(1,RAD_SEND,1,RAD_INT);
+      }
 
+      AddTask(1,RAD_RECV,1,NONE);
+      
+      if(pmy_mesh_->multilevel==true){
+        AddTask(1,PROLRAD,1,RAD_SEND|RAD_RECV);
+        AddTask(1,RAD_BVAL,1,PROLRAD);
+      }else{
+        AddTask(1,RAD_BVAL,1,(RAD_INT|RAD_RECV));
+      }
+      
+    }
+    
     // MHD correct
     AddTask(2,CALC_FLX,1,PHY_BVAL);
     if(pmy_mesh_->multilevel==true) { // SMR or AMR
@@ -113,13 +138,35 @@ TaskList::TaskList(Mesh *pm)
     }
     AddTask(2,PHY_BVAL,2,CON2PRIM);
     
-    AddTask(2,RAD_SEND,2,PHY_BVAL);
-    AddTask(2,RAD_RECV,2,NONE);
-    AddTask(2,RAD_BVAL,2,PHY_BVAL);
+    if(RADIATION_ENABLED){
+
+      AddTask(2,RAD_FLX,1,RAD_BVAL&PHY_BVAL);
+      
+      if(pmy_mesh_->multilevel==true){
+    
+        AddTask(2,RADFLX_SEND,2,RAD_FLX);
+        AddTask(2,RADFLX_RECV,2,RAD_FLX);
+        AddTask(2,RAD_INT,2,RADFLX_RECV);
+        AddTask(2,RAD_SEND,2,RAD_INT);
+      }else{
+        AddTask(2,RAD_INT,2,RAD_FLX);
+        AddTask(2,RAD_SEND,2,RAD_INT);
+      }
+
+      AddTask(2,RAD_RECV,1,RAD_BVAL&PHY_BVAL);
+      
+      if(pmy_mesh_->multilevel==true){
+        AddTask(2,PROLRAD,2,RAD_SEND|RAD_RECV);
+        AddTask(2,RAD_BVAL,2,PROLRAD);
+      }else{
+        AddTask(2,RAD_BVAL,2,(RAD_INT|RAD_RECV));
+      }
+    }// End Radiation
   }
   else {
     // Hydro predict
     AddTask(1,CALC_FLX,1,NONE);
+    
     if(pmy_mesh_->multilevel==true) { // SMR or AMR
       AddTask(1,FLX_SEND,1,CALC_FLX);
       AddTask(1,FLX_RECV,1,CALC_FLX);
@@ -138,10 +185,32 @@ TaskList::TaskList(Mesh *pm)
     }
     AddTask(1,PHY_BVAL,1,CON2PRIM);
     
-    AddTask(1,RAD_SEND,1,PHY_BVAL);
-    AddTask(1,RAD_RECV,1,NONE);
-    AddTask(1,RAD_BVAL,1,PHY_BVAL);
+    // The radiation steps
+    if (RADIATION_ENABLED){
+      
+      AddTask(1,RAD_FLX,1,NONE);
+      
+      if(pmy_mesh_->multilevel==true){
+    
+        AddTask(1,RADFLX_SEND,1,RAD_FLX);
+        AddTask(1,RADFLX_RECV,1,RAD_FLX);
+        AddTask(1,RAD_INT,1,RADFLX_RECV);
+        AddTask(1,RAD_SEND,1,RAD_INT);
+      }else{
+        AddTask(1,RAD_INT,1,RAD_FLX);
+        AddTask(1,RAD_SEND,1,RAD_INT);
+      }
 
+      AddTask(1,RAD_RECV,1,NONE);
+      
+      if(pmy_mesh_->multilevel==true){
+        AddTask(1,PROLRAD,1,RAD_SEND|RAD_RECV);
+        AddTask(1,RAD_BVAL,1,PROLRAD);
+      }else{
+        AddTask(1,RAD_BVAL,1,(RAD_INT|RAD_RECV));
+      }
+      
+    }// End radiation
 
     // Hydro correct
     AddTask(2,CALC_FLX,1,PHY_BVAL);
@@ -163,9 +232,31 @@ TaskList::TaskList(Mesh *pm)
     }
     AddTask(2,PHY_BVAL,2,CON2PRIM);
     
-    AddTask(2,RAD_SEND,2,PHY_BVAL);
-    AddTask(2,RAD_RECV,2,NONE);
-    AddTask(2,RAD_BVAL,2,PHY_BVAL);
+    if(RADIATION_ENABLED){
+
+      AddTask(2,RAD_FLX,1,RAD_BVAL&PHY_BVAL);
+      
+      if(pmy_mesh_->multilevel==true){
+    
+        AddTask(2,RADFLX_SEND,2,RAD_FLX);
+        AddTask(2,RADFLX_RECV,2,RAD_FLX);
+        AddTask(2,RAD_INT,2,RADFLX_RECV);
+        AddTask(2,RAD_SEND,2,RAD_INT);
+      }else{
+        AddTask(2,RAD_INT,2,RAD_FLX);
+        AddTask(2,RAD_SEND,2,RAD_INT);
+      }
+
+      AddTask(2,RAD_RECV,1,RAD_BVAL&PHY_BVAL);
+      
+      if(pmy_mesh_->multilevel==true){
+        AddTask(2,PROLRAD,2,RAD_SEND|RAD_RECV);
+        AddTask(2,RAD_BVAL,2,PROLRAD);
+      }else{
+        AddTask(2,RAD_BVAL,2,(RAD_INT|RAD_RECV));
+      }
+    }// End Radiation
+    
   }
   
   AddTask(2,USERWORK,2,PHY_BVAL);
@@ -212,13 +303,12 @@ enum TaskStatus FluxCorrectSend(MeshBlock *pmb, unsigned long int task_id, int s
   } else if(step == 2) {
     flag = 0;
   }
-  pmb->pbval->SendFluxCorrection(flag);
+  pmb->pbval->SendFluxCorrection(flag, HYDRO);
   return TASK_SUCCESS;
 }
 
 enum TaskStatus FluxCorrectReceive(MeshBlock *pmb, unsigned long int task_id, int step)
 {
-  Hydro *phydro=pmb->phydro;
   BoundaryValues *pbval=pmb->pbval;
   int flag;
   if(step == 1) {
@@ -226,7 +316,7 @@ enum TaskStatus FluxCorrectReceive(MeshBlock *pmb, unsigned long int task_id, in
   } else if(step == 2) {
     flag = 0;
   }
-  bool ret=pbval->ReceiveFluxCorrection(flag);
+  bool ret=pbval->ReceiveFluxCorrection(flag, HYDRO);
   if(ret==true) {
     return TASK_NEXT;
   } else {
@@ -500,6 +590,81 @@ enum TaskStatus RadPhysicalBoundary(MeshBlock *pmb, unsigned long int task_id, i
   return TASK_SUCCESS;
 }
 
+enum TaskStatus RadFlux(MeshBlock *pmb, unsigned long int task_id, int step)
+{
+  Radiation *prad = pmb->prad;
+  if(step == 1) {
+    prad->ir1 = prad->ir;
+    prad->pradintegrator->CalculateFluxes(pmb, prad->ir, 1);
+  } else if(step == 2) {
+    prad->pradintegrator->CalculateFluxes(pmb, prad->ir1, 2);
+  } else {
+    return TASK_FAIL;
+  }
+
+  return TASK_NEXT;
+}
+
+enum TaskStatus RadIntegrate(MeshBlock *pmb, unsigned long int task_id, int step)
+{
+  Radiation *prad=pmb->prad;
+  
+  if(step == 1) {
+    prad->pradintegrator->FluxDivergence(pmb, prad->ir1, 1);
+  } else if(step == 2) {
+    prad->pradintegrator->FluxDivergence(pmb, prad->ir, 2);
+  } else {
+    return TASK_FAIL;
+  }
+
+  return TASK_NEXT;
+}
+
+enum TaskStatus RadFluxCorrectSend(MeshBlock *pmb, unsigned long int task_id, int step)
+{
+  int flag;
+  if(step == 1) {
+    flag = 1;
+  } else if(step == 2) {
+    flag = 0;
+  }
+  pmb->pbval->SendFluxCorrection(flag, RAD);
+  return TASK_SUCCESS;
+}
+
+enum TaskStatus RadFluxCorrectReceive(MeshBlock *pmb, unsigned long int task_id,
+                                  int step)
+{
+  BoundaryValues *pbval=pmb->pbval;
+  int flag;
+  if(step == 1) {
+    flag = 1;
+  } else if(step == 2) {
+    flag = 0;
+  }
+  bool ret=pbval->ReceiveFluxCorrection(flag, RAD);
+  if(ret==true) {
+    return TASK_NEXT;
+  } else {
+    return TASK_FAIL;
+  }
+}
+
+enum TaskStatus RadProlongation(MeshBlock *pmb, unsigned long int task_id, int step)
+{
+  Radiation *prad=pmb->prad;
+  BoundaryValues *pbval=pmb->pbval;
+  if(step == 1) {
+    pbval->ProlongateRadBoundaries(prad->ir1);
+  } else if(step == 2) {
+    pbval->ProlongateRadBoundaries(prad->ir);
+  } else {
+    return TASK_FAIL;
+  }
+  return TASK_SUCCESS;
+}
+
+
 } // namespace TaskFunctions
 
 
@@ -594,6 +759,26 @@ void TaskList::AddTask(int stp_t,unsigned long int id,int stp_d,unsigned long in
     
   case (RAD_BVAL):
     task_list_[ntasks].TaskFunc=TaskFunctions::RadPhysicalBoundary;
+    break;
+    
+  case (RAD_FLX):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadFlux;
+    break;
+    
+  case (RAD_INT):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadIntegrate;
+    break;
+    
+  case (RADFLX_SEND):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadFluxCorrectSend;
+    break;
+    
+  case (RADFLX_RECV):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadFluxCorrectReceive;
+    break;
+  
+  case (PROLRAD):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadProlongation;
     break;
     
     
