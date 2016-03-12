@@ -452,3 +452,19 @@ void Coordinates::VisSrcTermsX3(const int k, const int j, const Real dt,
   return;
 }
 
+
+// For radiation angles
+void Coordinates::AxisDirection(int *axisx, int *axisy, int *axisz)
+{
+  *axisx = 0;
+  *axisy = 1;
+  *axisz = 2;
+}
+
+
+void Coordinates::ConvertAngle(MeshBlock *pmb, const int nang,
+                                AthenaArray<Real> &mu)
+{
+
+}
+

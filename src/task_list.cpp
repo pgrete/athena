@@ -90,10 +90,13 @@ TaskList::TaskList(Mesh *pm)
         AddTask(1,RADFLX_SEND,1,RAD_FLX);
         AddTask(1,RADFLX_RECV,1,RAD_FLX);
         AddTask(1,RAD_INT,1,RADFLX_RECV);
-        AddTask(1,RAD_SEND,1,RAD_INT);
+        AddTask(1,RAD_SOURCE,1,RAD_INT);
+        AddTask(1,RAD_SEND,1,RAD_SOURCE);
       }else{
+      
         AddTask(1,RAD_INT,1,RAD_FLX);
-        AddTask(1,RAD_SEND,1,RAD_INT);
+        AddTask(1,RAD_SOURCE,1,RAD_INT);
+        AddTask(1,RAD_SEND,1,RAD_SOURCE);
       }
 
       AddTask(1,RAD_RECV,1,NONE);
@@ -102,8 +105,10 @@ TaskList::TaskList(Mesh *pm)
         AddTask(1,PROLRAD,1,RAD_SEND|RAD_RECV);
         AddTask(1,RAD_BVAL,1,PROLRAD);
       }else{
-        AddTask(1,RAD_BVAL,1,(RAD_INT|RAD_RECV));
+        AddTask(1,RAD_BVAL,1,(RAD_SOURCE|RAD_RECV));
       }
+      
+      AddTask(1,RAD_OPACITY,1,RAD_BVAL&PHY_BVAL);
       
     }
     
@@ -147,10 +152,12 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,RADFLX_SEND,2,RAD_FLX);
         AddTask(2,RADFLX_RECV,2,RAD_FLX);
         AddTask(2,RAD_INT,2,RADFLX_RECV);
-        AddTask(2,RAD_SEND,2,RAD_INT);
+        AddTask(2,RAD_SOURCE,2,RAD_INT);
+        AddTask(2,RAD_SEND,2,RAD_SOURCE);
       }else{
         AddTask(2,RAD_INT,2,RAD_FLX);
-        AddTask(2,RAD_SEND,2,RAD_INT);
+        AddTask(2,RAD_SOURCE,2,RAD_INT);
+        AddTask(2,RAD_SEND,2,RAD_SOURCE);
       }
 
       AddTask(2,RAD_RECV,1,RAD_BVAL&PHY_BVAL);
@@ -159,8 +166,11 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,PROLRAD,2,RAD_SEND|RAD_RECV);
         AddTask(2,RAD_BVAL,2,PROLRAD);
       }else{
-        AddTask(2,RAD_BVAL,2,(RAD_INT|RAD_RECV));
+        AddTask(2,RAD_BVAL,2,(RAD_SOURCE|RAD_RECV));
       }
+      
+      AddTask(2,RAD_OPACITY,2,RAD_BVAL&PHY_BVAL);
+    
     }// End Radiation
   }
   else {
@@ -195,10 +205,12 @@ TaskList::TaskList(Mesh *pm)
         AddTask(1,RADFLX_SEND,1,RAD_FLX);
         AddTask(1,RADFLX_RECV,1,RAD_FLX);
         AddTask(1,RAD_INT,1,RADFLX_RECV);
-        AddTask(1,RAD_SEND,1,RAD_INT);
+        AddTask(1,RAD_SOURCE,1,RAD_INT);
+        AddTask(1,RAD_SEND,1,RAD_SOURCE);
       }else{
         AddTask(1,RAD_INT,1,RAD_FLX);
-        AddTask(1,RAD_SEND,1,RAD_INT);
+        AddTask(1,RAD_SOURCE,1,RAD_INT);
+        AddTask(1,RAD_SEND,1,RAD_SOURCE);
       }
 
       AddTask(1,RAD_RECV,1,NONE);
@@ -207,8 +219,10 @@ TaskList::TaskList(Mesh *pm)
         AddTask(1,PROLRAD,1,RAD_SEND|RAD_RECV);
         AddTask(1,RAD_BVAL,1,PROLRAD);
       }else{
-        AddTask(1,RAD_BVAL,1,(RAD_INT|RAD_RECV));
+        AddTask(1,RAD_BVAL,1,(RAD_SOURCE|RAD_RECV));
       }
+      
+      AddTask(1,RAD_OPACITY,1,RAD_BVAL&PHY_BVAL);
       
     }// End radiation
 
@@ -241,10 +255,12 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,RADFLX_SEND,2,RAD_FLX);
         AddTask(2,RADFLX_RECV,2,RAD_FLX);
         AddTask(2,RAD_INT,2,RADFLX_RECV);
-        AddTask(2,RAD_SEND,2,RAD_INT);
+        AddTask(2,RAD_SOURCE,2,RAD_INT);
+        AddTask(2,RAD_SEND,2,RAD_SOURCE);
       }else{
         AddTask(2,RAD_INT,2,RAD_FLX);
-        AddTask(2,RAD_SEND,2,RAD_INT);
+        AddTask(2,RAD_SOURCE,2,RAD_INT);
+        AddTask(2,RAD_SEND,2,RAD_SOURCE);
       }
 
       AddTask(2,RAD_RECV,1,RAD_BVAL&PHY_BVAL);
@@ -253,8 +269,11 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,PROLRAD,2,RAD_SEND|RAD_RECV);
         AddTask(2,RAD_BVAL,2,PROLRAD);
       }else{
-        AddTask(2,RAD_BVAL,2,(RAD_INT|RAD_RECV));
+        AddTask(2,RAD_BVAL,2,(RAD_SOURCE|RAD_RECV));
       }
+      
+      AddTask(2,RAD_OPACITY,2,RAD_BVAL&PHY_BVAL);
+      
     }// End Radiation
     
   }
@@ -593,11 +612,12 @@ enum TaskStatus RadPhysicalBoundary(MeshBlock *pmb, unsigned long int task_id, i
 enum TaskStatus RadFlux(MeshBlock *pmb, unsigned long int task_id, int step)
 {
   Radiation *prad = pmb->prad;
+  Hydro *phydro = pmb->phydro;
   if(step == 1) {
     prad->ir1 = prad->ir;
-    prad->pradintegrator->CalculateFluxes(pmb, prad->ir, 1);
+    prad->pradintegrator->CalculateFluxes(pmb, phydro->w, prad->ir, 1);
   } else if(step == 2) {
-    prad->pradintegrator->CalculateFluxes(pmb, prad->ir1, 2);
+    prad->pradintegrator->CalculateFluxes(pmb, phydro->w1, prad->ir1, 2);
   } else {
     return TASK_FAIL;
   }
@@ -613,6 +633,39 @@ enum TaskStatus RadIntegrate(MeshBlock *pmb, unsigned long int task_id, int step
     prad->pradintegrator->FluxDivergence(pmb, prad->ir1, 1);
   } else if(step == 2) {
     prad->pradintegrator->FluxDivergence(pmb, prad->ir, 2);
+  } else {
+    return TASK_FAIL;
+  }
+
+  return TASK_NEXT;
+}
+
+
+enum TaskStatus RadSource(MeshBlock *pmb, unsigned long int task_id, int step)
+{
+  Radiation *prad = pmb->prad;
+  Hydro *phydro=pmb->phydro;
+  
+  if(step == 1) {
+    prad->pradintegrator->AddSourceTerms(pmb, phydro->u1, phydro->w, prad->ir1, 1);
+  } else if(step == 2) {
+    prad->pradintegrator->AddSourceTerms(pmb, phydro->u, phydro->w1, prad->ir, 2);
+  } else {
+    return TASK_FAIL;
+  }
+
+  return TASK_NEXT;
+}
+
+enum TaskStatus RadOpacity(MeshBlock *pmb, unsigned long int task_id, int step)
+{
+  Radiation *prad = pmb->prad;
+  Hydro *phydro=pmb->phydro;
+  
+  if(step == 1) {
+    prad->UpdateOpacity(pmb, phydro->w);
+  } else if(step == 2) {
+    prad->UpdateOpacity(pmb, phydro->w1);
   } else {
     return TASK_FAIL;
   }
@@ -781,6 +834,12 @@ void TaskList::AddTask(int stp_t,unsigned long int id,int stp_d,unsigned long in
     task_list_[ntasks].TaskFunc=TaskFunctions::RadProlongation;
     break;
     
+  case (RAD_SOURCE):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadSource;
+    break;
+  case (RAD_OPACITY):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadOpacity;
+    break;
     
   default:
     std::stringstream msg;

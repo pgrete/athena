@@ -32,6 +32,11 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 {
 
   pmy_rad = prad;
+  
+      // factor to separate the diffusion and advection part
+  taufact_ = pin->GetOrAddInteger("radiation","taucell",5);
+  compton_flag_=pin->GetOrAddInteger("radiation","Compton",0);
+
 
   int nthreads = prad->pmy_block->pmy_mesh->GetNumMeshThreads();
   int ncells1 = prad->pmy_block->block_size.nx1 + 2*(NGHOST);
@@ -40,6 +45,9 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 
   flx_.NewAthenaArray(nthreads,ncells1,prad->n_fre_ang);
   vel_.NewAthenaArray(nthreads,ncells1,prad->n_fre_ang);
+  flx2_.NewAthenaArray(nthreads,ncells1,prad->n_fre_ang);
+  vel2_.NewAthenaArray(nthreads,ncells1,prad->n_fre_ang);
+  
   x1face_area_.NewAthenaArray(nthreads,ncells1+1);
   if(prad->pmy_block->block_size.nx2 > 1) {
     x2face_area_.NewAthenaArray(nthreads,ncells1);
@@ -55,6 +63,14 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
   
   temp_i1_.NewAthenaArray(nthreads,ncells3,ncells2,ncells1,prad->n_fre_ang);
   temp_i2_.NewAthenaArray(nthreads,ncells3,ncells2,ncells1,prad->n_fre_ang);
+  
+  vncsigma_.NewAthenaArray(prad->nang);
+  vncsigma2_.NewAthenaArray(prad->nang);
+  wmu_cm_.NewAthenaArray(prad->nang);
+  tran_coef_.NewAthenaArray(prad->nang);
+  cm_to_lab_.NewAthenaArray(prad->nang);
+  ir_cm_.NewAthenaArray(prad->n_fre_ang);
+
 }
 
 // destructor
@@ -63,6 +79,9 @@ RadIntegrator::~RadIntegrator()
 {
   flx_.DeleteAthenaArray();
   vel_.DeleteAthenaArray();
+  flx2_.DeleteAthenaArray();
+  vel2_.DeleteAthenaArray();
+  
   x1face_area_.DeleteAthenaArray();
   if(pmy_rad->pmy_block->block_size.nx2 > 1) {
     x2face_area_.DeleteAthenaArray();
@@ -75,6 +94,13 @@ RadIntegrator::~RadIntegrator()
   cell_volume_.DeleteAthenaArray();
   temp_i1_.DeleteAthenaArray();
   temp_i2_.DeleteAthenaArray();
+  
+  vncsigma_.DeleteAthenaArray();
+  vncsigma2_.DeleteAthenaArray();
+  wmu_cm_.DeleteAthenaArray();
+  tran_coef_.DeleteAthenaArray();
+  cm_to_lab_.DeleteAthenaArray();
+  ir_cm_.DeleteAthenaArray();
   
 }
 

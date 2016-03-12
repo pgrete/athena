@@ -23,5 +23,15 @@ void Lubksb_nr(int n, AthenaArray<Real> &a, AthenaArray<int> &indx,
                AthenaArray<Real> &b);
 void InverseMatrix(int n, AthenaArray<Real> &a, AthenaArray<Real> &b);
 
+double Rtsafe(void (*funcd)(double, double, double, double, double, double *, double *),
+      double x1, double x2, double xacc,
+      double coef1, double coef2, double coef3, double coef4);
+
+void Tequilibrium(Real temperature, Real coef1, Real coef2, Real coef3,
+      Real coef4, Real *fval, Real *dfval);
+
+void Tcompton(Real temperature, Real coef1, Real coef2, Real coef3, Real coef4,
+      Real *fval, Real *dfval);
+
 
 #endif // UTILS_HPP

@@ -18,12 +18,19 @@
 //======================================================================================
 
 
+#include <sstream>  // msg
+#include <iostream>  // cout
+#include <stdexcept> // runtime erro
+#include <stdio.h>  // fopen and fwrite
+
+
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp" 
 #include "radiation.hpp"
 #include "../parameter_input.hpp"
 #include "../mesh.hpp"
+#include "../globals.hpp"
 #include "integrators/rad_integrators.hpp"
 
 // constructor, initializes data structures and parameters
@@ -45,6 +52,12 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   crat = pin->GetReal("radiation","Crat");
   reduced_c  = crat * pin->GetOrAddReal("radiation","reduced_factor",1.0);
   nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
+  vmax = pin->GetOrAddReal("radiation","vmax",0.9);
+  tunit = pin->GetOrAddReal("radiation","Tunit",1.e7);
+  // equivalent temperature for electron
+  telectron = 5.94065e9;
+  telectron /= tunit;
+
   
   pmy_block = pmb;
   
@@ -94,8 +107,10 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   ir1.NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
   
   rad_mom.NewAthenaArray(13,n3z,n2z,n1z);
+  rad_mom_cm.NewAthenaArray(4,n3z,n2z,n1z);
   sigma_s.NewAthenaArray(n3z,n2z,n1z,nfreq);
   sigma_a.NewAthenaArray(n3z,n2z,n1z,nfreq);
+  sigma_ae.NewAthenaArray(n3z,n2z,n1z,nfreq);
   
   grey_sigma_s.NewAthenaArray(n3z,n2z,n1z);
   grey_sigma_a.NewAthenaArray(n3z,n2z,n1z);
@@ -119,8 +134,35 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   UpdateOpacity = DefaultOpacity;
   
   pradintegrator = new RadIntegrator(this, pin);
+  
+  // dump the angular grid and radiation parameters in a file
+  if(Globals::my_rank ==0){
+    FILE *pfile;
+    std::stringstream msg;
+    if((pfile = fopen("Rad_angles.txt","w")) == NULL){
+        msg << "### FATAL ERROR in Radiation Class" << std::endl
+            << "Output file Rad_angles.txt could not be opened";
+        throw std::runtime_error(msg.str().c_str());
+    }
+      // damp the angular grid in one cell
+    // The angles are still in cartesian
+    fprintf(pfile,"Prat      %4.2e \n",prat);
+    fprintf(pfile,"Crat      %4.2e \n",crat);
+    fprintf(pfile,"reduced_c %4.2e \n",reduced_c);
+    fprintf(pfile,"Vmax      %4.2e \n",vmax);
+    fprintf(pfile,"Tunit     %4.2e \n",tunit);
+    
+    for(int n=0; n<nang; ++n){
+      fprintf(pfile,"%2d   %e   %e   %e    %e\n",n,mu(0,0,0,0,n),mu(1,0,0,0,n),
+             mu(2,0,0,0,n), wmu(n));
+    }
 
-
+    
+    fclose(pfile);
+  
+  }
+  
+  
 
 }
 
@@ -131,8 +173,10 @@ Radiation::~Radiation()
   ir.DeleteAthenaArray();
   ir1.DeleteAthenaArray();
   rad_mom.DeleteAthenaArray();
+  rad_mom_cm.DeleteAthenaArray();
   sigma_s.DeleteAthenaArray();
   sigma_a.DeleteAthenaArray();
+  sigma_ae.DeleteAthenaArray();
   grey_sigma_s.DeleteAthenaArray();
   grey_sigma_a.DeleteAthenaArray();
   mu.DeleteAthenaArray();
@@ -153,108 +197,6 @@ Radiation::~Radiation()
 void Radiation::EnrollOpacityFunction(Opacity_t MyOpacityFunction)
 {
   UpdateOpacity = MyOpacityFunction;
-  
-}
-
-// calculate the frequency integrated moments of the radiation field
-// including the ghost zones
-void Radiation::CalculateMoment()
-{
-  Real er, frx, fry, frz, prxx, pryy, przz, prxy, prxz, pryz;
-  int n1z = pmy_block->block_size.nx1 + 2*(NGHOST);
-  int n2z = pmy_block->block_size.nx2;
-  int n3z = pmy_block->block_size.nx3;
-  if(n2z > 1) n2z += (2*(NGHOST));
-  if(n3z > 1) n3z += (2*(NGHOST));
-  
-  Real *weight = &(wmu(0));
-  
-  AthenaArray<Real> i_mom;
-  
-  i_mom.InitWithShallowCopy(rad_mom);
-
-  
-  // reset the moment arrays to be zero
-  // There are 13 3D arrays
-  for(int n=0; n<13; ++n)
-    for(int k=0; k<n3z; ++k)
-      for(int j=0; j<n2z; ++j)
-#pragma simd
-        for(int i=0; i<n1z; ++i){
-          i_mom(n,k,j,i) = 0.0;
-        }
-  
-  
-  for(int k=0; k<n3z; ++k){
-    for(int j=0; j<n2z; ++j){
-      for(int i=0; i<n1z; ++i){
-        for(int ifr=0; ifr<nfreq; ++ifr){
-          er=0.0; frx=0.0; fry=0.0; frz=0.0;
-          prxx=0.0; pryy=0.0; przz=0.0; prxy=0.0;
-          prxz=0.0; pryz=0.0;
-          Real *intensity = &(ir(k,j,i,ifr*nang));
-          Real *cosx = &(mu(0,k,j,i,0));
-          Real *cosy = &(mu(1,k,j,i,0));
-          Real *cosz = &(mu(2,k,j,i,0));
-#pragma simd
-          for(int n=0; n<nang; ++n){
-            er   += weight[n] * intensity[n];
-            frx  += weight[n] * intensity[n] * cosx[n];
-            fry  += weight[n] * intensity[n] * cosy[n];
-            frz  += weight[n] * intensity[n] * cosz[n];
-            prxx += weight[n] * intensity[n] * cosx[n] * cosx[n];
-            pryy += weight[n] * intensity[n] * cosy[n] * cosy[n];
-            przz += weight[n] * intensity[n] * cosz[n] * cosz[n];
-            prxy += weight[n] * intensity[n] * cosx[n] * cosy[n];
-            prxz += weight[n] * intensity[n] * cosx[n] * cosz[n];
-            pryz += weight[n] * intensity[n] * cosy[n] * cosz[n];
-          }
-          //multiply the frequency weight
-          er *= wfreq(ifr);
-          frx *= wfreq(ifr);
-          fry *= wfreq(ifr);
-          frz *= wfreq(ifr);
-          prxx *= wfreq(ifr);
-          pryy *= wfreq(ifr);
-          przz *= wfreq(ifr);
-          prxy *= wfreq(ifr);
-          prxz *= wfreq(ifr);
-          pryz *= wfreq(ifr);
-          
-
-          
-          //assign the moments
-          i_mom(IER,k,j,i) += er;
-          i_mom(IFR1,k,j,i) += frx;
-          i_mom(IFR2,k,j,i) += fry;
-          i_mom(IFR3,k,j,i) += frz;
-          i_mom(IPR11,k,j,i) += prxx;
-          i_mom(IPR12,k,j,i) += prxy;
-          i_mom(IPR13,k,j,i) += prxz;
-          i_mom(IPR21,k,j,i) += prxy;
-          i_mom(IPR22,k,j,i) += pryy;
-          i_mom(IPR23,k,j,i) += pryz;
-          i_mom(IPR31,k,j,i) += prxz;
-          i_mom(IPR32,k,j,i) += pryz;
-          i_mom(IPR33,k,j,i) += przz;
-          
-        }// End frequency loop
-        // Now calculate frequency inetgrated opacity
-        Real sum_sigma_s=0.0, sum_sigma_a = 0.0;
-        Real *sigmas=&(sigma_s(k,j,i,0));
-        Real *sigmaa=&(sigma_a(k,j,i,0));
-#pragma simd
-        for(int ifr=0; ifr<nfreq; ++ifr){
-          sum_sigma_s += sigmas[ifr] * wfreq(ifr);
-          sum_sigma_a += sigmaa[ifr] * wfreq(ifr);
-        }
-        grey_sigma_s(k,j,i) = sum_sigma_s;
-        grey_sigma_a(k,j,i) = sum_sigma_a;
-      }
-    }
-    
-  }
-  
   
 }
 

@@ -83,7 +83,7 @@ void HistoryOutput::LoadOutputData(OutputData *pod, MeshBlock *pmb)
 
   int nvars = 12;
   if (NON_BAROTROPIC_EOS) nvars++;
-  if (RADIATION_ENABLED) nvars += 4;
+  if (RADIATION_ENABLED) nvars += 8;
 
   OutputVariable *pvar = new OutputVariable;
   pvar->data.NewAthenaArray(nvars,1,1,1);
@@ -109,6 +109,10 @@ void HistoryOutput::LoadOutputData(OutputData *pod, MeshBlock *pmb)
     pvar->name.append("[15]=1-Fr    ");
     pvar->name.append("[16]=2-Fr    ");
     pvar->name.append("[17]=3-Fr    ");
+    pvar->name.append("[18]=Er0     ");
+    pvar->name.append("[19]=1-Fr0   ");
+    pvar->name.append("[20]=2-Fr0   ");
+    pvar->name.append("[21]=3-Fr0   ");
     
   }
 
@@ -159,6 +163,10 @@ void HistoryOutput::LoadOutputData(OutputData *pod, MeshBlock *pmb)
         partial_sum[12] += vol(i)*pmb->prad->rad_mom(IFR1,k,j,i);
         partial_sum[13] += vol(i)*pmb->prad->rad_mom(IFR2,k,j,i);
         partial_sum[14] += vol(i)*pmb->prad->rad_mom(IFR3,k,j,i);
+        partial_sum[15] += vol(i)*pmb->prad->rad_mom_cm(IER,k,j,i);
+        partial_sum[16] += vol(i)*pmb->prad->rad_mom_cm(IFR1,k,j,i);
+        partial_sum[17] += vol(i)*pmb->prad->rad_mom_cm(IFR2,k,j,i);
+        partial_sum[18] += vol(i)*pmb->prad->rad_mom_cm(IFR3,k,j,i);
         
       }
     }

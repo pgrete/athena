@@ -42,11 +42,17 @@
 #endif
 
 
-void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &ir,
-                     const int step)
+void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &w,
+                     AthenaArray<Real> &ir, const int step)
 {
-  Radiation *prad=pmb->prad;
+  Radiation *prad=pmy_rad;
   Coordinates *pco = pmb->pcoord;
+  
+  int nang=pmy_rad->nang;
+  int nfreq=pmy_rad->nfreq;
+  int invcrat=1.0/pmy_rad->crat;
+  
+  Real tau_fact;
   
   AthenaArray<Real> &x1flux=prad->flux[x1face];
   AthenaArray<Real> &x2flux=prad->flux[x2face];
@@ -69,9 +75,11 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &ir,
     tid=omp_get_thread_num();
 #endif
 
-    AthenaArray<Real> flx, vel, temp_i1, temp_i2;
+    AthenaArray<Real> flx, flx2, vel, vel2, temp_i1, temp_i2;
     flx.InitWithShallowSlice(flx_,3,tid,1);
+    flx2.InitWithShallowSlice(flx2_,3,tid,1);
     vel.InitWithShallowSlice(vel_,3,tid,1);
+    vel2.InitWithShallowSlice(vel2_,3,tid,1);
     
     temp_i1.InitWithShallowSlice(temp_i1_,5,tid,1);
     temp_i2.InitWithShallowSlice(temp_i2_,5,tid,1);
@@ -85,9 +93,33 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &ir,
     if(ncells3 > 1) ncells3 += 2*(NGHOST);
     for(int k=0; k<ncells3; ++k)
       for(int j=0; j<ncells2; ++j)
-        for(int i=0; i<ncells1; ++i)
-           for(int n=0; n<prad->n_fre_ang; ++n)
-              temp_i1(k,j,i,n) = ir(k,j,i,n);
+        for(int i=0; i<ncells1; ++i){
+           Real vx = w(IVX,k,j,i);
+           Real vy = w(IVY,k,j,i);
+           Real vz = w(IVZ,k,j,i);
+           for(int ifr=0; ifr<nfreq; ++ifr){
+             Real ds = pco->CenterWidth1(k,j,i);
+             if(ncells2 > 1) ds += pco->CenterWidth2(k,j,i);
+             if(ncells3 > 1) ds += pco->CenterWidth3(k,j,i);
+             
+             GetTaufactor(vx, vy, vz, ds,
+                      prad->sigma_a(k,j,i,ifr)+prad->sigma_s(k,j,i,ifr), &tau_fact);
+             
+             for(int n=0; n<nang; ++n){
+             
+               Real vdotn = vx*prad->mu(0,k,j,i,n)+vy*prad->mu(1,k,j,i,n)
+                           + vz*prad->mu(2,k,j,i,n);
+               
+               vdotn *= invcrat;
+               
+               Real adv_coef = tau_fact * vdotn * (3.0 + vdotn * vdotn);
+               Real q1 = ir(k,j,i,n+ifr*nang) * (1.0 - adv_coef);
+               temp_i1(k,j,i,n+ifr*nang) = q1;
+               temp_i2(k,j,i,n+ifr*nang) = adv_coef;
+             
+             }
+          }
+        }
     
     
     
@@ -104,28 +136,34 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &ir,
           Real dxr = pco->x1v(i) - pco->x1f(i);
           Real factl = dxr/(dxl+dxr);
           Real factr = dxl/(dxl+dxr);
-          for(int ifr=0; ifr<prad->nfreq; ++ifr){
+          for(int ifr=0; ifr<nfreq; ++ifr){
 #pragma simd
-            for(int n=0; n<prad->nang; ++n){
+            for(int n=0; n<nang; ++n){
             // linear intepolation between x1v(i-1), x1f(i), x1v(i)
-              vel(i,n+ifr*prad->nang) = prad->reduced_c *
+              vel(i,n+ifr*nang) = prad->reduced_c *
                                        (factl * prad->mu(0,k,j,i-1,n)
                                       + factr * prad->mu(0,k,j,i,n));
+              
+              vel2(i,n+ifr*nang) = prad->reduced_c *
+                  (factl * prad->mu(0,k,j,i-1,n) * temp_i2(k,j,i-1,n+ifr*nang)
+                   + factr * prad->mu(0,k,j,i,n) * temp_i2(k,j,i,n+ifr*nang));
             }
           }
         }
         // calculate the flux
         if(step == 1){
           FirstOrderFluxX1(k, j, is, ie+1, temp_i1, vel, flx);
+          FirstOrderFluxX1(k, j, is, ie+1, ir, vel2, flx2);
         }else{
           SecondOrderFluxX1(k, j, is, ie+1, temp_i1, vel, flx);
+          SecondOrderFluxX1(k, j, is, ie+1, ir, vel2, flx2);
         }
         
         // store the flux
         for(int i=is; i<=ie+1; ++i){
 #pragma simd
           for(int n=0; n<prad->n_fre_ang; ++n){
-            x1flux(k,j,i,n) = flx(i,n);
+            x1flux(k,j,i,n) = flx(i,n) + flx2(i,n);
           }
         }
 
@@ -144,28 +182,34 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &ir,
            Real dxr = pco->x2v(j) - pco->x2f(j);
            Real factl = dxr/(dxl+dxr);
            Real factr = dxl/(dxl+dxr);
-           for(int ifr=0; ifr<prad->nfreq; ++ifr){
+           for(int ifr=0; ifr<nfreq; ++ifr){
 #pragma simd
-             for(int n=0; n<prad->nang; ++n){
+             for(int n=0; n<nang; ++n){
             // linear intepolation between x2v(j-1), x2f(j), x2v(j)
-               vel(i,n+ifr*prad->nang) = prad->reduced_c *
+               vel(i,n+ifr*nang) = prad->reduced_c *
                                 (factl * prad->mu(1,k,j-1,i,n)
                                + factr * prad->mu(1,k,j,i,n));
+               
+               vel2(i,n+ifr*nang) = prad->reduced_c *
+                  (factl * prad->mu(1,k,j-1,i,n) * temp_i2(k,j-1,i,n+ifr*nang)
+                   + factr * prad->mu(1,k,j,i,n) * temp_i2(k,j,i,n+ifr*nang));
              }
            }
          }
         // calculate the flux
          if(step == 1){
            FirstOrderFluxX2(k, j, il, iu, temp_i1, vel, flx);
+           FirstOrderFluxX2(k, j, il, iu, ir, vel2, flx2);
          }else{
            SecondOrderFluxX2(k, j, il, iu, temp_i1, vel, flx);
+           SecondOrderFluxX2(k, j, il, iu, ir, vel2, flx2);
          }
         
         // store the flux
          for(int i=is; i<=ie; ++i){
 #pragma simd
            for(int n=0; n<prad->n_fre_ang; ++n){
-             x2flux(k,j,i,n) = flx(i,n);
+             x2flux(k,j,i,n) = flx(i,n)+flx2(i,n);
            }
          }
 
@@ -192,21 +236,27 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &ir,
                vel(i,n+ifr*prad->nang) = prad->reduced_c *
                           (factl * prad->mu(2,k-1,j,i,n)
                         + factr * prad->mu(2,k,j,i,n));
+               
+               vel2(i,n+ifr*nang) = prad->reduced_c *
+                  (factl * prad->mu(2,k-1,j,i,n) * temp_i2(k-1,j,i,n+ifr*nang)
+                   + factr * prad->mu(2,k,j,i,n) * temp_i2(k,j,i,n+ifr*nang));
              }
            }
          }
         // calculate the flux
          if(step == 1){
            FirstOrderFluxX3(k, j, il, iu, temp_i1, vel, flx);
+           FirstOrderFluxX3(k, j, il, iu, ir, vel2, flx2);
          }else{
            SecondOrderFluxX3(k, j, il, iu, temp_i1, vel, flx);
+           SecondOrderFluxX3(k, j, il, iu, ir, vel2, flx2);
          }
         
         // store the flux
          for(int i=is; i<=ie; ++i){
 #pragma simd
            for(int n=0; n<prad->n_fre_ang; ++n){
-             x3flux(k,j,i,n) = flx(i,n);
+             x3flux(k,j,i,n) = flx(i,n)+flx2(i,n);
            }
          }
 
@@ -319,6 +369,19 @@ void RadIntegrator::FluxDivergence(MeshBlock *pmb, AthenaArray<Real> &ir,
 
 
 }// end omp parallel region
+
+}
+
+void RadIntegrator::GetTaufactor(const Real vx, const Real vy, const Real vz,
+                                 const Real ds, const Real sigma, Real *factor)
+{
+
+   Real invcrat = 1.0/pmy_rad->crat;
+   Real vel = vx*vx+vy*vy+vz*vz;
+   Real taucell = taufact_ * ds * sigma;
+   Real tausq = taucell * taucell * (vel*invcrat*invcrat);
+   if(tausq > 1.e-3) tausq = 1.0 - exp(-tausq);
+   (*factor) = tausq;
 
 }
 

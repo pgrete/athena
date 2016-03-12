@@ -159,10 +159,14 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
     eid = new hid_t[nbl];
   if (RADIATION_ENABLED){
     erid = new hid_t[nbl];
+    er0id = new hid_t[nbl];
     sigmasid = new hid_t[nbl];
     sigmaaid = new hid_t[nbl];
-    for(int n=0; n<3; n++)
+    for(int n=0; n<3; n++){
       frid[n] = new hid_t[nbl];
+      fr0id[n] = new hid_t[nbl];
+    }
+    
     for(int n=0; n<9; n++)
       prid[n] = new hid_t[nbl];
   }
@@ -338,6 +342,18 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
         else H5Dclose(tid);
         H5Sclose(dsid);
       }
+      
+      if (output_params.variable.compare("Er0") == 0 ||
+          output_params.variable.compare("prim") == 0 ||
+          output_params.variable.compare("cons") == 0) {
+        dsid = H5Screate_simple(dim, dims, NULL);
+        tid = H5Dcreate2(tgid,"Er0",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+                         H5P_DEFAULT);
+        if(b>=nbs && b<=nbe) er0id[b-nbs]=tid;
+        else H5Dclose(tid);
+        H5Sclose(dsid);
+      }
+      
       if (output_params.variable.compare("Sigma_s") == 0 ||
           output_params.variable.compare("prim") == 0 ||
           output_params.variable.compare("cons") == 0) {
@@ -380,6 +396,30 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
         else H5Dclose(tid);
         H5Sclose(dsid);
       }
+      
+      if (output_params.variable.compare("Fr0") == 0 ||
+          output_params.variable.compare("prim") == 0 ||
+          output_params.variable.compare("cons") == 0) {
+        dsid = H5Screate_simple(dim, dims, NULL);
+        tid = H5Dcreate2(tgid,"Fr01",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+              H5P_DEFAULT);
+        if(b>=nbs && b<=nbe) fr0id[0][b-nbs]=tid;
+        else H5Dclose(tid);
+        H5Sclose(dsid);
+        dsid = H5Screate_simple(dim, dims, NULL);
+        tid = H5Dcreate2(tgid,"Fr02",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+              H5P_DEFAULT);
+        if(b>=nbs && b<=nbe) fr0id[1][b-nbs]=tid;
+        else H5Dclose(tid);
+        H5Sclose(dsid);
+        dsid = H5Screate_simple(dim, dims, NULL);
+        tid = H5Dcreate2(tgid,"Fr03",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+              H5P_DEFAULT);
+        if(b>=nbs && b<=nbe) fr0id[2][b-nbs]=tid;
+        else H5Dclose(tid);
+        H5Sclose(dsid);
+      }
+      
       if (output_params.variable.compare("Pr") == 0 ||
           output_params.variable.compare("prim") == 0 ||
           output_params.variable.compare("cons") == 0) {
@@ -738,10 +778,13 @@ void ATHDF5Output::Finalize(ParameterInput *pin)
     delete [] eid;
   if (RADIATION_ENABLED){
     delete [] erid;
+    delete [] er0id;
     delete [] sigmasid;
     delete [] sigmaaid;
-    for(int n=0; n<3; n++)
+    for(int n=0; n<3; n++){
        delete [] frid[n];
+       delete [] fr0id[n];
+    }
     for(int n=0; n<9; n++)
        delete [] prid[n];
   }
@@ -810,12 +853,16 @@ void ATHDF5Output::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
         did=bid[n][pmb->lid];
       else if(pvar->name.compare("Er")==0)
         did=erid[pmb->lid];
+      else if(pvar->name.compare("Er0")==0)
+        did=er0id[pmb->lid];
       else if(pvar->name.compare("Sigma_s")==0)
         did=sigmasid[pmb->lid];
       else if(pvar->name.compare("Sigma_a")==0)
         did=sigmaaid[pmb->lid];
       else if(pvar->name.compare("Fr")==0)
         did=frid[n][pmb->lid];
+      else if(pvar->name.compare("Fr0")==0)
+        did=fr0id[n][pmb->lid];
       else if(pvar->name.compare("Pr")==0)
         did=prid[n][pmb->lid];
       else if(pvar->name.compare("ifov")==0)

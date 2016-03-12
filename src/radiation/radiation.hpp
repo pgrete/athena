@@ -37,7 +37,9 @@ public:
     
   AthenaArray<Real> ir, ir1; // radiation specific intensity
   AthenaArray<Real> rad_mom; // frequency integrated radiation moments
-  AthenaArray<Real> sigma_s, sigma_a; //   opacity
+  AthenaArray<Real> rad_mom_cm; // co-moving frame Er, Frx, Fry, Frz
+  AthenaArray<Real> sigma_s, sigma_a, sigma_ae; //   opacity
+                       //sigma_a T and sigma_ae I
   AthenaArray<Real> grey_sigma_s, grey_sigma_a; // frequency integrated opacity
   AthenaArray<Real> mu, wmu; // angles and weight
   AthenaArray<Real> wfreq; // weight in frequency space
@@ -45,7 +47,10 @@ public:
   AthenaArray<Real> flux[3]; // store transport flux, also need for refinement
   
   Real prat, crat; // prat=aT^4/P_0, crat=c/c_s
+  Real vmax;
   Real reduced_c; // reduced speed of light
+  Real tunit, telectron; // gas temperature cgs unit,
+                         // effective electron scattering temperature
   
   int nang, nfreq, noct, n_fre_ang; // n_fre_ang=nang*nfreq
 
@@ -62,6 +67,7 @@ public:
   
   //functin to calculate the radiation moments
   void CalculateMoment();
+  void CalculateComMoment();
   
   void AngularGrid(int angle_flag, int nmu);
 
@@ -69,7 +75,7 @@ public:
 
 
 private:
-
+  
 
 };
 

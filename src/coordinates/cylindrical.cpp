@@ -539,3 +539,57 @@ void Coordinates::VisSrcTermsX3(const int k, const int j, const Real dt,
   return;
 }
 
+// For radiation angles
+void Coordinates::AxisDirection(int *axisx, int *axisy, int *axisz)
+{
+  *axisx = 0;
+  *axisy = 1;
+  *axisz = 2;
+}
+
+
+void Coordinates::ConvertAngle(MeshBlock *pmb, const int nang,
+                                AthenaArray<Real> &mu)
+{
+  if(RADIATION_ENABLED){
+    int ndim=1;
+    if(pmb->block_size.nx2 > 1) ndim = 2;
+    if(pmb->block_size.nx3 > 1) ndim = 3;
+  
+    int n1z = pmb->block_size.nx1 + 2*(NGHOST);
+    int n2z = 1;
+    int n3z = 1;
+  
+    if(ndim > 1) n2z = pmb->block_size.nx2 + 2*(NGHOST);
+    if(ndim > 2) n3z = pmb->block_size.nx3 + 2*(NGHOST);
+
+  
+    for(int k=0; k<n3z; ++k){
+      for(int j=0; j<n2z; ++j){
+         Real& x2 = x2v(j);
+         Real cosx2 = cos(x2);
+         Real sinx2 = sin(x2);
+         if(n2z == 1){
+           cosx2 = 1.0;
+           sinx2 = 0.0;
+         }
+         for(int i=0; i<n1z; ++i){
+         Real *miux = &(mu(0,k,j,i,0));
+         Real *miuy = &(mu(1,k,j,i,0));
+#pragma simd
+         for(int mi=0; mi<nang; ++mi){
+         Real miux0 = miux[mi];
+         Real miuy0 = miuy[mi];
+         miux[mi] = miux0 * cosx2 + miuy0 * sinx2;
+         miuy[mi] = miuy0 * cosx2 - miux0 * sinx2;
+  
+    }
+  }}}
+ 
+  
+  }
+
+}
+
+
+

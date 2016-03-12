@@ -54,6 +54,8 @@ enum HydroTasks {
   RADFLX_SEND=1L<<23,
   RADFLX_RECV=1L<<24,
   PROLRAD=1L<<25,
+  RAD_SOURCE=1L<<26,
+  RAD_OPACITY=1L<<27,
 };
 
 //!   \struct Task

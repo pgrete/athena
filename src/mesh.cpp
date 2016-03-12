@@ -1357,7 +1357,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       }
     }
   } while(iflag==false);
-
+  
   if(res_flag==0 || res_flag==2) {
     pmb = pblock;
     while (pmb != NULL)  {

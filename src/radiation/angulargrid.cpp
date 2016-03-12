@@ -22,6 +22,7 @@
 // Athena++ headers
 #include "radiation.hpp"
 #include "../utils/utils.hpp"
+#include "../coordinates/coordinates.hpp"
 #include "../mesh.hpp"
 
 
@@ -54,7 +55,7 @@ void Radiation::AngularGrid(int angle_flag, int nmu)
   
   // initialize coordinate direction
   int axisx=0, axisy=1, axisz=2;
-//  pmb->pcoord->AxisDirection(&axisx, &axisy, &axisz);
+  pmy_block->pcoord->AxisDirection(&axisx, &axisy, &axisz);
   
   // check the dimension of the problem
   
@@ -322,12 +323,9 @@ void Radiation::AngularGrid(int angle_flag, int nmu)
     throw std::runtime_error(msg.str().c_str());
   }
   
+  // Now change the angle cosines to different coordinate systems
+  pmy_block->pcoord->ConvertAngle(pmy_block,nang, mu);
   
-  
-  // Need to change the angle cosines to different coordinate systems
-  
-  
-
   
   // free the temporary arrays
 

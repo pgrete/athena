@@ -177,6 +177,8 @@ private:
   // for radiation quantities
   hid_t *erid; // Er
   hid_t *frid[3]; // Fr
+  hid_t *er0id;  // Er0
+  hid_t *fr0id[3]; // Fr0
   hid_t *prid[9]; // Pr
   hid_t *sigmasid; // scattering
   hid_t *sigmaaid; // absorption

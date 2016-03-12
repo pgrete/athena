@@ -40,6 +40,12 @@ public:
 
   void AllocateAndSetBasicCoordinates(void);
   void DeleteBasicCoordinates(void);
+  
+  // Function for radiation
+    // flag for coordinate direction in x, y, z
+  // This is especially for 2D and 1D spherical polar grid
+  void AxisDirection(int *axisx, int *axisy, int *axisz);
+  void ConvertAngle(MeshBlock *pmb, const int nang, AthenaArray<Real> &mu);
 
   // Function for checking for poles
   bool IsPole(int j);
