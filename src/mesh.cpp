@@ -1358,6 +1358,18 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
     }
   } while(iflag==false);
   
+  // Calculate radiation moments
+  if(RADIATION_ENABLED){
+     pmb=pblock;
+     while (pmb != NULL){
+        pmb->prad->CalculateMoment(pmb->prad->ir);
+        // Update Opacity
+        pmb->prad->UpdateOpacity(pmb,pmb->phydro->w);
+       
+        pmb=pmb->next;
+     }
+  }
+  
   if(res_flag==0 || res_flag==2) {
     pmb = pblock;
     while (pmb != NULL)  {

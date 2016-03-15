@@ -108,7 +108,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(1,RAD_BVAL,1,(RAD_SOURCE|RAD_RECV));
       }
       
-      AddTask(1,RAD_OPACITY,1,RAD_BVAL&PHY_BVAL);
+      AddTask(1,RAD_MOMOPACITY,1,RAD_BVAL&PHY_BVAL);
       
     }
     
@@ -169,7 +169,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,RAD_BVAL,2,(RAD_SOURCE|RAD_RECV));
       }
       
-      AddTask(2,RAD_OPACITY,2,RAD_BVAL&PHY_BVAL);
+      AddTask(2,RAD_MOMOPACITY,2,RAD_BVAL&PHY_BVAL);
     
     }// End Radiation
   }
@@ -222,7 +222,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(1,RAD_BVAL,1,(RAD_SOURCE|RAD_RECV));
       }
       
-      AddTask(1,RAD_OPACITY,1,RAD_BVAL&PHY_BVAL);
+      AddTask(1,RAD_MOMOPACITY,1,RAD_BVAL&PHY_BVAL);
       
     }// End radiation
 
@@ -272,7 +272,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,RAD_BVAL,2,(RAD_SOURCE|RAD_RECV));
       }
       
-      AddTask(2,RAD_OPACITY,2,RAD_BVAL&PHY_BVAL);
+      AddTask(2,RAD_MOMOPACITY,2,RAD_BVAL&PHY_BVAL);
       
     }// End Radiation
     
@@ -657,15 +657,17 @@ enum TaskStatus RadSource(MeshBlock *pmb, unsigned long int task_id, int step)
   return TASK_NEXT;
 }
 
-enum TaskStatus RadOpacity(MeshBlock *pmb, unsigned long int task_id, int step)
+enum TaskStatus RadMomOpacity(MeshBlock *pmb, unsigned long int task_id, int step)
 {
   Radiation *prad = pmb->prad;
   Hydro *phydro=pmb->phydro;
   
   if(step == 1) {
-    prad->UpdateOpacity(pmb, phydro->w);
-  } else if(step == 2) {
+    prad->CalculateMoment(prad->ir1);
     prad->UpdateOpacity(pmb, phydro->w1);
+  } else if(step == 2) {
+    prad->CalculateMoment(prad->ir);
+    prad->UpdateOpacity(pmb, phydro->w);
   } else {
     return TASK_FAIL;
   }
@@ -837,8 +839,8 @@ void TaskList::AddTask(int stp_t,unsigned long int id,int stp_d,unsigned long in
   case (RAD_SOURCE):
     task_list_[ntasks].TaskFunc=TaskFunctions::RadSource;
     break;
-  case (RAD_OPACITY):
-    task_list_[ntasks].TaskFunc=TaskFunctions::RadOpacity;
+  case (RAD_MOMOPACITY):
+    task_list_[ntasks].TaskFunc=TaskFunctions::RadMomOpacity;
     break;
     
   default:

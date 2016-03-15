@@ -128,9 +128,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           }
           
           for (int ifr=0; ifr < nfreq; ++ifr){
-            prad->sigma_s(k,j,i,ifr) = 100.0;
-            prad->sigma_a(k,j,i,ifr) = 0.0;
-            prad->sigma_ae(k,j,i,ifr) = 0.0;
+            prad->sigma_s(k,j,i,ifr) = 0.0;
+            prad->sigma_a(k,j,i,ifr) = 100.0;
+            prad->sigma_ae(k,j,i,ifr) = 100.0;
             
           }
         }
@@ -152,6 +152,34 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 void MeshBlock::UserWorkInLoop(void)
 {
   // nothing to do
+  return;
+}
+
+void Radiation::LoadInternalVariable()
+{
+  int n1z = pmy_block->block_size.nx1 + 2*(NGHOST);
+  int n2z = pmy_block->block_size.nx2;
+  int n3z = pmy_block->block_size.nx3;
+  if(n2z > 1) n2z += (2*(NGHOST));
+  if(n3z > 1) n3z += (2*(NGHOST));
+  
+  for(int n=0; n<NRADFOV; ++n)
+    for(int k=0; k<n3z; ++k)
+      for(int j=0; j<n2z; ++j)
+        for(int i=0; i<n1z; ++i){
+          rad_ifov(n,k,j,i) = 0.0;
+        }
+ 
+  for(int n=0; n<NRADFOV; ++n)
+  for(int k=0; k<n3z; ++k)
+    for(int j=0; j<n2z; ++j)
+      for(int i=0; i<n1z; ++i)
+        for(int ifr=0; ifr<nfreq; ++ifr){
+          rad_ifov(n,k,j,i) += wfreq(ifr) * ir(k,j,i,ifr*nang+n);
+        }
+  
+  
+  
   return;
 }
 

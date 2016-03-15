@@ -115,6 +115,9 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   grey_sigma_s.NewAthenaArray(n3z,n2z,n1z);
   grey_sigma_a.NewAthenaArray(n3z,n2z,n1z);
   
+  if(NRADFOV > 0)
+    rad_ifov.NewAthenaArray(NRADFOV,n3z,n2z,n1z);
+  
   mu.NewAthenaArray(3,n3z,n2z,n1z,nang);
   wmu.NewAthenaArray(nang);
 
@@ -179,6 +182,10 @@ Radiation::~Radiation()
   sigma_ae.DeleteAthenaArray();
   grey_sigma_s.DeleteAthenaArray();
   grey_sigma_a.DeleteAthenaArray();
+  
+  if(NRADFOV > 0)
+    rad_ifov.DeleteAthenaArray();
+  
   mu.DeleteAthenaArray();
   wmu.DeleteAthenaArray();
   wfreq.DeleteAthenaArray();

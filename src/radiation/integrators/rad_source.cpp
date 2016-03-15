@@ -86,6 +86,14 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
          Real vy = w(IVY,k,j,i);
          Real vz = w(IVZ,k,j,i);
         
+         Real rho = w(IDN,k,j,i);
+         Real tgas= w(IEN,k,j,i)/rho;
+        
+         // Do not use the velocity directly
+         // use the predicted velocity based on moment equation
+         // This is to avoid angular truncation error in the implicit method
+         PredictVel(k,j,i, 0.5 * dt, rho, &vx, &vy, &vz);
+        
          Real vel = vx * vx + vy * vy + vz * vz;
         
          Real ratio = sqrt(vel) * invcrat;
@@ -102,8 +110,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
         
          Real lorzsq = 1.0/(1.0 - vel  * invcrat * invcrat);
         
-         Real rho = w(IDN,k,j,i);
-         Real tgas= w(IEN,k,j,i)/rho;
+
         
          sigma_at=&(prad->sigma_a(k,j,i,0));
          sigma_aer=&(prad->sigma_ae(k,j,i,0));
@@ -234,4 +241,70 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
 
   
 }
+
+
+void RadIntegrator::PredictVel(int k, int j, int i, Real dt, Real rho, Real *vx,
+                              Real *vy, Real *vz)
+{
+    Radiation *prad = pmy_rad;
+  
+    Real &prat = prad->prat;
+    Real invcrat = 1.0/prad->crat;
+    Real ct = dt * prad->reduced_c;
+  
+    Real &er =prad->rad_mom(IER,k,j,i);
+  
+    Real &fr1=prad->rad_mom(IFR1,k,j,i);
+    Real &fr2=prad->rad_mom(IFR1,k,j,i);
+    Real &fr3=prad->rad_mom(IFR1,k,j,i);
+  
+    Real &pr11=prad->rad_mom(IPR11,k,j,i);
+    Real &pr12=prad->rad_mom(IPR12,k,j,i);
+    Real &pr13=prad->rad_mom(IPR13,k,j,i);
+    Real &pr22=prad->rad_mom(IPR22,k,j,i);
+    Real &pr23=prad->rad_mom(IPR23,k,j,i);
+    Real &pr33=prad->rad_mom(IPR33,k,j,i);
+  
+    Real dtcsigma = ct * (prad->grey_sigma_s(k,j,i) + prad->grey_sigma_a(k,j,i));
+  
+    Real vx0 = (*vx);
+    Real vy0 = (*vy);
+    Real vz0 = (*vz);
+  
+    Real m0x = prat * fr1 * invcrat + rho * vx0;
+    Real m0y = prat * fr2 * invcrat + rho * vy0;
+    Real m0z = prat * fr3 * invcrat + rho * vz0;
+  
+    Real vx11 = rho * (1.0 + dtcsigma) + prat * dtcsigma * (er + pr11) * invcrat;
+    Real vy11 = rho * (1.0 + dtcsigma) + prat * dtcsigma * (er + pr22) * invcrat;
+    Real vz11 = rho * (1.0 + dtcsigma) + prat * dtcsigma * (er + pr33) * invcrat;
+    Real vx12 = dtcsigma * prat * pr12 * invcrat;
+    Real vx13 = dtcsigma * prat * pr13 * invcrat;
+    Real vy12 = dtcsigma * prat * pr23 * invcrat;
+  
+    Real rhs1 = rho * vx0 + dtcsigma * m0x;
+    Real rhs2 = rho * vy0 + dtcsigma * m0y;
+    Real rhs3 = rho * vz0 + dtcsigma * m0z;
+  
+    Real factor = vx11 * vy11 * vz11 - vy11 * vx13 * vx13 + 2.0 * vx12 * vx13 * vy12
+              - vx11 * vy12 * vy12 - vx12 * vx12 * vz11;
+    factor = 1.0/factor;
+
+    (*vx) = factor*(rhs3*(vx12*vy12 - vx13*vy11) + rhs2*(vy12*vx13
+                - vx12*vz11) + rhs1*(vy11*vz11 - vy12*vy12));
+          
+    (*vy) = factor*(rhs3*(vx12*vx13 - vx11*vy12) + rhs2*(vx11*vz11
+                - vx13*vx13) + rhs1*(vx13*vy12 - vx12*vz11));
+          
+    (*vz) = factor*(rhs3*(vx11*vy11 - vx12*vx12) + rhs2*(vx12*vx13
+                - vx11*vy12) + rhs1*(vx12*vy12 - vx13*vy11));
+  
+}
+
+
+
+
+
+
+
 

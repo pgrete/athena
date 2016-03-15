@@ -179,6 +179,12 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
     ifovid = new hid_t *[NIFOV];
   for(int n=0;n<NIFOV;n++)
     ifovid[n]=new hid_t [nbl];
+  
+  if (NRADFOV > 0)
+    radfovid = new hid_t *[NRADFOV];
+  for(int n=0;n<NRADFOV;n++)
+    radfovid[n]=new hid_t [nbl];
+
 
   for(int b=0;b<pM->nbtotal;b++) {
     // create groups for all the MeshBlocks
@@ -479,6 +485,21 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
         H5Sclose(dsid);
       }
       
+      if (output_params.variable.compare("rad_fov") == 0) {
+       for (int n=0; n<(NRADFOV); ++n) {
+        std::string iname="rad_fov";
+        char num[4];
+        sprintf(num,"%d",n);
+        iname.append(num);
+        dsid = H5Screate_simple(dim, dims, NULL);
+        tid = H5Dcreate2(tgid,iname.c_str(),H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+              H5P_DEFAULT);
+        if(b>=nbs && b<=nbe) radfovid[n][b-nbs]=tid;
+        else H5Dclose(tid);
+        H5Sclose(dsid);
+       }
+      }// end rad_fov
+      
     }
     if (output_params.variable.compare("ifov") == 0) {
       for (int n=0; n<(NIFOV); ++n) {
@@ -738,11 +759,21 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
           << "    </Attribute>" << std::endl;
         }
         
+        if (output_params.variable.compare("rad_fov") == 0) {
+          for (int n=0; n<(NRADFOV); ++n) {
+            xdmf << "    <Attribute Name=\"rad_fov\" AttributeType=\"Scalar\" "
+                 << "Center=\"Cell\">" << std::endl
+                 << "      <DataItem Dimensions=\"" << sdim << "\" NumberType=\"Float\" "
+                 << "Precision=\"4\" Format=\"HDF\">" << fname << ":/" << bn << "/radfov"
+                 << n << "</DataItem>" << std::endl << "    </Attribute>" << std::endl;
+          }
+        }
+        
       }
 
       if (output_params.variable.compare("ifov") == 0) {
         for (int n=0; n<(NIFOV); ++n) {
-          xdmf << "    <Attribute Name=\"Density\" AttributeType=\"Scalar\" "
+          xdmf << "    <Attribute Name=\"ifov\" AttributeType=\"Scalar\" "
                << "Center=\"Cell\">" << std::endl
                << "      <DataItem Dimensions=\"" << sdim << "\" NumberType=\"Float\" "
                << "Precision=\"4\" Format=\"HDF\">" << fname << ":/" << bn << "/ifov"
@@ -797,6 +828,12 @@ void ATHDF5Output::Finalize(ParameterInput *pin)
     delete [] ifovid[n];
   if (NIFOV > 0)
     delete [] ifovid;
+  
+  for(int n=0;n<NRADFOV;n++)
+    delete [] radfovid[n];
+  if (NRADFOV > 0)
+    delete [] radfovid;
+
 
   output_params.file_number++;
   output_params.next_time += output_params.dt;
@@ -867,6 +904,8 @@ void ATHDF5Output::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
         did=prid[n][pmb->lid];
       else if(pvar->name.compare("ifov")==0)
         did=ifovid[n][pmb->lid];
+      else if(pvar->name.compare("rad_fov")==0)
+        did=radfovid[n][pmb->lid];
       else continue;
       int p=0;
       for (int k=(pod->data_header.kl); k<=(pod->data_header.ku); ++k) {

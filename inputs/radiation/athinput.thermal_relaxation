@@ -8,7 +8,7 @@ problem_id = thermal        # problem ID: basename of output filenames
 
 <output1>
 file_type  = hst       # History data dump
-dt         = 0.0001      # time increment between outputs
+dt         = 0.01      # time increment between outputs
 
 
 #<output2>

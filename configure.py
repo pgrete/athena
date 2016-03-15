@@ -25,6 +25,7 @@
 #   -hdf5             enable HDF5 output (requires the HDF5 library)
 #   --ifov=N          enable N internal hydro output variables
 #   -radiation        enable radiative transfer
+#   --radfov=N        enable N internal radiation output variable
 #---------------------------------------------------------------------------------------
 
 # Modules
@@ -156,6 +157,14 @@ parser.add_argument('-radiation',
     action='store_true',
     default=False,
     help='enable radiative transfer')
+    
+
+# -radfov=N argument
+parser.add_argument('--radfov',
+    type=int,
+    default=0,
+    help='number of internal radiation output variables')
+
 
 # Parse command-line inputs
 args = vars(parser.parse_args())
@@ -365,6 +374,9 @@ definitions['COMPILER_FLAGS'] = ' '.join([makefile_options[opt+'_FLAGS'] for opt
 # -ifov=N argument
 definitions['NUM_IFOV'] = str(args['ifov'])
 
+# -radfov=N argument
+definitions['NUM_RADFOV'] = str(args['radfov'])
+
 #--- Step 4. Create new files, finish up -----------------------------------------------
 
 # Terminate all filenames with .cpp extension
@@ -416,6 +428,7 @@ print('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF'))
 print('  HDF5 Output:             ' + ('ON' if args['hdf5'] else 'OFF'))
 print('  Radiative Transfer:      ' + ('ON' if args['radiation'] else 'OFF'))
 print('  Internal hydro outvars:  ' + str(args['ifov']))
+print('  Internal rad outvars:    ' + str(args['radfov']))
 
 # write the configuration optitions into a log file
 flog=open('./configure.log', 'w')
@@ -443,4 +456,4 @@ flog.write('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF') + '\
 flog.write('  HDF5 Output:             ' + ('ON' if args['hdf5'] else 'OFF') + '\n')
 flog.write('  Radiative Transfer:      ' + ('ON' if args['radiation'] else 'OFF') + '\n')
 flog.write('  Internal hydro outvars:  ' + str(args['ifov']) + '\n')
-
+flog.write('  Internal rad outvars:    ' + str(args['radfov']) + '\n')

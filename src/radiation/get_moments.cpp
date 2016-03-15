@@ -32,7 +32,7 @@
 
 // calculate the frequency integrated moments of the radiation field
 // including the ghost zones
-void Radiation::CalculateMoment()
+void Radiation::CalculateMoment(AthenaArray<Real> &ir_in)
 {
   Real er, frx, fry, frz, prxx, pryy, przz, prxy, prxz, pryz;
   int n1z = pmy_block->block_size.nx1 + 2*(NGHOST);
@@ -66,7 +66,7 @@ void Radiation::CalculateMoment()
           er=0.0; frx=0.0; fry=0.0; frz=0.0;
           prxx=0.0; pryy=0.0; przz=0.0; prxy=0.0;
           prxz=0.0; pryz=0.0;
-          Real *intensity = &(ir(k,j,i,ifr*nang));
+          Real *intensity = &(ir_in(k,j,i,ifr*nang));
           Real *cosx = &(mu(0,k,j,i,0));
           Real *cosy = &(mu(1,k,j,i,0));
           Real *cosz = &(mu(2,k,j,i,0));
@@ -113,7 +113,7 @@ void Radiation::CalculateMoment()
           i_mom(IPR33,k,j,i) += przz;
           
         }// End frequency loop
-        // Now calculate frequency inetgrated opacity
+       // Now calculate frequency inetgrated opacity
         Real sum_sigma_s=0.0, sum_sigma_a = 0.0;
         Real *sigmas=&(sigma_s(k,j,i,0));
         Real *sigmaa=&(sigma_a(k,j,i,0));
@@ -240,6 +240,7 @@ void Radiation::CalculateComMoment()
           i_mom(IFR3,k,j,i) += frz;
           
         }// End frequency loop
+
       }
     }
   }

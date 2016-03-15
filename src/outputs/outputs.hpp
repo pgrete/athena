@@ -182,6 +182,7 @@ private:
   hid_t *prid[9]; // Pr
   hid_t *sigmasid; // scattering
   hid_t *sigmaaid; // absorption
+  hid_t **radfovid; // radiation internal variables
 
   hsize_t dim, dims[3];
 

@@ -65,6 +65,9 @@
 // number of internal hydro output variables
 #define NIFOV  @NUM_IFOV@
 
+// number of internal radiation output variables
+#define NRADFOV  @NUM_RADFOV@
+
 
 //--------------------------------------------------------------------------------------
 // macros associated with numerical algorithm (rarely modified)

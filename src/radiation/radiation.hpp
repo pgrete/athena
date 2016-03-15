@@ -12,6 +12,7 @@
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
+#include <string>
 
 
 
@@ -41,6 +42,8 @@ public:
   AthenaArray<Real> sigma_s, sigma_a, sigma_ae; //   opacity
                        //sigma_a T and sigma_ae I
   AthenaArray<Real> grey_sigma_s, grey_sigma_a; // frequency integrated opacity
+  AthenaArray<Real> rad_ifov; // internal radiation variable
+  std::string my_strings[NRADFOV]; // names of the internal variables
   AthenaArray<Real> mu, wmu; // angles and weight
   AthenaArray<Real> wfreq; // weight in frequency space
   
@@ -66,8 +69,9 @@ public:
   Opacity_t UpdateOpacity;
   
   //functin to calculate the radiation moments
-  void CalculateMoment();
+  void CalculateMoment(AthenaArray<Real> &ir_in);
   void CalculateComMoment();
+  void LoadInternalVariable();
   
   void AngularGrid(int angle_flag, int nmu);
 
