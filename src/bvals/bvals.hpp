@@ -159,6 +159,7 @@ public:
   void AverageEMFBoundary(void);
   void PolarSingleEMF(void);
   void PolarSingleHydro(AthenaArray<Real> &dst);
+  void PolarSingleRad(AthenaArray<Real> &dst);
   void PolarSingleField(FaceField &dst);
   bool ReceiveEMFCorrection(int step);
 
@@ -203,7 +204,7 @@ private:
   Real **emf_north_send_[NSTEP], **emf_north_recv_[NSTEP];
   Real **emf_south_send_[NSTEP], **emf_south_recv_[NSTEP];
   AthenaArray<Real> sarea_[2];
-  AthenaArray<Real> exc_;
+  AthenaArray<Real> exc_, rad_exc_;
   int num_north_polar_blocks_, num_south_polar_blocks_;
 
 #ifdef MPI_PARALLEL

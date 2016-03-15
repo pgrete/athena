@@ -651,6 +651,12 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
      (pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY))
        exc_.NewAthenaArray(pmb->ke+NGHOST+1);
 
+  if(pmb->loc.level == pmb->pmy_mesh->root_level &&
+     pmb->pmy_mesh->nrbx3 == 1 && RADIATION_ENABLED &&
+     (pmb->block_rad_bcs[INNER_X2]==POLAR_BNDRY
+      || pmb->block_rad_bcs[OUTER_X2]==POLAR_BNDRY))
+       rad_exc_.NewAthenaArray((pmb->ke+NGHOST+1)*pmb->prad->n_fre_ang);
+
 }
 
 // destructor
@@ -740,8 +746,17 @@ BoundaryValues::~BoundaryValues()
   }
   if(pmb->loc.level == pmb->pmy_mesh->root_level &&
      pmb->pmy_mesh->nrbx3 == 1 &&
-     (pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY))
+     (pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY
+     || pmb->block_rad_bcs[INNER_X2]==POLAR_BNDRY
+     || pmb->block_rad_bcs[OUTER_X2]==POLAR_BNDRY))
        exc_.DeleteAthenaArray();
+  
+  if(pmb->loc.level == pmb->pmy_mesh->root_level &&
+     pmb->pmy_mesh->nrbx3 == 1 && RADIATION_ENABLED &&
+     (pmb->block_rad_bcs[INNER_X2]==POLAR_BNDRY
+      || pmb->block_rad_bcs[OUTER_X2]==POLAR_BNDRY))
+       rad_exc_.DeleteAthenaArray();
+  
 }
 
 //--------------------------------------------------------------------------------------
@@ -1238,6 +1253,83 @@ void BoundaryValues::PolarSingleHydro(AthenaArray<Real> &dst)
          }
         }
       }
+    }
+  }
+  return;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::PolarSingleRad(AthenaArray<Real> &dst)
+//
+// \brief  single CPU in the azimuthal direction for the polar boundary
+// specific intensity needs to copy the variable in the opposite octant
+//  1  | 0  5 | 4
+// ------- -------
+//  3  | 2  7 | 6
+void BoundaryValues::PolarSingleRad(AthenaArray<Real> &dst)
+{
+  MeshBlock *pmb=pmy_mblock_;
+  int &nang = pmb->prad->nang;
+  int &noct = pmb->prad->noct;
+  int &nfreq = pmb->prad->nfreq;
+  int &n_fre_ang = pmb->prad->n_fre_ang;
+  int n_ang=nang/noct;  // angle per octant
+  
+  if(pmb->loc.level == pmb->pmy_mesh->root_level && pmb->pmy_mesh->nrbx3 == 1){
+
+    if(pmb->block_bcs[INNER_X2]==POLAR_BNDRY){
+      int nx3_half = (pmb->ke - pmb->ks + 1) / 2;
+      for (int j=pmb->js-NGHOST; j<=pmb->js-1; ++j) {
+       for (int i=pmb->is-NGHOST; i<=pmb->ie+NGHOST; ++i){
+         for (int k=pmb->ks-NGHOST; k<=pmb->ke+NGHOST; ++k) {
+           for (int n=0; n<n_fre_ang; ++n) {
+             rad_exc_(k*n_fre_ang+n)=dst(k,j,i,n);
+           }
+         }
+         for (int k=pmb->ks-NGHOST; k<=pmb->ke+NGHOST; ++k) {
+           int k_shift = k;
+           k_shift += (k < (nx3_half+NGHOST) ? 1 : -1) * nx3_half;
+           for(int ifr=0; ifr<nfreq; ++ifr){
+             for(int no=0; no<noct; no++){
+             for(int n=0; n<n_ang; ++n){
+                int ang = ifr * nang + no * n_ang + n;
+                int noct_dst =  (4*((int)(no/4)) + 3-(no%4));
+                int ang_dst = ifr * nang + noct_dst * n_ang + n;
+                dst(k,j,i,ang)=rad_exc_(k_shift*n_fre_ang+ang_dst);
+             
+             }}
+           }// end ifr
+         }
+       }// end i
+      }// end j
+    }// end polar bd
+
+    if(pmb->block_bcs[OUTER_X2]==POLAR_BNDRY){
+    
+      int nx3_half = (pmb->ke - pmb->ks + 1) / 2;
+      for (int j=pmb->je+1; j<=pmb->je+NGHOST; ++j) {
+       for (int i=pmb->is-NGHOST; i<=pmb->ie+NGHOST; ++i){
+         for (int k=pmb->ks-NGHOST; k<=pmb->ke+NGHOST; ++k) {
+           for (int n=0; n<n_fre_ang; ++n) {
+             rad_exc_(k*n_fre_ang+n)=dst(k,j,i,n);
+           }
+         }
+         for (int k=pmb->ks-NGHOST; k<=pmb->ke+NGHOST; ++k) {
+           int k_shift = k;
+           k_shift += (k < (nx3_half+NGHOST) ? 1 : -1) * nx3_half;
+           for(int ifr=0; ifr<nfreq; ++ifr){
+             for(int no=0; no<noct; ++no){
+             for(int n=0; n<n_ang; ++n){
+                int ang = ifr * nang + no * n_ang + n;
+                int noct_dst =  (4*((int)(no/4)) + 3-(no%4));
+                int ang_dst = ifr * nang + noct_dst * n_ang + n;
+                dst(k,j,i,ang)=rad_exc_(k_shift*n_fre_ang+ang_dst);
+             }}
+           }// end ifr
+         }
+       }// end i
+      }// end j
+  
     }
   }
   return;

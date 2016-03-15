@@ -228,6 +228,13 @@ bool BoundaryValues::ReceiveCenterBoundaryBuffers(AthenaArray<Real> &dst, int ph
   if((flag&&(phys==HYDRO))&&(pmb->block_bcs[INNER_X2]==POLAR_BNDRY||
        pmb->block_bcs[OUTER_X2]==POLAR_BNDRY))
        PolarSingleHydro(dst);
+  
+
+  if((flag&&(phys==RAD))&&(pmb->block_rad_bcs[INNER_X2]==POLAR_BNDRY||
+       pmb->block_rad_bcs[OUTER_X2]==POLAR_BNDRY))
+       PolarSingleRad(dst);
+  
+  
   return flag;
 }
 
@@ -273,6 +280,11 @@ void BoundaryValues::ReceiveCenterBoundaryBuffersWithWait(AthenaArray<Real> &dst
   if ((phys==HYDRO)&&(pmb->block_bcs[INNER_X2]==POLAR_BNDRY
         ||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY))
         PolarSingleHydro(dst);
+  
+  if((phys==RAD)&&(pmb->block_rad_bcs[INNER_X2]==POLAR_BNDRY||
+       pmb->block_rad_bcs[OUTER_X2]==POLAR_BNDRY))
+       PolarSingleRad(dst);
+
 
   return;
 }
@@ -308,18 +320,39 @@ void BoundaryValues::SetCenterBoundarySameLevel(AthenaArray<Real> &dst, Real *bu
   Real sign=1.0;
   int p=0;
   if (nb.polar) {
-    for (int n=s4; n<=e4; ++n) {
-      if(phys==HYDRO){
-        sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
-      }
-      for (int k=s3; k<=e3; ++k) {
-        for (int j=e2; j>=s2; --j) {
+    if(phys==HYDRO){
+      for (int n=s4; n<=e4; ++n) {
+       sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
+       for (int k=s3; k<=e3; ++k) {
+         for (int j=e2; j>=s2; --j) {
 #pragma simd
           for (int i=s1; i<=e1; ++i)
             dst(n,k,j,i) = sign * buf[p++];
-        }
+         }
+       }
+     }
+    }else if(phys==RAD){
+      int &nfreq = pmb->prad->nfreq;
+      int &nang = pmb->prad->nang;
+      int &noct = pmb->prad->noct;
+      int n_ang=nang/noct;
+      for (int k=s4; k<=e4; ++k) {
+       for (int j=e3; j>=s3; --j) {
+         for (int i=s2; i<=e2; ++i) {
+           for(int ifr=0; ifr<nfreq; ++ifr){
+            for(int no=0; no<noct; ++no){
+              for(int n=0; n<n_ang; ++n){
+                int noct_dst = (4*((int)(no/4)) + 3-(no%4));
+                int ang_dst = ifr * nang + noct_dst * n_ang + n;
+                  dst(k,j,i,ang_dst) = buf[p++];
+              }
+            }
+           }// end ifr
+         }
+       }
       }
-    }
+    
+    }// end phys=Rad
   }
   else
     BufferUtility::Unpack4DData(buf, dst, s4, e4, s3, e3, s2, e2, s1, e1, p);
@@ -377,9 +410,9 @@ void BoundaryValues::SetCenterBoundaryFromCoarser(Real *buf, int phys,
   int p=0;
   Real sign=1.0;
   if (nb.polar) {
-    for (int n=s4; n<=e4; ++n) {
-       if(phys==HYDRO)
-         sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
+    if(phys==HYDRO){
+     for (int n=s4; n<=e4; ++n) {
+      sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
       for (int k=s3; k<=e3; ++k) {
         for (int j=e2; j>=s2; --j) {
 #pragma simd
@@ -388,6 +421,27 @@ void BoundaryValues::SetCenterBoundaryFromCoarser(Real *buf, int phys,
         }
       }
     }
+    }else if(phys==RAD){
+      int &nfreq = pmb->prad->nfreq;
+      int &nang = pmb->prad->nang;
+      int &noct = pmb->prad->noct;
+      int n_ang=nang/noct;
+      for (int k=s4; k<=e4; ++k) {
+       for (int j=e3; j>=s3; --j) {
+         for (int i=s2; i<=e2; ++i) {
+           for(int ifr=0; ifr<nfreq; ++ifr){
+            for(int no=0; no<noct; ++no){
+              for(int n=0; n<n_ang; ++n){
+                int noct_dst = (4*((int)(no/4)) + 3-(no%4));
+                int ang_dst = ifr * nang + noct_dst * n_ang + n;
+                  pmr->coarse_ir_(k,j,i,ang_dst) = buf[p++];
+              }
+            }
+           }// end ifr
+         }
+       }
+      }
+    }// End phys==RAD
   }
   else{
     if(phys==HYDRO)
@@ -462,9 +516,9 @@ void BoundaryValues::SetCenterBoundaryFromFiner(AthenaArray<Real> &dst, Real *bu
   int p=0;
   Real sign=1.0;
   if (nb.polar) {
+   if(phys==HYDRO){
     for (int n=s4; n<=e4; ++n) {
-      if(phys==HYDRO)
-         sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
+      sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
       for (int k=s3; k<=e3; ++k) {
         for (int j=s2; j<=e2; ++j) {
 #pragma simd
@@ -473,6 +527,27 @@ void BoundaryValues::SetCenterBoundaryFromFiner(AthenaArray<Real> &dst, Real *bu
         }
       }
     }
+   }else if(phys==RAD){
+      int &nfreq = pmb->prad->nfreq;
+      int &nang = pmb->prad->nang;
+      int &noct = pmb->prad->noct;
+      int n_ang=nang/noct;
+      for (int k=s4; k<=e4; ++k) {
+       for (int j=s3; j<=e3; ++j) {
+         for (int i=s2; i<=e2; ++i) {
+           for(int ifr=0; ifr<nfreq; ++ifr){
+            for(int no=0; no<noct; ++no){
+              for(int n=0; n<n_ang; ++n){
+                int noct_dst = (4*((int)(no/4)) + 3-(no%4));
+                int ang_dst = ifr * nang + noct_dst * n_ang + n;
+                  dst(k,j,i,ang_dst) = buf[p++];
+              }
+            }
+           }// end ifr
+         }
+       }
+      }
+   }//end phys==RAD
   }
   else 
     BufferUtility::Unpack4DData(buf, dst, s4, e4, s3, e3, s2, e2, s1, e1, p);
