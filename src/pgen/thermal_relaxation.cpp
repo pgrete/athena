@@ -128,9 +128,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           }
           
           for (int ifr=0; ifr < nfreq; ++ifr){
-            prad->sigma_s(k,j,i,ifr) = 0.0;
-            prad->sigma_a(k,j,i,ifr) = 100.0;
-            prad->sigma_ae(k,j,i,ifr) = 100.0;
+            prad->sigma_s(k,j,i,ifr) = 100.0;
+            prad->sigma_a(k,j,i,ifr) = 0.0;
+            prad->sigma_ae(k,j,i,ifr) = 0.0;
             
           }
         }

@@ -54,14 +54,25 @@ TaskList::TaskList(Mesh *pm)
       AddTask(1,FLX_SEND,1,CALC_FLX);
       AddTask(1,FLX_RECV,1,CALC_FLX);
       AddTask(1,HYD_INT, 1,FLX_RECV);
-      AddTask(1,HYD_SEND,1,HYD_INT);
+      if(RADIATION_ENABLED){
+        AddTask(1,HYD_SEND,1,HYD_INT|RAD_SOURCE);
+      }else{
+        AddTask(1,HYD_SEND,1,HYD_INT);
+      }
+
       AddTask(1,CALC_EMF,1,CALC_FLX);
       AddTask(1,EMF_SEND,1,CALC_EMF);
       AddTask(1,EMF_RECV,1,EMF_SEND);
       AddTask(1,FLD_INT, 1,EMF_RECV);
     } else {
       AddTask(1,HYD_INT, 1,CALC_FLX);
-      AddTask(1,HYD_SEND,1,HYD_INT);
+      
+      if(RADIATION_ENABLED){
+        AddTask(1,HYD_SEND,1,HYD_INT|RAD_SOURCE);
+      }else{
+        AddTask(1,HYD_SEND,1,HYD_INT);
+      }
+
       AddTask(1,CALC_EMF,1,CALC_FLX);
       AddTask(1,EMF_SEND,1,CALC_EMF);
       AddTask(1,EMF_RECV,1,EMF_SEND);
@@ -75,7 +86,11 @@ TaskList::TaskList(Mesh *pm)
       AddTask(1,CON2PRIM,1,PROLONG);
     }
     else {
-      AddTask(1,CON2PRIM,1,(HYD_INT|HYD_RECV|FLD_INT|FLD_RECV));
+      if(RADIATION_ENABLED){
+        AddTask(1,CON2PRIM,1,((HYD_INT|RAD_SOURCE)|HYD_RECV|FLD_INT|FLD_RECV));
+      }else{
+        AddTask(1,CON2PRIM,1,(HYD_INT|HYD_RECV|FLD_INT|FLD_RECV));
+      }
     }
     
     AddTask(1,PHY_BVAL,1,CON2PRIM);
@@ -108,7 +123,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(1,RAD_BVAL,1,(RAD_SOURCE|RAD_RECV));
       }
       
-      AddTask(1,RAD_MOMOPACITY,1,RAD_BVAL&PHY_BVAL);
+      AddTask(1,RAD_MOMOPACITY,1,RAD_BVAL|PHY_BVAL);
       
     }
     
@@ -118,14 +133,23 @@ TaskList::TaskList(Mesh *pm)
       AddTask(2,FLX_SEND,2,CALC_FLX);
       AddTask(2,FLX_RECV,2,CALC_FLX);
       AddTask(2,HYD_INT, 2,FLX_RECV);
-      AddTask(2,HYD_SEND,2,HYD_INT);
+      if(RADIATION_ENABLED){
+        AddTask(2,HYD_SEND,2,HYD_INT|RAD_SOURCE);
+      }else{
+        AddTask(2,HYD_SEND,2,HYD_INT);
+      }
       AddTask(2,CALC_EMF,2,CALC_FLX);
       AddTask(2,EMF_SEND,2,CALC_EMF);
       AddTask(2,EMF_RECV,2,EMF_SEND);
       AddTask(2,FLD_INT, 2,EMF_RECV);
     } else {
       AddTask(2,HYD_INT, 2,CALC_FLX);
-      AddTask(2,HYD_SEND,2,HYD_INT);
+      if(RADIATION_ENABLED){
+        AddTask(2,HYD_SEND,2,HYD_INT|RAD_SOURCE);
+      }else{
+        AddTask(2,HYD_SEND,2,HYD_INT);
+      }
+
       AddTask(2,CALC_EMF,2,CALC_FLX);
       AddTask(2,EMF_SEND,2,CALC_EMF);
       AddTask(2,EMF_RECV,2,EMF_SEND);
@@ -139,13 +163,17 @@ TaskList::TaskList(Mesh *pm)
       AddTask(2,CON2PRIM,2,PROLONG);
     }
     else {
-      AddTask(2,CON2PRIM,2,(HYD_INT|HYD_RECV|FLD_INT|FLD_RECV));
+      if(RADIATION_ENABLED){
+        AddTask(2,CON2PRIM,2,((HYD_INT|RAD_SOURCE)|HYD_RECV|FLD_INT|FLD_RECV));
+      }else{
+        AddTask(2,CON2PRIM,2,(HYD_INT|HYD_RECV|FLD_INT|FLD_RECV));
+      }
     }
     AddTask(2,PHY_BVAL,2,CON2PRIM);
     
     if(RADIATION_ENABLED){
 
-      AddTask(2,RAD_FLX,1,RAD_BVAL&PHY_BVAL);
+      AddTask(2,RAD_FLX,1,RAD_BVAL|PHY_BVAL);
       
       if(pmy_mesh_->multilevel==true){
     
@@ -160,7 +188,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,RAD_SEND,2,RAD_SOURCE);
       }
 
-      AddTask(2,RAD_RECV,1,RAD_BVAL&PHY_BVAL);
+      AddTask(2,RAD_RECV,1,RAD_BVAL|PHY_BVAL);
       
       if(pmy_mesh_->multilevel==true){
         AddTask(2,PROLRAD,2,RAD_SEND|RAD_RECV);
@@ -169,7 +197,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,RAD_BVAL,2,(RAD_SOURCE|RAD_RECV));
       }
       
-      AddTask(2,RAD_MOMOPACITY,2,RAD_BVAL&PHY_BVAL);
+      AddTask(2,RAD_MOMOPACITY,2,RAD_BVAL|PHY_BVAL);
     
     }// End Radiation
   }
@@ -185,13 +213,22 @@ TaskList::TaskList(Mesh *pm)
     else {
       AddTask(1,HYD_INT, 1,CALC_FLX);
     }
-    AddTask(1,HYD_SEND,1,HYD_INT);
+    if(RADIATION_ENABLED){
+      AddTask(1,HYD_SEND,1,HYD_INT|RAD_SOURCE);
+    }else{
+      AddTask(1,HYD_SEND,1,HYD_INT);
+    }
+    
     AddTask(1,HYD_RECV,1,NONE);
     if(pmy_mesh_->multilevel==true) { // SMR or AMR
       AddTask(1,PROLONG,1,(HYD_SEND|HYD_RECV));
       AddTask(1,CON2PRIM,1,PROLONG);
     } else {
-      AddTask(1,CON2PRIM,1,(HYD_INT|HYD_RECV));
+      if(RADIATION_ENABLED){
+        AddTask(1,CON2PRIM,1,((HYD_INT|RAD_SOURCE)|HYD_RECV));
+      }else{
+        AddTask(1,CON2PRIM,1,(HYD_INT|HYD_RECV));
+      }
     }
     AddTask(1,PHY_BVAL,1,CON2PRIM);
     
@@ -222,7 +259,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(1,RAD_BVAL,1,(RAD_SOURCE|RAD_RECV));
       }
       
-      AddTask(1,RAD_MOMOPACITY,1,RAD_BVAL&PHY_BVAL);
+      AddTask(1,RAD_MOMOPACITY,1,RAD_BVAL|PHY_BVAL);
       
     }// End radiation
 
@@ -236,19 +273,27 @@ TaskList::TaskList(Mesh *pm)
     else {
       AddTask(2,HYD_INT, 2,CALC_FLX);
     }
-    AddTask(2,HYD_SEND,2,HYD_INT);
+    if(RADIATION_ENABLED){
+      AddTask(2,HYD_SEND,2,HYD_INT|RAD_SOURCE);
+    }else{
+      AddTask(2,HYD_SEND,2,HYD_INT);
+    }
     AddTask(2,HYD_RECV,1,PHY_BVAL);
     if(pmy_mesh_->multilevel==true) { // SMR or AMR
       AddTask(2,PROLONG,2,(HYD_SEND|HYD_RECV));
       AddTask(2,CON2PRIM,2,PROLONG);
     } else {
-      AddTask(2,CON2PRIM,2,(HYD_INT|HYD_RECV));
+      if(RADIATION_ENABLED){
+        AddTask(2,CON2PRIM,2,((HYD_INT|RAD_SOURCE)|HYD_RECV));
+      }else{
+        AddTask(2,CON2PRIM,2,(HYD_INT|HYD_RECV));
+      }
     }
     AddTask(2,PHY_BVAL,2,CON2PRIM);
     
     if(RADIATION_ENABLED){
 
-      AddTask(2,RAD_FLX,1,RAD_BVAL&PHY_BVAL);
+      AddTask(2,RAD_FLX,1,RAD_BVAL|PHY_BVAL);
       
       if(pmy_mesh_->multilevel==true){
     
@@ -263,7 +308,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,RAD_SEND,2,RAD_SOURCE);
       }
 
-      AddTask(2,RAD_RECV,1,RAD_BVAL&PHY_BVAL);
+      AddTask(2,RAD_RECV,1,RAD_BVAL|PHY_BVAL);
       
       if(pmy_mesh_->multilevel==true){
         AddTask(2,PROLRAD,2,RAD_SEND|RAD_RECV);
@@ -272,7 +317,7 @@ TaskList::TaskList(Mesh *pm)
         AddTask(2,RAD_BVAL,2,(RAD_SOURCE|RAD_RECV));
       }
       
-      AddTask(2,RAD_MOMOPACITY,2,RAD_BVAL&PHY_BVAL);
+      AddTask(2,RAD_MOMOPACITY,2,RAD_BVAL|PHY_BVAL);
       
     }// End Radiation
     
