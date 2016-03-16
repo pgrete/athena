@@ -35,3 +35,6 @@ meshtest.dat
 
 # Visualization package files
 .smhist
+
+#vim backup files
+*.swp
