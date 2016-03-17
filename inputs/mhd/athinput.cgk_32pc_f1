@@ -10,14 +10,11 @@ problem_id = cgk_32pc_f1   # problem ID: basename of output filenames
 file_type  = vtk       # Binary data dump
 variable   = prim      # variables to be output
 dt         = 0.01      # time increment between outputs
-#output format?
 
 <time>
 cfl_number = 0.4       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = 0        # cycle limit
 tlim       = -1.       # time limit
-#only output initial condition. Is there a better way to do that?
-#what is the -n option in configuration?
 
 <mesh>
 nx1        = 16        # Number of zones in X1-direction
