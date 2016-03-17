@@ -26,6 +26,7 @@ class RadIntegrator;
 
 // prototype for user-defined opacity function for radiative transfer
 typedef void (*Opacity_t)(MeshBlock *pmb, AthenaArray<Real> &prim);
+typedef void (*OutInternal_t)(MeshBlock *pmb);
 
 // Array indices for radiation moments
 enum {IER=0, IFR1=1, IFR2=2, IFR3=3, IPR11=4, IPR12=5, IPR13=6, IPR21=7,
@@ -65,13 +66,19 @@ public:
   //Function in problem generators to update opacity
   void EnrollOpacityFunction(Opacity_t MyOpacityFunction);
   
+    //Function in problem generators to update opacity
+  void EnrollInternalVariableFunction(OutInternal_t MyOutputInternalFunction);
+  
   // The function pointer for the opacity
   Opacity_t UpdateOpacity;
+  
+  // Function pointer to load internal variable output
+  OutInternal_t LoadInternalVariable;
   
   //functin to calculate the radiation moments
   void CalculateMoment(AthenaArray<Real> &ir_in);
   void CalculateComMoment();
-  void LoadInternalVariable();
+
   
   void AngularGrid(int angle_flag, int nmu);
 

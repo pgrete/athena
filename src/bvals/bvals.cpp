@@ -124,6 +124,9 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
       case OUTFLOW_BNDRY:
         RadBoundaryFunction_[INNER_X1] = RadOutflowInnerX1;
         break;
+      case VACUUM_BNDRY:
+        RadBoundaryFunction_[INNER_X1] = RadVacuumInnerX1;
+        break;
       case BLOCK_BNDRY: // block boundary
       case PERIODIC_BNDRY: // periodic boundary
         RadBoundaryFunction_[INNER_X1] = NULL;
@@ -146,6 +149,9 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
         break;
       case OUTFLOW_BNDRY:
         RadBoundaryFunction_[OUTER_X1] = RadOutflowOuterX1;
+        break;
+      case VACUUM_BNDRY:
+        RadBoundaryFunction_[OUTER_X1] = RadVacuumOuterX1;
         break;
       case BLOCK_BNDRY: // block boundary
       case PERIODIC_BNDRY: // periodic boundary
@@ -218,6 +224,9 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
         case OUTFLOW_BNDRY:
           RadBoundaryFunction_[INNER_X2] = RadOutflowInnerX2;
           break;
+        case VACUUM_BNDRY:
+          RadBoundaryFunction_[INNER_X2] = RadVacuumInnerX2;
+          break;
         case BLOCK_BNDRY: // block boundary
         case PERIODIC_BNDRY: // periodic boundary
         case POLAR_BNDRY: // polar boundary
@@ -242,6 +251,9 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
           break;
         case OUTFLOW_BNDRY:
           RadBoundaryFunction_[OUTER_X2] = RadOutflowOuterX2;
+          break;
+        case VACUUM_BNDRY:
+          RadBoundaryFunction_[OUTER_X2] = RadVacuumOuterX2;
           break;
         case BLOCK_BNDRY: // block boundary
         case PERIODIC_BNDRY: // periodic boundary
@@ -315,6 +327,9 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
         case OUTFLOW_BNDRY:
           RadBoundaryFunction_[INNER_X3] = RadOutflowInnerX3;
           break;
+        case VACUUM_BNDRY:
+          RadBoundaryFunction_[INNER_X3] = RadVacuumInnerX3;
+          break;
         case BLOCK_BNDRY: // block boundary
         case PERIODIC_BNDRY: // periodic boundary
           RadBoundaryFunction_[INNER_X3] = NULL;
@@ -338,6 +353,9 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
           break;
         case OUTFLOW_BNDRY:
           RadBoundaryFunction_[OUTER_X3] = RadOutflowOuterX3;
+          break;
+        case VACUUM_BNDRY:
+          RadBoundaryFunction_[OUTER_X3] = RadVacuumOuterX3;
           break;
         case BLOCK_BNDRY: // block boundary
         case PERIODIC_BNDRY: // periodic boundary

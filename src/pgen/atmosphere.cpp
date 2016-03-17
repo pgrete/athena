@@ -35,10 +35,8 @@
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
+#include "../radiation/integrators/rad_integrators.hpp"
 
-// File scope variables
-static int ang;
-static int octnum;
 
 //======================================================================================
 /*! \file beam.cpp
@@ -46,17 +44,10 @@ static int octnum;
  *
  *====================================================================================*/
 
-void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke);
+static Real eps0 = 1.e-4;
 
 void Mesh::InitUserMeshProperties(ParameterInput *pin)
 {
-  ang = pin->GetOrAddInteger("problem","ang",0);
-  octnum = pin->GetOrAddInteger("problem","octnum",0);
-  
-    // Enroll boundary functions
-  if(RADIATION_ENABLED)
-  EnrollUserRadBoundaryFunction(INNER_X2, TwoBeams);
 
   return;
 }
@@ -79,6 +70,17 @@ void Mesh::TerminateUserMeshProperties(void)
 //======================================================================================
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
+
+  Real tgas, er;
+  int flag=1;
+  if(flag==1){
+    tgas=1.0;
+    er =1.0;
+  
+  }
+  
+  Real rho0=1.e-3;
+  Real ztop = block_size.x3max;
   
   Real gamma = phydro->peos->GetGamma();
   
@@ -86,13 +88,14 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   for(int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-        phydro->u(IDN,k,j,i) = 1.0;
+        Real x3 = pcoord->x3v(k);
+        phydro->u(IDN,k,j,i) = rho0 * exp(fabs(x3-ztop));
         phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS){
 
-          phydro->u(IEN,k,j,i) = 1.0/(gamma-1.0);
+          phydro->u(IEN,k,j,i) = tgas * phydro->u(IDN,k,j,i)/(gamma-1.0);
           phydro->u(IEN,k,j,i) += 0.5*SQR(phydro->u(IM1,k,j,i))/phydro->u(IDN,k,j,i);
           phydro->u(IEN,k,j,i) += 0.5*SQR(phydro->u(IM2,k,j,i))/phydro->u(IDN,k,j,i);
           phydro->u(IEN,k,j,i) += 0.5*SQR(phydro->u(IM3,k,j,i))/phydro->u(IDN,k,j,i);
@@ -105,21 +108,43 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   if(RADIATION_ENABLED){
     int nfreq = prad->nfreq;
     int nang = prad->nang;
+    AthenaArray<Real> ir_cm;
+    ir_cm.NewAthenaArray(prad->n_fre_ang);
+
+    Real *ir_lab;
+    
     for(int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
         for (int i=is; i<=ie; ++i) {
-          for (int ifr=0; ifr < nfreq; ++ifr){
-            prad->sigma_s(k,j,i,ifr) = 0.0;
-            prad->sigma_a(k,j,i,ifr) = 0.0;
-            prad->sigma_ae(k,j,i,ifr) = 0.0;
+         
+
+          Real vx = phydro->u(IM1,k,j,i)/phydro->u(IDN,k,j,i);
+          Real vy = phydro->u(IM2,k,j,i)/phydro->u(IDN,k,j,i);
+          Real vz = phydro->u(IM3,k,j,i)/phydro->u(IDN,k,j,i);
+          Real *mux = &(prad->mu(0,k,j,i,0));
+          Real *muy = &(prad->mu(1,k,j,i,0));
+          Real *muz = &(prad->mu(2,k,j,i,0));
+          
+          ir_lab = &(prad->ir(k,j,i,0));
+        
+//          prad->pradintegrator->ComToLab(vx,vy,vz,mux,muy,muz,ir_cm,ir_lab);
+          for(int n=0; n<prad->n_fre_ang; n++){
+             ir_lab[n] = er;
           }
-          for(int n=0; n<prad->n_fre_ang; ++n){
-              prad->ir(k,j,i,n) = 0.0;
+          
+          for (int ifr=0; ifr < nfreq; ++ifr){
+            prad->sigma_s(k,j,i,ifr) = (1-eps0) * phydro->u(IDN,k,j,i);
+            prad->sigma_a(k,j,i,ifr) = eps0 * phydro->u(IDN,k,j,i);
+            prad->sigma_ae(k,j,i,ifr) = eps0 * phydro->u(IDN,k,j,i);
+            
           }
         }
       }
     }
-  }
+    
+    ir_cm.DeleteAthenaArray();
+    
+  }// End Rad
   
   return;
 }
@@ -135,44 +160,6 @@ void MeshBlock::UserWorkInLoop(void)
   return;
 }
 
-
-void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke)
-{
-  Radiation *prad=pmb->prad;
-  int nang=prad->nang;
-  int noct=prad->noct;
-  int nfreq=prad->nfreq;
-  int ang_oct=nang/noct;
-  
-  for (int k=ks; k<=ke; ++k) {
-    for (int j=1; j<=(NGHOST); ++j) {
-      for (int i=is; i<=ie; ++i) {
-        Real &x1 = pco->x1v(i);
-        Real &x2 = pco->x2v(j);
-        for(int ifr=0; ifr<nfreq; ++ifr){
-        for(int l=0; l<noct; ++l){
-        for(int n=0; n<ang_oct; ++n){
-          int n_ang=l*ang_oct + n;
-          Real slope1=prad->mu(1,k,j,i,0)/prad->mu(0,k,j,i,0);
-          Real slope2=prad->mu(1,k,j,i,n_ang)/prad->mu(0,k,j,i,n_ang);
-          Real dis1=fabs(slope1*(x1-0.1)+(x2+2.0));
-          Real dis2=fabs(slope2*(x1+0.1)+(x2+2.0));
-          if(((l==0)&&(n==0)&&(dis1<pco->dx1v(i))) ||
-               ((l==1)&&(n==0)&&(dis2<pco->dx1v(i)))){
-            a(k,js-j,i,n_ang+ifr*nang) = 10.0;
-          }else{
-            a(k,js-j,i,n_ang+ifr*nang) = 0.0;
-          }
-        }
-        }
-        }
-
-    }}
-  }
-
-  return;
-}
 
 
 

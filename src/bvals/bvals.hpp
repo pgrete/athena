@@ -97,6 +97,20 @@ void RadOutflowOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
 void RadOutflowOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
                     int is, int ie, int js, int je, int ks, int ke);
 
+
+void RadVacuumInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadVacuumInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadVacuumInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadVacuumOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadVacuumOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+void RadVacuumOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
+                    int is, int ie, int js, int je, int ks, int ke);
+
 // function to return boundary flag given input string
 enum BoundaryFlag GetBoundaryFlag(std::string input_string);
 

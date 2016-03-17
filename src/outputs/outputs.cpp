@@ -559,7 +559,7 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
       pov = new OutputVariable;
       pov->type = "SCALARS";
       pov->name = "Sigma_s";
-      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma_s,3,0,1);
+      pov->data.InitWithShallowCopy(pmb->prad->grey_sigma_s);
       pod->AppendNode(pov); // scattering opacity
       var_added += 1;
     }
@@ -570,7 +570,7 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
       pov = new OutputVariable;
       pov->type = "SCALARS";
       pov->name = "Sigma_a";
-      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma_a,3,0,1);
+      pov->data.InitWithShallowCopy(pmb->prad->grey_sigma_a);
       pod->AppendNode(pov); // absorption opacity
       var_added += 1;
     }
@@ -866,7 +866,7 @@ void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
         if(RADIATION_ENABLED){
           // Calculate Com-moving moments and grey opacity for dump
           pmb->prad->CalculateComMoment();
-          pmb->prad->LoadInternalVariable();
+          pmb->prad->LoadInternalVariable(pmb);
         }
         
         OutputData* pod = new OutputData;

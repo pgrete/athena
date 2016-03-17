@@ -42,6 +42,12 @@ inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &prim)
   
 }
 
+// Default function to load internal variable. Nothing to do
+inline void DefaultInternalVariable(MeshBlock *pmb)
+{
+  
+}
+
 
 Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
 {
@@ -136,6 +142,9 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   // set a default opacity function
   UpdateOpacity = DefaultOpacity;
   
+  //  default function for internal output
+  LoadInternalVariable = DefaultInternalVariable;
+  
   pradintegrator = new RadIntegrator(this, pin);
   
   // dump the angular grid and radiation parameters in a file
@@ -204,6 +213,12 @@ Radiation::~Radiation()
 void Radiation::EnrollOpacityFunction(Opacity_t MyOpacityFunction)
 {
   UpdateOpacity = MyOpacityFunction;
+  
+}
+
+void Radiation::EnrollInternalVariableFunction(OutInternal_t MyOutputInternalFunction)
+{
+  LoadInternalVariable = MyOutputInternalFunction;
   
 }
 
