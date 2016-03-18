@@ -17,7 +17,7 @@
 // Athena headers
 #include "../athena.hpp"
 #include <sstream>
-
+#include <stdexcept>
 
 //======================================================================================
 //! \file ludcmp.cpp

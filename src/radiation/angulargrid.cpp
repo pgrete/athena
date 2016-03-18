@@ -18,6 +18,7 @@
 //======================================================================================
 
 #include <sstream>
+#include <stdexcept>
 
 // Athena++ headers
 #include "radiation.hpp"
