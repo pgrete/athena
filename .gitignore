@@ -38,3 +38,4 @@ meshtest.dat
 
 #vim backup files
 *.swp
+*.swo
