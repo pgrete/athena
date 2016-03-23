@@ -60,6 +60,8 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
   vmax = pin->GetOrAddReal("radiation","vmax",0.9);
   tunit = pin->GetOrAddReal("radiation","Tunit",1.e7);
+  t_floor_ = pin->GetOrAddReal("radiation", "tfloor", TINY_NUMBER);
+
   // equivalent temperature for electron
   telectron = 5.94065e9;
   telectron /= tunit;
@@ -163,6 +165,8 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
     fprintf(pfile,"reduced_c %4.2e \n",reduced_c);
     fprintf(pfile,"Vmax      %4.2e \n",vmax);
     fprintf(pfile,"Tunit     %4.2e \n",tunit);
+    fprintf(pfile,"Compt     %d  \n",pradintegrator->compton_flag_);
+    fprintf(pfile,"Tfloor    %4.2e \n",t_floor_);
     
     for(int n=0; n<nang; ++n){
       fprintf(pfile,"%2d   %e   %e   %e    %e\n",n,mu(0,0,0,0,n),mu(1,0,0,0,n),

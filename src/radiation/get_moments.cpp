@@ -113,17 +113,7 @@ void Radiation::CalculateMoment(AthenaArray<Real> &ir_in)
           i_mom(IPR33,k,j,i) += przz;
           
         }// End frequency loop
-       // Now calculate frequency inetgrated opacity
-        Real sum_sigma_s=0.0, sum_sigma_a = 0.0;
-        Real *sigmas=&(sigma_s(k,j,i,0));
-        Real *sigmaa=&(sigma_a(k,j,i,0));
-#pragma simd
-        for(int ifr=0; ifr<nfreq; ++ifr){
-          sum_sigma_s += sigmas[ifr] * wfreq(ifr);
-          sum_sigma_a += sigmaa[ifr] * wfreq(ifr);
-        }
-        grey_sigma_s(k,j,i) = sum_sigma_s;
-        grey_sigma_a(k,j,i) = sum_sigma_a;
+
       }
     }
     
@@ -240,6 +230,18 @@ void Radiation::CalculateComMoment()
           i_mom(IFR3,k,j,i) += frz;
           
         }// End frequency loop
+        
+        // Now calculate frequency inetgrated opacity
+        Real sum_sigma_s=0.0, sum_sigma_a = 0.0;
+        Real *sigmas=&(sigma_s(k,j,i,0));
+        Real *sigmaa=&(sigma_a(k,j,i,0));
+#pragma simd
+        for(int ifr=0; ifr<nfreq; ++ifr){
+          sum_sigma_s += sigmas[ifr] * wfreq(ifr);
+          sum_sigma_a += sigmaa[ifr] * wfreq(ifr);
+        }
+        grey_sigma_s(k,j,i) = sum_sigma_s;
+        grey_sigma_a(k,j,i) = sum_sigma_a;
 
       }
     }

@@ -23,6 +23,7 @@ class Radiation;
 
 
 class RadIntegrator {
+  friend class Radiation;
 public:
   RadIntegrator(Radiation *prad, ParameterInput *pin);
   ~RadIntegrator();

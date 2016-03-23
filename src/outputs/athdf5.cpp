@@ -672,6 +672,16 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
           << "Precision=\"4\" Format=\"HDF\">" << fname << ":/" << bn << "/Er"
           << "</DataItem>" << std::endl << "    </Attribute>" << std::endl;
         }
+        if (output_params.variable.compare("Er0") == 0 ||
+            output_params.variable.compare("prim") == 0 ||
+            output_params.variable.compare("cons") == 0) {
+          xdmf << "    <Attribute Name=\"com_rad_energy\" AttributeType=\"Scalar\" "
+          << "Center=\"Cell\">" << std::endl
+          << "      <DataItem Dimensions=\"" << sdim << "\" NumberType=\"Float\" "
+          << "Precision=\"4\" Format=\"HDF\">" << fname << ":/" << bn << "/Er"
+          << "</DataItem>" << std::endl << "    </Attribute>" << std::endl;
+        }
+
         if (output_params.variable.compare("Sigma_s") == 0 ||
             output_params.variable.compare("prim") == 0 ||
             output_params.variable.compare("cons") == 0) {
@@ -704,6 +714,25 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
           << fname << ":/" << bn << "/Fr2" << "</DataItem>" << std::endl
           << "    </Attribute>" << std::endl;
           xdmf << "    <Attribute Name=\"radiation_flux_x3\" AttributeType=\"Scalar\" "
+          << "Center=\"Cell\">" << std::endl << "      <DataItem Dimensions=\""
+          << sdim << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">"
+          << fname << ":/" << bn << "/Fr3" << "</DataItem>" << std::endl
+          << "    </Attribute>" << std::endl;
+        }
+        if (output_params.variable.compare("Fr0") == 0 ||
+            output_params.variable.compare("prim") == 0 ||
+            output_params.variable.compare("cons") == 0) {
+          xdmf << "    <Attribute Name=\"com_rad_flux_x1\" AttributeType=\"Scalar\" "
+          << "Center=\"Cell\">" << std::endl << "      <DataItem Dimensions=\""
+          << sdim << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">"
+          << fname << ":/" << bn << "/Fr1" << "</DataItem>" << std::endl
+          << "    </Attribute>" << std::endl;
+          xdmf << "    <Attribute Name=\"com_rad_flux_x2\" AttributeType=\"Scalar\" "
+          << "Center=\"Cell\">" << std::endl << "      <DataItem Dimensions=\""
+          << sdim << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">"
+          << fname << ":/" << bn << "/Fr2" << "</DataItem>" << std::endl
+          << "    </Attribute>" << std::endl;
+          xdmf << "    <Attribute Name=\"com_rad_flux_x3\" AttributeType=\"Scalar\" "
           << "Center=\"Cell\">" << std::endl << "      <DataItem Dimensions=\""
           << sdim << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">"
           << fname << ":/" << bn << "/Fr3" << "</DataItem>" << std::endl

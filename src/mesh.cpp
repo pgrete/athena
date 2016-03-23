@@ -977,6 +977,8 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     int num_south_polar_blocks = pmy_mesh->nrbx3 * (1 << level);
     polar_neighbor_south = new PolarNeighborBlock[num_south_polar_blocks];
   }
+  
+  InitUserMeshBlockProperties(pin);
 
 
   return;
@@ -1108,16 +1110,16 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     if(resfile.Read(prad->ir.GetArrayPointer(),sizeof(Real),
                     prad->ir.GetSize())!=prad->ir.GetSize()) nerr++;
   }
-  if (RADIATION_ENABLED) {
-    if(resfile.Read(prad->ir.GetArrayPointer(),sizeof(Real),
-                    prad->ir.GetSize())!=prad->ir.GetSize()) nerr++;
-  }
+
   if(nerr>0) {
     msg << "### FATAL ERROR in MeshBlock constructor" << std::endl
         << "The restarting file is broken." << std::endl;
     resfile.Close();
     throw std::runtime_error(msg.str().c_str());
   }
+  
+  InitUserMeshBlockProperties(pin);
+  
   return;
 }
 

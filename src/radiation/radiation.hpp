@@ -33,6 +33,7 @@ enum {IER=0, IFR1=1, IFR2=2, IFR3=3, IPR11=4, IPR12=5, IPR13=6, IPR21=7,
       IPR22=8, IPR23=9, IPR31=10, IPR32=11, IPR33=12};
 
 class Radiation {
+  friend class RadIntegrator;
 public:
   Radiation(MeshBlock *pmb, ParameterInput *pin);
   ~Radiation();
@@ -86,6 +87,7 @@ public:
 
 
 private:
+  Real t_floor_; // temperature floor
   
 
 };

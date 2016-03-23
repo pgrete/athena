@@ -52,6 +52,16 @@ void Mesh::InitUserMeshProperties(ParameterInput *pin)
   return;
 }
 
+void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
+{
+  
+  
+  
+
+  return;
+}
+
+
 //======================================================================================
 //! \fn void Mesh::TerminateUserMeshProperties(void)
 //  \brief Clean up the Mesh properties

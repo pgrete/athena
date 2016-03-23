@@ -104,7 +104,7 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &w,
              
              GetTaufactor(vx, vy, vz, ds,
                       prad->sigma_a(k,j,i,ifr)+prad->sigma_s(k,j,i,ifr), &tau_fact);
-             
+#pragma simd             
              for(int n=0; n<nang; ++n){
              
                Real vdotn = vx*prad->mu(0,k,j,i,n)+vy*prad->mu(1,k,j,i,n)

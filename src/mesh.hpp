@@ -106,6 +106,7 @@ public:
   int FindNeighborGID(int ox1, int ox2, int ox3);
   void IntegrateConservative(Real *tcons);
   void UserWorkInLoop(void); // in /pgen
+  void InitUserMeshBlockProperties(ParameterInput *pin);
 
   RegionSize block_size;
   enum BoundaryFlag block_bcs[6];

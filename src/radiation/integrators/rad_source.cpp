@@ -87,7 +87,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
          Real vz = w(IVZ,k,j,i);
         
          Real rho = w(IDN,k,j,i);
-         Real tgas= w(IEN,k,j,i)/rho;
+         Real tgas= std::max(w(IEN,k,j,i)/rho,prad->t_floor_);
         
          Real vel = vx * vx + vy * vy + vz * vz;
         
