@@ -4,7 +4,7 @@ reference =
 configure = --prob=read_vtk
 
 <job>
-problem_id = cgk_32pc_f1   # problem ID: basename of output filenames
+problem_id = cgk_32pc_f8   # problem ID: basename of output filenames
 
 <output1>
 file_type  = vtk       # Binary data dump
@@ -17,23 +17,28 @@ nlim       = 0        # cycle limit
 tlim       = -1.       # time limit
 
 <mesh>
-nx1        = 16        # Number of zones in X1-direction
+nx1        = 32        # Number of zones in X1-direction
 x1min      = -512      # minimum value of X1
-x1max      = 0         # maximum value of X1
+x1max      = 512       # maximum value of X1
 ix1_bc     = periodic  # ner-X1 boundary flag
 ox1_bc     = periodic  # outer-X1 boundary flag
 
-nx2        = 16        # Number of zones in X2-direction
+nx2        = 32        # Number of zones in X2-direction
 x2min      = -512      # minimum value of X2
-x2max      = 0         # maximum value of X2
+x2max      = 512       # maximum value of X2
 ix2_bc     = periodic  # inner-X2 boundary flag
 ox2_bc     = periodic  # outer-X2 boundary flag
 
-nx3        = 32         # Number of zones in X3-direction
+nx3        = 128         # Number of zones in X3-direction
 x3min      = -2048      # minimum value of X3
-x3max      = -1024      # maximum value of X3
+x3max      = 2048       # maximum value of X3
 ix3_bc     = outflow    # inner-X3 boundary flag
 ox3_bc     = outflow    # outer-X3 boundary flag
+
+<meshblock>
+nx1        =    16
+nx2        =    16
+nx3        =    32
 
 #hydro block is mendatory
 <hydro>

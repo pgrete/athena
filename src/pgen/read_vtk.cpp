@@ -22,7 +22,6 @@
 #include <iostream>   // endl
 #include <vector>     // vector container
 #include <sstream>    // stringstream
-#include <string>     // c_str()
 #include <stdio.h>    // c style file
 #include <string.h>   // strcmp()
 #include <algorithm>  // std::find()
@@ -78,9 +77,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   AthenaArray<Real> b; //needed for PrimitiveToConserved()
   b.NewAthenaArray(Nz, Ny, Nx);
   std::stringstream msg; //error message
+  std::string vtkfile; //corresponding vtk file for this meshblock
 
   //parse input parameters
-  std::string vtkfile = pin->GetString("problem", "vtkfile");
+  std::string vtkfile0 = pin->GetString("problem", "vtkfile");//id0 file
   std::string str_scalers = pin->GetString("problem", "scalers");
   std::string str_vectors = pin->GetString("problem", "vectors");
   std::vector<std::string> scaler_fields = split(str_scalers, ',');
@@ -97,7 +97,30 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   }
   //----------------------
 
-  //TODO: need corresponding name for multiple processors
+  //find coresponding filename.
+  if (loc.lx1 == 0 && loc.lx2 == 0 && loc.lx3 == 0) {
+    vtkfile = vtkfile0;
+  } else {
+    //find the corespoinding athena4.2 global id
+    long int id_old = loc.lx1 + loc.lx2 * pmy_mesh->nrbx1 
+                        + loc.lx3 * pmy_mesh->nrbx1 * pmy_mesh->nrbx2;
+    //get vtk file name .../id#/problem-id#.????.vtk
+    std::string id_str = "id";
+    id_str = id_str + std::to_string(id_old);//string "id#"
+    std::size_t pos1 = vtkfile0.find_last_of('/');//last /
+    std::size_t pos2 = vtkfile0.find_last_of('/', pos1-1);//second last /
+    std::string base_dir = vtkfile0.substr(0, pos2+1);// "base_directory/"
+    std::string vtk_name0 = vtkfile0.substr(pos1);// "/bala.????.vtk"
+    std::size_t pos3 = vtk_name0.find_first_of('.');
+    std::string vtk_name = vtk_name0.substr(0, pos3) + "-" + id_str
+                            + vtk_name0.substr(pos3);
+    std::cout << id_str << ", " << base_dir << ", " << vtk_name << std::endl;
+    vtkfile = base_dir + id_str + vtk_name;
+  }
+
+  //dagnostic printing of filename
+  printf("meshblock gid=%d, lx1=%ld, lx2=%ld, lx3=%ld, level=%d, vtk file = %s\n",
+         gid, loc.lx1, loc.lx2, loc.lx3, loc.level, vtkfile.c_str());
   
   //read scalers
   for(int i = 0; i < scaler_fields.size(); ++i) {
