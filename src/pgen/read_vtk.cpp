@@ -25,6 +25,7 @@
 #include <stdio.h>    // c style file
 #include <string.h>   // strcmp()
 #include <algorithm>  // std::find()
+#include <stdexcept>  // std::runtime_error()
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -105,8 +106,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     long int id_old = loc.lx1 + loc.lx2 * pmy_mesh->nrbx1 
                         + loc.lx3 * pmy_mesh->nrbx1 * pmy_mesh->nrbx2;
     //get vtk file name .../id#/problem-id#.????.vtk
-    std::string id_str = "id";
-    id_str = id_str + std::to_string(id_old);//string "id#"
+    std::stringstream id_str_stream;
+    id_str_stream << "id" << id_old;// id#
+    std::string id_str = id_str_stream.str();
     std::size_t pos1 = vtkfile0.find_last_of('/');//last /
     std::size_t pos2 = vtkfile0.find_last_of('/', pos1-1);//second last /
     std::string base_dir = vtkfile0.substr(0, pos2+1);// "base_directory/"
