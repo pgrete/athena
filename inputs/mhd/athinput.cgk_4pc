@@ -46,7 +46,7 @@ gamma = 1.666666666666667 # gamma = C_p/C_v
 iso_sound_speed = 1.0     # isothermal sound speed
 
 <problem>
-vtkfile    = /tigress/changgoo/MST_4pc/MST_4pc.0400.vtk  #filename of the vtkfile to be read in
+vtkfile    = /tigress/changgoo/MST_4pc/id0/MST_4pc.0400.vtk  #filename of the vtkfile to be read in
 scalers    = density, pressure #scaler fields to be read in, separated by comma
 vectors    = velocity          #vector fields to be read in, separated by comma, assume 3 components
 #assume float format, and lookup_table default
