@@ -19,6 +19,7 @@
 #   -t                enable interface frame transformations for GR
 #   -vis              enable viscosity
 #   --cxx=choice      use choice as the C++ compiler
+#   --std=choice      use choice as the C++ standard
 #   -debug            enable debug flags (-g -O0); override other compiler options
 #   -mpi              enable parallelization with MPI
 #   -omp              enable parallelization with OpenMP
@@ -117,6 +118,12 @@ parser.add_argument('--cxx',
     default='g++',
     choices=['g++','icc','cray','bgxl'],
     help='select C++ compiler')
+
+# --std=[name] argument
+parser.add_argument('--std',
+    default=None,
+    choices=["c++11"],
+    help='select C++ standard')
 
 # -debug argument
 parser.add_argument('-debug',
@@ -275,6 +282,10 @@ if args['cxx'] == 'bgxl':
       '-O3 -qstrict -qlanglvl=extended -qsuppress=1500-036 -qsuppress=1540-1401'
   makefile_options['LINKER_FLAGS'] = ''
   makefile_options['LIBRARY_FLAGS'] = ''
+
+# --std=[name] argument
+if args['std'] == 'c++11':
+  makefile_options['COMPILER_FLAGS'] = "-std=c++11 " + makefile_options['COMPILER_FLAGS']
 
 # -debug argument
 if args['debug']:
