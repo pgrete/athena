@@ -577,11 +577,17 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
     
     if (output_params.variable.compare("rad_fov") == 0){
       for (int n=0; n<(NRADFOV); ++n) {
+      
+        std::string iname="rad_fov";
+        char num[4];
+        sprintf(num,"%d",n);
+        iname.append(num);
+      
         pov = new OutputVariable;
         pov->type = "SCALARS";
-        pov->name = "rad_fov";
+        pov->name = iname;
         pov->data.InitWithShallowSlice(pmb->prad->rad_ifov,4,n,1);
-        pod->AppendNode(pov); // internal hydro outvars
+        pod->AppendNode(pov); // internal radiation outvars
       }
      var_added+=NRADFOV;
     }
@@ -591,9 +597,14 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
 
   if (output_params.variable.compare("ifov") == 0) {
     for (int n=0; n<(NIFOV); ++n) {
+      std::string iname="ifov";
+      char num[4];
+      sprintf(num,"%d",n);
+      iname.append(num);
+
       pov = new OutputVariable; 
       pov->type = "SCALARS";
-      pov->name = "ifov";
+      pov->name = iname;
       pov->data.InitWithShallowSlice(phyd->ifov,4,n,1);
       pod->AppendNode(pov); // internal hydro outvars
     }
@@ -851,6 +862,23 @@ void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
 {
   OutputType* ptype = pfirst_type_;
   MeshBlock *pmb;
+  
+  //calculate radiation quantities for dump
+  // Only need to do once for all output type
+  
+  if(RADIATION_ENABLED){
+  
+    pmb=pm->pblock;
+    while(pmb != NULL){
+     
+     // Calculate Com-moving moments and grey opacity for dump
+      pmb->prad->CalculateComMoment();
+      // Load internal variable for dump
+      pmb->prad->LoadInternalVariable(pmb);
+
+      pmb=pmb->next;
+    }
+  }
 
   while (ptype != NULL) {
     if ((pm->time == pm->start_time) ||
@@ -862,13 +890,6 @@ void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
       pmb=pm->pblock;
       while (pmb != NULL)  {
         // Create new OutputData container, load and transform data, then write to file
-        // for radiation, need to calculate the radiation moments
-        if(RADIATION_ENABLED){
-          // Calculate Com-moving moments and grey opacity for dump
-          pmb->prad->CalculateComMoment();
-          pmb->prad->LoadInternalVariable(pmb);
-        }
-        
         OutputData* pod = new OutputData;
         ptype->LoadOutputData(pod,pmb);
         ptype->TransformOutputData(pod,pmb);

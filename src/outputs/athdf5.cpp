@@ -216,20 +216,23 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
 
     sz=mbsize[0]+1;
     dsid = H5Screate_simple(1, &sz, NULL);
-    tid = H5Dcreate2(tgid,"x1f",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+    tid = H5Dcreate2(tgid,"x1f",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+          H5P_DEFAULT);
     if(b>=nbs && b<=nbe) x1fid[b-nbs]=tid;
     else H5Dclose(tid);
     H5Sclose(dsid);
     sz=mbsize[1]+1;
     dsid = H5Screate_simple(1, &sz, NULL);
-    tid = H5Dcreate2(tgid,"x2f",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+    tid = H5Dcreate2(tgid,"x2f",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+          H5P_DEFAULT);
     if(b>=nbs && b<=nbe) x2fid[b-nbs]=tid;
     else H5Dclose(tid);
     H5Sclose(dsid);
     if(mbsize[2]>1) {
       sz=mbsize[2]+1;
       dsid = H5Screate_simple(1, &sz, NULL);
-      tid = H5Dcreate2(tgid,"x3f",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+      tid = H5Dcreate2(tgid,"x3f",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+            H5P_DEFAULT);
       if(b>=nbs && b<=nbe) x3fid[b-nbs]=tid;
       else H5Dclose(tid);
       H5Sclose(dsid);
@@ -238,7 +241,8 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
     if (output_params.variable.compare("D") == 0 || 
         output_params.variable.compare("cons") == 0) {
       dsid = H5Screate_simple(dim, dims, NULL);
-      tid = H5Dcreate2(tgid,"dens",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+      tid = H5Dcreate2(tgid,"dens",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+            H5P_DEFAULT);
       if(b>=nbs && b<=nbe) rhoid[b-nbs]=tid;
       else H5Dclose(tid);
       H5Sclose(dsid);
@@ -247,7 +251,8 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
     if (output_params.variable.compare("d") == 0 || 
         output_params.variable.compare("prim") == 0) {
       dsid = H5Screate_simple(dim, dims, NULL);
-      tid = H5Dcreate2(tgid,"rho",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+      tid = H5Dcreate2(tgid,"rho",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+            H5P_DEFAULT);
       if(b>=nbs && b<=nbe) rhoid[b-nbs]=tid;
       else H5Dclose(tid);
       H5Sclose(dsid);
@@ -257,7 +262,8 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
       if (output_params.variable.compare("E") == 0 || 
           output_params.variable.compare("cons") == 0) {
         dsid = H5Screate_simple(dim, dims, NULL);
-        tid = H5Dcreate2(tgid,"Etot",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        tid = H5Dcreate2(tgid,"Etot",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+              H5P_DEFAULT);
         if(b>=nbs && b<=nbe) eid[b-nbs]=tid;
         else H5Dclose(tid);
         H5Sclose(dsid);
@@ -266,7 +272,8 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
       if (output_params.variable.compare("p") == 0 || 
           output_params.variable.compare("prim") == 0) {
         dsid = H5Screate_simple(dim, dims, NULL);
-        tid = H5Dcreate2(tgid,"press",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+        tid = H5Dcreate2(tgid,"press",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+              H5P_DEFAULT);
         if(b>=nbs && b<=nbe) eid[b-nbs]=tid;
         else H5Dclose(tid);
         H5Sclose(dsid);
@@ -276,17 +283,20 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
     if (output_params.variable.compare("m") == 0 || 
         output_params.variable.compare("cons") == 0) {
       dsid = H5Screate_simple(dim, dims, NULL);
-      tid = H5Dcreate2(tgid,"mom1",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+      tid = H5Dcreate2(tgid,"mom1",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+            H5P_DEFAULT);
       if(b>=nbs && b<=nbe) mid[0][b-nbs]=tid;
       else H5Dclose(tid);
       H5Sclose(dsid);
       dsid = H5Screate_simple(dim, dims, NULL);
-      tid = H5Dcreate2(tgid,"mom2",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+      tid = H5Dcreate2(tgid,"mom2",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+            H5P_DEFAULT);
       if(b>=nbs && b<=nbe) mid[1][b-nbs]=tid;
       else H5Dclose(tid);
       H5Sclose(dsid);
       dsid = H5Screate_simple(dim, dims, NULL);
-      tid = H5Dcreate2(tgid,"mom3",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+      tid = H5Dcreate2(tgid,"mom3",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+            H5P_DEFAULT);
       if(b>=nbs && b<=nbe) mid[2][b-nbs]=tid;
       else H5Dclose(tid);
       H5Sclose(dsid);
@@ -295,7 +305,8 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
     if (output_params.variable.compare("v") == 0 || 
         output_params.variable.compare("prim") == 0) {
       dsid = H5Screate_simple(dim, dims, NULL);
-      tid = H5Dcreate2(tgid,"vel1",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
+      tid = H5Dcreate2(tgid,"vel1",H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
+            H5P_DEFAULT);
       if(b>=nbs && b<=nbe) mid[0][b-nbs]=tid;
       else H5Dclose(tid);
       H5Sclose(dsid);
@@ -492,8 +503,8 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
         sprintf(num,"%d",n);
         iname.append(num);
         dsid = H5Screate_simple(dim, dims, NULL);
-        tid = H5Dcreate2(tgid,iname.c_str(),H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
-              H5P_DEFAULT);
+        tid = H5Dcreate2(tgid,iname.c_str(),H5T_IEEE_F32BE,dsid,H5P_DEFAULT,
+              H5P_DEFAULT,H5P_DEFAULT);
         if(b>=nbs && b<=nbe) radfovid[n][b-nbs]=tid;
         else H5Dclose(tid);
         H5Sclose(dsid);
@@ -508,8 +519,8 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
         sprintf(num,"%d",n);
         iname.append(num);
         dsid = H5Screate_simple(dim, dims, NULL);
-        tid = H5Dcreate2(tgid,iname.c_str(),H5T_IEEE_F32BE,dsid,H5P_DEFAULT,H5P_DEFAULT,
-              H5P_DEFAULT);
+        tid = H5Dcreate2(tgid,iname.c_str(),H5T_IEEE_F32BE,dsid,H5P_DEFAULT,
+              H5P_DEFAULT,H5P_DEFAULT);
         if(b>=nbs && b<=nbe) ifovid[n][b-nbs]=tid;
         else H5Dclose(tid);
         H5Sclose(dsid);
@@ -519,7 +530,8 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
     else H5Gclose(tgid);
   }
 
-  if(Globals::my_rank==0 && pin->GetOrAddInteger(output_params.block_name,"xdmf",1)!=0) {
+  if(Globals::my_rank==0 && pin->GetOrAddInteger(output_params.block_name,"xdmf",1)!=0)
+    {
     std::string xname=fname;
     xname.append(".xdmf");
     std::ofstream xdmf(xname.c_str());
@@ -788,25 +800,36 @@ void ATHDF5Output::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag=false)
           << "    </Attribute>" << std::endl;
         }
         
-        if (output_params.variable.compare("rad_fov") == 0) {
+        if (output_params.variable.compare("rad_fov") == 0){
           for (int n=0; n<(NRADFOV); ++n) {
-            xdmf << "    <Attribute Name=\"rad_fov\" AttributeType=\"Scalar\" "
+            std::string iname="rad_fov";
+            char num[4];
+            sprintf(num,"%d",n);
+            iname.append(num);
+            xdmf << "    <Attribute Name=\""<< iname <<"\" AttributeType=\"Scalar\" "
                  << "Center=\"Cell\">" << std::endl
                  << "      <DataItem Dimensions=\"" << sdim << "\" NumberType=\"Float\" "
-                 << "Precision=\"4\" Format=\"HDF\">" << fname << ":/" << bn << "/radfov"
-                 << n << "</DataItem>" << std::endl << "    </Attribute>" << std::endl;
+                 << "Precision=\"4\" Format=\"HDF\">" << fname << ":/" << bn <<"/"
+                 << iname << "</DataItem>" << std::endl << "    </Attribute>"
+                 << std::endl;
           }
         }
         
       }
 
-      if (output_params.variable.compare("ifov") == 0) {
+      if (output_params.variable.compare("ifov") == 0){
         for (int n=0; n<(NIFOV); ++n) {
-          xdmf << "    <Attribute Name=\"ifov\" AttributeType=\"Scalar\" "
+          std::string iname="ifov";
+          char num[4];
+          sprintf(num,"%d",n);
+          iname.append(num);
+          
+          xdmf << "    <Attribute Name=\""<< iname <<"\" AttributeType=\"Scalar\" "
                << "Center=\"Cell\">" << std::endl
                << "      <DataItem Dimensions=\"" << sdim << "\" NumberType=\"Float\" "
-               << "Precision=\"4\" Format=\"HDF\">" << fname << ":/" << bn << "/ifov"
-               << n << "</DataItem>" << std::endl << "    </Attribute>" << std::endl;
+               << "Precision=\"4\" Format=\"HDF\">" << fname << ":/" << bn << "/"
+               << iname << "</DataItem>" << std::endl << "    </Attribute>"
+               << std::endl;
         }
       }
 
@@ -886,6 +909,7 @@ void ATHDF5Output::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
   ndata = std::max(ndata,mbsize[2]+1);
   ndata = std::max(mbsize[0]*mbsize[1]*mbsize[2],ndata);
   data = new float[ndata];
+  
 
   // coordinates
   for (int i=(pod->data_header.il); i<=(pod->data_header.iu)+1; ++i)
@@ -931,10 +955,16 @@ void ATHDF5Output::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
         did=fr0id[n][pmb->lid];
       else if(pvar->name.compare("Pr")==0)
         did=prid[n][pmb->lid];
-      else if(pvar->name.compare("ifov")==0)
-        did=ifovid[n][pmb->lid];
-      else if(pvar->name.compare("rad_fov")==0)
-        did=radfovid[n][pmb->lid];
+      else if(pvar->name.compare(0,4,"ifov")==0){
+        std::string num_str=pvar->name.substr(4,pvar->name.length()-1);
+        int pos = std::stoi(num_str.c_str());
+        did=ifovid[n+pos][pmb->lid];
+      }
+      else if(pvar->name.compare(0,7,"rad_fov")==0){
+        std::string num_str=pvar->name.substr(7,pvar->name.length()-1);
+        int pos = std::stoi(num_str.c_str());
+        did=radfovid[n+pos][pmb->lid];
+      }
       else continue;
       int p=0;
       for (int k=(pod->data_header.kl); k<=(pod->data_header.ku); ++k) {
