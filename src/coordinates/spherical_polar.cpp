@@ -645,9 +645,9 @@ void Coordinates::VisSrcTermsX3(const int k, const int j, const Real dt,
 // For radiation angles
 void Coordinates::AxisDirection(int *axisx, int *axisy, int *axisz)
 {
-  *axisx = 2;
-  *axisy = 0;
-  *axisz = 1;
+  *axisx = 1;
+  *axisy = 2;
+  *axisz = 0;
 
 }
 
@@ -688,7 +688,6 @@ void Coordinates::ConvertAngle(MeshBlock *pmb, const int nang,
     Real *miutheta = &(mu(1,k,j,i,0));
     Real *miuphi = &(mu(2,k,j,i,0));
   // now rotate angles
-#pragma simd
   for(int mi=0; mi<nang; ++mi){
       Real miuz0 = miur[mi];
       Real miux0 = miutheta[mi];
@@ -698,7 +697,7 @@ void Coordinates::ConvertAngle(MeshBlock *pmb, const int nang,
       miutheta[mi] = cosx2*cosx3*miux0 + cosx2*sinx3*miuy0 - sinx2*miuz0;
       miuphi[mi]   = -sinx3*miux0      + cosx3*miuy0;
   
-    }
+  }
   }}}
  
  }// end radiation transfer

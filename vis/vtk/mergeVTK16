@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#combile the code first 
+g++ -Wall -W -o join_vtk join_vtk++.c -lm
+
+for num in {0..77}
+do
+number=$(echo $num)
+printf -v filename "%05i" $number
+./join_vtk -o "Rad.out1.$filename.vtk" ./"Rad.block0.out1.$filename.vtk" ./"Rad.block1.out1.$filename.vtk" ./"Rad.block2.out1.$filename.vtk" ./"Rad.block3.out1.$filename.vtk" ./"Rad.block4.out1.$filename.vtk" ./"Rad.block5.out1.$filename.vtk" ./"Rad.block6.out1.$filename.vtk" ./"Rad.block7.out1.$filename.vtk" ./"Rad.block8.out1.$filename.vtk" ./"Rad.block9.out1.$filename.vtk" ./"Rad.block10.out1.$filename.vtk" ./"Rad.block11.out1.$filename.vtk" ./"Rad.block12.out1.$filename.vtk" ./"Rad.block13.out1.$filename.vtk" ./"Rad.block14.out1.$filename.vtk" ./"Rad.block15.out1.$filename.vtk" 
+done
+
+
+
+
+

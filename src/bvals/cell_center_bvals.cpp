@@ -332,21 +332,16 @@ void BoundaryValues::SetCenterBoundarySameLevel(AthenaArray<Real> &dst, Real *bu
        }
      }
     }else if(phys==RAD){
-      int &nfreq = pmb->prad->nfreq;
-      int &nang = pmb->prad->nang;
-      int &noct = pmb->prad->noct;
-      int n_ang=nang/noct;
+      //Need need to flip radiation
+      // The miu_theta, miu_phi flip automatically based on the angles
+      int &nang = pmb->prad->n_fre_ang;
       for (int k=s4; k<=e4; ++k) {
        for (int j=e3; j>=s3; --j) {
          for (int i=s2; i<=e2; ++i) {
-           for(int ifr=0; ifr<nfreq; ++ifr){
-            for(int no=0; no<noct; ++no){
-              for(int n=0; n<n_ang; ++n){
-                int noct_dst = (4*((int)(no/4)) + 3-(no%4));
-                int ang_dst = ifr * nang + noct_dst * n_ang + n;
-                  dst(k,j,i,ang_dst) = buf[p++];
-              }
-            }
+#pragma simd
+           for(int n=0; n<nang; ++n){
+               dst(k,j,i,n) = buf[p++];
+
            }// end ifr
          }
        }
@@ -422,22 +417,13 @@ void BoundaryValues::SetCenterBoundaryFromCoarser(Real *buf, int phys,
       }
     }
     }else if(phys==RAD){
-      int &nfreq = pmb->prad->nfreq;
-      int &nang = pmb->prad->nang;
-      int &noct = pmb->prad->noct;
-      int n_ang=nang/noct;
+      int &nang = pmb->prad->n_fre_ang;
       for (int k=s4; k<=e4; ++k) {
        for (int j=e3; j>=s3; --j) {
          for (int i=s2; i<=e2; ++i) {
-           for(int ifr=0; ifr<nfreq; ++ifr){
-            for(int no=0; no<noct; ++no){
-              for(int n=0; n<n_ang; ++n){
-                int noct_dst = (4*((int)(no/4)) + 3-(no%4));
-                int ang_dst = ifr * nang + noct_dst * n_ang + n;
-                  pmr->coarse_ir_(k,j,i,ang_dst) = buf[p++];
-              }
-            }
-           }// end ifr
+           for(int n=0; n<nang; ++n){
+              pmr->coarse_ir_(k,j,i,n) = buf[p++];
+           }// end nang
          }
        }
       }
@@ -528,21 +514,13 @@ void BoundaryValues::SetCenterBoundaryFromFiner(AthenaArray<Real> &dst, Real *bu
       }
     }
    }else if(phys==RAD){
-      int &nfreq = pmb->prad->nfreq;
-      int &nang = pmb->prad->nang;
-      int &noct = pmb->prad->noct;
-      int n_ang=nang/noct;
+      int &nang = pmb->prad->n_fre_ang;
       for (int k=s4; k<=e4; ++k) {
        for (int j=s3; j<=e3; ++j) {
          for (int i=s2; i<=e2; ++i) {
-           for(int ifr=0; ifr<nfreq; ++ifr){
-            for(int no=0; no<noct; ++no){
-              for(int n=0; n<n_ang; ++n){
-                int noct_dst = (4*((int)(no/4)) + 3-(no%4));
-                int ang_dst = ifr * nang + noct_dst * n_ang + n;
-                  dst(k,j,i,ang_dst) = buf[p++];
-              }
-            }
+#pragma simd
+           for(int n=0; n<nang; ++n){
+             dst(k,j,i,n) = buf[p++];
            }// end ifr
          }
        }

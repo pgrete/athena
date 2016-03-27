@@ -199,16 +199,16 @@ void Radiation::AngularGrid(int angle_flag, int nmu)
               for (int i=0; i<n_ang; ++i) {
                 int mi = l*n_ang + i;
                 if (k == 0){
-                  mu(0,0,n2,n1,mi) =  mutmp(i,axisx);
+                  mu(axisx,0,n2,n1,mi) =  mutmp(i,0);
                 }
                 else{
-                  mu(0,0,n2,n1,mi) = -mutmp(i,axisx);
+                  mu(axisx,0,n2,n1,mi) = -mutmp(i,0);
                 }
                 if (j == 0){
-                  mu(1,0,n2,n1,mi) =  mutmp(i,axisy);
+                  mu(axisy,0,n2,n1,mi) =  mutmp(i,1);
                 }
                 else{
-                  mu(1,0,n2,n1,mi) = -mutmp(i,axisy);
+                  mu(axisy,0,n2,n1,mi) = -mutmp(i,1);
                 }
                 
               }// end nang
@@ -237,24 +237,24 @@ void Radiation::AngularGrid(int angle_flag, int nmu)
                     int mi = m*n_ang + i;
                     
                     if (l == 0){
-                      mu(0,n3,n2,n1,mi) =  mutmp(i,axisx);
+                      mu(axisx,n3,n2,n1,mi) =  mutmp(i,0);
                     }
                     else{
-                      mu(0,n3,n2,n1,mi) = -mutmp(i,axisx);
+                      mu(axisx,n3,n2,n1,mi) = -mutmp(i,0);
                     }
                     
                     if (k == 0){
-                      mu(1,n3,n2,n1,mi) =  mutmp(i,axisy);
+                      mu(axisy,n3,n2,n1,mi) =  mutmp(i,1);
                     }
                     else{
-                      mu(1,n3,n2,n1,mi) = -mutmp(i,axisy);
+                      mu(axisy,n3,n2,n1,mi) = -mutmp(i,1);
                     }
                     
                     if (j == 0){
-                      mu(2,n3,n2,n1,mi) =  mutmp(i,axisz);
+                      mu(axisz,n3,n2,n1,mi) =  mutmp(i,2);
                     }
                     else{
-                      mu(2,n3,n2,n1,mi) = -mutmp(i,axisz);
+                      mu(axisz,n3,n2,n1,mi) = -mutmp(i,2);
                     }
                     
                   }// end i
@@ -297,17 +297,17 @@ void Radiation::AngularGrid(int angle_flag, int nmu)
               int mi = l*n_ang + i;
               
               if (k == 0){
-                mu(0,0,n2,n1,mi) =  mutmp(i,axisx);
+                mu(axisx,0,n2,n1,mi) =  mutmp(i,0);
               }
               else{
-                mu(0,0,n2,n1,mi) = -mutmp(i,axisx);
+                mu(axisx,0,n2,n1,mi) = -mutmp(i,0);
               }
               
               if (j == 0){
-                mu(1,0,n2,n1,mi) =  mutmp(i,axisy);
+                mu(axisy,0,n2,n1,mi) =  mutmp(i,1);
               }
               else{
-                mu(1,0,n2,n1,mi) = -mutmp(i,axisy);
+                mu(axisy,0,n2,n1,mi) = -mutmp(i,1);
               }
               
             }// end i

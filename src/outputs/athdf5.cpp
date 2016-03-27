@@ -957,12 +957,12 @@ void ATHDF5Output::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
         did=prid[n][pmb->lid];
       else if(pvar->name.compare(0,4,"ifov")==0){
         std::string num_str=pvar->name.substr(4,pvar->name.length()-1);
-        int pos = std::stoi(num_str.c_str());
+        int pos = atoi(num_str.c_str());
         did=ifovid[n+pos][pmb->lid];
       }
       else if(pvar->name.compare(0,7,"rad_fov")==0){
         std::string num_str=pvar->name.substr(7,pvar->name.length()-1);
-        int pos = std::stoi(num_str.c_str());
+        int pos = atoi(num_str.c_str());
         did=radfovid[n+pos][pmb->lid];
       }
       else continue;

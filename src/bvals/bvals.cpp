@@ -1280,7 +1280,9 @@ void BoundaryValues::PolarSingleHydro(AthenaArray<Real> &dst)
 //! \fn void BoundaryValues::PolarSingleRad(AthenaArray<Real> &dst)
 //
 // \brief  single CPU in the azimuthal direction for the polar boundary
-// specific intensity needs to copy the variable in the opposite octant
+// polar boundary condition means variable in the ghost zones
+// should be the variables in the opposite side of azimuthal direction
+// No need to siwtch the angle
 //  1  | 0  5 | 4
 // ------- -------
 //  3  | 2  7 | 6
@@ -1307,16 +1309,9 @@ void BoundaryValues::PolarSingleRad(AthenaArray<Real> &dst)
          for (int k=pmb->ks-NGHOST; k<=pmb->ke+NGHOST; ++k) {
            int k_shift = k;
            k_shift += (k < (nx3_half+NGHOST) ? 1 : -1) * nx3_half;
-           for(int ifr=0; ifr<nfreq; ++ifr){
-             for(int no=0; no<noct; no++){
-             for(int n=0; n<n_ang; ++n){
-                int ang = ifr * nang + no * n_ang + n;
-                int noct_dst =  (4*((int)(no/4)) + 3-(no%4));
-                int ang_dst = ifr * nang + noct_dst * n_ang + n;
-                dst(k,j,i,ang)=rad_exc_(k_shift*n_fre_ang+ang_dst);
-             
-             }}
-           }// end ifr
+           for (int n=0; n<n_fre_ang; ++n) {
+             dst(k,j,i,n)=rad_exc_(k_shift*n_fre_ang+n);
+           }
          }
        }// end i
       }// end j
@@ -1335,15 +1330,9 @@ void BoundaryValues::PolarSingleRad(AthenaArray<Real> &dst)
          for (int k=pmb->ks-NGHOST; k<=pmb->ke+NGHOST; ++k) {
            int k_shift = k;
            k_shift += (k < (nx3_half+NGHOST) ? 1 : -1) * nx3_half;
-           for(int ifr=0; ifr<nfreq; ++ifr){
-             for(int no=0; no<noct; ++no){
-             for(int n=0; n<n_ang; ++n){
-                int ang = ifr * nang + no * n_ang + n;
-                int noct_dst =  (4*((int)(no/4)) + 3-(no%4));
-                int ang_dst = ifr * nang + noct_dst * n_ang + n;
-                dst(k,j,i,ang)=rad_exc_(k_shift*n_fre_ang+ang_dst);
-             }}
-           }// end ifr
+           for (int n=0; n<n_fre_ang; ++n) {
+             dst(k,j,i,n)=rad_exc_(k_shift*n_fre_ang+n);
+           }
          }
        }// end i
       }// end j

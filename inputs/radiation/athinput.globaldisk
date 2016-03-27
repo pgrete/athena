@@ -11,10 +11,10 @@ file_type  = hdf5       # Binary data dump
 dt         = 0.005       # time increment between outputs
 variable   = prim
 
-<output2>
-file_type  = hdf5       # Binary data dump
-dt         = 0.005       # time increment between outputs
-variable   = rad_fov
+#<output2>
+#file_type  = hdf5       # Binary data dump
+#dt         = 0.005       # time increment between outputs
+#variable   = rad_fov
 
 <output3>
 file_type  = rst       # Binary data dump
@@ -58,14 +58,14 @@ nx1         = 24
 nx2         = 16 
 nx3         = 16
 
-#<refinement1>
-#x1min       = 2
-#x1max       = 30
-#x2min       = 1.5608
-#x2max       = 1.5808
-#x3min       = 0.0
-#x3max       = 6.28318530718
-#level       = 3
+<refinement1>
+x1min       = 2
+x1max       = 30
+x2min       = 1.5608
+x2max       = 1.5808
+x3min       = 0.0
+x3max       = 6.28318530718
+level       = 3
 
 <hydro>
 gamma           = 1.6666666666667       # gamma = C_p/C_v

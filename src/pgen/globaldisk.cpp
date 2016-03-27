@@ -52,7 +52,9 @@ static int bconf = 0; // bconf=1: pure B_phi
                       // bconf=0: vector potential proportional to density
                       // bconf=2: two loops
 static Real lprofile= 0.4;
-static Real vs0 = 10.0;
+static Real vs0 = 18.0;
+
+static Real gm;
 
 
 //======================================================================================
@@ -77,6 +79,10 @@ void Inflow_rad_x1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 
 void LoadRadVariable(MeshBlock *pmb);
 
+void PseudoNewtonian(const Real time, const Real dt,
+  const AthenaArray<Real> &prim, MeshBlock *pmb,
+  AthenaArray<Real> &bcc, AthenaArray<Real> &cons);
+
 void Mesh::InitUserMeshProperties(ParameterInput *pin)
 {
   
@@ -87,6 +93,8 @@ void Mesh::InitUserMeshProperties(ParameterInput *pin)
   
   tfloor = pin->GetOrAddReal("radiation", "tfloor", 0.01);
   rhofloor = pin->GetOrAddReal("hydro", "dfloor", 1.e-5);
+  
+  EnrollUserSourceTermFunction(PseudoNewtonian);
   
 
   return;
@@ -108,10 +116,14 @@ void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
   
   if(RADIATION_ENABLED){
       prad->EnrollOpacityFunction(DiskOpacity);
+    
+      gm = 0.5 * prad->crat * prad->crat;
 
       if(NRADFOV > 0)
         prad->EnrollInternalVariableFunction(LoadRadVariable);
 
+  }else{
+      gm = 0.5 * 805.338 * 805.338;
   }
   
 
@@ -595,4 +607,36 @@ void LoadRadVariable(MeshBlock *pmb)
 
 
 
+void PseudoNewtonian(const Real time, const Real dt,
+  const AthenaArray<Real> &prim,  MeshBlock *pmb,
+  AthenaArray<Real> &bcc, AthenaArray<Real> &cons)
+{
 
+  AthenaArray<Real> &x1flux=pmb->phydro->flux[x1face];
+
+  for(int k=pmb->ks; k<=pmb->ke; ++k){
+    for(int j=pmb->js; j<=pmb->je; ++j){
+      for(int i=pmb->is; i<=pmb->ie; ++i){
+        Real rho = prim(IDN,k,j,i);
+        Real phic = -gm/(pmb->pcoord->x1v(i)-1.0);
+        Real phil = -gm/(pmb->pcoord->x1f(i)-1.0);
+        Real phir = -gm/(pmb->pcoord->x1f(i+1)-1.0);
+        Real rr = pmb->pcoord->x1f(i+1);
+        Real rl = pmb->pcoord->x1f(i);
+        
+        Real areal = rl * rl;
+        Real arear = rr * rr;
+        Real vol = (rr*rr*rr-rl*rl*rl)/3.0;
+        Real src = - dt * rho * (phir - phil)/pmb->pcoord->dx1f(i);
+        cons(IM1,k,j,i) += src;
+        Real phidivrhov = (arear*x1flux(IDN,k,j,i+1) -
+                           areal*x1flux(IDN,k,j,i))*phic/vol;
+        Real divrhovphi = (arear*x1flux(IDN,k,j,i+1)*phir -
+                           areal*x1flux(IDN,k,j,i)*phil)/vol;
+        cons(IEN,k,j,i) += (dt*(phidivrhov - divrhovphi));
+        
+      }
+    }
+  }
+
+}

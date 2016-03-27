@@ -35,10 +35,10 @@
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
-#include "../radiation/integrators/rad_integrators.hpp"
 
-static Real amp = 1.e-6;
-static Real sigma0 = 1.0;
+// File scope variables
+static int ang;
+static int octnum;
 
 //======================================================================================
 /*! \file beam.cpp
@@ -46,12 +46,31 @@ static Real sigma0 = 1.0;
  *
  *====================================================================================*/
 
+void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+                     int is, int ie, int js, int je, int ks, int ke);
 
 void Mesh::InitUserMeshProperties(ParameterInput *pin)
 {
+  ang = pin->GetOrAddInteger("problem","ang",0);
+  octnum = pin->GetOrAddInteger("problem","octnum",0);
+  
+    // Enroll boundary functions
+  if(RADIATION_ENABLED)
+    EnrollUserRadBoundaryFunction(INNER_X1, TwoBeams);
 
   return;
 }
+
+void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
+{
+  
+  
+ 
+
+  return;
+}
+
+
 
 //======================================================================================
 //! \fn void Mesh::TerminateUserMeshProperties(void)
@@ -63,17 +82,6 @@ void Mesh::TerminateUserMeshProperties(void)
   return;
 }
 
-void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
-{
-  
-  
-
-
-  return;
-}
-
-
-
 
 
 //======================================================================================
@@ -82,65 +90,72 @@ void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
 //======================================================================================
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
-
+  
   Real gamma = phydro->peos->GetGamma();
-  Real knum = 2.0 * PI;
-  Real omegareal = 6.398479314825398;
-  Real omegaimg =  0.7044806086435424;
-  Real rho0 = 1.0, p0 = 1.0;
-  Real e0 = p0/(gamma-1.0);
-
-
   
   // Initialize hydro variable
   for(int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-        Real &x1 = pcoord->x1v(i);
-        Real &x2 = pcoord->x2v(j);
-        Real &x3 = pcoord->x3v(k);
-        Real theta = knum * x1;
-        Real delv = amp* (1.0183496112257058 * cos(theta)
-                    + 0.1121215711780068 * sin(theta));
-        Real delp = amp * (1.0220380692314723 * cos(theta)
-                    + 0.18993018794365163 * sin(theta));
-      
-      
-        phydro->u(IDN,k,j,i) = rho0 + amp * cos(theta);
-        phydro->u(IM1,k,j,i) = delv;
+        phydro->u(IDN,k,j,i) = 1.0;
+        phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS){
 
-          phydro->u(IEN,k,j,i) = (p0 + delp)/(gamma-1.0);
+          phydro->u(IEN,k,j,i) = 1.0/(gamma-1.0);
           phydro->u(IEN,k,j,i) += 0.5*SQR(phydro->u(IM1,k,j,i))/phydro->u(IDN,k,j,i);
           phydro->u(IEN,k,j,i) += 0.5*SQR(phydro->u(IM2,k,j,i))/phydro->u(IDN,k,j,i);
           phydro->u(IEN,k,j,i) += 0.5*SQR(phydro->u(IM3,k,j,i))/phydro->u(IDN,k,j,i);
         }
-        
-        if(RADIATION_ENABLED){
-          Real der = amp * (-0.026018127896336885 * cos(theta)
-                  + 0.12095401964915764 * sin(theta));
-          Real dfr = amp * (-0.10566859341556321 * cos(theta)
-                  + 0.030196412832965945 * sin(theta));
-        
-          Real jr = (1.0+der);
-          Real hr = dfr;
-          for(int ifr=0; ifr<prad->nfreq; ++ifr){
-            for(int n=0; n<prad->nang; ++n){
-               Real& weight = prad->wmu(n);
-               Real& miux = prad->mu(0,k,j,i,n);
-               prad->ir(k,j,i,ifr*prad->nang+n)=(jr/(4.0*weight) + hr/(4.0*weight*miux));
-            }
-            
-            prad->sigma_s(k,j,i,ifr) = 0.0;
-            prad->sigma_a(k,j,i,ifr) = sigma0;
-            prad->sigma_ae(k,j,i,ifr) = sigma0;
-          }
-        
-        }// End rad
-      }// end i
+      }
     }
+  }
+  
+  //Now initialize opacity and specific intensity
+  if(RADIATION_ENABLED){
+    int nfreq = prad->nfreq;
+    int nang = prad->nang;
+    for(int k=ks; k<=ke; ++k) {
+      Real x3 = pcoord->x3v(k);
+      for (int j=js; j<=je; ++j) {
+        Real x2 = pcoord->x2v(j);
+        for (int i=is; i<=ie; ++i) {
+          Real x1 = pcoord->x1v(i);
+          for(int n=0; n<prad->n_fre_ang; ++n){
+              prad->ir(k,j,i,n) = 0.0;
+          }
+        }
+      }
+    }
+    
+    //Opacity
+    int kl=ks, ku=ke;
+    int jl=js, ju=je;
+    int il=is-NGHOST, iu=ie+NGHOST;
+    
+    if(ju>jl){
+      jl -= NGHOST;
+      ju += NGHOST;
+    }
+    
+    if(ku>kl){
+      kl -= NGHOST;
+      ku += NGHOST;
+    }
+    
+    for(int k=kl; k<=ku; ++k) {
+      for (int j=jl; j<=ju; ++j) {
+        for (int i=il; i<=iu; ++i) {
+          for (int ifr=0; ifr < nfreq; ++ifr){
+            prad->sigma_s(k,j,i,ifr) = 0.0;
+            prad->sigma_a(k,j,i,ifr) = 0.0;
+            prad->sigma_ae(k,j,i,ifr) = 0.0;
+          }
+        }
+      }
+    }
+    
   }
   
   return;
@@ -158,6 +173,40 @@ void MeshBlock::UserWorkInLoop(void)
 }
 
 
+void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+                     int is, int ie, int js, int je, int ks, int ke)
+{
+  Radiation *prad=pmb->prad;
+  int nang=prad->nang;
+  int noct=prad->noct;
+  int nfreq=prad->nfreq;
+  int ang_oct=nang/noct;
+  
+  for (int k=ks; k<=ke; ++k) {
+    Real &x3 = pco->x3v(k);
+    for (int j=js; j<=je; ++j) {
+      for (int i=1; i<=NGHOST; ++i) {
+        Real &x1 = pco->x1v(i);
+        Real &x2 = pco->x2v(j);
+        for(int ifr=0; ifr<nfreq; ++ifr){
+        for(int l=0; l<noct; ++l){
+        for(int n=0; n<ang_oct; ++n){
+          int n_ang=l*ang_oct + n;
+
+          if((l==1)&&(n==0)&&(x2 > PI/2-PI/8)&&(x2 < PI/2+PI/8)&&(x3>PI-PI/8)&&(x3<PI+PI/8)){
+            a(k,j,is-i,n_ang+ifr*nang) = 10.0;
+          }else{
+            a(k,j,is-i,n_ang+ifr*nang) = 0.0;
+          }
+        }
+        }
+        }
+
+    }}
+  }
+
+  return;
+}
 
 
 
