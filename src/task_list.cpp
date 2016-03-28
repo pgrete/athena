@@ -454,9 +454,9 @@ enum TaskStatus HydroSend(MeshBlock *pmb, unsigned long int task_id, int step)
   Hydro *phydro=pmb->phydro;
   BoundaryValues *pbval=pmb->pbval;
   if(step == 1) {
-    pbval->SendCenterBoundaryBuffers(phydro->u1,HYDRO,1);
+    pbval->SendCenterBoundaryBuffers(phydro->u1,HYDRO,1, true);
   } else if(step == 2) {
-    pbval->SendCenterBoundaryBuffers(phydro->u,HYDRO,0);
+    pbval->SendCenterBoundaryBuffers(phydro->u,HYDRO,0, true);
   } else {
     return TASK_FAIL;
   }
@@ -612,9 +612,9 @@ enum TaskStatus RadSend(MeshBlock *pmb, unsigned long int task_id, int step)
   Radiation *prad=pmb->prad;
   BoundaryValues *pbval=pmb->pbval;
   if(step == 1) {
-    pbval->SendCenterBoundaryBuffers(prad->ir1,RAD,1);
+    pbval->SendCenterBoundaryBuffers(prad->ir1,RAD,1,true);
   } else if(step == 2) {
-    pbval->SendCenterBoundaryBuffers(prad->ir,RAD,0);
+    pbval->SendCenterBoundaryBuffers(prad->ir,RAD,0,true);
   } else {
     return TASK_FAIL;
   }

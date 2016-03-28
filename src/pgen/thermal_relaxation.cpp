@@ -48,7 +48,6 @@
 void Mesh::InitUserMeshProperties(ParameterInput *pin)
 {
 
-   pblock->prad->EnrollInternalVariableFunction(LoadRadVariable);
 
   return;
 }
@@ -62,6 +61,17 @@ void Mesh::TerminateUserMeshProperties(void)
   // nothing to do
   return;
 }
+
+void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
+{
+  
+     pblock->prad->EnrollInternalVariableFunction(LoadRadVariable);
+
+
+  return;
+}
+
+
 
 
 
@@ -157,7 +167,7 @@ void MeshBlock::UserWorkInLoop(void)
   return;
 }
 
-void LoadRadVariable()
+void LoadRadVariable(MeshBlock *pmb)
 {
   int n1z = pmy_block->block_size.nx1 + 2*(NGHOST);
   int n2z = pmy_block->block_size.nx2;

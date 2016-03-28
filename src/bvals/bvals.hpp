@@ -130,7 +130,7 @@ public:
   void CheckBoundary(void);
 
   
-  void SendCenterBoundaryBuffers(AthenaArray<Real> &src, int phys, int step
+  void SendCenterBoundaryBuffers(AthenaArray<Real> &src, int phys, int step,
                                  bool conserved_values);
   
   int LoadCenterBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,

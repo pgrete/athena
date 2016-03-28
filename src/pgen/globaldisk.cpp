@@ -607,8 +607,8 @@ void LoadRadVariable(MeshBlock *pmb)
 
 
 
-void PseudoNewtonian(const Real time, const Real dt,
-  const AthenaArray<Real> &prim,  MeshBlock *pmb,
+void PseudoNewtonian(MeshBlock *pmb, const Real time, const Real dt,
+  const AthenaArray<Real> &prim, 
   AthenaArray<Real> &bcc, AthenaArray<Real> &cons)
 {
 

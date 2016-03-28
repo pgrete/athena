@@ -1291,17 +1291,17 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pfield=pmb->pfield;
       pbval=pmb->pbval;
 
-      pbval->SendCenterBoundaryBuffers(phydro->u,HYDRO,0);
+      pbval->SendCenterBoundaryBuffers(phydro->u,HYDRO,0, true);
       if(RADIATION_ENABLED){
         prad=pmb->prad;
-        pbval->SendCenterBoundaryBuffers(prad->ir,RAD,0);
+        pbval->SendCenterBoundaryBuffers(prad->ir,RAD,0, true);
       }
 
       if (MAGNETIC_FIELDS_ENABLED)
         pbval->SendFieldBoundaryBuffers(pfield->b,0);
       // Send primitives to enable cons->prim inversion before prolongation
       if (GENERAL_RELATIVITY && multilevel)
-        pbval->SendHydroBoundaryBuffers(phydro->w, 1, false);
+        pbval->SendCenterBoundaryBuffers(phydro->w, HYDRO, 1, false);
       pmb=pmb->next;
     }
 
@@ -1321,7 +1321,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
         pbval->ReceiveFieldBoundaryBuffersWithWait(pfield->b, 0);
       // Receive primitives to enable cons->prim inversion before prolongation
       if (GENERAL_RELATIVITY and multilevel)
-        pbval->ReceiveHydroBoundaryBuffersWithWait(phydro->w, 1);
+        pbval->ReceiveCenterBoundaryBuffersWithWait(phydro->w, HYDRO, 1);
       pmb->pbval->ClearBoundaryForInit();
       if(multilevel==true){
         pbval->ProlongateBoundaries(phydro->w, phydro->u, pfield->b, pfield->bcc);
