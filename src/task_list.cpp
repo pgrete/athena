@@ -18,7 +18,7 @@
 //======================================================================================
 
 // C/C++ headers
-#include <iostream>   // cout, endl
+#include <iostream>   // endl
 #include <sstream>    // sstream
 #include <stdexcept>  // runtime_error
 #include <string>     // c_str()

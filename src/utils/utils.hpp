@@ -34,4 +34,12 @@ void Tcompton(Real temperature, Real coef1, Real coef2, Real coef3, Real coef4,
       Real *fval, Real *dfval);
 
 
+
+namespace WallTimeLimit {
+  void InitWTLimit(void);
+  void SendWTLimit(int nwtlimit);
+  bool TestWTLimit(int &nwtlimit);
+  void FinalizeWTLimit(int wtflag);
+}
+
 #endif // UTILS_HPP

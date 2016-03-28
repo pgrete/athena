@@ -324,9 +324,9 @@ void HydroIntegrator::FluxDivergence(MeshBlock *pmb,AthenaArray<Real> &u,
   }
   else {
     int j=pmb->js, k=pmb->ks;
-#pragma omp for schedule(static)
     pmb->pcoord->CellVolume(k,j,is,ie,vol);
     pmb->pcoord->Face1Area(k,j,is,ie+1,x1area);
+#pragma omp for schedule(static)
     for (int n=0; n<NHYDRO; ++n) {
 #pragma simd
       for (int i=is; i<=ie; ++i) {
@@ -348,7 +348,8 @@ void HydroIntegrator::FluxDivergence(MeshBlock *pmb,AthenaArray<Real> &u,
 //  Add user source terms
 
   if (pmb->phydro->pf_srcterms->UserSourceTerm != NULL)
-    pmb->phydro->pf_srcterms->UserSourceTerm(pmb->pmy_mesh->time,dt,w,pmb,bcc,u);
+
+    pmb->phydro->pf_srcterms->UserSourceTerm(pmb, pmb->pmy_mesh->time,dt,w,bcc,u);
 
   return;
 }

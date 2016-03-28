@@ -129,18 +129,26 @@ public:
 
   void CheckBoundary(void);
 
-
-
   
-  void SendCenterBoundaryBuffers(AthenaArray<Real> &src, int phys, int step);
+  void SendCenterBoundaryBuffers(AthenaArray<Real> &src, int phys, int step
+                                 bool conserved_values);
+  
+  int LoadCenterBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
+                            const NeighborBlock& nb, int phys);
+  int LoadCenterBoundaryBufferToCoarser(AthenaArray<Real> &src, Real *buf,
+                            const NeighborBlock& nb, int phys, bool conserved_values);
+  int LoadCenterBoundaryBufferToFiner(AthenaArray<Real> &src, Real *buf,
+                            const NeighborBlock& nb, int phys);
+  
   bool ReceiveCenterBoundaryBuffers(AthenaArray<Real> &dst, int phys, int step);
   void ReceiveCenterBoundaryBuffersWithWait(AthenaArray<Real> &dst,
                                               int phys, int step);
+  
   void SetCenterBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
                                     int phys, const NeighborBlock& nb);
   
   void SetCenterBoundaryFromCoarser(Real *buf, int phys,
-                                        const NeighborBlock& nb);
+                        const NeighborBlock& nb, bool conserved_values);
   
   void SetCenterBoundaryFromFiner(AthenaArray<Real> &dst, Real *buf,
                                       int phys, const NeighborBlock& nb);
@@ -148,6 +156,7 @@ public:
 
   void SendFluxCorrection(int step, int phys);
   bool ReceiveFluxCorrection(int step, int phys);
+  
 
   int LoadFieldBoundaryBufferSameLevel(FaceField &src, Real *buf,
                                        const NeighborBlock& nb);

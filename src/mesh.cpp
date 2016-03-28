@@ -890,12 +890,12 @@ void Mesh::MeshTest(int dim)
 }
 
 //--------------------------------------------------------------------------------------
-// MeshBlock constructor: builds 1D vectors of cell positions and spacings, and
-// constructs coordinate, boundary condition, hydro and field objects.
+// MeshBlock constructor: constructs coordinate, boundary condition, hydro, field
+//                        and mesh refinement objects.
 
 MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_block,
                      enum BoundaryFlag *input_bcs, enum BoundaryFlag *input_rad_bcs,
-                    Mesh *pm, ParameterInput *pin)
+                    Mesh *pm, ParameterInput *pin, bool ref_flag)
 {
   std::stringstream msg;
   int root_level;
@@ -940,7 +940,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
       cks=cnghost, cke=cks+block_size.nx3/2-1;
   }
 
-  if(pm->adaptive==false) { // too noisy for AMR
+  if(ref_flag==false) { // too noisy for AMR
     std::cout << "MeshBlock " << gid << ", rank = " << Globals::my_rank << ", lx1 = "
               << loc.lx1 << ", lx2 = " << loc.lx2 <<", lx3 = " << loc.lx3
               << ", level = " << loc.level << std::endl;
@@ -961,8 +961,12 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   if (RADIATION_ENABLED)
     prad = new Radiation(this, pin);
 
+  if(ref_flag==false)
+    pcoord->CheckMeshSpacing();
+  
   if(pm->multilevel==true)
     pmr = new MeshRefinement(this, pin);
+  
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
@@ -1286,13 +1290,18 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       phydro=pmb->phydro;
       pfield=pmb->pfield;
       pbval=pmb->pbval;
+
       pbval->SendCenterBoundaryBuffers(phydro->u,HYDRO,0);
       if(RADIATION_ENABLED){
         prad=pmb->prad;
         pbval->SendCenterBoundaryBuffers(prad->ir,RAD,0);
       }
+
       if (MAGNETIC_FIELDS_ENABLED)
         pbval->SendFieldBoundaryBuffers(pfield->b,0);
+      // Send primitives to enable cons->prim inversion before prolongation
+      if (GENERAL_RELATIVITY && multilevel)
+        pbval->SendHydroBoundaryBuffers(phydro->w, 1, false);
       pmb=pmb->next;
     }
 
@@ -1303,11 +1312,16 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pfield=pmb->pfield;
       pbval=pmb->pbval;
       pbval->ReceiveCenterBoundaryBuffersWithWait(phydro->u,HYDRO,0);
+
       if(RADIATION_ENABLED){
         pbval->ReceiveCenterBoundaryBuffersWithWait(prad->ir,RAD,0);
       }
+
       if (MAGNETIC_FIELDS_ENABLED)
-        pbval->ReceiveFieldBoundaryBuffersWithWait(pfield->b ,0);
+        pbval->ReceiveFieldBoundaryBuffersWithWait(pfield->b, 0);
+      // Receive primitives to enable cons->prim inversion before prolongation
+      if (GENERAL_RELATIVITY and multilevel)
+        pbval->ReceiveHydroBoundaryBuffersWithWait(phydro->w, 1);
       pmb->pbval->ClearBoundaryForInit();
       if(multilevel==true){
         pbval->ProlongateBoundaries(phydro->w, phydro->u, pfield->b, pfield->bcc);
@@ -2075,12 +2089,7 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   if(RADIATION_ENABLED){
     n_fre_ang = pblock->prad->n_fre_ang;
   }
-#ifdef MPI_PARALLEL
-  MPI_Request areq[3];
-  // start sharing the cost list
-  MPI_Iallgatherv(MPI_IN_PLACE, nblist[Globals::my_rank], MPI_INT,
-                  costlist, nblist, nslist, MPI_INT, MPI_COMM_WORLD, &areq[2]);
-#endif
+
 
   // collect refinement flags from all the meshblocks
   // count the number of the blocks to be (de)refined
@@ -2093,10 +2102,8 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
     pmb=pmb->next;
   }
 #ifdef MPI_PARALLEL
-  // if this does not work due to a version issue, replace these with blocking AllGather
-  MPI_Iallgather(MPI_IN_PLACE, 1, MPI_INT, nref, 1, MPI_INT, MPI_COMM_WORLD, &areq[0]);
-  MPI_Iallgather(MPI_IN_PLACE, 1, MPI_INT, nderef,1, MPI_INT, MPI_COMM_WORLD, &areq[1]);
-  MPI_Waitall(2, areq, MPI_STATUSES_IGNORE);
+  MPI_Allgather(MPI_IN_PLACE, 1, MPI_INT, nref,   1, MPI_INT, MPI_COMM_WORLD);
+  MPI_Allgather(MPI_IN_PLACE, 1, MPI_INT, nderef, 1, MPI_INT, MPI_COMM_WORLD);
 #endif
 
   // count the number of the blocks to be (de)refined and displacement
@@ -2144,19 +2151,18 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   }
 #ifdef MPI_PARALLEL
   if(tnref>0 && tnderef>nlbl) {
-    MPI_Iallgatherv(MPI_IN_PLACE, bnref[Globals::my_rank],   MPI_BYTE,
-                    lref,   bnref,   brdisp, MPI_BYTE, MPI_COMM_WORLD, &areq[0]);
-    MPI_Iallgatherv(MPI_IN_PLACE, bnderef[Globals::my_rank], MPI_BYTE,
-                    lderef, bnderef, bddisp, MPI_BYTE, MPI_COMM_WORLD, &areq[1]);
-    MPI_Waitall(2, areq, MPI_STATUSES_IGNORE);
+    MPI_Allgatherv(MPI_IN_PLACE, bnref[Globals::my_rank],   MPI_BYTE,
+                   lref,   bnref,   brdisp, MPI_BYTE, MPI_COMM_WORLD);
+    MPI_Allgatherv(MPI_IN_PLACE, bnderef[Globals::my_rank], MPI_BYTE,
+                   lderef, bnderef, bddisp, MPI_BYTE, MPI_COMM_WORLD);
   }
   else if(tnref>0) {
     MPI_Allgatherv(MPI_IN_PLACE, bnref[Globals::my_rank],   MPI_BYTE,
-                    lref,   bnref,   brdisp, MPI_BYTE, MPI_COMM_WORLD);
+                   lref,   bnref,   brdisp, MPI_BYTE, MPI_COMM_WORLD);
   }
   else if(tnderef>nlbl) {
     MPI_Allgatherv(MPI_IN_PLACE, bnderef[Globals::my_rank], MPI_BYTE,
-                    lderef, bnderef, bddisp, MPI_BYTE, MPI_COMM_WORLD);
+                   lderef, bnderef, bddisp, MPI_BYTE, MPI_COMM_WORLD);
   }
 #endif
 
@@ -2244,8 +2250,9 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   }
 
 #ifdef MPI_PARALLEL
-  // receive the old cost list
-  MPI_Wait(&areq[2], MPI_STATUS_IGNORE);
+  // share the cost list
+  MPI_Allgatherv(MPI_IN_PLACE, nblist[Globals::my_rank], MPI_INT,
+                 costlist, nblist, nslist, MPI_INT, MPI_COMM_WORLD);
 #endif
   for(int n=0; n<ntot; n++) {
     int on=newtoold[n];
@@ -2510,13 +2517,15 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
       // on a different level or node - create a new block
       SetBlockSizeAndBoundaries(newloc[n], block_size, block_bcs, block_rad_bcs);
       if(n==nbs) { // first
+
         newlist = new MeshBlock(n, n-nbs, newloc[n], block_size, block_bcs,
-                      block_rad_bcs, this, pin);
+                      block_rad_bcs, this, pin, true);
         pmb=newlist;
       }
       else {
         pmb->next = new MeshBlock(n, n-nbs, newloc[n], block_size, block_bcs,
-                      block_rad_bcs, this, pin);
+                      block_rad_bcs, this, pin, true);
+
         pmb->next->prev=pmb;
         pmb=pmb->next;
       }

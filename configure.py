@@ -68,8 +68,8 @@ parser.add_argument('--eos',
 
 # --flux=[name] argument
 parser.add_argument('--flux',
-    default='hlle',
-    choices=['hlle','hllc','hlld','roe','llf'],
+    default='default',
+    choices=['default','hlle','hllc','hlld','roe','llf'],
     help='select Riemann solver')
 
 # --order=[name] argument
@@ -171,6 +171,16 @@ args = vars(parser.parse_args())
 
 #--- Step 2. Test for incompatible arguments -------------------------------------------
 
+# Set default flux; HLLD for MHD, HLLC for hydro, HLLE for isothermal hydro
+if args['flux']=='default':
+  if args['b']:
+    args['flux']='hlld'
+  else:
+    if args['eos']=='isothermal':
+      args['flux']='hlle'
+    else:
+      args['flux']='hllc'
+
 # Check Riemann solver compatibility
 if args['flux']=='hllc' and args['eos']=='isothermal':
   raise SystemExit('### CONFIGURE ERROR: HLLC flux cannot be used with isothermal EOS')
@@ -181,10 +191,20 @@ if args['flux']=='hlld' and not args['b']:
 
 # Check relativity
 if args['s'] and args['g']:
-  raise SystemExit('### CONFIGURE ERROR: GR implies SR; \
-      the -s option is restricted to pure SR.')
+  raise SystemExit('### CONFIGURE ERROR: ' \
+      + 'GR implies SR; the -s option is restricted to pure SR.')
 if args['t'] and not args['g']:
   raise SystemExit('### CONFIGURE ERROR: Frame transformations only apply to GR.')
+if args['g'] and args['coord'] in ('cartesian','cylindrical','spherical_polar'):
+  raise SystemExit('### CONFIGURE ERROR: ' \
+      + 'GR cannot be used with ' + args['coord'] + ' coordinates')
+if not args['g'] and args['coord'] not in ('cartesian','cylindrical','spherical_polar'):
+  raise SystemExit('### CONFIGURE ERROR: ' \
+      + args['coord'] + ' coordinates only apply to GR')
+if args['eos']=='isothermal':
+  if args['s'] or args['g']:
+    raise SystemExit('### CONFIGURE ERROR: '\
+        + 'Isothermal EOS is incompatible with relativity.')
 
 #--- Step 3. Set definitions and Makefile options based on above arguments -------------
 
@@ -298,7 +318,7 @@ if args['cxx'] == 'bgxl':
   definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'bgxlc++'
   makefile_options['PREPROCESSOR_FLAGS'] = ''
   makefile_options['COMPILER_FLAGS'] = \
-      '-O3 -qlanglvl=extended -qsuppress=1500-036 -qsuppress=1540-1401'
+      '-O3 -qstrict -qlanglvl=extended -qsuppress=1500-036 -qsuppress=1540-1401'
   makefile_options['LINKER_FLAGS'] = ''
   makefile_options['LIBRARY_FLAGS'] = ''
 
@@ -358,12 +378,11 @@ if args['hdf5']:
     makefile_options['PREPROCESSOR_FLAGS'] += \
         ' -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_BSD_SOURCE' \
         + ' -I/soft/libraries/hdf5/1.8.14/cnk-xl/V1R2M2-20150213/include' \
-        + ' -I/soft/libraries/alcf/current/xl/ZLIB/include' \
         + ' -I/bgsys/drivers/ppcfloor/comm/include'
     makefile_options['LINKER_FLAGS'] += \
         ' -L/soft/libraries/hdf5/1.8.14/cnk-xl/V1R2M2-20150213/lib' \
         + ' -L/soft/libraries/alcf/current/xl/ZLIB/lib'
-    makefile_options['LIBRARY_FLAGS'] += ' -lhdf5 -ldl -lz -lm'
+    makefile_options['LIBRARY_FLAGS'] += ' -lhdf5 -lz -lm'
 else:
   definitions['HDF5_OPTION'] = 'NO_HDF5OUTPUT'
 

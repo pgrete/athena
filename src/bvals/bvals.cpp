@@ -667,7 +667,7 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
   if(pmb->loc.level == pmb->pmy_mesh->root_level &&
      pmb->pmy_mesh->nrbx3 == 1 &&
      (pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY))
-       exc_.NewAthenaArray(pmb->ke+NGHOST+1);
+       exc_.NewAthenaArray(pmb->ke+NGHOST+2);
 
   if(pmb->loc.level == pmb->pmy_mesh->root_level &&
      pmb->pmy_mesh->nrbx3 == 1 && RADIATION_ENABLED &&
@@ -1097,10 +1097,10 @@ void BoundaryValues::Initialize(void)
       for (int n = 0; n < num_north_polar_blocks_; ++n) {
         const PolarNeighborBlock &nb = pmb->polar_neighbor_north[n];
         if(nb.rank != Globals::my_rank) {
-          tag = CreateMPITag(nb.lid, l, tag_emfpole, n);
+          tag = CreateMPITag(nb.lid, l, tag_emfpole, pmb->loc.lx3);
           MPI_Send_init(emf_north_send_[l][n], pmb->block_size.nx1, MPI_ATHENA_REAL,
               nb.rank, tag, MPI_COMM_WORLD, &req_emf_north_send_[l][n]);
-          tag = CreateMPITag(pmb->lid, l, tag_emfpole, pmb->loc.lx3);
+          tag = CreateMPITag(pmb->lid, l, tag_emfpole, n);
           MPI_Recv_init(emf_north_recv_[l][n], pmb->block_size.nx1, MPI_ATHENA_REAL,
               nb.rank, tag, MPI_COMM_WORLD, &req_emf_north_recv_[l][n]);
         }
@@ -1108,10 +1108,10 @@ void BoundaryValues::Initialize(void)
       for (int n = 0; n < num_south_polar_blocks_; ++n) {
         const PolarNeighborBlock &nb = pmb->polar_neighbor_south[n];
         if(nb.rank != Globals::my_rank) {
-          tag = CreateMPITag(nb.lid, l, tag_emfpole, n);
+          tag = CreateMPITag(nb.lid, l, tag_emfpole, pmb->loc.lx3);
           MPI_Send_init(emf_south_send_[l][n], pmb->block_size.nx1, MPI_ATHENA_REAL,
               nb.rank, tag, MPI_COMM_WORLD, &req_emf_south_send_[l][n]);
-          tag = CreateMPITag(pmb->lid, l, tag_emfpole, pmb->loc.lx3);
+          tag = CreateMPITag(pmb->lid, l, tag_emfpole, n);
           MPI_Recv_init(emf_south_recv_[l][n], pmb->block_size.nx1, MPI_ATHENA_REAL,
               nb.rank, tag, MPI_COMM_WORLD, &req_emf_south_recv_[l][n]);
         }
@@ -1168,6 +1168,9 @@ void BoundaryValues::StartReceivingForInit(void)
         MPI_Start(&req_rad_recv_[0][nb.bufid]);
       if (MAGNETIC_FIELDS_ENABLED)
         MPI_Start(&req_field_recv_[0][nb.bufid]);
+      // Prep sending primitives to enable cons->prim inversion before prolongation
+      if (GENERAL_RELATIVITY and pmb->pmy_mesh->multilevel)
+        MPI_Start(&req_hydro_recv_[1][nb.bufid]);
     }
   }
 #endif
@@ -1225,7 +1228,6 @@ void BoundaryValues::StartReceivingAll(void)
 #endif
   return;
 }
-
 
 
 //--------------------------------------------------------------------------------------
@@ -2485,6 +2487,7 @@ bool BoundaryValues::ReceiveFieldBoundaryBuffers(FaceField &dst, int step)
       ==POLAR_BNDRY))
      PolarSingleField(dst);
 
+
   return flag;
 }
 
@@ -2513,7 +2516,8 @@ void BoundaryValues::ReceiveFieldBoundaryBuffersWithWait(FaceField &dst, int ste
   }
 
   if(pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY)
-     PolarSingleField(dst);
+    PolarSingleField(dst);
+  
   return;
 }
 
@@ -3832,7 +3836,7 @@ bool BoundaryValues::ReceiveEMFCorrection(int step)
     for (int n = 0; n < num_south_polar_blocks_; ++n)
       emf_south_flag_[step][n] = boundary_completed;
     if (pmb->block_bcs[INNER_X2]==POLAR_BNDRY||pmb->block_bcs[OUTER_X2]==POLAR_BNDRY)
-       PolarSingleEMF();
+      PolarSingleEMF();
   }
   return flag;
 }
@@ -3845,6 +3849,8 @@ void BoundaryValues::ClearBoundaryForInit(void)
 {
   MeshBlock *pmb=pmy_mblock_;
 
+  // Note step==0 corresponds to initial exchange of conserved variables, while step==1
+  // corresponds to primitives sent only in the case of GR with refinement
   for(int n=0;n<pmb->nneighbor;n++) {
     NeighborBlock& nb = pmb->neighbor[n];
     hydro_flag_[0][nb.bufid] = boundary_waiting;
@@ -3852,6 +3858,8 @@ void BoundaryValues::ClearBoundaryForInit(void)
       rad_flag_[0][nb.bufid] = boundary_waiting;
     if (MAGNETIC_FIELDS_ENABLED)
       field_flag_[0][nb.bufid] = boundary_waiting;
+    if (GENERAL_RELATIVITY and pmb->pmy_mesh->multilevel)
+      hydro_flag_[1][nb.bufid] = boundary_waiting;
 #ifdef MPI_PARALLEL
     if(nb.rank!=Globals::my_rank) {
       MPI_Wait(&req_hydro_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
@@ -3859,6 +3867,8 @@ void BoundaryValues::ClearBoundaryForInit(void)
         MPI_Wait(&req_field_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
       if (RADIATION_ENABLED)
         MPI_Wait(&req_rad_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Rad Wait for Isend
+      if (GENERAL_RELATIVITY and pmb->pmy_mesh->multilevel)
+        MPI_Wait(&req_hydro_send_[1][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
     }
 #endif
   }
@@ -3872,6 +3882,8 @@ void BoundaryValues::ClearBoundaryForInit(void)
 void BoundaryValues::ClearBoundaryAll(void)
 {
   MeshBlock *pmb=pmy_mblock_;
+
+  // Clear non-polar boundary communications
   for(int l=0;l<NSTEP;l++) {
     for(int n=0;n<pmb->nneighbor;n++) {
       NeighborBlock& nb = pmb->neighbor[n];
@@ -3914,6 +3926,28 @@ void BoundaryValues::ClearBoundaryAll(void)
         
       }
 #endif
+    }
+  }
+
+  // Clear polar boundary communications
+  if (MAGNETIC_FIELDS_ENABLED) {
+    for (int l = 0; l < NSTEP; ++l) {
+      for (int n = 0; n < num_north_polar_blocks_; ++n) {
+        PolarNeighborBlock &nb = pmb->polar_neighbor_north[n];
+        emf_north_flag_[l][n] = boundary_waiting;
+#ifdef MPI_PARALLEL
+        if(nb.rank != Globals::my_rank)
+          MPI_Wait(&req_emf_north_send_[l][n], MPI_STATUS_IGNORE);
+#endif
+      }
+      for (int n = 0; n < num_south_polar_blocks_; ++n) {
+        PolarNeighborBlock &nb = pmb->polar_neighbor_south[n];
+        emf_south_flag_[l][n] = boundary_waiting;
+#ifdef MPI_PARALLEL
+        if(nb.rank != Globals::my_rank)
+          MPI_Wait(&req_emf_south_send_[l][n], MPI_STATUS_IGNORE);
+#endif
+      }
     }
   }
   return;
@@ -4274,6 +4308,11 @@ void BoundaryValues::ProlongateBoundaries(AthenaArray<Real> &pdst,
 
           pmb->pmr->RestrictCellCenteredValues(cdst, pmr->coarse_cons_, HYDRO,
                                    0, NHYDRO-1, rks, rke, rjs, rje, ris, rie);
+
+          if (GENERAL_RELATIVITY)
+            pmb->pmr->RestrictCellCenteredValues(pdst, pmr->coarse_prim_, HYDRO,
+                                   0, NHYDRO-1, rks, rke, rjs, rje, ris, rie);
+
           if (MAGNETIC_FIELDS_ENABLED) {
             int rs=ris, re=rie+1;
             if(rs==pmb->cis   && pmb->nblevel[nk+1][nj+1][ni  ]<mylevel) rs++;

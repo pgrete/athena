@@ -117,6 +117,8 @@ Hydro::~Hydro()
   dt2_.DeleteAthenaArray();
   dt3_.DeleteAthenaArray();
 
+  ifov.DeleteAthenaArray();
+
   delete pintegrator;
   delete peos;
   delete pf_srcterms;

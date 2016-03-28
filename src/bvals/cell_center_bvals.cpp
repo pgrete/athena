@@ -42,99 +42,177 @@
 #include <mpi.h>
 #endif
 
+
 //--------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::SendCenterBoundaryBuffers(AthenaArray<Real> &src,
-//  int phys, int step)
+//! \fn int BoundaryValues::LoadCenterBoundaryBufferSameLevel(AthenaArray<Real> &src,
+//                                                 Real *buf, const NeighborBlock& nb)
+//  \brief Set hydro boundary buffers for sending to a block on the same level
+int BoundaryValues::LoadCenterBoundaryBufferSameLevel(AthenaArray<Real> &src,
+                             Real *buf, const NeighborBlock& nb, int phys)
+{
+  MeshBlock *pmb=pmy_mblock_;
+  
+  int si, sj, sk, ei, ej, ek;
+
+  // calculate the index
+  si=(nb.ox1>0)?(pmb->ie-NGHOST+1):pmb->is;
+  ei=(nb.ox1<0)?(pmb->is+NGHOST-1):pmb->ie;
+  sj=(nb.ox2>0)?(pmb->je-NGHOST+1):pmb->js;
+  ej=(nb.ox2<0)?(pmb->js+NGHOST-1):pmb->je;
+  sk=(nb.ox3>0)?(pmb->ke-NGHOST+1):pmb->ks;
+  ek=(nb.ox3<0)?(pmb->ks+NGHOST-1):pmb->ke;
+  int p=0;
+  if(phys == HYDRO){
+    BufferUtility::Pack4DData(src,buf, 0, NHYDRO-1,
+                             sk, ek, sj, ej, si, ei, p);
+  }else if(phys == RAD){
+    BufferUtility::Pack4DData(src,buf, sk, ek, sj, ej,
+                             si, ei, 0, pmb->prad->n_fre_ang-1, p);
+  }
+  
+  return p;
+}
+
+
+//--------------------------------------------------------------------------------------
+//! \fn int BoundaryValues::LoadCenterBoundaryBufferToCoarser(AthenaArray<Real> &src,
+//                                                 Real *buf, const NeighborBlock& nb,
+//                                                 bool conserved_values)
+//  \brief Set hydro boundary buffers for sending to a block on the coarser level
+int BoundaryValues::LoadCenterBoundaryBufferToCoarser(AthenaArray<Real> &src, Real *buf,
+                      const NeighborBlock& nb, int phys, bool conserved_values)
+{
+  MeshBlock *pmb=pmy_mblock_;
+  MeshRefinement *pmr=pmb->pmr;
+  int si, sj, sk, ei, ej, ek;
+  int cn=pmb->cnghost-1;
+  
+  si=(nb.ox1>0)?(pmb->cie-cn):pmb->cis;
+  ei=(nb.ox1<0)?(pmb->cis+cn):pmb->cie;
+  sj=(nb.ox2>0)?(pmb->cje-cn):pmb->cjs;
+  ej=(nb.ox2<0)?(pmb->cjs+cn):pmb->cje;
+  sk=(nb.ox3>0)?(pmb->cke-cn):pmb->cks;
+  ek=(nb.ox3<0)?(pmb->cks+cn):pmb->cke;
+  int p=0;
+  // restrict the data before sending
+  if(phys==HYDRO){
+    if(conserved_values){
+      pmr->RestrictCellCenteredValues(src, pmr->coarse_cons_, HYDRO,
+                                    0, NHYDRO-1,sk, ek, sj, ej, si, ei);
+      BufferUtility::Pack4DData(pmr->coarse_cons_, buf,
+                            0, NHYDRO-1, sk, ek, sj, ej, si, ei, p);
+    }else{
+    // must be initialization; need to restrict but not send primitives
+      pmr->RestrictCellCenteredValues(src, pmr->coarse_prim_, HYDRO,
+                                    0, NHYDRO-1,sk, ek, sj, ej, si, ei);
+    }
+  }else if(phys==RAD){
+     pmr->RestrictCellCenteredValues(src, pmr->coarse_ir_, RAD,
+                            sk, ek, sj, ej, si, ei, 0, pmb->prad->n_fre_ang-1);
+     BufferUtility::Pack4DData(pmr->coarse_ir_, buf,
+                sk, ek, sj, ej, si, ei, 0, pmb->prad->n_fre_ang-1, p);
+  }
+
+  return p;
+}
+
+
+//--------------------------------------------------------------------------------------
+//! \fn int BoundaryValues::LoadCenterBoundaryBufferToFiner(AthenaArray<Real> &src,
+//                                                 Real *buf, const NeighborBlock& nb)
+//  \brief Set hydro boundary buffers for sending to a block on the finer level
+int BoundaryValues::LoadCenterBoundaryBufferToFiner(AthenaArray<Real> &src, Real *buf,
+                                    const NeighborBlock& nb, int phys)
+{
+  MeshBlock *pmb=pmy_mblock_;
+  int si, sj, sk, ei, ej, ek;
+  int cn=pmb->cnghost-1;
+  
+  
+  si=(nb.ox1>0)?(pmb->ie-cn):pmb->is;
+  ei=(nb.ox1<0)?(pmb->is+cn):pmb->ie;
+  sj=(nb.ox2>0)?(pmb->je-cn):pmb->js;
+  ej=(nb.ox2<0)?(pmb->js+cn):pmb->je;
+  sk=(nb.ox3>0)?(pmb->ke-cn):pmb->ks;
+  ek=(nb.ox3<0)?(pmb->ks+cn):pmb->ke;
+      
+  // send the data first and later prolongate on the target block
+  // need to add edges for faces, add corners for edges
+  if(nb.ox1==0) {
+    if(nb.fi1==1)   si+=pmb->block_size.nx1/2-pmb->cnghost;
+    else            ei-=pmb->block_size.nx1/2-pmb->cnghost;
+  }
+  if(nb.ox2==0 && pmb->block_size.nx2 > 1) {
+    if(nb.ox1!=0) {
+      if(nb.fi1==1) sj+=pmb->block_size.nx2/2-pmb->cnghost;
+      else          ej-=pmb->block_size.nx2/2-pmb->cnghost;
+    } else {
+      if(nb.fi2==1) sj+=pmb->block_size.nx2/2-pmb->cnghost;
+      else          ej-=pmb->block_size.nx2/2-pmb->cnghost;
+    }
+  }
+  if(nb.ox3==0 && pmb->block_size.nx3 > 1) {
+    if(nb.ox1!=0 && nb.ox2!=0) {
+      if(nb.fi1==1) sk+=pmb->block_size.nx3/2-pmb->cnghost;
+         else          ek-=pmb->block_size.nx3/2-pmb->cnghost;
+      } else {
+        if(nb.fi2==1) sk+=pmb->block_size.nx3/2-pmb->cnghost;
+        else          ek-=pmb->block_size.nx3/2-pmb->cnghost;
+      }
+  }
+  int p=0;
+  if(phys==HYDRO){
+      BufferUtility::Pack4DData(src, buf, 0,
+                    NHYDRO-1, sk, ek, sj, ej, si, ei, p);
+      
+  }else if(phys==RAD){
+      BufferUtility::Pack4DData(src, buf, sk, ek,
+                   sj, ej, si, ei, 0, pmb->prad->n_fre_ang-1, p);
+  }
+
+  return p;
+}
+
+
+
+
+
+//--------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::SendHydroBoundaryBuffers(AthenaArray<Real> &src, int step,
+//                                                    bool conserved_values)
 //  \brief Send boundary buffers
 void BoundaryValues::SendCenterBoundaryBuffers(AthenaArray<Real> &src, int phys,
-                                               int step)
+                                                int step, bool conserved_values)
 {
   MeshBlock *pmb=pmy_mblock_;
   int mylevel=pmb->loc.level;
-  int si, ei, sj, ej, sk, ek;
 
   for(int n=0; n<pmb->nneighbor; n++) {
     NeighborBlock& nb = pmb->neighbor[n];
-    int ssize=0;
+    int ssize;
     if(nb.level==mylevel){
-      // calculate the index
-      si=(nb.ox1>0)?(pmb->ie-NGHOST+1):pmb->is;
-      ei=(nb.ox1<0)?(pmb->is+NGHOST-1):pmb->ie;
-      sj=(nb.ox2>0)?(pmb->je-NGHOST+1):pmb->js;
-      ej=(nb.ox2<0)?(pmb->js+NGHOST-1):pmb->je;
-      sk=(nb.ox3>0)?(pmb->ke-NGHOST+1):pmb->ks;
-      ek=(nb.ox3<0)?(pmb->ks+NGHOST-1):pmb->ke;
-      if(phys == HYDRO){
-        BufferUtility::Pack4DData(src,hydro_send_[step][nb.bufid], 0, NHYDRO-1,
-                                   sk, ek, sj, ej, si, ei, ssize);
-      }else if(phys == RAD){
-        BufferUtility::Pack4DData(src,rad_send_[step][nb.bufid], sk, ek, sj, ej,
-                                  si, ei, 0, pmb->prad->n_fre_ang-1, ssize);
-      }
-    }else if(nb.level<mylevel){
-      MeshRefinement *pmr=pmb->pmr;
-      int cn=pmb->cnghost-1;
-      si=(nb.ox1>0)?(pmb->cie-cn):pmb->cis;
-      ei=(nb.ox1<0)?(pmb->cis+cn):pmb->cie;
-      sj=(nb.ox2>0)?(pmb->cje-cn):pmb->cjs;
-      ej=(nb.ox2<0)?(pmb->cjs+cn):pmb->cje;
-      sk=(nb.ox3>0)?(pmb->cke-cn):pmb->cks;
-      ek=(nb.ox3<0)?(pmb->cks+cn):pmb->cke;
-      
-      // restrict the data before sending
-      if(phys==HYDRO){
-         pmr->RestrictCellCenteredValues(src, pmr->coarse_cons_, HYDRO,
-                                    0, NHYDRO-1,sk, ek, sj, ej, si, ei);
-         BufferUtility::Pack4DData(pmr->coarse_cons_, hydro_send_[step][nb.bufid],
-                0, NHYDRO-1, sk, ek, sj, ej, si, ei, ssize);
-      }else if(phys==RAD){
-         pmr->RestrictCellCenteredValues(src, pmr->coarse_ir_, RAD,
-                            sk, ek, sj, ej, si, ei, 0, pmb->prad->n_fre_ang-1);
-         BufferUtility::Pack4DData(pmr->coarse_ir_, rad_send_[step][nb.bufid],
-                sk, ek, sj, ej, si, ei, 0, pmb->prad->n_fre_ang-1, ssize);
-      }
+      if(phys == HYDRO)
+       ssize=LoadCenterBoundaryBufferSameLevel(src, hydro_send_[step][nb.bufid],
+                                               nb, phys);
+      else if(phys == RAD)
+       ssize=LoadCenterBoundaryBufferSameLevel(src, rad_send_[step][nb.bufid],
+                                               nb, phys);
+    }
+    else if(nb.level<mylevel){
+      if(phys == HYDRO)
+        ssize=LoadCenterBoundaryBufferToCoarser(src, hydro_send_[step][nb.bufid],
+                                               nb, phys, conserved_values);
+      else if(phys == RAD)
+        ssize=LoadCenterBoundaryBufferToCoarser(src, rad_send_[step][nb.bufid],
+                                               nb, phys, conserved_values);
     }else{
-      int cn=pmb->cnghost-1;
-      si=(nb.ox1>0)?(pmb->ie-cn):pmb->is;
-      ei=(nb.ox1<0)?(pmb->is+cn):pmb->ie;
-      sj=(nb.ox2>0)?(pmb->je-cn):pmb->js;
-      ej=(nb.ox2<0)?(pmb->js+cn):pmb->je;
-      sk=(nb.ox3>0)?(pmb->ke-cn):pmb->ks;
-      ek=(nb.ox3<0)?(pmb->ks+cn):pmb->ke;
-      
-      // send the data first and later prolongate on the target block
-      // need to add edges for faces, add corners for edges
-      if(nb.ox1==0) {
-        if(nb.fi1==1)   si+=pmb->block_size.nx1/2-pmb->cnghost;
-        else            ei-=pmb->block_size.nx1/2-pmb->cnghost;
-      }
-      if(nb.ox2==0 && pmb->block_size.nx2 > 1) {
-        if(nb.ox1!=0) {
-          if(nb.fi1==1) sj+=pmb->block_size.nx2/2-pmb->cnghost;
-          else          ej-=pmb->block_size.nx2/2-pmb->cnghost;
-        } else {
-          if(nb.fi2==1) sj+=pmb->block_size.nx2/2-pmb->cnghost;
-          else          ej-=pmb->block_size.nx2/2-pmb->cnghost;
-        }
-      }
-      if(nb.ox3==0 && pmb->block_size.nx3 > 1) {
-        if(nb.ox1!=0 && nb.ox2!=0) {
-          if(nb.fi1==1) sk+=pmb->block_size.nx3/2-pmb->cnghost;
-          else          ek-=pmb->block_size.nx3/2-pmb->cnghost;
-        } else {
-         if(nb.fi2==1) sk+=pmb->block_size.nx3/2-pmb->cnghost;
-         else          ek-=pmb->block_size.nx3/2-pmb->cnghost;
-        }
-      }
-      
-      if(phys==HYDRO){
-        BufferUtility::Pack4DData(src, hydro_send_[step][nb.bufid], 0,
-                     NHYDRO-1, sk, ek, sj, ej, si, ei, ssize);
-      
-      }else if(phys==RAD){
-        BufferUtility::Pack4DData(src, rad_send_[step][nb.bufid], sk, ek,
-                     sj, ej, si, ei, 0, pmb->prad->n_fre_ang-1, ssize);
-      }
+      if(phys==HYDRO)
+        ssize=LoadCenterBoundaryBufferToFiner(src, hydro_send_[step][nb.bufid],
+                                               nb, phys);
+      else if(phys==RAD)
+        ssize=LoadCenterBoundaryBufferToFiner(src, rad_send_[step][nb.bufid],
+                                               nb, phys);
+    
     }
     if(nb.rank == Globals::my_rank) { // on the same process
       MeshBlock *pbl=pmb->pmy_mesh->FindMeshBlock(nb.gid);
@@ -160,6 +238,8 @@ void BoundaryValues::SendCenterBoundaryBuffers(AthenaArray<Real> &src, int phys,
 
   return;
 }
+
+
 
 
 //--------------------------------------------------------------------------------------
@@ -216,7 +296,7 @@ bool BoundaryValues::ReceiveCenterBoundaryBuffers(AthenaArray<Real> &dst, int ph
     if(nb.level==pmb->loc.level)
       SetCenterBoundarySameLevel(dst,recv_buf,phys,nb);
     else if(nb.level<pmb->loc.level) // this set only the prolongation buffer
-      SetCenterBoundaryFromCoarser(recv_buf,phys,nb);
+      SetCenterBoundaryFromCoarser(recv_buf,phys,nb, true);
     else
       SetCenterBoundaryFromFiner(dst, recv_buf, phys, nb);
       
@@ -253,24 +333,24 @@ void BoundaryValues::ReceiveCenterBoundaryBuffersWithWait(AthenaArray<Real> &dst
   for(int n=0; n<pmb->nneighbor; n++) {
     NeighborBlock& nb = pmb->neighbor[n];
     if(phys==HYDRO) {
-      status_flag = &(hydro_flag_[0][nb.bufid]);
-      recv_buf = hydro_recv_[0][nb.bufid];
+      status_flag = &(hydro_flag_[step][nb.bufid]);
+      recv_buf = hydro_recv_[step][nb.bufid];
     }else if(phys==RAD){
-      status_flag = &(rad_flag_[0][nb.bufid]);
-      recv_buf = rad_recv_[0][nb.bufid];
+      status_flag = &(rad_flag_[step][nb.bufid]);
+      recv_buf = rad_recv_[step][nb.bufid];
     }
 #ifdef MPI_PARALLEL
     if(nb.rank!=Globals::my_rank){
       if(phys == HYDRO)
-        MPI_Wait(&req_hydro_recv_[0][nb.bufid],MPI_STATUS_IGNORE);
+        MPI_Wait(&req_hydro_recv_[step][nb.bufid],MPI_STATUS_IGNORE);
       else if(phys==RAD)
-        MPI_Wait(&req_rad_recv_[0][nb.bufid],MPI_STATUS_IGNORE);
+        MPI_Wait(&req_rad_recv_[step][nb.bufid],MPI_STATUS_IGNORE);
     }
 #endif
     if(nb.level==pmb->loc.level)
       SetCenterBoundarySameLevel(dst, recv_buf, phys, nb);
     else if(nb.level<pmb->loc.level)
-      SetCenterBoundaryFromCoarser(recv_buf, phys, nb);
+      SetCenterBoundaryFromCoarser(recv_buf, phys, nb, step == 0);
     else
       SetCenterBoundaryFromFiner(dst, recv_buf, phys, nb);
     
@@ -317,12 +397,11 @@ void BoundaryValues::SetCenterBoundarySameLevel(AthenaArray<Real> &dst, Real *bu
     s1=0; e1=(pmb->prad->n_fre_ang-1); s2=si; e2=ei; s3=sj; e3=ej; s4=sk; e4=ek;
   }
 
-  Real sign=1.0;
   int p=0;
   if (nb.polar) {
     if(phys==HYDRO){
       for (int n=s4; n<=e4; ++n) {
-       sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
+       Real sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
        for (int k=s3; k<=e3; ++k) {
          for (int j=e2; j>=s2; --j) {
 #pragma simd
@@ -334,12 +413,11 @@ void BoundaryValues::SetCenterBoundarySameLevel(AthenaArray<Real> &dst, Real *bu
     }else if(phys==RAD){
       //Need need to flip radiation
       // The miu_theta, miu_phi flip automatically based on the angles
-      int &nang = pmb->prad->n_fre_ang;
       for (int k=s4; k<=e4; ++k) {
        for (int j=e3; j>=s3; --j) {
          for (int i=s2; i<=e2; ++i) {
 #pragma simd
-           for(int n=0; n<nang; ++n){
+           for(int n=s1; n<=e1; ++n){
                dst(k,j,i,n) = buf[p++];
 
            }// end ifr
@@ -360,7 +438,7 @@ void BoundaryValues::SetCenterBoundarySameLevel(AthenaArray<Real> &dst, Real *bu
 //                                                       const NeighborBlock& nb)
 //  \brief Set cell center prolongation buffer received from a block on a coarser level
 void BoundaryValues::SetCenterBoundaryFromCoarser(Real *buf, int phys,
-                                        const NeighborBlock& nb)
+                      const NeighborBlock& nb, bool conserved_values)
 {
   MeshBlock *pmb=pmy_mblock_;
   MeshRefinement *pmr=pmb->pmr;
@@ -403,25 +481,27 @@ void BoundaryValues::SetCenterBoundaryFromCoarser(Real *buf, int phys,
 
 
   int p=0;
-  Real sign=1.0;
   if (nb.polar) {
     if(phys==HYDRO){
      for (int n=s4; n<=e4; ++n) {
-      sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
+      Real sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
       for (int k=s3; k<=e3; ++k) {
         for (int j=e2; j>=s2; --j) {
 #pragma simd
-          for (int i=s1; i<=e1; ++i)
-            pmr->coarse_cons_(n,k,j,i) = sign * buf[p++];
+          for (int i=s1; i<=e1; ++i){
+            if (conserved_values)
+              pmr->coarse_cons_(n,k,j,i) = sign * buf[p++];
+            else
+              pmr->coarse_prim_(n,k,j,i) = sign * buf[p++];
+          }
         }
       }
-    }
+     }
     }else if(phys==RAD){
-      int &nang = pmb->prad->n_fre_ang;
       for (int k=s4; k<=e4; ++k) {
        for (int j=e3; j>=s3; --j) {
          for (int i=s2; i<=e2; ++i) {
-           for(int n=0; n<nang; ++n){
+           for(int n=s1; n<=e1; ++n){
               pmr->coarse_ir_(k,j,i,n) = buf[p++];
            }// end nang
          }
@@ -430,9 +510,14 @@ void BoundaryValues::SetCenterBoundaryFromCoarser(Real *buf, int phys,
     }// End phys==RAD
   }
   else{
-    if(phys==HYDRO)
-      BufferUtility::Unpack4DData(buf, pmr->coarse_cons_, s4, e4, s3,
+    if(phys==HYDRO){
+      if (conserved_values)
+        BufferUtility::Unpack4DData(buf, pmr->coarse_cons_, s4, e4, s3,
                    e3, s2, e2, s1, e1, p);
+      else
+        BufferUtility::Unpack4DData(buf, pmr->coarse_prim_, s4, e4, s3,
+                   e3, s2, e2, s1, e1, p);
+    }
     else if(phys==RAD)
       BufferUtility::Unpack4DData(buf, pmr->coarse_ir_, s4, e4, s3,
                    e3, s2, e2, s1, e1, p);
@@ -500,11 +585,10 @@ void BoundaryValues::SetCenterBoundaryFromFiner(AthenaArray<Real> &dst, Real *bu
 
 
   int p=0;
-  Real sign=1.0;
   if (nb.polar) {
    if(phys==HYDRO){
     for (int n=s4; n<=e4; ++n) {
-      sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
+      Real sign = flip_across_pole_hydro[n] ? -1.0 : 1.0;
       for (int k=s3; k<=e3; ++k) {
         for (int j=s2; j<=e2; ++j) {
 #pragma simd
@@ -514,12 +598,11 @@ void BoundaryValues::SetCenterBoundaryFromFiner(AthenaArray<Real> &dst, Real *bu
       }
     }
    }else if(phys==RAD){
-      int &nang = pmb->prad->n_fre_ang;
       for (int k=s4; k<=e4; ++k) {
        for (int j=s3; j<=e3; ++j) {
          for (int i=s2; i<=e2; ++i) {
 #pragma simd
-           for(int n=0; n<nang; ++n){
+           for(int n=s1; n<=e1; ++n){
              dst(k,j,i,n) = buf[p++];
            }// end ifr
          }
