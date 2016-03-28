@@ -45,7 +45,7 @@
 
 //--------------------------------------------------------------------------------------
 //! \fn int BoundaryValues::LoadCenterBoundaryBufferSameLevel(AthenaArray<Real> &src,
-//                                                 Real *buf, const NeighborBlock& nb)
+//                                        Real *buf, const NeighborBlock& nb, int phys)
 //  \brief Set hydro boundary buffers for sending to a block on the same level
 int BoundaryValues::LoadCenterBoundaryBufferSameLevel(AthenaArray<Real> &src,
                              Real *buf, const NeighborBlock& nb, int phys)
