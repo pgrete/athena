@@ -10,6 +10,7 @@ RSOLVER_FILE = @RSOLVER_FILE@
 RSOLVER_DIR = @RSOLVER_DIR@
 HYDRO_INT_FILE = @HYDRO_INT_FILE@
 VIS_FILE = @VIS_FILE@
+CHEMISTRY_FILE = @CHEMISTRY_FILE@
 
 # General compiler specifications
 
@@ -31,6 +32,7 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/hydro/*.cpp) \
 	     $(wildcard src/hydro/srcterms/*.cpp) \
 	     $(wildcard src/hydro/viscosity/$(VIS_FILE)) \
+	     $(wildcard src/chemistry/$(CHEMISTRY_FILE)) \
 	     src/hydro/eos/$(EOS_FILE) \
 	     $(wildcard src/hydro/integrators/*.cpp) \
 	     $(wildcard src/hydro/integrators/reconstruct/*.cpp) \
