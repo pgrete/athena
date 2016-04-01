@@ -278,6 +278,14 @@ else:
   definitions['VISCOSITY'] = '0'
   makefile_options['VIS_FILE'] = '*.cpp'
 
+# -chemistry argument
+if args['chemistry']:
+  definitions['CHEMISTRY_ENABLED'] = '1'
+  makefile_options['CHEMISTRY_FILE'] = '*.cpp'
+else:
+  definitions['CHEMISTRY_ENABLED'] = '0'
+  makefile_options['CHEMISTRY_FILE'] = '*.cpp'
+
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
   definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'g++'
