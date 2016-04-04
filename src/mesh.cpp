@@ -933,6 +933,9 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   if(pm->multilevel==true)
     pmr = new MeshRefinement(this, pin);
   phydro = new Hydro(this, pin);
+  if (CHEMISTRY_ENABLED) {
+    pspec = new Species(this, pin);
+  }
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
   pbval  = new BoundaryValues(this, pin);
@@ -1024,6 +1027,9 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   if(pm->multilevel==true)
     pmr = new MeshRefinement(this, pin);
   phydro = new Hydro(this, pin);
+  if (CHEMISTRY_ENABLED) {
+    pspec = new Species(this, pin);
+  }
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
   pbval  = new BoundaryValues(this, pin);
@@ -1065,7 +1071,11 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     memcpy(pfield->b1.x3f.GetArrayPointer(), pfield->b.x3f.GetArrayPointer(),
            pfield->b.x3f.GetSize()*sizeof(Real));
   }
-
+  //TODO: need to implement output, check with Jim
+  if (CHEMISTRY_ENABLED) {
+    if( resfile.Read(pspec->s.GetArrayPointer(),sizeof(Real),
+               pspec->s.GetSize()) != pspec->s.GetSize() ) nerr++;
+  }
 
   if(nerr>0) {
     msg << "### FATAL ERROR in MeshBlock constructor" << std::endl
@@ -1085,6 +1095,9 @@ MeshBlock::~MeshBlock()
 
   delete pcoord;
   delete phydro;
+  if (CHEMISTRY_ENABLED) {
+    delete pspec;
+  }
   if (MAGNETIC_FIELDS_ENABLED)
     delete pfield;
   if (block_bcs[INNER_X2] == POLAR_BNDRY)
@@ -1320,6 +1333,9 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
   if (MAGNETIC_FIELDS_ENABLED)
     size+=sizeof(Real)*(pfield->b.x1f.GetSize()+pfield->b.x2f.GetSize()
                        +pfield->b.x3f.GetSize());
+  if (CHEMISTRY_ENABLED) {
+    size+=sizeof(Real)*pspec->s.GetSize();
+  }
   // please add the size counter here when new physics is introduced
 
   return size;
