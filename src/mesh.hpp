@@ -28,7 +28,7 @@ class Mesh;
 class MeshRefinement;
 class Coordinates;
 class Hydro;
-class Species;
+class ChemSpecies;
 class Field;
 class BoundaryValues;
 class TaskList;
@@ -88,7 +88,7 @@ private:
   friend class BoundaryValues;
   friend class Mesh;
   friend class Hydro;
-  friend class Species;
+  friend class ChemSpecies;
   friend class TaskList;
 #ifdef HDF5OUTPUT
   friend class ATHDF5Output;
@@ -118,7 +118,7 @@ public:
 
   Coordinates *pcoord;
   Hydro *phydro;
-  Species *pspec;
+  ChemSpecies *pspec;
   Field *pfield;
   BoundaryValues *pbval;
   MeshRefinement *pmr;

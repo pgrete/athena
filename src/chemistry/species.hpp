@@ -9,11 +9,15 @@
 //  \brief definitions for chemical species, network, and ode solver classes.
 //======================================================================================
 
+//c++ headers
+#include <string> //std::string
+#include <vector>     // vector container
+
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 
-//CVODE headers. TODO: need to think about how to do this.
+//CVODE headers. TODO: need to do this when Jim settle library with Kengo
 #include <sundials/sundials_types.h> // realtype type
 #include <nvector/nvector_serial.h> // N_Vector type
 #include <sundials/sundials_dense.h> // definitions DlsMat DENSE_ELEM
@@ -43,8 +47,14 @@ public:
 
   ChemNetwork *pchemnet; //pointer to chemical network
   ODEWrapper *podew; //pointer to ode solver
-private:
+  
+	//a list of species name
+	std::vector<std::string> species_names;
   int nspec; //number of species
+
+	//return the index of a species in the vector species_names
+	int GetSpeciesIndex(std::string name);
+private:
 };
 
 //! \class NetworkWrapper
@@ -112,7 +122,7 @@ private:
 class ODEWrapper {
 public:
   //Constructor: Initialize CVODE, allocate memory for the ODE solver.
-  ODEWrapper(ChemicalSpecies *pspec, ParameterInput *pin);
+  ODEWrapper(ChemSpecies *pspec, ParameterInput *pin);
   ~ODEWrapper();
   //Setting the parameter for the solver.
   //void SetRelTol(const double reltol); This would be done from input block,

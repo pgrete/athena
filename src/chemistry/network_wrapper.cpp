@@ -22,9 +22,9 @@
 
 NetworkWrapper::NetworkWrapper() {}
 
-~NetworkWrapper::NetworkWrapper() {}
+NetworkWrapper::~NetworkWrapper() {}
 
-static int NetworkWrapper::WrapJacobian(const long int N, const realtype t,
+int NetworkWrapper::WrapJacobian(const long int N, const realtype t,
                           const N_Vector y, const N_Vector fy, 
                           DlsMat J, void *user_data,
                           N_Vector tmp1, N_Vector tmp2, N_Vector tmp3) {
@@ -34,7 +34,7 @@ static int NetworkWrapper::WrapJacobian(const long int N, const realtype t,
   return r;
 }
 
-static int NetworkWrapper::WrapRHS(const realtype t, const N_Vector y,
+int NetworkWrapper::WrapRHS(const realtype t, const N_Vector y,
                      N_Vector ydot, void *user_data) {
   int r;
   NetworkWrapper *meptr = (NetworkWrapper*) user_data;

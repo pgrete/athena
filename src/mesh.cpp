@@ -35,6 +35,7 @@
 #include "athena_arrays.hpp"
 #include "coordinates/coordinates.hpp"
 #include "hydro/hydro.hpp" 
+#include "chemistry/species.hpp" 
 #include "field/field.hpp"
 #include "bvals/bvals.hpp"
 #include "hydro/eos/eos.hpp"
@@ -934,7 +935,9 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     pmr = new MeshRefinement(this, pin);
   phydro = new Hydro(this, pin);
   if (CHEMISTRY_ENABLED) {
-    pspec = new Species(this, pin);
+    pspec = new ChemSpecies(this, pin);
+  } else {
+    pspec = NULL;
   }
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
@@ -1028,7 +1031,7 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     pmr = new MeshRefinement(this, pin);
   phydro = new Hydro(this, pin);
   if (CHEMISTRY_ENABLED) {
-    pspec = new Species(this, pin);
+    pspec = new ChemSpecies(this, pin);
   }
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);

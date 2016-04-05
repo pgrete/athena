@@ -21,7 +21,7 @@
 // this class header
 #include "species.hpp"
 
-ODEWrapper::ODEWrapper(ChemicalSpecies *pspec, ParameterInput *pin) {
+ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
   pmy_spec_ = pspec;
   //TODO:allocate memory for CVODE, set parameters such as tolerance.
 }

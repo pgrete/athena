@@ -72,6 +72,7 @@
 #include "../parameter_input.hpp"
 #include "../mesh.hpp"
 #include "../hydro/hydro.hpp"
+#include "../chemistry/species.hpp"
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp" // Coordinates
 
@@ -394,6 +395,7 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
 {
   Hydro *phyd = pmb->phydro;
   Field *pfld = pmb->pfield;
+	ChemSpecies *pspec = pmb->pspec;
   std::stringstream str;
 
 // Create OutputData header
@@ -490,6 +492,22 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
       pod->AppendNode(pov); // magnetic field vector
       var_added+=3;
     }
+  }
+
+  if (CHEMISTRY_ENABLED) {
+		//go over each species, and output as scaler fields
+		for (int ispec=0; ispec < pspec->nspec; ispec++) {
+			if (output_params.variable.compare("s") == 0 || 
+					output_params.variable.compare("prim") == 0 ||
+					output_params.variable.compare("cons") == 0) {
+				pov = new OutputVariable; 
+				pov->type = "SCALARS";
+				pov->name = pspec->species_names[ispec];
+				pov->data.InitWithShallowSlice(pspec->s,4,ispec,1);
+				pod->AppendNode(pov); // magnetic field vector
+				var_added++;
+			}
+		}
   }
 
   if (output_params.variable.compare("ifov") == 0) {

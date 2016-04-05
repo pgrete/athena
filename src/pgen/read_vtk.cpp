@@ -33,6 +33,7 @@
 #include "../parameter_input.hpp"
 #include "../mesh.hpp"
 #include "../hydro/hydro.hpp"
+#include "../chemistry/species.hpp"
 #include "../field/field.hpp"
 #include "../hydro/eos/eos.hpp"
 #include "../coordinates/coordinates.hpp"
@@ -88,14 +89,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   std::vector<std::string> vector_fields = split(str_vectors, ',');
   
   //---diagnostic output---
-  std::cout << "vtkfile = (" << vtkfile << ")" << std::endl;
+  std::cout << "vtkfile = " << vtkfile << std::endl;
   std::cout << "scalers = " << str_scalers << std::endl;
   std::cout << "vectors = " << str_vectors << std::endl;
-
-
-  for(int i = 0; i < vector_fields.size(); ++i) {
-    std::cout << "(" << vector_fields[i] << ")" << std::endl;
-  }
   //----------------------
 
   //find coresponding filename.
@@ -186,6 +182,19 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       throw std::runtime_error(msg.str().c_str());
     }
   }
+
+	//intialize chemical species
+	if (CHEMISTRY_ENABLED) {
+      for (int k=ks; k<=ke; ++k) {
+        for (int j=js; j<=je; ++j) {
+          for (int i=is; i<=ie; ++i) {
+						for (int ispec=0; ispec < pspec->nspec; ++ispec) {
+							pspec->s(ispec, k, j, i) = 0.5 + ispec;
+						}
+          }
+        }
+      }
+	}
 
   //change primative variables to conservative variables.
   phydro->peos->PrimitiveToConserved(phydro->w, b, phydro->u, pcoord,

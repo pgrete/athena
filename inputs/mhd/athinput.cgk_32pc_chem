@@ -52,4 +52,4 @@ vectors    = velocity          #vector fields to be read in, separated by comma,
 #assume float format, and lookup_table default
 
 <chemistry>
-nspec      = 10 #number of species
+species    = CO, H2, H, C+ #a list of species, separated by comma

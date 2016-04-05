@@ -18,6 +18,7 @@
 #   -g                enable general relativity
 #   -t                enable interface frame transformations for GR
 #   -vis              enable viscosity
+#   -chemistry        enable chemistry
 #   --cxx=choice      use choice as the C++ compiler
 #   --std=choice      use choice as the C++ standard
 #   -debug            enable debug flags (-g -O0); override other compiler options
@@ -112,6 +113,12 @@ parser.add_argument('-vis',
     action='store_true',
     default=False,
     help='enable viscosity')
+
+# -chemistry argument
+parser.add_argument('-chemistry',
+    action='store_true',
+    default=False,
+    help='enable chemistry')
 
 # --cxx=[name] argument
 parser.add_argument('--cxx',
@@ -278,14 +285,6 @@ else:
   definitions['VISCOSITY'] = '0'
   makefile_options['VIS_FILE'] = '*.cpp'
 
-# -chemistry argument
-if args['chemistry']:
-  definitions['CHEMISTRY_ENABLED'] = '1'
-  makefile_options['CHEMISTRY_FILE'] = '*.cpp'
-else:
-  definitions['CHEMISTRY_ENABLED'] = '0'
-  makefile_options['CHEMISTRY_FILE'] = '*.cpp'
-
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
   definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'g++'
@@ -320,6 +319,19 @@ if args['cxx'] == 'bgxl':
 # --std=[name] argument
 if args['std'] == 'c++11':
   makefile_options['COMPILER_FLAGS'] = "-std=c++11 " + makefile_options['COMPILER_FLAGS']
+
+# -chemistry argument
+if args['chemistry']:
+  definitions['CHEMISTRY_ENABLED'] = '1'
+  makefile_options['CHEMISTRY_FILE'] = '*.cpp'
+  makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
+  makefile_options['INCLUDE_DIR'] = '-I/usr/local/include/'
+  makefile_options['LIBRARY_DIR'] = '-L/usr/local/lib/'
+else:
+  definitions['CHEMISTRY_ENABLED'] = '0'
+  makefile_options['CHEMISTRY_FILE'] = '*.cpp'
+  makefile_options['INCLUDE_DIR'] = ''
+  makefile_options['LIBRARY_DIR'] = ''
 
 # -debug argument
 if args['debug']:
@@ -398,7 +410,7 @@ if args['parallelhdf5']:
     makefile_options['LINKER_FLAGS'] += \
       ' -L/soft/libraries/hdf5/1.8.14/cnk-xl/V1R2M2-20150213/lib' \
         + ' -L/soft/libraries/alcf/current/xl/ZLIB/lib'
-makefile_options['LIBRARY_FLAGS'] += ' -lhdf5 -lz -lm'
+    makefile_options['LIBRARY_FLAGS'] += ' -lhdf5 -lz -lm'
 else:
   definitions['PARALLELHDF5_OPTION'] = 'NO_HDF5OUTPUT'
 
@@ -451,11 +463,14 @@ print('  Special relativity:      ' + ('ON' if args['s'] else 'OFF'))
 print('  General relativity:      ' + ('ON' if args['g'] else 'OFF'))
 print('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF'))
 print('  Viscosity:               ' + ('ON' if args['vis'] else 'OFF'))
+print('  Chemistry:               ' + ('ON' if args['chemistry'] else 'OFF'))
 print('  Compiler and flags:      ' + makefile_options['COMPILER_CHOICE'] + ' ' \
     + makefile_options['PREPROCESSOR_FLAGS'] + ' ' + makefile_options['COMPILER_FLAGS'])
 print('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF'))
 print('  Linker flags:            ' + makefile_options['LINKER_FLAGS'] + ' ' \
     + makefile_options['LIBRARY_FLAGS'])
+print('  Includes directory:      ' + makefile_options['INCLUDE_DIR'])
+print('  Libary directory:        ' + makefile_options['LIBRARY_DIR'])
 print('  MPI parallelism:         ' + ('ON' if args['mpi'] else 'OFF'))
 print('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF'))
 print('  HDF5 Output:             ' + ('ON' if args['hdf5'] else 'OFF'))
