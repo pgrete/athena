@@ -19,7 +19,7 @@
 //======================================================================================
 
 // this class header
-#include "species.hpp"
+#include "network.hpp"
 
 ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
   pmy_spec_ = pspec;

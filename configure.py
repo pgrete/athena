@@ -323,13 +323,14 @@ if args['std'] == 'c++11':
 # -chemistry argument
 if args['chemistry']:
   definitions['CHEMISTRY_ENABLED'] = '1'
-  makefile_options['CHEMISTRY_FILE'] = '*.cpp'
+  #TODO: add network option
+  makefile_options['CHEMNET_FILE'] = '*.cpp'
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
   makefile_options['INCLUDE_DIR'] = '-I/usr/local/include/'
   makefile_options['LIBRARY_DIR'] = '-L/usr/local/lib/'
 else:
   definitions['CHEMISTRY_ENABLED'] = '0'
-  makefile_options['CHEMISTRY_FILE'] = '*.cpp'
+  makefile_options['CHEMNET_FILE'] = '*.cpp'
   makefile_options['INCLUDE_DIR'] = ''
   makefile_options['LIBRARY_DIR'] = ''
 

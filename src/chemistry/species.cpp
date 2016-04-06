@@ -28,6 +28,7 @@
 #include "../athena_arrays.hpp"         // AthenaArray
 #include "../mesh.hpp"                  // MeshBlock, Mesh
 #include "../parameter_input.hpp"       //ParameterInput
+#include "network/network.hpp"          //ChemNetwork
 
 // this class header
 #include "species.hpp"

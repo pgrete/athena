@@ -18,7 +18,7 @@
 //======================================================================================
 
 // this class header
-#include "species.hpp"
+#include "network.hpp"
 
 NetworkWrapper::NetworkWrapper() {}
 
