@@ -57,7 +57,6 @@ vectors    = velocity          #vector fields to be read in, separated by comma,
 #assume float format, and lookup_table default
 
 <chemistry>
-species    = CO, H2, H, C+ #a list of species, separated by comma
 Zdg        = 1. #metallicity, assume dust and gas metallicity are the same. default = 1.
 xHe        = 0.1 #He per H, default = 0.1
 xC         = 1.6e-4 #C atom per H, this is Z=1 value, default 1.6e-4

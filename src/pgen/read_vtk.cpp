@@ -88,12 +88,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   std::vector<std::string> scaler_fields = split(str_scalers, ',');
   std::vector<std::string> vector_fields = split(str_vectors, ',');
   
-  //---diagnostic output---
-  std::cout << "vtkfile = " << vtkfile << std::endl;
-  std::cout << "scalers = " << str_scalers << std::endl;
-  std::cout << "vectors = " << str_vectors << std::endl;
-  //----------------------
-
   //find coresponding filename.
   if (loc.lx1 == 0 && loc.lx2 == 0 && loc.lx3 == 0) {
     vtkfile = vtkfile0;
@@ -254,7 +248,7 @@ static void readvtk(MeshBlock *mb, std::string filename, std::string field,
   char cline[256], type[256], variable[256], format[256], t_type[256], t_format[256];
   std::string line;
   const std::string athena_header = "# vtk DataFile Version 2.0"; //athena4.2 header
-  bool SHOW_OUTPUT = true;
+  bool SHOW_OUTPUT = false;
   int Nx_vtk, Ny_vtk, Nz_vtk; //dimensions of vtk files
   //dimensions of meshblock
   const int Nx_mb = mb->ie - mb->is + 1;
