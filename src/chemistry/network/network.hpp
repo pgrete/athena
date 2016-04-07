@@ -9,6 +9,9 @@
 //  \brief definitions for chemical species, network, and ode solver classes.
 //======================================================================================
 
+//c++ headers
+#include <string> //std::string
+
 // Athena++ classes headers
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
@@ -47,6 +50,8 @@ public:
   virtual int Jacobian(const long int N, const realtype t,
                        const N_Vector y, const N_Vector fy, 
                        DlsMat J, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3) = 0;
+	//initialize the rates of the network, e.g., from hydro and radiation
+	virtual void Initialize() = 0;
 };
 
 //! \class ChemNetwork
@@ -55,6 +60,11 @@ class ChemNetwork : public NetworkWrapper {
 public:
   ChemNetwork(ChemSpecies *pspec, ParameterInput *pin);
   ~ChemNetwork();
+
+	//a list of species name
+	static std::string species_names[NSPECIES];
+
+	void Initialize();
   //RHS: right-hand-side of ODE. dy/dt = ydot(t, y). Here y are the abundance
   //of species.
   //realtype is float/double, defined in CVODE header file.
@@ -82,6 +92,8 @@ public:
 
 private:
   ChemSpecies *pmy_spec_;
+	MeshBlock *pmy_mb_;
+
 };
 
 #endif // NETWORK_HPP

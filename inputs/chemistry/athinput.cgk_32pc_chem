@@ -58,3 +58,11 @@ vectors    = velocity          #vector fields to be read in, separated by comma,
 
 <chemistry>
 species    = CO, H2, H, C+ #a list of species, separated by comma
+Zdg        = 1. #metallicity, assume dust and gas metallicity are the same. default = 1.
+xHe        = 0.1 #He per H, default = 0.1
+xC         = 1.6e-4 #C atom per H, this is Z=1 value, default 1.6e-4
+xO         = 3.2e-4 #O atom per H, this is Z=1 value, default 3.2e-4
+xS         = 3.5e-6 #S atom per H, this is Z=1 value, default 3.5e-6
+xSi        = 1.7e-6 #Si atom per H, this is Z=1 value, default 1.7e-6
+CR         = 2e-16  #Cosmic-ray ionization rate per H
+bCO        = 1.     #Veolcity dispersion of CO in km/s for calculating NCOeff in CO cooling

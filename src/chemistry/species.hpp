@@ -9,17 +9,13 @@
 //  \brief definitions for chemical species, network, and ode solver classes.
 //======================================================================================
 
-//c++ headers
-#include <string> //std::string
-#include <vector>     // vector container
-
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
+#include "network/network.hpp" //ChemNetwork class
 
 class MeshBlock;
 class ParameterInput;
-class ChemNetwork;
 class ODEWrapper;
 
 //! \class ChemSpecies
@@ -39,14 +35,6 @@ public:
 
   ChemNetwork *pchemnet; //pointer to chemical network
   ODEWrapper *podew; //pointer to ode solver
-  
-	//a list of species name
-	std::vector<std::string> species_names;
-  int nspec; //number of species
-
-	//return the index of a species in the vector species_names
-	int GetSpeciesIndex(std::string name);
-private:
 };
 
 //! \class ODEWrapper

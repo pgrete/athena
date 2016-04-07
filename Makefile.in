@@ -35,7 +35,7 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/hydro/srcterms/*.cpp) \
 	     $(wildcard src/hydro/viscosity/$(VIS_FILE)) \
 	     $(wildcard src/chemistry/*.cpp) \
-	     $(wildcard src/chemistry/network/$(CHEMNET_FILE)) \
+       src/chemistry/network/$(CHEMNET_FILE) \
 	     src/hydro/eos/$(EOS_FILE) \
 	     $(wildcard src/hydro/integrators/*.cpp) \
 	     $(wildcard src/hydro/integrators/reconstruct/*.cpp) \

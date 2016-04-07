@@ -18,9 +18,9 @@
 #   -g                enable general relativity
 #   -t                enable interface frame transformations for GR
 #   -vis              enable viscosity
-#   -chemistry        enable chemistry
 #   --cxx=choice      use choice as the C++ compiler
 #   --std=choice      use choice as the C++ standard
+#   --chemistry=choice enable chemistry, use choice as chemical network
 #   -debug            enable debug flags (-g -O0); override other compiler options
 #   -mpi              enable parallelization with MPI
 #   -omp              enable parallelization with OpenMP
@@ -114,11 +114,11 @@ parser.add_argument('-vis',
     default=False,
     help='enable viscosity')
 
-# -chemistry argument
-parser.add_argument('-chemistry',
-    action='store_true',
-    default=False,
-    help='enable chemistry')
+# --chemistry argument
+parser.add_argument('--chemistry',
+    default=None,
+    choices=["gow16"],
+    help='select chemical network')
 
 # --cxx=[name] argument
 parser.add_argument('--cxx',
@@ -321,10 +321,10 @@ if args['std'] == 'c++11':
   makefile_options['COMPILER_FLAGS'] = "-std=c++11 " + makefile_options['COMPILER_FLAGS']
 
 # -chemistry argument
-if args['chemistry']:
+if args['chemistry'] == "gow16":
   definitions['CHEMISTRY_ENABLED'] = '1'
-  #TODO: add network option
-  makefile_options['CHEMNET_FILE'] = '*.cpp'
+  definitions['NUM_SPECIES'] = '13'
+  makefile_options['CHEMNET_FILE'] = args['chemistry'] + '.cpp'
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
   makefile_options['INCLUDE_DIR'] = '-I/usr/local/include/'
   makefile_options['LIBRARY_DIR'] = '-L/usr/local/lib/'
@@ -464,7 +464,7 @@ print('  Special relativity:      ' + ('ON' if args['s'] else 'OFF'))
 print('  General relativity:      ' + ('ON' if args['g'] else 'OFF'))
 print('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF'))
 print('  Viscosity:               ' + ('ON' if args['vis'] else 'OFF'))
-print('  Chemistry:               ' + ('ON' if args['chemistry'] else 'OFF'))
+print('  Chemistry:               ' + args['chemistry'])
 print('  Compiler and flags:      ' + makefile_options['COMPILER_CHOICE'] + ' ' \
     + makefile_options['PREPROCESSOR_FLAGS'] + ' ' + makefile_options['COMPILER_FLAGS'])
 print('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF'))

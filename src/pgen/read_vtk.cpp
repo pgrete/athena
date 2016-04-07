@@ -188,7 +188,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       for (int k=ks; k<=ke; ++k) {
         for (int j=js; j<=je; ++j) {
           for (int i=is; i<=ie; ++i) {
-						for (int ispec=0; ispec < pspec->nspec; ++ispec) {
+						for (int ispec=0; ispec < NSPECIES; ++ispec) {
 							pspec->s(ispec, k, j, i) = 0.5 + ispec;
 						}
           }
