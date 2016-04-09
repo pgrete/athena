@@ -45,14 +45,12 @@ public:
   // Note that the RHS and Jac does NOT have user_data. All parameters should
   // be passed to the class as private variables.
   // right hand side of ode
-  virtual int RHS(const realtype t, const N_Vector y,
-                  N_Vector ydot) = 0;
+  virtual void RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES]) = 0;
   //Jacobian
-  virtual int Jacobian(const long int N, const realtype t,
-                       const N_Vector y, const N_Vector fy, 
-                       DlsMat J, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3) = 0;
-	//initialize the rates of the network, e.g., from hydro and radiation
-	virtual void Initialize() = 0;
+  virtual void Jacobian(const long int N, const Real t,
+               const Real y[NSPECIES], const Real fy[NSPECIES], 
+               Real J[NSPECIES][NSPECIES], Real tmp1[NSPECIES],
+               Real tmp2[NSPECIES], Real tmp3[NSPECIES]) = 0;
 };
 
 //! \class ChemNetwork
@@ -77,12 +75,13 @@ public:
   //N_Vector contains information about the vector (e.g. dimension), and a
   //pointer to the array data. 
   //details see CVODE package documentation.
-  int RHS(const realtype t, const N_Vector y, N_Vector ydot);
+  void RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES]);
   //Jacobian: Jacobian of ODE. CVODE can also numerically calculate Jacobian if
   //this is not specified. Details see CVODE package documentation.
-  int Jacobian(const long int N, const realtype t,
-               const N_Vector y, const N_Vector fy, 
-               DlsMat J, N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
+  void Jacobian(const long int N, const Real t,
+               const Real y[NSPECIES], const Real fy[NSPECIES], 
+               Real J[NSPECIES][NSPECIES],
+               Real tmp1[NSPECIES], Real tmp2[NSPECIES], Real tmp3[NSPECIES]);
 
   //Set parameters in the chemistry network. This should be done at
   //construction, from the ParameterInput

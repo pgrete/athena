@@ -28,16 +28,50 @@ int NetworkWrapper::WrapJacobian(const long int N, const realtype t,
                           const N_Vector y, const N_Vector fy, 
                           DlsMat J, void *user_data,
                           N_Vector tmp1, N_Vector tmp2, N_Vector tmp3) {
-  int r;
+  Real t1 = t;
+  //copy y and fy values
+  Real y1[NSPECIES];
+  Real fy1[NSPECIES];
+  for (int i=0; i<NSPECIES; i++) {
+		y1[i] = NV_Ith_S(y, i);
+		fy1[i] = NV_Ith_S(fy, i);
+  }
+  //temporary storage for return
+  Real J1[NSPECIES][NSPECIES];
+  Real tmp11[NSPECIES];
+  Real tmp21[NSPECIES];
+  Real tmp31[NSPECIES];
   NetworkWrapper *meptr = (NetworkWrapper*) user_data;
-  r = meptr->Jacobian(N, t, y, fy, J, tmp1, tmp2, tmp3);
-  return r;
+  meptr->Jacobian(N, t1, y1, fy1, J1, tmp11, tmp21, tmp31);
+  //set J, tmp1, tmp2, tmp3 to return
+  for (int i=0; i<NSPECIES; i++) {
+		NV_Ith_S(tmp1, i) = tmp11[i];
+		NV_Ith_S(tmp2, i) = tmp21[i];
+		NV_Ith_S(tmp3, i) = tmp31[i];
+  }
+  for (int i=0; i<NSPECIES; i++) {
+    for (int j=0; j<NSPECIES; j++) {
+      DENSE_ELEM(J, i, j) = J1[i][j];
+    }
+  }
+  return 0;
 }
 
 int NetworkWrapper::WrapRHS(const realtype t, const N_Vector y,
                      N_Vector ydot, void *user_data) {
-  int r;
+  Real t1 = t;
+  Real y1[NSPECIES];
+  //set y1 to y
+  for (int i=0; i<NSPECIES; i++) {
+		y1[i] = NV_Ith_S(y, i);
+  }
+  //temporary storage for return
+  Real ydot1[NSPECIES];
   NetworkWrapper *meptr = (NetworkWrapper*) user_data;
-  r = meptr->RHS(t, y, ydot);
-  return r;
+  meptr->RHS(t1, y1, ydot1);
+  //set ydot to return
+  for (int i=0; i<NSPECIES; i++) {
+		NV_Ith_S(ydot, i) = ydot1[i];
+  }
+  return 0;
 }
