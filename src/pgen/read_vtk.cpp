@@ -60,6 +60,9 @@ void Mesh::InitUserMeshProperties(ParameterInput *pin)
 //======================================================================================
 void Mesh::TerminateUserMeshProperties(void)
 {
+  FILE *pf = fopen("chem_network.dat", "w");
+  pblock->pspec->pchemnet->OutputProperties(pf);
+  fclose(pf);
   return;
 }
 

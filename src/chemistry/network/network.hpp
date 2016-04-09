@@ -11,6 +11,7 @@
 
 //c++ headers
 #include <string> //std::string
+#include <stdio.h> //FILE, fprintf()
 
 // Athena++ classes headers
 #include "../../athena.hpp"
@@ -61,10 +62,14 @@ public:
   ChemNetwork(ChemSpecies *pspec, ParameterInput *pin);
   ~ChemNetwork();
 
-	//a list of species name
+	//a list of species name, used in output
 	static std::string species_names[NSPECIES];
 
-	void Initialize();
+	//Set the rates of chemical reactions, eg. through density and radiation field.
+  void Initialize();
+  //output properties of network. Can be used in eg. ProblemGenerator.
+  void OutputProperties(FILE *pf) const;
+
   //RHS: right-hand-side of ODE. dy/dt = ydot(t, y). Here y are the abundance
   //of species.
   //realtype is float/double, defined in CVODE header file.
