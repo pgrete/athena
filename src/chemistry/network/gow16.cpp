@@ -41,6 +41,7 @@ std::string ChemNetwork::species_names[NSPECIES] =
 static const int ngs_ = 7;
 static const std::string ghost_species_names_[ngs_] = 
 {"*Si", "*S", "*C", "*O", "*He", "*e", "*H"};
+static std::string species_names_all_[NSPECIES+ngs_];//all species
 
 //find the index of element in the array of strings.
 //report error if find repetitive elements
@@ -84,7 +85,10 @@ static const int n_2body_ = 29;
 static const int n_ph_ = 8;
 static const int n_gr_ = 6;
 static const int nE_ = 15;//number of heating and cooling processes
-static Real kgr_[n_gr_]; //rates for grain assisted reaction.
+static Real kcr_[n_cr_]; //rates for cosmic-ray reactions.
+static Real k2body_[n_2body_]; //rates for 2 body reacrtions.
+static Real kph_[n_ph_]; //rates for photo- reactions.
+static Real kgr_[n_gr_]; //rates for grain assisted reactions.
 
 //cosmic ray chemistry network
 // (0) cr + H2 -> H2+ + *e
@@ -278,9 +282,25 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	//Veolcity dispersion of CO in km/s for calculating NCOeff in CO cooling
 	bCO_ = pin->GetOrAddReal("chemistry", "bCO", 1.);
 
-  //initialize rates for grain assisted reactions to zero
+  //initialize rates to zero
+  for (int i=0; i<n_cr_; i++) {
+    kcr_[i] = 0;
+  }
+  for (int i=0; i<n_2body_; i++) {
+    k2body_[i] = 0;
+  }
+  for (int i=0; i<n_ph_; i++) {
+    kph_[i] = 0;
+  }
   for (int i=0; i<n_gr_; i++) {
     kgr_[i] = 0;
+  }
+  //copy species to a full list of species names
+  for (int i=0; i<NSPECIES; i++) {
+    species_names_all_[i] = species_names[i];
+  }
+  for (int i=NSPECIES; i<NSPECIES+ngs_; i++) {
+    species_names_all_[i] = ghost_species_names_[i-NSPECIES];
   }
 
 }
@@ -303,33 +323,24 @@ void ChemNetwork::Initialize() {
 
 void ChemNetwork::OutputProperties(FILE *pf) const {
   //output the reactions and base rates
-  //copy species to a full list of species names
-  std::string species_names_all[NSPECIES+ngs_];
-  for (int i=0; i<NSPECIES; i++) {
-    species_names_all[i] = species_names[i];
-  }
-  for (int i=NSPECIES; i<NSPECIES+ngs_; i++) {
-    species_names_all[i] = ghost_species_names_[i-NSPECIES];
-  }
-  //output rates to file
 	for (int i=0; i<n_cr_; i++) {
 		fprintf(pf, "cr  + %4s -> %4s,     kcr = %.2e ksi s-1 H-1\n", 
-		 species_names_all[incr_[i]].c_str(), species_names_all[outcr_[i]].c_str(), kcr_base_[i]);
+		 species_names_all_[incr_[i]].c_str(), species_names_all_[outcr_[i]].c_str(), kcr_base_[i]);
 	}
 	for (int i=0; i<n_2body_; i++) {
 		fprintf(pf, "%4s  + %4s -> %4s  + %4s,     k2body = %.1e T^%.2f cm3 s-1 H-1\n", 
-		 species_names_all[in2body1_[i]].c_str(), species_names_all[in2body2_[i]].c_str(),
-		 species_names_all[out2body1_[i]].c_str(), species_names_all[out2body2_[i]].c_str(),
+		 species_names_all_[in2body1_[i]].c_str(), species_names_all_[in2body2_[i]].c_str(),
+		 species_names_all_[out2body1_[i]].c_str(), species_names_all_[out2body2_[i]].c_str(),
 		 k2body_base_[i], k2Texp_[i]);
 	}
 	for (int i=0; i<n_ph_; i++) {
 		fprintf(pf, "h nu  + %4s -> %4s,     kph = %.1e G0 exp(-%.1f Av) s-1 H-1\n", 
-		 species_names_all[inph_[i]].c_str(), species_names_all[outph1_[i]].c_str(),
+		 species_names_all_[inph_[i]].c_str(), species_names_all_[outph1_[i]].c_str(),
 		 kph_base_[i], kph_avfac_[i]);
 	}
 	for (int i=0; i<n_gr_; i++) {
 		fprintf(pf, "gr  + %4s -> %4s,     kgr = %.1e s-1 H-1\n", 
-		 species_names_all[ingr_[i]].c_str(), species_names_all[outgr_[i]].c_str(),
+		 species_names_all_[ingr_[i]].c_str(), species_names_all_[outgr_[i]].c_str(),
 		 kgr_[i]);
 	}
   return;
