@@ -65,3 +65,7 @@ xS         = 3.5e-6 #S atom per H, this is Z=1 value, default 3.5e-6
 xSi        = 1.7e-6 #Si atom per H, this is Z=1 value, default 1.7e-6
 CR         = 2e-16  #Cosmic-ray ionization rate per H
 bCO        = 1.     #Veolcity dispersion of CO in km/s for calculating NCOeff in CO cooling
+reltol     = 1.0e-2 #relative tolerance, default 1.0e-2
+abstol     = 1.0e-12 #absolute tolerance, default 1.0e-12
+abstol_H2  = 1.0e-5 #absolute tolerance of species H2, default abstol
+user_jac   = 0      #flag for whether use user provided Jacobian. default false/0

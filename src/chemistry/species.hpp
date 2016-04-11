@@ -69,13 +69,21 @@ public:
    * 
    * Note that this will be not vectorizable(?).
    */
-  void Integrate(const double dt);
+  void Integrate(const Real dt);
 
   //solve the chemical abundance to equilibrium. Useful for post-processing.
   void SolveEq();
-
 private:
   ChemSpecies *pmy_spec_;
+  Real reltol_;//relative tolerance
+  Real abstol_[NSPECIES];//absolute tolerance
+  void *cvode_mem_;
+  N_Vector y_;
+  Real *ydata_;
+
+  //CVODE checkflag
+  void CheckFlag(const void *flagvalue, const char *funcname, 
+                 const int opt);
 };
 
 
