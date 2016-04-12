@@ -44,6 +44,10 @@
 #include "outputs/outputs.hpp"
 #include "outputs/wrapper.hpp"
 #include "utils/utils.hpp"
+//chemistry headers
+//TODO: if move chemistry main loop away, this won't be needed
+#include "chemistry/species.hpp" 
+#include "chemistry/network/network.hpp" 
 
 // MPI/OpenMP headers
 #ifdef MPI_PARALLEL
@@ -316,7 +320,16 @@ int main(int argc, char *argv[])
                 << " time=" << pmesh->time << " dt=" << pmesh->dt <<std::endl;
     }
 
-    pmesh->UpdateOneStep();
+    //pmesh->UpdateOneStep();
+    //TODO: this needs to be moved in a function in Mesh, maybe called
+    //someting like operater split
+    if (CHEMISTRY_ENABLED) {
+      MeshBlock *pmb = pmesh->pblock;
+      while (pmb != NULL)  {
+        pmb->pspec->podew->Integrate();
+        pmb=pmb->next;
+      }
+    }
 
     pmesh->ncycle++;
     pmesh->time += pmesh->dt;
@@ -324,7 +337,8 @@ int main(int argc, char *argv[])
     if(pmesh->adaptive==true)
       pmesh->AdaptiveMeshRefinement(pinput);
 
-    pmesh->NewTimeStep();
+    //pmesh->NewTimeStep();
+
 
     try {
       pouts->MakeOutputs(pmesh,pinput);

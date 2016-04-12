@@ -139,7 +139,7 @@ void ODEWrapper::Integrate() {
       //loop over each cell
       for (int i=is; i<=ie; ++i) {
         //step 1: initialize chemistry network
-        pmy_spec_->pchemnet->Initialize();
+        pmy_spec_->pchemnet->InitializeNextStep();
         //step 2: re-initialize CVODE with starting time t, and vector y
         //allocate s1(i, *) to y_.
         //TODO: make sure Real and realtype are the same.

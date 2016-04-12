@@ -314,19 +314,19 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
   return;
 }
 
-void ChemNetwork::Jacobian(const long int N, const Real t,
+void ChemNetwork::Jacobian(const Real t,
                const Real y[NSPECIES], const Real fy[NSPECIES], 
-               Real J[NSPECIES][NSPECIES],
+               Real jac[NSPECIES][NSPECIES],
                Real tmp1[NSPECIES], Real tmp2[NSPECIES], Real tmp3[NSPECIES]) {
   for (int i=0; i<NSPECIES; i++) {
     for (int j=0; j<NSPECIES; j++) {
-      J[i][j] = 0;
+      jac[i][j] = 0;
     }
   }
   return;
 }
 
-void ChemNetwork::Initialize() {
+void ChemNetwork::InitializeNextStep() {
 	return;
 }
 

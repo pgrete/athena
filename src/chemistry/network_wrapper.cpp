@@ -24,9 +24,9 @@ NetworkWrapper::NetworkWrapper() {}
 
 NetworkWrapper::~NetworkWrapper() {}
 
-int NetworkWrapper::WrapJacobian(const long int N, const realtype t,
+int NetworkWrapper::WrapJacobian(const long int n, const realtype t,
                           const N_Vector y, const N_Vector fy, 
-                          DlsMat J, void *user_data,
+                          DlsMat jac, void *user_data,
                           N_Vector tmp1, N_Vector tmp2, N_Vector tmp3) {
   Real t1 = t;
   //copy y and fy values
@@ -37,12 +37,12 @@ int NetworkWrapper::WrapJacobian(const long int N, const realtype t,
 		fy1[i] = NV_Ith_S(fy, i);
   }
   //temporary storage for return
-  Real J1[NSPECIES][NSPECIES];
+  Real jac1[NSPECIES][NSPECIES];
   Real tmp11[NSPECIES];
   Real tmp21[NSPECIES];
   Real tmp31[NSPECIES];
   NetworkWrapper *meptr = (NetworkWrapper*) user_data;
-  meptr->Jacobian(N, t1, y1, fy1, J1, tmp11, tmp21, tmp31);
+  meptr->Jacobian(t1, y1, fy1, jac1, tmp11, tmp21, tmp31);
   //set J, tmp1, tmp2, tmp3 to return
   for (int i=0; i<NSPECIES; i++) {
 		NV_Ith_S(tmp1, i) = tmp11[i];
@@ -51,7 +51,7 @@ int NetworkWrapper::WrapJacobian(const long int N, const realtype t,
   }
   for (int i=0; i<NSPECIES; i++) {
     for (int j=0; j<NSPECIES; j++) {
-      DENSE_ELEM(J, i, j) = J1[i][j];
+      DENSE_ELEM(jac, i, j) = jac1[i][j];
     }
   }
   return 0;

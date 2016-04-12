@@ -34,9 +34,9 @@ class NetworkWrapper {
 public:
   NetworkWrapper();
   virtual ~NetworkWrapper();
-  static int WrapJacobian(const long int N, const realtype t,
+  static int WrapJacobian(const long int n, const realtype t,
                           const N_Vector y, const N_Vector fy, 
-                          DlsMat J, void *user_data,
+                          DlsMat jac, void *user_data,
                           N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
   static int WrapRHS(const realtype t, const N_Vector y,
                      N_Vector ydot, void *user_data);
@@ -47,9 +47,9 @@ public:
   // right hand side of ode
   virtual void RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES]) = 0;
   //Jacobian
-  virtual void Jacobian(const long int N, const Real t,
+  virtual void Jacobian(const Real t,
                const Real y[NSPECIES], const Real fy[NSPECIES], 
-               Real J[NSPECIES][NSPECIES], Real tmp1[NSPECIES],
+               Real jac[NSPECIES][NSPECIES], Real tmp1[NSPECIES],
                Real tmp2[NSPECIES], Real tmp3[NSPECIES]) = 0;
 };
 
@@ -64,7 +64,7 @@ public:
 	static std::string species_names[NSPECIES];
 
 	//Set the rates of chemical reactions, eg. through density and radiation field.
-  void Initialize();
+  void InitializeNextStep();
   //output properties of network. Can be used in eg. ProblemGenerator.
   void OutputProperties(FILE *pf) const;
 
@@ -78,9 +78,9 @@ public:
   void RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES]);
   //Jacobian: Jacobian of ODE. CVODE can also numerically calculate Jacobian if
   //this is not specified. Details see CVODE package documentation.
-  void Jacobian(const long int N, const Real t,
+  void Jacobian(const Real t,
                const Real y[NSPECIES], const Real fy[NSPECIES], 
-               Real J[NSPECIES][NSPECIES],
+               Real jac[NSPECIES][NSPECIES],
                Real tmp1[NSPECIES], Real tmp2[NSPECIES], Real tmp3[NSPECIES]);
 
   //Set parameters in the chemistry network. This should be done at
