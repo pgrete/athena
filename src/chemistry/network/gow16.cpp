@@ -309,7 +309,7 @@ ChemNetwork::~ChemNetwork() {}
 
 void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES]) {
   for (int i=0; i<NSPECIES; i++) {
-    ydot[i] = 0;
+    ydot[i] = i;
   }
   return;
 }
