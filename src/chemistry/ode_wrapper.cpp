@@ -124,7 +124,7 @@ void ODEWrapper::Integrate() {
   int ke = pmy_spec_->pmy_block->ke;
   Real *pdata_s1 = pmy_spec_->s1.GetArrayPointer();
   Real tinit = pmy_spec_->pmy_block->pmy_mesh->time;
-  Real dt = pmy_spec_->pmy_block->pmy_mesh->time;
+  Real dt = pmy_spec_->pmy_block->pmy_mesh->dt;
   Real tfinal = tinit + dt;
   Real treturn = 0;
   int flag;

@@ -18,8 +18,8 @@ dt         = 0.01      # time increment between outputs
 
 <time>
 cfl_number = 0.4       # The Courant, Friedrichs, & Lewy (CFL) Number
-nlim       = 0        # cycle limit
-tlim       = -1.       # time limit
+nlim       = 3        # cycle limit
+tlim       = 2.       # time limit
 dt_pp      = 1.        # post-processing timestep specified by user
 
 <mesh>
