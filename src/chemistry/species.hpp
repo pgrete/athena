@@ -53,22 +53,21 @@ public:
   //For post-processing, can design a function to solve to equilibrium. 
   //For time-dependent chemistry, dt = hydro timestep ?
   //
-  /* The integration will look like:
-   *
-   * For each cell:
-   * Step 1: Set the radiation field strength in ChemNetwork.
-   * Depends on the data structure of radiation field, this can be copying
-   * the value from Radiation class to ChemNetwork class, or just pass a pointer.
-   *
-   * Step 2: re-initialize CVODE with starting time t, and starting abundance
-   * y. If x(k, j, i, ispec), we can just pass a pointer to CVODE, otherwise,
-   * we need to copy the abundance of species to an array.
-   *
-   * Step 3: Integration. Update the array of species abundance in that
-   * cell over time dt.
-   * 
-   * Note that this will be not vectorizable(?).
-   */
+  // The integration steps:
+  //
+  // For each cell:
+  // Step 1: Set the radiation field strength in ChemNetwork.
+  // Depends on the data structure of radiation field, this can be copying
+  // the value from Radiation class to ChemNetwork class, or just pass a pointer.
+  //
+  // Step 2: re-initialize CVODE with starting time t, and starting abundance
+  // y. If x(k, j, i, ispec), we can just pass a pointer to CVODE, otherwise,
+  // we need to copy the abundance of species to an array.
+  //
+  // Step 3: Integration. Update the array of species abundance in that
+  // cell over time dt.
+  // 
+  // Note that this will be not vectorizable(?).
   void Integrate();
 
   //solve the chemical abundance to equilibrium. Useful for post-processing.

@@ -32,6 +32,9 @@
 // include post-processing?  default=0 (false).
 #define POST_PROCESSING_ENABLED @POST_PROCESSING_ENABLED@
 
+// include radiative transfer?  default=0 (false).
+#define RADIATION_ENABLED @RADIATION_ENABLED@
+
 // enable special or general relativity? default=0 (false)
 #define RELATIVISTIC_DYNAMICS @RELATIVISTIC_DYNAMICS@
 

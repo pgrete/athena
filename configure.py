@@ -28,6 +28,7 @@
 #   -hdf5             enable HDF5 output (requires the HDF5 library)
 #   -parallelhdf5     enable parallel HDF5 output (forces -hdf5)
 #   --ifov=N          enable N internal hydro output variables
+#   -radiation        enable radiative transfer
 #---------------------------------------------------------------------------------------
 
 # Modules
@@ -176,6 +177,12 @@ parser.add_argument('--ifov',
     default=0,
     help='number of internal hydro output variables')
 
+# -radiation argument
+parser.add_argument('-radiation',
+    action='store_true',
+    default=False,
+    help='enable radiative transfer')
+
 # Parse command-line inputs
 args = vars(parser.parse_args())
 
@@ -302,6 +309,14 @@ if args['pp']:
   definitions['POST_PROCESSING_ENABLED'] = '1'
 else:
   definitions['POST_PROCESSING_ENABLED'] = '0'
+
+# -radiation argument
+if args['radiation']:
+  definitions['RADIATION_ENABLED'] = '1'
+  makefile_options['RADIATION_FILE'] = '*.cpp'
+else:
+  definitions['RADIATION_ENABLED'] = '0'
+  makefile_options['RADIATION_FILE'] = '*.cpp'
 
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
@@ -485,4 +500,5 @@ print('  MPI parallelism:         ' + ('ON' if args['mpi'] else 'OFF'))
 print('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF'))
 print('  HDF5 Output:             ' + ('ON' if args['hdf5'] else 'OFF'))
 print('  Parallel HDF5 Output:    ' + ('ON' if args['parallelhdf5'] else 'OFF'))
+print('  Radiative Transfer:      ' + ('ON' if args['radiation'] else 'OFF'))
 print('  Internal hydro outvars:  ' + str(args['ifov']))

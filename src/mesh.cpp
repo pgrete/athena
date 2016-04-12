@@ -47,6 +47,7 @@
 #include "task_list.hpp"
 #include "mesh_refinement/mesh_refinement.hpp"
 #include "utils/buffer_utils.hpp"
+#include "radiation/radiation.hpp"
 
 // this class header
 #include "mesh.hpp"
@@ -949,6 +950,11 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   } else {
     pspec = NULL;
   }
+  if (RADIATION_ENABLED) {
+    prad = new Radiation(this, pin);
+  } else {
+    prad = NULL;
+  }
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
   pbval  = new BoundaryValues(this, pin);
@@ -1043,6 +1049,9 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   if (CHEMISTRY_ENABLED) {
     pspec = new ChemSpecies(this, pin);
   }
+  if (RADIATION_ENABLED) {
+    prad = new Radiation(this, pin);
+  }
   if (MAGNETIC_FIELDS_ENABLED)
     pfield = new Field(this, pin);
   pbval  = new BoundaryValues(this, pin);
@@ -1084,10 +1093,14 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     memcpy(pfield->b1.x3f.GetArrayPointer(), pfield->b.x3f.GetArrayPointer(),
            pfield->b.x3f.GetSize()*sizeof(Real));
   }
-  //TODO: need to implement output, check with Jim
   if (CHEMISTRY_ENABLED) {
     if( resfile.Read(pspec->s.GetArrayPointer(),sizeof(Real),
                pspec->s.GetSize()) != pspec->s.GetSize() ) nerr++;
+  }
+  //TODO: note the order
+  if (RADIATION_ENABLED) {
+    if(resfile.Read(prad->ir.GetArrayPointer(),sizeof(Real),
+                    prad->ir.GetSize())!=prad->ir.GetSize()) nerr++;
   }
 
   if(nerr>0) {
@@ -1110,6 +1123,9 @@ MeshBlock::~MeshBlock()
   delete phydro;
   if (CHEMISTRY_ENABLED) {
     delete pspec;
+  }
+  if (RADIATION_ENABLED) {
+    delete prad;
   }
   if (MAGNETIC_FIELDS_ENABLED)
     delete pfield;
@@ -1352,6 +1368,9 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
                        +pfield->b.x3f.GetSize());
   if (CHEMISTRY_ENABLED) {
     size+=sizeof(Real)*pspec->s.GetSize();
+  }
+  if (RADIATION_ENABLED){
+    size+=sizeof(Real)*prad->ir.GetSize();
   }
   // please add the size counter here when new physics is introduced
 

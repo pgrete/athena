@@ -11,6 +11,7 @@ RSOLVER_DIR = @RSOLVER_DIR@
 HYDRO_INT_FILE = @HYDRO_INT_FILE@
 VIS_FILE = @VIS_FILE@
 CHEMNET_FILE = @CHEMNET_FILE@
+RADIATION_FILE = @RADIATION_FILE@
 
 # General compiler specifications
 
@@ -43,6 +44,7 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/mesh_refinement/*.cpp) \
 	     $(wildcard src/outputs/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
+       $(wildcard src/radiation/$(RADIATION_FILE)) \
 	     src/pgen/$(PROBLEM_FILE)
 SRC_DIR := $(dir $(SRC_FILES))
 OBJ_DIR := obj/
