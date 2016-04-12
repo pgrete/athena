@@ -179,7 +179,7 @@ public:
   RegionSize mesh_size;
   enum BoundaryFlag mesh_bcs[6];
 
-  Real start_time, tlim, cfl_number, time, dt;
+  Real start_time, tlim, cfl_number, time, dt, dt_pp;
   int nlim, ncycle;
   bool adaptive, multilevel, face_only;
 

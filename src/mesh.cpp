@@ -80,6 +80,11 @@ Mesh::Mesh(ParameterInput *pin, int test_flag)
   start_time = pin->GetOrAddReal("time","start_time",0.0);
   tlim       = pin->GetReal("time","tlim");
   cfl_number = pin->GetReal("time","cfl_number");
+  if (POST_PROCESSING_ENABLED) {
+    dt_pp = pin->GetReal("time", "dt_pp");
+  } else {
+    dt_pp = 0.;
+  }
   time = start_time;
   dt   = (FLT_MAX*0.4);
 
@@ -533,6 +538,11 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   tlim       = pin->GetReal("time","tlim");
   cfl_number = pin->GetReal("time","cfl_number");
   nlim = pin->GetOrAddInteger("time","nlim",-1);
+  if (POST_PROCESSING_ENABLED) {
+    dt_pp = pin->GetReal("time", "dt_pp");
+  } else {
+    dt_pp = 0.;
+  }
 
 // read number of OpenMP threads for mesh
   num_mesh_threads_ = pin->GetOrAddInteger("mesh","num_threads",1);
@@ -1118,6 +1128,10 @@ MeshBlock::~MeshBlock()
 
 void Mesh::NewTimeStep(void)
 {
+  if (POST_PROCESSING_ENABLED) {
+    dt = dt_pp;
+    return;
+  }
   MeshBlock *pmb = pblock;
   Real min_dt=pmb->new_block_dt;
   pmb=pmb->next;
@@ -1351,31 +1365,40 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
 void Mesh::UpdateOneStep(void)
 {
   MeshBlock *pmb = pblock;
-  int nb=nblist[Globals::my_rank];
+  if (!POST_PROCESSING_ENABLED) {
+    int nb=nblist[Globals::my_rank];
 
-  // initialize
-  while (pmb != NULL)  {
-    pmb->first_task=0;
-    pmb->num_tasks_todo=ptlist->ntasks;
-    for(int i=0; i<4; ++i) pmb->finished_tasks[i]=0; // encodes which tasks are done
-    pmb->pbval->StartReceivingAll();
-    pmb=pmb->next;
-  }
+    // initialize
+    while (pmb != NULL)  {
+      pmb->first_task=0;
+      pmb->num_tasks_todo=ptlist->ntasks;
+      for(int i=0; i<4; ++i) pmb->finished_tasks[i]=0; // encodes which tasks are done
+      pmb->pbval->StartReceivingAll();
+      pmb=pmb->next;
+    }
 
-  // main loop
-  while(nb>0) {
+    // main loop
+    while(nb>0) {
+      pmb = pblock;
+      while (pmb != NULL)  {
+        if(ptlist->DoOneTask(pmb)==TL_COMPLETE) // task list completed
+          nb--;
+        pmb=pmb->next;
+      }
+    }
+
     pmb = pblock;
     while (pmb != NULL)  {
-      if(ptlist->DoOneTask(pmb)==TL_COMPLETE) // task list completed
-        nb--;
+      pmb->pbval->ClearBoundaryAll();
       pmb=pmb->next;
     }
   }
-
-  pmb = pblock;
-  while (pmb != NULL)  {
-    pmb->pbval->ClearBoundaryAll();
-    pmb=pmb->next;
+  if (CHEMISTRY_ENABLED) {
+    pmb = pblock;
+    while (pmb != NULL)  {
+      pmb->pspec->podew->Integrate();
+      pmb=pmb->next;
+    }
   }
   return;
 }

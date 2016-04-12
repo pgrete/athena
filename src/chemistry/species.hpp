@@ -69,7 +69,7 @@ public:
    * 
    * Note that this will be not vectorizable(?).
    */
-  void Integrate(const Real dt);
+  void Integrate();
 
   //solve the chemical abundance to equilibrium. Useful for post-processing.
   void SolveEq();

@@ -20,6 +20,7 @@ dt         = 0.01      # time increment between outputs
 cfl_number = 0.4       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = 0        # cycle limit
 tlim       = -1.       # time limit
+dt_pp      = 1.        # post-processing timestep specified by user
 
 <mesh>
 nx1        = 32        # Number of zones in X1-direction
@@ -57,6 +58,7 @@ vectors    = velocity          #vector fields to be read in, separated by comma,
 #assume float format, and lookup_table default
 
 <chemistry>
+#chemistry network parameters
 Zdg        = 1. #metallicity, assume dust and gas metallicity are the same. default = 1.
 xHe        = 0.1 #He per H, default = 0.1
 xC         = 1.6e-4 #C atom per H, this is Z=1 value, default 1.6e-4
@@ -65,6 +67,7 @@ xS         = 3.5e-6 #S atom per H, this is Z=1 value, default 3.5e-6
 xSi        = 1.7e-6 #Si atom per H, this is Z=1 value, default 1.7e-6
 CR         = 2e-16  #Cosmic-ray ionization rate per H
 bCO        = 1.     #Veolcity dispersion of CO in km/s for calculating NCOeff in CO cooling
+#chemistry solver parameters
 reltol     = 1.0e-2 #relative tolerance, default 1.0e-2
 abstol     = 1.0e-12 #absolute tolerance, default 1.0e-12
 abstol_H2  = 1.0e-5 #absolute tolerance of species H2, default abstol

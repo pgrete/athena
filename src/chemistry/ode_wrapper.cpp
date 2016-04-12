@@ -115,7 +115,7 @@ ODEWrapper::~ODEWrapper() {
 }
 
 
-void ODEWrapper::Integrate(const Real dt) {
+void ODEWrapper::Integrate() {
   int is = pmy_spec_->pmy_block->is;
   int js = pmy_spec_->pmy_block->js;
   int ks = pmy_spec_->pmy_block->ks;
@@ -124,6 +124,7 @@ void ODEWrapper::Integrate(const Real dt) {
   int ke = pmy_spec_->pmy_block->ke;
   Real *pdata_s1 = pmy_spec_->s1.GetArrayPointer();
   Real tinit = pmy_spec_->pmy_block->pmy_mesh->time;
+  Real dt = pmy_spec_->pmy_block->pmy_mesh->time;
   Real tfinal = tinit + dt;
   Real treturn = 0;
   int flag;

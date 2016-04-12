@@ -18,6 +18,7 @@
 #   -g                enable general relativity
 #   -t                enable interface frame transformations for GR
 #   -vis              enable viscosity
+#   -pp               enable post-processing
 #   --cxx=choice      use choice as the C++ compiler
 #   --std=choice      use choice as the C++ standard
 #   --chemistry=choice enable chemistry, use choice as chemical network
@@ -120,6 +121,12 @@ parser.add_argument('--chemistry',
     default=None,
     choices=["gow16"],
     help='select chemical network')
+
+# -pp argument
+parser.add_argument('-pp',
+    action='store_true',
+    default=False,
+    help='enable post-processing')
 
 # --cxx=[name] argument
 parser.add_argument('--cxx',
@@ -289,6 +296,12 @@ if args['vis']:
 else:
   definitions['VISCOSITY'] = '0'
   makefile_options['VIS_FILE'] = '*.cpp'
+
+# -pp argument
+if args['pp']:
+  definitions['POST_PROCESSING_ENABLED'] = '1'
+else:
+  definitions['POST_PROCESSING_ENABLED'] = '0'
 
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
@@ -460,6 +473,7 @@ print('  General relativity:      ' + ('ON' if args['g'] else 'OFF'))
 print('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF'))
 print('  Viscosity:               ' + ('ON' if args['vis'] else 'OFF'))
 print('  Chemistry:               ' + args['chemistry'])
+print('  Post processing:         ' + ('ON' if args['pp'] else 'OFF'))
 print('  Compiler and flags:      ' + makefile_options['COMPILER_CHOICE'] + ' ' \
     + makefile_options['PREPROCESSOR_FLAGS'] + ' ' + makefile_options['COMPILER_FLAGS'])
 print('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF'))

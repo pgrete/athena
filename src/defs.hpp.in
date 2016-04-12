@@ -29,6 +29,9 @@
 // include chemistry?  default=0 (false).
 #define CHEMISTRY_ENABLED @CHEMISTRY_ENABLED@
 
+// include post-processing?  default=0 (false).
+#define POST_PROCESSING_ENABLED @POST_PROCESSING_ENABLED@
+
 // enable special or general relativity? default=0 (false)
 #define RELATIVISTIC_DYNAMICS @RELATIVISTIC_DYNAMICS@
 
