@@ -86,6 +86,14 @@ void Mesh::TerminateUserMeshProperties(void)
   return;
 }
 
+void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
+{
+
+
+
+  return;
+}
+
 
 //======================================================================================
 //! \fn void MeshBlock::ProblemGenerator(ParameterInput *pin)

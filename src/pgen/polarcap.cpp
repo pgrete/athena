@@ -45,8 +45,9 @@ static Real tinject = 0.1;
 static Real rinject = 1.0;
 static Real mdotin = 1.86797e5;
 static Real vinject = -132.189;
-static Real inb0 = 500.0;
+static Real inb0 = 50.0;
 static Real tfloor;
+static Real dfloor;
 //======================================================================================
 /*! \file radshock.cpp
  *  \brief radiation shock test for the radiative transfer module
@@ -60,6 +61,19 @@ void Inject_zo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
 void Inject_zi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
                int is, int ie, int js, int je, int ks, int ke);
 
+void Inject_xo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
+               int is, int ie, int js, int je, int ks, int ke);
+
+
+void Inject_xi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
+               int is, int ie, int js, int je, int ks, int ke);
+
+void Inject_yo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
+               int is, int ie, int js, int je, int ks, int ke);
+
+
+void Inject_yi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
+               int is, int ie, int js, int je, int ks, int ke);
 
 void DiskOpacity(MeshBlock *pmb, AthenaArray<Real> &prim);
 
@@ -74,9 +88,14 @@ void Mesh::InitUserMeshProperties(ParameterInput *pin)
 
   EnrollUserBoundaryFunction(INNER_X3, Inject_zi);
   EnrollUserBoundaryFunction(OUTER_X3, Inject_zo);
+  EnrollUserBoundaryFunction(INNER_X1, Inject_xi);
+  EnrollUserBoundaryFunction(OUTER_X1, Inject_xo);
+  EnrollUserBoundaryFunction(INNER_X2, Inject_yi);
+  EnrollUserBoundaryFunction(OUTER_X2, Inject_yo);
   EnrollUserRadBoundaryFunction(OUTER_X3, Inject_rad_zo);
   
   tfloor = pin->GetOrAddReal("radiation", "tfloor", 0.01);
+  dfloor = pin->GetOrAddReal("hydro", "dfloor", 1.e-4);
   
   
 
@@ -130,13 +149,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       for (int i=is; i<=ie; ++i) {
         Real &x1 = pcoord->x1v(i);
         Real dis=sqrt(x1*x1+x2*x2);
-        Real rho=exp(-pow(dis/rinject,16.0)) * rhoinject;
-        rho=std::max(rho,0.01*rhoinject);
+        Real rho=exp(-pow(dis/rinject,2.0)) * rhoinject;
+        Real vel=exp(-pow(dis/rinject,2.0)) * vinject;
+        rho=std::max(rho,dfloor);
         Real pg = rho * tinject;
         
-        Real vel = 0.0;
-        if(rho > 0.01*rhoinject)
-           vel = vinject;
+
         
         phydro->u(IDN,k,j,i) = rho;
         phydro->u(IM1,k,j,i) = 0.0;
@@ -262,7 +280,10 @@ void Inject_zi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
           a(IDN,ks-k,j,i) = a(IDN,ks+k-1,j,i);
           a(IVX,ks-k,j,i) = a(IVX,ks+k-1,j,i);
           a(IVY,ks-k,j,i) = a(IVY,ks+k-1,j,i);
-          a(IVZ,ks-k,j,i) = -a(IVZ,ks+k-1,j,i);
+          if(a(IDN,ks,j,i) > 1.01 * dfloor)
+             a(IVZ,ks-k,j,i) = -a(IVZ,ks+k-1,j,i);
+          else
+             a(IVZ,ks-k,j,i) = 0.0;
           a(IEN,ks-k,j,i) = a(IEN,ks+k-1,j,i);
         
       }
@@ -274,7 +295,7 @@ void Inject_zi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
     for(int j=js; j<=je; ++j){
 #pragma simd
       for(int i=is; i<=ie+1; ++i){
-        b.x1f(ks-k,j,i) = 0.0;
+        b.x1f(ks-k,j,i) = b.x1f(ks-k+1,j,i);
       }
     }}
 
@@ -282,7 +303,7 @@ void Inject_zi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
     for(int j=js; j<=je+1; ++j){
 #pragma simd
       for(int i=is; i<=ie; ++i){
-        b.x2f(ks-k,j,i) = 0.0;
+        b.x2f(ks-k,j,i) = b.x2f(ks-k+1,j,i);
       }
     }}
 
@@ -312,16 +333,14 @@ void Inject_zo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
       for (int i=is; i<=ie; ++i) {
           Real &x1 = pco->x1v(i);
           Real dis=sqrt(x1*x1+x2*x2);
-          Real rho=exp(-pow(dis/rinject,16.0)) * rhoinject;
-          rho=std::max(rho,0.01*rhoinject);
+          Real rho=exp(-pow(dis/rinject,2.0)) * rhoinject;
+          Real vel=exp(-pow(dis/rinject,2.0)) * vinject;
+          rho=std::max(rho,dfloor);
         
-          Real vel = 0.0;
-          if(rho > 0.01*rhoinject)
-            vel = vinject;
         
           a(IDN,ke+k,j,i) = rho;
-          a(IVX,ke+k,j,i) = a(IVX,ke,j,i);
-          a(IVY,ke+k,j,i) = a(IVY,ke,j,i);
+          a(IVX,ke+k,j,i) = 0.0 * a(IVX,ke,j,i);
+          a(IVY,ke+k,j,i) = 0.0 * a(IVY,ke,j,i);
           a(IVZ,ke+k,j,i) = vel;
           a(IEN,ke+k,j,i) = rho * tinject;
         
@@ -334,7 +353,7 @@ void Inject_zo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
     for(int j=js; j<=je; ++j){
 #pragma simd
       for(int i=is; i<=ie+1; ++i){
-        b.x1f(ke+k,j,i) = 0.0;
+        b.x1f(ke+k,j,i) = 0.0 * b.x1f(ke+k-1,j,i);
       }
     }}
 
@@ -342,7 +361,7 @@ void Inject_zo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
     for(int j=js; j<=je+1; ++j){
 #pragma simd
       for(int i=is; i<=ie; ++i){
-        b.x2f(ke+k,j,i) = 0.0;
+        b.x2f(ke+k,j,i) = 0.0 * b.x2f(ke+k-1,j,i);
       }
     }}
 
@@ -350,7 +369,7 @@ void Inject_zo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
     for(int j=js; j<=je; ++j){
 #pragma simd
       for(int i=is; i<=ie; ++i){
-        b.x3f(ke+k,j,i) = inb0;
+        b.x3f(ke+k+1,j,i) = inb0;
       }
     }}
     
@@ -397,6 +416,204 @@ void Inject_rad_zo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
   }
   
   ir_cm.DeleteAthenaArray();
+
+  return;
+}
+
+void Inject_xi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
+                    int is, int ie, int js, int je, int ks, int ke)
+{
+  // copy hydro variables into ghost zones
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+#pragma simd
+      for (int i=1; i<=(NGHOST); ++i) {
+        a(n,k,j,is-i) = a(n,k,j,is);
+        if(n==IVX) a(n,k,j,is-i) = std::min(a(n,k,j,is-i),0.0);
+      }
+    }}
+  }
+
+  // copy face-centered magnetic fields into ghost zones
+  if (MAGNETIC_FIELDS_ENABLED) {
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+#pragma simd
+      for (int i=1; i<=(NGHOST); ++i) {
+        b.x1f(k,j,(is-i)) = b.x1f(k,j,is);
+      }
+    }}
+
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je+1; ++j) {
+#pragma simd
+      for (int i=1; i<=(NGHOST); ++i) {
+        b.x2f(k,j,(is-i)) = b.x2f(k,j,is);
+      }
+    }}
+
+    for (int k=ks; k<=ke+1; ++k) {
+    for (int j=js; j<=je; ++j) {
+#pragma simd
+      for (int i=1; i<=(NGHOST); ++i) {
+        b.x3f(k,j,(is-i)) = b.x3f(k,j,is);
+      }
+    }}
+  }
+
+  return;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void OutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+//                          int is, int ie, int js, int je, int ks, int ke)
+//  \brief OUTFLOW boundary conditions, outer x1 boundary
+
+void Inject_xo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
+                    int is, int ie, int js, int je, int ks, int ke)
+{
+  // copy hydro variables into ghost zones
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+#pragma simd
+      for (int i=1; i<=(NGHOST); ++i) {
+        a(n,k,j,ie+i) = a(n,k,j,ie);
+        if(n==IVX) a(n,k,j,ie+i) = std::max(a(n,k,j,ie+i),0.0);
+
+      }
+    }}
+  }
+
+  // copy face-centered magnetic fields into ghost zones
+  if (MAGNETIC_FIELDS_ENABLED) {
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+#pragma simd
+      for (int i=1; i<=(NGHOST); ++i) {
+        b.x1f(k,j,(ie+i+1)) = b.x1f(k,j,(ie+1));
+      }
+    }}
+
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je+1; ++j) {
+#pragma simd
+      for (int i=1; i<=(NGHOST); ++i) {
+        b.x2f(k,j,(ie+i)) = b.x2f(k,j,ie);
+      }
+    }}
+
+    for (int k=ks; k<=ke+1; ++k) {
+    for (int j=js; j<=je; ++j) {
+#pragma simd
+      for (int i=1; i<=(NGHOST); ++i) {
+        b.x3f(k,j,(ie+i)) = b.x3f(k,j,ie);
+      }
+    }}
+  }
+
+  return;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void OutflowInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+//                          int is, int ie, int js, int je, int ks, int ke)
+//  \brief OUTFLOW boundary conditions, inner x2 boundary
+
+void Inject_yi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
+                    int is, int ie, int js, int je, int ks, int ke)
+{
+  // copy hydro variables into ghost zones
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+      for (int i=is; i<=ie; ++i) {
+        a(n,k,js-j,i) = a(n,k,js,i);
+        if(n==IVY) a(n,k,js-j,i) = std::min(a(n,k,js-j,i),0.0);
+
+      }
+    }}
+  }
+
+  // copy face-centered magnetic fields into ghost zones
+  if (MAGNETIC_FIELDS_ENABLED) {
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+      for (int i=is; i<=ie+1; ++i) {
+        b.x1f(k,(js-j),i) = b.x1f(k,js,i);
+      }
+    }}
+
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+      for (int i=is; i<=ie; ++i) {
+        b.x2f(k,(js-j),i) = b.x2f(k,js,i);
+      }
+    }}
+
+    for (int k=ks; k<=ke+1; ++k) {
+    for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+      for (int i=is; i<=ie; ++i) {
+        b.x3f(k,(js-j),i) = b.x3f(k,js,i);
+      }
+    }}
+  }
+
+  return;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void OutflowOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+//                          int is, int ie, int js, int je, int ks, int ke)
+//  \brief OUTFLOW boundary conditions, outer x2 boundary
+
+void Inject_yo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
+                    int is, int ie, int js, int je, int ks, int ke)
+{
+  // copy hydro variables into ghost zones
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+      for (int i=is; i<=ie; ++i) {
+        a(n,k,je+j,i) = a(n,k,je,i);
+        if(n==IVY) a(n,k,je+j,i) = std::max(a(n,k,je+j,i),0.0);
+
+      }
+    }}
+  }
+
+  // copy face-centered magnetic fields into ghost zones
+  if (MAGNETIC_FIELDS_ENABLED) {
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+      for (int i=is; i<=ie+1; ++i) {
+        b.x1f(k,(je+j  ),i) = b.x1f(k,(je  ),i);
+      }
+    }}
+
+    for (int k=ks; k<=ke; ++k) {
+    for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+      for (int i=is; i<=ie; ++i) {
+        b.x2f(k,(je+j+1),i) = b.x2f(k,(je+1),i);
+      }
+    }}
+
+    for (int k=ks; k<=ke+1; ++k) {
+    for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+      for (int i=is; i<=ie; ++i) {
+        b.x3f(k,(je+j  ),i) = b.x3f(k,(je  ),i);
+      }
+    }}
+  }
 
   return;
 }

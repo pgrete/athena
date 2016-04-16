@@ -130,32 +130,33 @@ public:
   void CheckBoundary(void);
 
   
-  void SendCenterBoundaryBuffers(AthenaArray<Real> &src, int phys, int step,
-                                 bool conserved_values);
+  void SendCenterBoundaryBuffers(AthenaArray<Real> &src,
+        AthenaArray<Real> &src_rad, int step, bool conserved_values);
   
-  int LoadCenterBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
-                            const NeighborBlock& nb, int phys);
-  int LoadCenterBoundaryBufferToCoarser(AthenaArray<Real> &src, Real *buf,
-                            const NeighborBlock& nb, int phys, bool conserved_values);
-  int LoadCenterBoundaryBufferToFiner(AthenaArray<Real> &src, Real *buf,
-                            const NeighborBlock& nb, int phys);
+  void LoadCenterBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
+                            const NeighborBlock& nb, int phys, int &p);
+  void LoadCenterBoundaryBufferToCoarser(AthenaArray<Real> &src, Real *buf,
+               const NeighborBlock& nb, int phys, bool conserved_values, int &p);
+  void LoadCenterBoundaryBufferToFiner(AthenaArray<Real> &src, Real *buf,
+                            const NeighborBlock& nb, int phys, int &p);
   
-  bool ReceiveCenterBoundaryBuffers(AthenaArray<Real> &dst, int phys, int step);
+  bool ReceiveCenterBoundaryBuffers(AthenaArray<Real> &dst,
+                           AthenaArray<Real> &dst_rad, int step);
   void ReceiveCenterBoundaryBuffersWithWait(AthenaArray<Real> &dst,
-                                              int phys, int step);
+                           AthenaArray<Real> &dst_rad, int step);
   
-  void SetCenterBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
-                                    int phys, const NeighborBlock& nb);
+  void SetCenterBoundarySameLevel(AthenaArray<Real> &dst,
+               AthenaArray<Real> &dst_rad, Real *buf, const NeighborBlock& nb);
   
-  void SetCenterBoundaryFromCoarser(Real *buf, int phys,
+  void SetCenterBoundaryFromCoarser(Real *buf,
                         const NeighborBlock& nb, bool conserved_values);
   
-  void SetCenterBoundaryFromFiner(AthenaArray<Real> &dst, Real *buf,
-                                      int phys, const NeighborBlock& nb);
+  void SetCenterBoundaryFromFiner(AthenaArray<Real> &dst,
+               AthenaArray<Real> &dst_rad, Real *buf, const NeighborBlock& nb);
 
 
-  void SendFluxCorrection(int step, int phys);
-  bool ReceiveFluxCorrection(int step, int phys);
+  void SendFluxCorrection(int step);
+  bool ReceiveFluxCorrection(int step);
   
 
   int LoadFieldBoundaryBufferSameLevel(FaceField &src, Real *buf,
@@ -211,18 +212,16 @@ private:
   int nedge_fine_[12];
   bool firsttime_[NSTEP];
 
-  enum boundary_status hydro_flag_[NSTEP][56], field_flag_[NSTEP][56];
-  enum boundary_status rad_flag_[NSTEP][56];
-  enum boundary_status flcor_flag_[NSTEP][6][2][2];
+  // cc for cell_center,
+  // MPI communication once for hydro and radiation boundary
+  enum boundary_status cc_flag_[NSTEP][56], field_flag_[NSTEP][56];
+  enum boundary_status cc_flcor_flag_[NSTEP][6][2][2];
   enum boundary_status emfcor_flag_[NSTEP][48];
   enum boundary_status *emf_north_flag_[NSTEP];
   enum boundary_status *emf_south_flag_[NSTEP];
-  enum boundary_status radfcor_flag_[NSTEP][6][2][2]; // flux correction for radiation
-  Real *hydro_send_[NSTEP][56],  *hydro_recv_[NSTEP][56];
-  Real *rad_send_[NSTEP][56], *rad_recv_[NSTEP][56];
+  Real *cc_send_[NSTEP][56],  *cc_recv_[NSTEP][56];
   Real *field_send_[NSTEP][56],  *field_recv_[NSTEP][56];
-  Real *flcor_send_[NSTEP][6],   *flcor_recv_[NSTEP][6][2][2];
-  Real *radfcor_send_[NSTEP][6], *radfcor_recv_[NSTEP][6][2][2];
+  Real *cc_flcor_send_[NSTEP][6],   *cc_flcor_recv_[NSTEP][6][2][2];
   Real *emfcor_send_[NSTEP][48], *emfcor_recv_[NSTEP][48];
   Real **emf_north_send_[NSTEP], **emf_north_recv_[NSTEP];
   Real **emf_south_send_[NSTEP], **emf_south_recv_[NSTEP];
@@ -231,12 +230,10 @@ private:
   int num_north_polar_blocks_, num_south_polar_blocks_;
 
 #ifdef MPI_PARALLEL
-  MPI_Request req_hydro_send_[NSTEP][56],  req_hydro_recv_[NSTEP][56];
-  MPI_Request req_rad_send_[NSTEP][56], req_rad_recv_[NSTEP][56];
+  MPI_Request req_cc_send_[NSTEP][56],  req_cc_recv_[NSTEP][56];
   MPI_Request req_field_send_[NSTEP][56],  req_field_recv_[NSTEP][56];
-  MPI_Request req_flcor_send_[NSTEP][6],   req_flcor_recv_[NSTEP][6][2][2];
+  MPI_Request req_cc_flcor_send_[NSTEP][6],   req_cc_flcor_recv_[NSTEP][6][2][2];
   MPI_Request req_emfcor_send_[NSTEP][48], req_emfcor_recv_[NSTEP][48];
-  MPI_Request req_radfcor_send_[NSTEP][6], req_radfcor_recv_[NSTEP][6][2][2];
   MPI_Request *req_emf_north_send_[NSTEP], *req_emf_north_recv_[NSTEP];
   MPI_Request *req_emf_south_send_[NSTEP], *req_emf_south_recv_[NSTEP];
 #endif

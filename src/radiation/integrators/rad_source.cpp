@@ -25,6 +25,7 @@
 #include "../../mesh.hpp"
 #include "../radiation.hpp"
 #include "../../coordinates/coordinates.hpp" //
+#include "../../hydro/hydro.hpp"
 
 
 // class header
@@ -86,6 +87,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
          Real vy = w(IVY,k,j,i);
          Real vz = w(IVZ,k,j,i);
         
+         // density
          Real rho = w(IDN,k,j,i);
          Real tgas= std::max(w(IEN,k,j,i)/rho,prad->t_floor_);
         
@@ -99,6 +101,13 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
             PredictVel(k,j,i, 0.5 * dt, rho, &vx, &vy, &vz);
             vel = vx * vx + vy * vy + vz * vz;
 
+         }
+        
+         // for first order implicit update, we need gas internal energy
+         // from the beginning of the step
+         if (step == 2){
+           rho = pmb->phydro->w(IDN,k,j,i);
+           tgas = std::max(pmb->phydro->w(IEN,k,j,i)/rho,prad->t_floor_);
          }
         
 
@@ -154,10 +163,10 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
          }// End frequency
         
          // Add absorption opacity source
-         Absorption(wmu_cm,tran_coef, sigma_at,sigma_aer, dt, rho, &tgas, ir_cm);
+         Absorption(wmu_cm,tran_coef, sigma_at,sigma_aer, dt, rho, tgas, ir_cm);
         
          // Add scattering opacity source
-         Scattering(wmu_cm,tran_coef, sigma_s, dt, rho, &tgas, ir_cm);
+         Scattering(wmu_cm,tran_coef, sigma_s, dt, rho, tgas, ir_cm);
         
        
         //After all the source terms are applied

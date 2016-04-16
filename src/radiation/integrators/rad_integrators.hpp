@@ -76,12 +76,12 @@ public:
 
   void Absorption(const AthenaArray<Real> &wmu_cm,
           const AthenaArray<Real> &tran_coef, Real *sigma_a,
-          Real *sigma_ae, Real dt, Real rho, Real *tgas,
+          Real *sigma_ae, Real dt, Real rho, Real &tgas,
           AthenaArray<Real> &ir_cm);
   
   void Scattering(const AthenaArray<Real> &wmu_cm,
           const AthenaArray<Real> &tran_coef, Real *sigma_s,
-          Real dt, Real rho, Real *tgas, AthenaArray<Real> &ir_cm);
+          Real dt, Real rho, Real &tgas, AthenaArray<Real> &ir_cm);
   
   void LabToCom(const Real vx, const Real vy, const Real vz,
                           Real *mux, Real *muy, Real *muz,
@@ -93,9 +93,7 @@ public:
   
   void ComAngle(const Real vx, const Real vy, const Real vz,
           Real mux, Real muy, Real muz, Real *mux0, Real *muy0, Real *muz0);
-  
-  Real Compton(const Real suma1, const Real suma2, Real tgas,
-               Real ercom, Real *tgas_new);
+
   
   void GetTaufactor(const Real vx, const Real vy, const Real vz,
                                  const Real ds, const Real sigma, Real *factor);

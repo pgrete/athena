@@ -43,7 +43,7 @@
 
 void RadIntegrator::Scattering(const AthenaArray<Real> &wmu_cm,
           const AthenaArray<Real> &tran_coef, Real *sigma_s,
-          Real dt, Real rho, Real *tgas, AthenaArray<Real> &ir_cm)
+          Real dt, Real rho, Real &tgas, AthenaArray<Real> &ir_cm)
 {
 
   Real& prat = pmy_rad->prat;
@@ -58,9 +58,13 @@ void RadIntegrator::Scattering(const AthenaArray<Real> &wmu_cm,
   
   vncsigma2.InitWithShallowCopy(vncsigma2_);
   
+  // Polynomial coefficients for Compton
+  Real coef[5];
+  for (int i=0; i<5; ++i)
+  coef[i] = 0.0;
+
   
-  
-  Real tgasnew = (*tgas);
+  Real tgasnew = tgas;
   
   for(int ifr=0; ifr<nfreq; ++ifr){
     
@@ -78,13 +82,13 @@ void RadIntegrator::Scattering(const AthenaArray<Real> &wmu_cm,
     // Now solve the equation
     // rho dT/gamma-1=-Prat c(sigma T^4 - sigma(a1 T^4 + a2))
     // make sure jr_cm is positive
-    Real jr_cm = suma2/suma1;
+    Real jr_cm = std::max(suma2/suma1,TINY_NUMBER);
     
-    // Add Simple Compton scattering
-    // for compton scattering, call a function to calculate the mean energy change
-    // in operator spliting way, using the partially update jrcom
-    Real compte = 0.0;
-    if(compton_flag_ > 0){
+
+    
+    // Add Simple Compton scattering using the partically updated jr and ir
+
+    if((compton_flag_ > 0) && (dtcsigma > TINY_NUMBER)){
     
      // Calculate the sum \int gamma (1-vdotn/c) dw_0 4 dt csigma_s /T_e
       suma1 = 0.0; suma2 = 0.0;
@@ -93,16 +97,36 @@ void RadIntegrator::Scattering(const AthenaArray<Real> &wmu_cm,
          suma1 += tran_coef(n) * wmu_cm(n) * 4.0 * dtcsigma * telectron;
       }
       suma2 = 4.0 * prat * dtcsigma*(gamma-1.0)*telectron/rho;
-      compte = Compton(suma1,suma2,(*tgas),jr_cm,&tgasnew);
-      jr_cm += compte * suma1;
-      // update co-moving specific intensity
-#pragma simd
-      for(int n=0; n<nang; n++){
-        ir_cm(n+nang*ifr) += (tran_coef(n) * 4.0 * dtcsigma * compte * telectron);
+      
+      Real tr = sqrt(sqrt(jr_cm));
+      
+      if(fabs(tr - tgas) > 1.e-12){
+        coef[4] = (1.0 + suma2* jr_cm)/(suma1 * jr_cm);
+        coef[1] = 1.0;
+        coef[0] = -(1.0+suma2*jr_cm)/suma1-tgas;
+        
+        Real trnew;
+        
+        if(coef[4] > 1.e8){
+           trnew = pow(-coef[0]/coef[4],0.25);
+        }else{
+        
+          int flag = ExactPolynomial(coef[4], coef[1], coef[0], trnew);
+          if(flag == -1){
+          
+            trnew = std::max(tgas,tr);
+            Laguer(coef, 4, trnew);
+          }// end flag
+        }
+        Real jrnew = trnew * trnew * trnew * trnew;
+    
+        tgasnew = jrnew/(suma1*jr_cm) - 1.0/suma1 + trnew;
+    
+        jr_cm = jrnew;
+      
       }
       
     }// End Compton
-    
     
     // Update the co-moving frame specific intensity
 #pragma simd
@@ -114,52 +138,11 @@ void RadIntegrator::Scattering(const AthenaArray<Real> &wmu_cm,
   }// End Frequency
   
   // Update gas temperature
-  (*tgas) = tgasnew;
+  tgas = tgasnew;
 
 
   return;
 }
 
-
-// Add simple isotropic energy exchange due to Compton process
-//
-Real RadIntegrator::Compton(const Real suma1, const Real suma2,
-  Real tgas, Real ercom, Real *tgas_new)
-{
-
-  ercom = std::max(ercom, TINY_NUMBER);
-  Real tr = sqrt(sqrt(ercom));
-  
-  Real compte = 0.0;
-  
-  if(fabs(tr - tgas) > 1.e-12){
-    Real coef8 = suma2/suma1;
-    Real coef5 = 1.0;
-    Real coef4 = 1.0/suma1 - suma2 * ercom/suma1 - tgas;
-    Real tconst = -ercom/suma1;
-    
-    Real tmin = std::min(tr, tgas);
-    Real tmax = std::max(tr, tgas);
-    
-    tmin *= 0.5;
-    tmax *= 1.5;
-        
-    Real trnew = Rtsafe(Tcompton, tmin, tmax, 1.e-10, coef8, coef5, coef4, tconst);
-      
-    Real jrnew = trnew * trnew * trnew * trnew;
-    
-    Real tgasnew = 1.0/suma1 - ercom/(suma1 * jrnew) + trnew;
-
-    *tgas_new = tgasnew;
-    
-    compte = (tgasnew - trnew) * jrnew;
-    
-  }// end if tr and tgas are different
-  else{
-    *tgas_new = tgas;
-  }
- 
-  return compte;
-}
 
 

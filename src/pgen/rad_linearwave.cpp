@@ -66,13 +66,10 @@ void Mesh::TerminateUserMeshProperties(void)
 void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
 {
   
-  
 
 
   return;
 }
-
-
 
 
 

@@ -18,7 +18,7 @@ variable   = prim
 
 <output3>
 file_type  = rst       # Binary data dump
-dt         = 0.01       # time increment between outputs
+dt         = 0.005       # time increment between outputs
 
 
 <time>
@@ -60,12 +60,12 @@ nx3         = 16
 
 <refinement1>
 x1min       = 2
-x1max       = 30
-x2min       = 1.5608
-x2max       = 1.5808
+x1max       = 50
+x2min       = 1.2008
+x2max       = 1.9407
 x3min       = 0.0
 x3max       = 6.28318530718
-level       = 3
+level       = 2
 
 <hydro>
 gamma           = 1.6666666666667       # gamma = C_p/C_v

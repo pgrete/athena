@@ -79,8 +79,8 @@ void Inflow_rad_x1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 
 void LoadRadVariable(MeshBlock *pmb);
 
-void PseudoNewtonian(const Real time, const Real dt,
-  const AthenaArray<Real> &prim, MeshBlock *pmb,
+void PseudoNewtonian( MeshBlock *pmb, const Real time, const Real dt,
+  const AthenaArray<Real> &prim,
   AthenaArray<Real> &bcc, AthenaArray<Real> &cons);
 
 void Mesh::InitUserMeshProperties(ParameterInput *pin)

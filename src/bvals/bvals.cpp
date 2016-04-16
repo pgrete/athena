@@ -392,20 +392,15 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
   // Clear flags and requests
   for(int l=0;l<NSTEP;l++) {
     for(int i=0;i<56;i++){
-      hydro_flag_[l][i]=boundary_waiting;
+      cc_flag_[l][i]=boundary_waiting;
       field_flag_[l][i]=boundary_waiting;
-      rad_flag_[l][i]=boundary_waiting;
-      hydro_send_[l][i]=NULL;
-      hydro_recv_[l][i]=NULL;
+      cc_send_[l][i]=NULL;
+      cc_recv_[l][i]=NULL;
       field_send_[l][i]=NULL;
       field_recv_[l][i]=NULL;
-      rad_send_[l][i]=NULL;
-      rad_recv_[l][i]=NULL;
 #ifdef MPI_PARALLEL
-      req_hydro_send_[l][i]=MPI_REQUEST_NULL;
-      req_hydro_recv_[l][i]=MPI_REQUEST_NULL;
-      req_rad_send_[l][i]=MPI_REQUEST_NULL;
-      req_rad_recv_[l][i]=MPI_REQUEST_NULL;
+      req_cc_send_[l][i]=MPI_REQUEST_NULL;
+      req_cc_recv_[l][i]=MPI_REQUEST_NULL;
 #endif
     }
     for(int i=0;i<48;i++){
@@ -418,21 +413,16 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
 #endif
     }
     for(int i=0;i<6;i++){
-      flcor_send_[l][i]=NULL;
-      radfcor_send_[l][i]=NULL;
+      cc_flcor_send_[l][i]=NULL;
 #ifdef MPI_PARALLEL
-      req_flcor_send_[l][i]=MPI_REQUEST_NULL;
-      req_radfcor_send_[l][i]=MPI_REQUEST_NULL;
+      req_cc_flcor_send_[l][i]=MPI_REQUEST_NULL;
 #endif
       for(int j=0;j<=1;j++) {
         for(int k=0;k<=1;k++) {
-          flcor_recv_[l][i][j][k]=NULL;
-          flcor_flag_[l][i][j][k]=boundary_waiting;
-          radfcor_recv_[l][i][j][k]=NULL;
-          radfcor_flag_[l][i][j][k]=boundary_waiting;
+          cc_flcor_recv_[l][i][j][k]=NULL;
+          cc_flcor_flag_[l][i][j][k]=boundary_waiting;
 #ifdef MPI_PARALLEL
-          req_flcor_recv_[l][i][j][k]=MPI_REQUEST_NULL;
-          req_radfcor_recv_[l][i][j][k]=MPI_REQUEST_NULL;
+          req_cc_flcor_recv_[l][i][j][k]=MPI_REQUEST_NULL;
 #endif
         }
       }
@@ -491,16 +481,15 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
         size=std::max(size,c2f);
         size=std::max(size,f2c);
       }
+      int rad_size=0;
       if (RADIATION_ENABLED){
         // use size for radiation first
-        int rad_size = size * pmb->prad->n_fre_ang;
-        rad_send_[l][n] = new Real[rad_size];
-        rad_recv_[l][n] = new Real[rad_size];
+        rad_size = size * pmb->prad->n_fre_ang;
       }
       
       size*=NHYDRO;
-      hydro_send_[l][n]=new Real[size];
-      hydro_recv_[l][n]=new Real[size];
+      cc_send_[l][n]=new Real[size+rad_size];
+      cc_recv_[l][n]=new Real[size+rad_size];
     }
   }
   if (MAGNETIC_FIELDS_ENABLED) {
@@ -617,10 +606,14 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
     sarea_[0].NewAthenaArray(nc1);
     sarea_[1].NewAthenaArray(nc1);
     int size[6], im, jm, km;
+    int nvar = NHYDRO;
+    // buffer needs to hold both hydro and radiation
+    if(RADIATION_ENABLED)
+      nvar += pmb->prad->n_fre_ang;
     // allocate flux correction buffer
-    size[0]=size[1]=(pmb->block_size.nx2+1)/2*(pmb->block_size.nx3+1)/2*NHYDRO;
-    size[2]=size[3]=(pmb->block_size.nx1+1)/2*(pmb->block_size.nx3+1)/2*NHYDRO;
-    size[4]=size[5]=(pmb->block_size.nx1+1)/2*(pmb->block_size.nx2+1)/2*NHYDRO;
+    size[0]=size[1]=(pmb->block_size.nx2+1)/2*(pmb->block_size.nx3+1)/2*nvar;
+    size[2]=size[3]=(pmb->block_size.nx1+1)/2*(pmb->block_size.nx3+1)/2*nvar;
+    size[4]=size[5]=(pmb->block_size.nx1+1)/2*(pmb->block_size.nx2+1)/2*nvar;
     if(pmb->block_size.nx3>1) // 3D
       jm=2, km=2;
     else if(pmb->block_size.nx2>1) // 2D
@@ -629,38 +622,13 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
       jm=1, km=1;
     for(int l=0;l<NSTEP;l++) {
       for(int i=0;i<nface_;i++){
-        flcor_send_[l][i]=new Real[size[i]];
+        cc_flcor_send_[l][i]=new Real[size[i]];
         for(int j=0;j<jm;j++) {
           for(int k=0;k<km;k++)
-            flcor_recv_[l][i][j][k]=new Real[size[i]];
+            cc_flcor_recv_[l][i][j][k]=new Real[size[i]];
         }
       }
     }
-    // create buffer for radiation
-    if(RADIATION_ENABLED){
-        // allocate flux correction buffer
-      size[0]=size[1]=(pmb->block_size.nx2+1)/2*(pmb->block_size.nx3+1)/2
-                       *pmb->prad->n_fre_ang;
-      size[2]=size[3]=(pmb->block_size.nx1+1)/2*(pmb->block_size.nx3+1)/2
-                       *pmb->prad->n_fre_ang;
-      size[4]=size[5]=(pmb->block_size.nx1+1)/2*(pmb->block_size.nx2+1)/2
-                       *pmb->prad->n_fre_ang;
-      if(pmb->block_size.nx3>1) // 3D
-        jm=2, km=2;
-      else if(pmb->block_size.nx2>1) // 2D
-        jm=1, km=2;
-      else // 1D
-        jm=1, km=1;
-      for(int l=0;l<NSTEP;l++) {
-        for(int i=0;i<nface_;i++){
-          radfcor_send_[l][i]=new Real[size[i]];
-          for(int j=0;j<jm;j++) {
-            for(int k=0;k<km;k++)
-              radfcor_recv_[l][i][j][k]=new Real[size[i]];
-          }
-        }
-      }
-    }// End for radiation buffer
   }
 
  /* single CPU in the azimuthal direction with the polar boundary*/
@@ -684,12 +652,9 @@ BoundaryValues::~BoundaryValues()
   MeshBlock *pmb=pmy_mblock_;
   for(int l=0;l<NSTEP;l++) {
     for(int i=0;i<pmb->pmy_mesh->maxneighbor_;i++) {
-      delete [] hydro_send_[l][i];
-      delete [] hydro_recv_[l][i];
-      if(RADIATION_ENABLED){
-        delete [] rad_send_[l][i];
-        delete [] rad_recv_[l][i];
-      }
+      delete [] cc_send_[l][i];
+      delete [] cc_recv_[l][i];
+
     }
   }
   if (MAGNETIC_FIELDS_ENABLED) {
@@ -727,14 +692,12 @@ BoundaryValues::~BoundaryValues()
     sarea_[1].DeleteAthenaArray();
     for(int l=0;l<NSTEP;l++) {
       for(int i=0;i<nface_;i++){
-        delete [] flcor_send_[l][i];
-        if(RADIATION_ENABLED)
-          delete [] radfcor_send_[l][i];
+        delete [] cc_flcor_send_[l][i];
+
         for(int j=0;j<2;j++) {
           for(int k=0;k<2;k++){
-            delete [] flcor_recv_[l][i][j][k];
-            if(RADIATION_ENABLED)
-              delete [] radfcor_recv_[l][i][j][k];
+            delete [] cc_flcor_recv_[l][i][j][k];
+
           }
         }
       }
@@ -890,26 +853,20 @@ void BoundaryValues::Initialize(void)
                *((nb.ox2==0)?((pmb->block_size.nx2+1)/2):NGHOST)
                *((nb.ox3==0)?((pmb->block_size.nx3+1)/2):NGHOST);
         }
+        int nvar = NHYDRO;
         //use ssize and rsize for radiation before it gets modified
         if (RADIATION_ENABLED){
-           int rad_ssize = ssize * pmb->prad->n_fre_ang;
-           int rad_rsize = rsize * pmb->prad->n_fre_ang;
-           tag=CreateMPITag(nb.lid, l, tag_rad, nb.targetid);
-           MPI_Send_init(rad_send_[l][nb.bufid],rad_ssize,MPI_ATHENA_REAL,
-                      nb.rank,tag,MPI_COMM_WORLD,&req_rad_send_[l][nb.bufid]);
-           tag=CreateMPITag(pmb->lid, l, tag_rad, nb.bufid);
-           MPI_Recv_init(rad_recv_[l][nb.bufid],rad_rsize,MPI_ATHENA_REAL,
-                      nb.rank,tag,MPI_COMM_WORLD,&req_rad_recv_[l][nb.bufid]);
+           nvar += pmb->prad->n_fre_ang;
         }
         
-        ssize*=NHYDRO; rsize*=NHYDRO;
+        ssize*=nvar; rsize*=nvar;
         // specify the offsets in the view point of the target block: flip ox? signs
-        tag=CreateMPITag(nb.lid, l, tag_hydro, nb.targetid);
-        MPI_Send_init(hydro_send_[l][nb.bufid],ssize,MPI_ATHENA_REAL,
-                      nb.rank,tag,MPI_COMM_WORLD,&req_hydro_send_[l][nb.bufid]);
-        tag=CreateMPITag(pmb->lid, l, tag_hydro, nb.bufid);
-        MPI_Recv_init(hydro_recv_[l][nb.bufid],rsize,MPI_ATHENA_REAL,
-                      nb.rank,tag,MPI_COMM_WORLD,&req_hydro_recv_[l][nb.bufid]);
+        tag=CreateMPITag(nb.lid, l, tag_cc, nb.targetid);
+        MPI_Send_init(cc_send_[l][nb.bufid],ssize,MPI_ATHENA_REAL,
+                      nb.rank,tag,MPI_COMM_WORLD,&req_cc_send_[l][nb.bufid]);
+        tag=CreateMPITag(pmb->lid, l, tag_cc, nb.bufid);
+        MPI_Recv_init(cc_recv_[l][nb.bufid],rsize,MPI_ATHENA_REAL,
+                      nb.rank,tag,MPI_COMM_WORLD,&req_cc_recv_[l][nb.bufid]);
 
         // flux correction
         if(pmb->pmy_mesh->multilevel==true && nb.type==neighbor_face) {
@@ -923,30 +880,18 @@ void BoundaryValues::Initialize(void)
           else if(nb.fid==4 || nb.fid==5)
             fi1=myox1, fi2=myox2,
             size=((pmb->block_size.nx1+1)/2)*((pmb->block_size.nx2+1)/2);
-          // do radiation first
-          if(RADIATION_ENABLED){
-            int rad_size = size * pmb->prad->n_fre_ang;
-            if(nb.level<mylevel){
-               tag=CreateMPITag(nb.lid, l, tag_radfcor, nb.targetid);
-               MPI_Send_init(radfcor_send_[l][nb.fid],rad_size,MPI_ATHENA_REAL,
-                nb.rank,tag,MPI_COMM_WORLD,&req_radfcor_send_[l][nb.fid]);
-            }else if(nb.level>mylevel){
-               tag=CreateMPITag(pmb->lid, l, tag_radfcor, nb.bufid);
-               MPI_Recv_init(radfcor_recv_[l][nb.fid][nb.fi2][nb.fi1],rad_size,
-                MPI_ATHENA_REAL,nb.rank,tag,MPI_COMM_WORLD,
-                &req_radfcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
-            }
-          }
-          size*=NHYDRO;
+
+          size*=nvar;
           if(nb.level<mylevel) { // send to coarser
-            tag=CreateMPITag(nb.lid, l, tag_flcor, nb.targetid);
-            MPI_Send_init(flcor_send_[l][nb.fid],size,MPI_ATHENA_REAL,
-                nb.rank,tag,MPI_COMM_WORLD,&req_flcor_send_[l][nb.fid]);
+            tag=CreateMPITag(nb.lid, l, tag_cc_flcor, nb.targetid);
+            MPI_Send_init(cc_flcor_send_[l][nb.fid],size,MPI_ATHENA_REAL,
+                nb.rank,tag,MPI_COMM_WORLD,&req_cc_flcor_send_[l][nb.fid]);
           }
           else if(nb.level>mylevel) { // receive from finer
-            tag=CreateMPITag(pmb->lid, l, tag_flcor, nb.bufid);
-            MPI_Recv_init(flcor_recv_[l][nb.fid][nb.fi2][nb.fi1],size,MPI_ATHENA_REAL,
-                nb.rank,tag,MPI_COMM_WORLD,&req_flcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
+            tag=CreateMPITag(pmb->lid, l, tag_cc_flcor, nb.bufid);
+            MPI_Recv_init(cc_flcor_recv_[l][nb.fid][nb.fi2][nb.fi1],size,
+                MPI_ATHENA_REAL, nb.rank,tag,MPI_COMM_WORLD,
+                &req_cc_flcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
           }
         }
 
@@ -1163,14 +1108,12 @@ void BoundaryValues::StartReceivingForInit(void)
   for(int n=0;n<pmb->nneighbor;n++) {
     NeighborBlock& nb = pmb->neighbor[n];
     if(nb.rank!=Globals::my_rank) { 
-      MPI_Start(&req_hydro_recv_[0][nb.bufid]);
-      if(RADIATION_ENABLED)
-        MPI_Start(&req_rad_recv_[0][nb.bufid]);
+      MPI_Start(&req_cc_recv_[0][nb.bufid]);
       if (MAGNETIC_FIELDS_ENABLED)
         MPI_Start(&req_field_recv_[0][nb.bufid]);
       // Prep sending primitives to enable cons->prim inversion before prolongation
       if (GENERAL_RELATIVITY and pmb->pmy_mesh->multilevel)
-        MPI_Start(&req_hydro_recv_[1][nb.bufid]);
+        MPI_Start(&req_cc_recv_[1][nb.bufid]);
     }
   }
 #endif
@@ -1191,14 +1134,9 @@ void BoundaryValues::StartReceivingAll(void)
     for(int n=0;n<pmb->nneighbor;n++) {
       NeighborBlock& nb = pmb->neighbor[n];
       if(nb.rank!=Globals::my_rank) { 
-        MPI_Start(&req_hydro_recv_[l][nb.bufid]);
-        if(RADIATION_ENABLED)
-          MPI_Start(&req_rad_recv_[l][nb.bufid]);
+        MPI_Start(&req_cc_recv_[l][nb.bufid]);
         if(nb.type==neighbor_face && nb.level>mylevel){
-          MPI_Start(&req_flcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
-          if(RADIATION_ENABLED){
-            MPI_Start(&req_radfcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
-          }
+          MPI_Start(&req_cc_flcor_recv_[l][nb.fid][nb.fi2][nb.fi1]);
         }
         if (MAGNETIC_FIELDS_ENABLED) {
           MPI_Start(&req_field_recv_[l][nb.bufid]);
@@ -1348,20 +1286,22 @@ void BoundaryValues::PolarSingleRad(AthenaArray<Real> &dst)
 //--------------------------------------------------------------------------------------
 //! \fn void BoundaryValues::SendFluxCorrection(int step, int phys)
 //  \brief Restrict, pack and send the surace flux to the coarse neighbor(s)
-void BoundaryValues::SendFluxCorrection(int step, int phys)
+void BoundaryValues::SendFluxCorrection(int step)
 {
   MeshBlock *pmb=pmy_mblock_;
   Coordinates *pco=pmb->pcoord;
   AthenaArray<Real> x1flux, x2flux, x3flux;
+  AthenaArray<Real> rad_x1flux, rad_x2flux, rad_x3flux;
+
   
-  if(phys == HYDRO){
-     x1flux.InitWithShallowCopy(pmb->phydro->flux[x1face]);
-     x2flux.InitWithShallowCopy(pmb->phydro->flux[x2face]);
-     x3flux.InitWithShallowCopy(pmb->phydro->flux[x3face]);
-  }else if(phys == RAD){
-     x1flux.InitWithShallowCopy(pmb->prad->flux[x1face]);
-     x2flux.InitWithShallowCopy(pmb->prad->flux[x2face]);
-     x3flux.InitWithShallowCopy(pmb->prad->flux[x3face]);
+  x1flux.InitWithShallowCopy(pmb->phydro->flux[x1face]);
+  x2flux.InitWithShallowCopy(pmb->phydro->flux[x2face]);
+  x3flux.InitWithShallowCopy(pmb->phydro->flux[x3face]);
+  
+  if(RADIATION_ENABLED){
+     rad_x1flux.InitWithShallowCopy(pmb->prad->flux[x1face]);
+     rad_x2flux.InitWithShallowCopy(pmb->prad->flux[x2face]);
+     rad_x3flux.InitWithShallowCopy(pmb->prad->flux[x3face]);
   }
   
   int fx1=pmb->loc.lx1&1L, fx2=pmb->loc.lx2&1L, fx3=pmb->loc.lx3&1L;
@@ -1378,82 +1318,78 @@ void BoundaryValues::SendFluxCorrection(int step, int phys)
         fi1=fx2, fi2=fx3;
         if(pmb->block_size.nx3>1) { // 3D
           
-          if(phys==HYDRO){
-            for(int nn=0; nn<NHYDRO; nn++) {
-              for(int k=pmb->ks; k<=pmb->ke; k+=2) {
-                for(int j=pmb->js; j<=pmb->je; j+=2) {
-                  Real amm=pco->GetFace1Area(k,   j,   i);
-                  Real amp=pco->GetFace1Area(k,   j+1, i);
-                  Real apm=pco->GetFace1Area(k+1, j,   i);
-                  Real app=pco->GetFace1Area(k+1, j+1, i);
-                  Real tarea=amm+amp+apm+app;
-                  flcor_send_[step][nb.fid][p++]=
-                           (x1flux(nn, k  , j  , i)*amm
-                           +x1flux(nn, k  , j+1, i)*amp
-                           +x1flux(nn, k+1, j  , i)*apm
-                           +x1flux(nn, k+1, j+1, i)*app)/tarea;
-                
-                }
-              }
-            }
-          }else if(phys==RAD){
 
-            for(int k=pmb->ks; k<=pmb->ke; k+=2) {
-              for(int j=pmb->js; j<=pmb->je; j+=2) {
-                Real amm=pco->GetFace1Area(k,   j,   i);
-                Real amp=pco->GetFace1Area(k,   j+1, i);
-                Real apm=pco->GetFace1Area(k+1, j,   i);
-                Real app=pco->GetFace1Area(k+1, j+1, i);
-                Real tarea=amm+amp+apm+app;
-                for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
-                  radfcor_send_[step][nb.fid][p++]=
-                           (x1flux(k  , j  , i, nn)*amm
-                           +x1flux(k  , j+1, i, nn)*amp
-                           +x1flux(k+1, j  , i, nn)*apm
-                           +x1flux(k+1, j+1, i, nn)*app)/tarea;
-                }
-              }
+         for(int nn=0; nn<NHYDRO; nn++) {
+          for(int k=pmb->ks; k<=pmb->ke; k+=2) {
+            for(int j=pmb->js; j<=pmb->je; j+=2) {
+              Real amm=pco->GetFace1Area(k,   j,   i);
+              Real amp=pco->GetFace1Area(k,   j+1, i);
+              Real apm=pco->GetFace1Area(k+1, j,   i);
+              Real app=pco->GetFace1Area(k+1, j+1, i);
+              Real tarea=amm+amp+apm+app;
+              cc_flcor_send_[step][nb.fid][p++]=
+                        (x1flux(nn, k  , j  , i)*amm
+                        +x1flux(nn, k  , j+1, i)*amp
+                        +x1flux(nn, k+1, j  , i)*apm
+                        +x1flux(nn, k+1, j+1, i)*app)/tarea;
+                
             }
           }
-        }
-        else if(pmb->block_size.nx2>1) { // 2D
-          int k=pmb->ks;
-          if(phys==HYDRO){
-          
-            for(int nn=0; nn<NHYDRO; nn++) {
-              for(int j=pmb->js; j<=pmb->je; j+=2) {
-                Real am=pco->GetFace1Area(k, j,   i);
-                Real ap=pco->GetFace1Area(k, j+1, i);
-                Real tarea=am+ap;
-                flcor_send_[step][nb.fid][p++]=
-                         (x1flux(nn, k, j  , i)*am
-                         +x1flux(nn, k, j+1, i)*ap)/tarea;
+         }
+         if(RADIATION_ENABLED){
+           for(int k=pmb->ks; k<=pmb->ke; k+=2) {
+            for(int j=pmb->js; j<=pmb->je; j+=2) {
+              Real amm=pco->GetFace1Area(k,   j,   i);
+              Real amp=pco->GetFace1Area(k,   j+1, i);
+              Real apm=pco->GetFace1Area(k+1, j,   i);
+              Real app=pco->GetFace1Area(k+1, j+1, i);
+              Real tarea=amm+amp+apm+app;
+              for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
+                cc_flcor_send_[step][nb.fid][p++]=
+                           (rad_x1flux(k  , j  , i, nn)*amm
+                           +rad_x1flux(k  , j+1, i, nn)*amp
+                           +rad_x1flux(k+1, j  , i, nn)*apm
+                           +rad_x1flux(k+1, j+1, i, nn)*app)/tarea;
               }
             }
-          }else if(phys==RAD){
-
+           }
+         }
+        }// End 3D
+        else if(pmb->block_size.nx2>1) { // 2D
+          int k=pmb->ks;
+          
+          for(int nn=0; nn<NHYDRO; nn++) {
+            for(int j=pmb->js; j<=pmb->je; j+=2) {
+              Real am=pco->GetFace1Area(k, j,   i);
+              Real ap=pco->GetFace1Area(k, j+1, i);
+              Real tarea=am+ap;
+              cc_flcor_send_[step][nb.fid][p++]=
+                         (x1flux(nn, k, j  , i)*am
+                         +x1flux(nn, k, j+1, i)*ap)/tarea;
+            }
+          }
+          if(RADIATION_ENABLED){
             for(int j=pmb->js; j<=pmb->je; j+=2) {
               Real am=pco->GetFace1Area(k, j,   i);
               Real ap=pco->GetFace1Area(k, j+1, i);
               Real tarea=am+ap;
               for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
-                radfcor_send_[step][nb.fid][p++]=
-                         (x1flux(k, j  , i, nn)*am
-                         +x1flux(k, j+1, i, nn)*ap)/tarea;
+                cc_flcor_send_[step][nb.fid][p++]=
+                        (rad_x1flux(k, j  , i, nn)*am
+                        +rad_x1flux(k, j+1, i, nn)*ap)/tarea;
               }
             }
-          }
-        }
+          }// End Rad
+        }// End 2D
         else { // 1D
           int k=pmb->ks, j=pmb->js;
-          if(phys==HYDRO){
-            for(int nn=0; nn<NHYDRO; nn++)
-              flcor_send_[step][nb.fid][p++]=x1flux(nn, k, j, i);
-          }else if(phys==RAD){
+          for(int nn=0; nn<NHYDRO; nn++)
+            cc_flcor_send_[step][nb.fid][p++]=x1flux(nn, k, j, i);
+          if(RADIATION_ENABLED){
             for(int nn=0; nn<pmb->prad->n_fre_ang; nn++)
-              radfcor_send_[step][nb.fid][p++]=x1flux(k, j, i, nn);
+              cc_flcor_send_[step][nb.fid][p++]=rad_x1flux(k, j, i, nn);
           }
-        }
+        }// End 1D
       }
       // x2 direction
       else if(nb.fid==INNER_X2 || nb.fid==OUTER_X2) {
@@ -1461,22 +1397,21 @@ void BoundaryValues::SendFluxCorrection(int step, int phys)
         fi1=fx1, fi2=fx3;
         if(pmb->block_size.nx3>1) { // 3D
         
-          if(phys==HYDRO){
-            for(int nn=0; nn<NHYDRO; nn++) {
-              for(int k=pmb->ks; k<=pmb->ke; k+=2) {
-                pco->Face2Area(k  , j, pmb->is, pmb->ie, sarea_[0]);
-                pco->Face2Area(k+1, j, pmb->is, pmb->ie, sarea_[1]);
-                for(int i=pmb->is; i<=pmb->ie; i+=2) {
-                  Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
-                  flcor_send_[step][nb.fid][p++]=
-                           (x2flux(nn, k  , j, i  )*sarea_[0](i  )
-                           +x2flux(nn, k  , j, i+1)*sarea_[0](i+1)
-                           +x2flux(nn, k+1, j, i  )*sarea_[1](i  )
-                           +x2flux(nn, k+1, j, i+1)*sarea_[1](i+1))/tarea;
-                }
+          for(int nn=0; nn<NHYDRO; nn++) {
+            for(int k=pmb->ks; k<=pmb->ke; k+=2) {
+              pco->Face2Area(k  , j, pmb->is, pmb->ie, sarea_[0]);
+              pco->Face2Area(k+1, j, pmb->is, pmb->ie, sarea_[1]);
+              for(int i=pmb->is; i<=pmb->ie; i+=2) {
+                Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
+                cc_flcor_send_[step][nb.fid][p++]=
+                        (x2flux(nn, k  , j, i  )*sarea_[0](i  )
+                        +x2flux(nn, k  , j, i+1)*sarea_[0](i+1)
+                        +x2flux(nn, k+1, j, i  )*sarea_[1](i  )
+                        +x2flux(nn, k+1, j, i+1)*sarea_[1](i+1))/tarea;
               }
             }
-          }else if(phys==RAD){
+          }
+          if(RADIATION_ENABLED){
 
             for(int k=pmb->ks; k<=pmb->ke; k+=2) {
               pco->Face2Area(k  , j, pmb->is, pmb->ie, sarea_[0]);
@@ -1484,61 +1419,59 @@ void BoundaryValues::SendFluxCorrection(int step, int phys)
               for(int i=pmb->is; i<=pmb->ie; i+=2) {
                 Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
                 for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
-                  radfcor_send_[step][nb.fid][p++]=
-                           (x2flux(k  , j, i  , nn)*sarea_[0](i  )
-                           +x2flux(k  , j, i+1, nn)*sarea_[0](i+1)
-                           +x2flux(k+1, j, i  , nn)*sarea_[1](i  )
-                           +x2flux(k+1, j, i+1, nn)*sarea_[1](i+1))/tarea;
+                  cc_flcor_send_[step][nb.fid][p++]=
+                           (rad_x2flux(k  , j, i  , nn)*sarea_[0](i  )
+                           +rad_x2flux(k  , j, i+1, nn)*sarea_[0](i+1)
+                           +rad_x2flux(k+1, j, i  , nn)*sarea_[1](i  )
+                           +rad_x2flux(k+1, j, i+1, nn)*sarea_[1](i+1))/tarea;
                 }
               }
             }
           }// End RAD
-        }
+        }// End 3D
         else if(pmb->block_size.nx2>1) { // 2D
           int k=pmb->ks;
-          if(phys==HYDRO){
-            for(int nn=0; nn<NHYDRO; nn++) {
-              pco->Face2Area(0, j, pmb->is ,pmb->ie, sarea_[0]);
-              for(int i=pmb->is; i<=pmb->ie; i+=2) {
-                Real tarea=sarea_[0](i)+sarea_[0](i+1);
-                flcor_send_[step][nb.fid][p++]=
-                         (x2flux(nn, k, j, i  )*sarea_[0](i  )
-                         +x2flux(nn, k, j, i+1)*sarea_[0](i+1))/tarea;
-              }
+          for(int nn=0; nn<NHYDRO; nn++) {
+            pco->Face2Area(0, j, pmb->is ,pmb->ie, sarea_[0]);
+            for(int i=pmb->is; i<=pmb->ie; i+=2) {
+              Real tarea=sarea_[0](i)+sarea_[0](i+1);
+              cc_flcor_send_[step][nb.fid][p++]=
+                        (x2flux(nn, k, j, i  )*sarea_[0](i  )
+                        +x2flux(nn, k, j, i+1)*sarea_[0](i+1))/tarea;
             }
-          }else if(phys==RAD){
+          }
+          if(RADIATION_ENABLED){
             pco->Face2Area(0, j, pmb->is ,pmb->ie, sarea_[0]);
             for(int i=pmb->is; i<=pmb->ie; i+=2) {
               Real tarea=sarea_[0](i)+sarea_[0](i+1);
               for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
-                radfcor_send_[step][nb.fid][p++]=
-                         (x2flux(k, j, i  , nn)*sarea_[0](i  )
-                         +x2flux(k, j, i+1, nn)*sarea_[0](i+1))/tarea;
+                cc_flcor_send_[step][nb.fid][p++]=
+                         (rad_x2flux(k, j, i  , nn)*sarea_[0](i  )
+                         +rad_x2flux(k, j, i+1, nn)*sarea_[0](i+1))/tarea;
               }
             }
-          }// End phys==RAD
+          }// End RAD
         }
       }
       // x3 direction - 3D only
       else if(nb.fid==INNER_X3 || nb.fid==OUTER_X3) {
         int k=pmb->ks+(pmb->ke-pmb->ks+1)*(nb.fid&1);
         fi1=fx1, fi2=fx2;
-        if(phys==HYDRO){
-          for(int nn=0; nn<NHYDRO; nn++) {
-            for(int j=pmb->js; j<=pmb->je; j+=2) {
-              pco->Face3Area(k, j,   pmb->is, pmb->ie, sarea_[0]);
-              pco->Face3Area(k, j+1, pmb->is, pmb->ie, sarea_[1]);
-              for(int i=pmb->is; i<=pmb->ie; i+=2) {
-                Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
-                flcor_send_[step][nb.fid][p++]=
-                         (x3flux(nn, k, j  , i  )*sarea_[0](i  )
-                         +x3flux(nn, k, j  , i+1)*sarea_[0](i+1)
-                         +x3flux(nn, k, j+1, i  )*sarea_[1](i  )
-                         +x3flux(nn, k, j+1, i+1)*sarea_[1](i+1))/tarea;
-              }
+        for(int nn=0; nn<NHYDRO; nn++) {
+          for(int j=pmb->js; j<=pmb->je; j+=2) {
+            pco->Face3Area(k, j,   pmb->is, pmb->ie, sarea_[0]);
+            pco->Face3Area(k, j+1, pmb->is, pmb->ie, sarea_[1]);
+            for(int i=pmb->is; i<=pmb->ie; i+=2) {
+              Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
+              cc_flcor_send_[step][nb.fid][p++]=
+                        (x3flux(nn, k, j  , i  )*sarea_[0](i  )
+                        +x3flux(nn, k, j  , i+1)*sarea_[0](i+1)
+                        +x3flux(nn, k, j+1, i  )*sarea_[1](i  )
+                        +x3flux(nn, k, j+1, i+1)*sarea_[1](i+1))/tarea;
             }
           }
-        }else if(phys==RAD){
+        }
+        if(RADIATION_ENABLED){
 
           for(int j=pmb->js; j<=pmb->je; j+=2) {
             pco->Face3Area(k, j,   pmb->is, pmb->ie, sarea_[0]);
@@ -1546,35 +1479,27 @@ void BoundaryValues::SendFluxCorrection(int step, int phys)
             for(int i=pmb->is; i<=pmb->ie; i+=2) {
               Real tarea=sarea_[0](i)+sarea_[0](i+1)+sarea_[1](i)+sarea_[1](i+1);
               for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
-                radfcor_send_[step][nb.fid][p++]=
-                         (x3flux(k, j  , i  ,nn)*sarea_[0](i  )
-                         +x3flux(k, j  , i+1,nn)*sarea_[0](i+1)
-                         +x3flux(k, j+1, i  ,nn)*sarea_[1](i  )
-                         +x3flux(k, j+1, i+1,nn)*sarea_[1](i+1))/tarea;
+                cc_flcor_send_[step][nb.fid][p++]=
+                         (rad_x3flux(k, j  , i  ,nn)*sarea_[0](i  )
+                         +rad_x3flux(k, j  , i+1,nn)*sarea_[0](i+1)
+                         +rad_x3flux(k, j+1, i  ,nn)*sarea_[1](i  )
+                         +rad_x3flux(k, j+1, i+1,nn)*sarea_[1](i+1))/tarea;
               }
             }
           }
-        }// End phys==RAD
+        }// End RAD
       }
       if(nb.rank==Globals::my_rank) { // on the same node
         MeshBlock *pbl=pmb->pmy_mesh->FindMeshBlock(nb.gid);
-        if(phys==HYDRO){
-          std::memcpy(pbl->pbval->flcor_recv_[step][(nb.fid^1)][fi2][fi1],
-                    flcor_send_[step][nb.fid], p*sizeof(Real));
-          pbl->pbval->flcor_flag_[step][(nb.fid^1)][fi2][fi1]=boundary_arrived;
-        }else if(phys==RAD){
-          std::memcpy(pbl->pbval->radfcor_recv_[step][(nb.fid^1)][fi2][fi1],
-                    radfcor_send_[step][nb.fid], p*sizeof(Real));
-          pbl->pbval->radfcor_flag_[step][(nb.fid^1)][fi2][fi1]=boundary_arrived;
-        }
+
+        std::memcpy(pbl->pbval->cc_flcor_recv_[step][(nb.fid^1)][fi2][fi1],
+                    cc_flcor_send_[step][nb.fid], p*sizeof(Real));
+        pbl->pbval->cc_flcor_flag_[step][(nb.fid^1)][fi2][fi1]=boundary_arrived;
+        
       }
 #ifdef MPI_PARALLEL
       else{
-        if(phys==HYDRO){
-          MPI_Start(&req_flcor_send_[step][nb.fid]);
-        }else if(phys==RAD){
-          MPI_Start(&req_radfcor_send_[step][nb.fid]);
-        }
+          MPI_Start(&req_cc_flcor_send_[step][nb.fid]);
       }
 #endif
     }
@@ -1586,21 +1511,21 @@ void BoundaryValues::SendFluxCorrection(int step, int phys)
 //--------------------------------------------------------------------------------------
 //! \fn bool BoundaryValues::ReceiveFluxCorrection(int step, int phys)
 //  \brief Receive and apply the surace flux from the finer neighbor(s)
-bool BoundaryValues::ReceiveFluxCorrection(int step, int phys)
+bool BoundaryValues::ReceiveFluxCorrection(int step)
 {
   MeshBlock *pmb=pmy_mblock_;
   Coordinates *pco=pmb->pcoord;
   
   AthenaArray<Real> x1flux, x2flux, x3flux;
+  AthenaArray<Real> rad_x1flux, rad_x2flux, rad_x3flux;
   
-  if(phys == HYDRO){
-     x1flux.InitWithShallowCopy(pmb->phydro->flux[x1face]);
-     x2flux.InitWithShallowCopy(pmb->phydro->flux[x2face]);
-     x3flux.InitWithShallowCopy(pmb->phydro->flux[x3face]);
-  }else if(phys == RAD){
-     x1flux.InitWithShallowCopy(pmb->prad->flux[x1face]);
-     x2flux.InitWithShallowCopy(pmb->prad->flux[x2face]);
-     x3flux.InitWithShallowCopy(pmb->prad->flux[x3face]);
+  x1flux.InitWithShallowCopy(pmb->phydro->flux[x1face]);
+  x2flux.InitWithShallowCopy(pmb->phydro->flux[x2face]);
+  x3flux.InitWithShallowCopy(pmb->phydro->flux[x3face]);
+  if(RADIATION_ENABLED){
+     rad_x1flux.InitWithShallowCopy(pmb->prad->flux[x1face]);
+     rad_x2flux.InitWithShallowCopy(pmb->prad->flux[x2face]);
+     rad_x3flux.InitWithShallowCopy(pmb->prad->flux[x3face]);
   }
   
   bool flag=true;
@@ -1609,64 +1534,32 @@ bool BoundaryValues::ReceiveFluxCorrection(int step, int phys)
     NeighborBlock& nb = pmb->neighbor[n];
     if(nb.type!=neighbor_face) break;
     if(nb.level==pmb->loc.level+1) {
-      
-      if(phys==HYDRO){
     
-        if(flcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_completed) continue;
-        if(flcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_waiting) {
-          if(nb.rank==Globals::my_rank) {// on the same process
+      if(cc_flcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_completed) continue;
+      if(cc_flcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_waiting) {
+        if(nb.rank==Globals::my_rank) {// on the same process
+          flag=false;
+          continue;
+        }
+#ifdef MPI_PARALLEL
+        else { // MPI boundary
+          int test;
+          MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,
+                       &test,MPI_STATUS_IGNORE);
+          MPI_Test(&req_cc_flcor_recv_[step][nb.fid][nb.fi2][nb.fi1],&test,
+                      MPI_STATUS_IGNORE);
+          if(test==false) {
             flag=false;
             continue;
           }
-#ifdef MPI_PARALLEL
-          else { // MPI boundary
-            int test;
-            MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,
-                       &test,MPI_STATUS_IGNORE);
-            MPI_Test(&req_flcor_recv_[step][nb.fid][nb.fi2][nb.fi1],&test,
-                       MPI_STATUS_IGNORE);
-            if(test==false) {
-              flag=false;
-              continue;
-            }
-            flcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_arrived;
-          }
-#endif
+          cc_flcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_arrived;
         }
-      
-      }else if(phys==RAD){
-      
-        if(radfcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_completed) continue;
-        if(radfcor_flag_[step][nb.fid][nb.fi2][nb.fi1]==boundary_waiting) {
-          if(nb.rank==Globals::my_rank) {// on the same process
-            flag=false;
-            continue;
-          }
-#ifdef MPI_PARALLEL
-          else { // MPI boundary
-            int test;
-            MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,
-                       &test,MPI_STATUS_IGNORE);
-            MPI_Test(&req_radfcor_recv_[step][nb.fid][nb.fi2][nb.fi1],&test,
-                       MPI_STATUS_IGNORE);
-            if(test==false) {
-              flag=false;
-              continue;
-            }
-            radfcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_arrived;
-          }
 #endif
-        }
-      }// End phys==rad
-      
-      // boundary arrived; apply flux correction
-      Real *buf;
-      if(phys==HYDRO){
-        buf=flcor_recv_[step][nb.fid][nb.fi2][nb.fi1];
-      }else if(phys==RAD){
-        buf=radfcor_recv_[step][nb.fid][nb.fi2][nb.fi1];
       }
       
+      
+      // boundary arrived; apply flux correction
+      Real *buf=cc_flcor_recv_[step][nb.fid][nb.fi2][nb.fi1];
       int p=0;
       if(nb.fid==INNER_X1 || nb.fid==OUTER_X1) {
         int is=pmb->is+(pmb->ie-pmb->is)*nb.fid+nb.fid;
@@ -1676,22 +1569,22 @@ bool BoundaryValues::ReceiveFluxCorrection(int step, int phys)
         if(nb.fi2==0) ke-=pmb->block_size.nx3/2;
         else          ks+=pmb->block_size.nx3/2;
         
-        if(phys==HYDRO){
-          for(int nn=0; nn<NHYDRO; nn++) {
-            for(int k=ks; k<=ke; k++) {
-              for(int j=js; j<=je; j++)
-                x1flux(nn,k,j,is)=buf[p++];
-            }
+        
+        for(int nn=0; nn<NHYDRO; nn++) {
+          for(int k=ks; k<=ke; k++) {
+            for(int j=js; j<=je; j++)
+              x1flux(nn,k,j,is)=buf[p++];
           }
-        }else if(phys==RAD){
+        }
+        if(RADIATION_ENABLED){
           
           for(int k=ks; k<=ke; k++) {
             for(int j=js; j<=je; j++)
               for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
-                 x1flux(k,j,is,nn)=buf[p++];
+                 rad_x1flux(k,j,is,nn)=buf[p++];
               }
           }
-        }// end phys==RAD
+        }// end RAD
       }
       else if(nb.fid==INNER_X2 || nb.fid==OUTER_X2) {
         int js=pmb->js+(pmb->je-pmb->js)*(nb.fid&1)+(nb.fid&1);
@@ -1701,22 +1594,21 @@ bool BoundaryValues::ReceiveFluxCorrection(int step, int phys)
         if(nb.fi2==0) ke-=pmb->block_size.nx3/2;
         else          ks+=pmb->block_size.nx3/2;
         
-        if(phys==HYDRO){
-          for(int nn=0; nn<NHYDRO; nn++) {
-            for(int k=ks; k<=ke; k++) {
-              for(int i=is; i<=ie; i++)
-                x2flux(nn,k,js,i)=buf[p++];
-            }
+        for(int nn=0; nn<NHYDRO; nn++) {
+          for(int k=ks; k<=ke; k++) {
+            for(int i=is; i<=ie; i++)
+              x2flux(nn,k,js,i)=buf[p++];
           }
-        }else if(phys==RAD){
-          
+        }
+        if(RADIATION_ENABLED){
+        
           for(int k=ks; k<=ke; k++) {
             for(int i=is; i<=ie; i++)
                for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
-                  x2flux(k,js,i,nn)=buf[p++];
+                  rad_x2flux(k,js,i,nn)=buf[p++];
                }
           }
-        }//end phys==RAD
+        }//end RAD
       }
       else if(nb.fid==INNER_X3 || nb.fid==OUTER_X3) {
         int ks=pmb->ks+(pmb->ke-pmb->ks)*(nb.fid&1)+(nb.fid&1);
@@ -1725,29 +1617,26 @@ bool BoundaryValues::ReceiveFluxCorrection(int step, int phys)
         else          is+=pmb->block_size.nx1/2;
         if(nb.fi2==0) je-=pmb->block_size.nx2/2;
         else          js+=pmb->block_size.nx2/2;
-        
-        if(phys==HYDRO){
-        
-          for(int nn=0; nn<NHYDRO; nn++) {
-            for(int j=js; j<=je; j++) {
-              for(int i=is; i<=ie; i++)
-                x3flux(nn,ks,j,i)=buf[p++];
-            }
+      
+        for(int nn=0; nn<NHYDRO; nn++) {
+          for(int j=js; j<=je; j++) {
+            for(int i=is; i<=ie; i++)
+              x3flux(nn,ks,j,i)=buf[p++];
           }
-        }else if(phys==RAD){
+        }
+        if(RADIATION_ENABLED){
         
           for(int j=js; j<=je; j++) {
             for(int i=is; i<=ie; i++)
               for(int nn=0; nn<pmb->prad->n_fre_ang; nn++) {
-                x3flux(ks,j,i,nn)=buf[p++];
+                rad_x3flux(ks,j,i,nn)=buf[p++];
              }
           }
-        }// end phys==RAD
+        }// end RAD
       }
-      if(phys==HYDRO)
-        flcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_completed;
-      else if(phys==RAD)
-        radfcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_completed;
+      
+      cc_flcor_flag_[step][nb.fid][nb.fi2][nb.fi1] = boundary_completed;
+
     }// end nb.level=loc.level+1
   }// end nneighbor
 
@@ -3853,22 +3742,18 @@ void BoundaryValues::ClearBoundaryForInit(void)
   // corresponds to primitives sent only in the case of GR with refinement
   for(int n=0;n<pmb->nneighbor;n++) {
     NeighborBlock& nb = pmb->neighbor[n];
-    hydro_flag_[0][nb.bufid] = boundary_waiting;
-    if(RADIATION_ENABLED)
-      rad_flag_[0][nb.bufid] = boundary_waiting;
+    cc_flag_[0][nb.bufid] = boundary_waiting;
     if (MAGNETIC_FIELDS_ENABLED)
       field_flag_[0][nb.bufid] = boundary_waiting;
     if (GENERAL_RELATIVITY and pmb->pmy_mesh->multilevel)
-      hydro_flag_[1][nb.bufid] = boundary_waiting;
+      cc_flag_[1][nb.bufid] = boundary_waiting;
 #ifdef MPI_PARALLEL
     if(nb.rank!=Globals::my_rank) {
-      MPI_Wait(&req_hydro_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+      MPI_Wait(&req_cc_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
       if (MAGNETIC_FIELDS_ENABLED)
         MPI_Wait(&req_field_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
-      if (RADIATION_ENABLED)
-        MPI_Wait(&req_rad_send_[0][nb.bufid],MPI_STATUS_IGNORE); // Rad Wait for Isend
       if (GENERAL_RELATIVITY and pmb->pmy_mesh->multilevel)
-        MPI_Wait(&req_hydro_send_[1][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+        MPI_Wait(&req_cc_send_[1][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
     }
 #endif
   }
@@ -3887,14 +3772,9 @@ void BoundaryValues::ClearBoundaryAll(void)
   for(int l=0;l<NSTEP;l++) {
     for(int n=0;n<pmb->nneighbor;n++) {
       NeighborBlock& nb = pmb->neighbor[n];
-      hydro_flag_[l][nb.bufid] = boundary_waiting;
-      if(RADIATION_ENABLED)
-        rad_flag_[l][nb.bufid] = boundary_waiting;
+      cc_flag_[l][nb.bufid] = boundary_waiting;
       if(nb.type==neighbor_face){
-        flcor_flag_[l][nb.fid][nb.fi2][nb.fi1] = boundary_waiting;
-        if(RADIATION_ENABLED){
-          radfcor_flag_[l][nb.fid][nb.fi2][nb.fi1]=boundary_waiting;
-        }
+        cc_flcor_flag_[l][nb.fid][nb.fi2][nb.fi1] = boundary_waiting;
       }
       if (MAGNETIC_FIELDS_ENABLED) {
         field_flag_[l][nb.bufid] = boundary_waiting;
@@ -3903,13 +3783,9 @@ void BoundaryValues::ClearBoundaryAll(void)
       }
 #ifdef MPI_PARALLEL
       if(nb.rank!=Globals::my_rank) {
-        MPI_Wait(&req_hydro_send_[l][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
-        if(RADIATION_ENABLED)
-           MPI_Wait(&req_rad_send_[l][nb.bufid],MPI_STATUS_IGNORE);
+        MPI_Wait(&req_cc_send_[l][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
         if(nb.type==neighbor_face && nb.level<pmb->loc.level){
-          MPI_Wait(&req_flcor_send_[l][nb.fid],MPI_STATUS_IGNORE); // Wait for Isend
-          if(RADIATION_ENABLED)
-            MPI_Wait(&req_radfcor_send_[l][nb.fid],MPI_STATUS_IGNORE);
+          MPI_Wait(&req_cc_flcor_send_[l][nb.fid],MPI_STATUS_IGNORE); // Wait for Isend
         }
         if (MAGNETIC_FIELDS_ENABLED) {
           MPI_Wait(&req_field_send_[l][nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend

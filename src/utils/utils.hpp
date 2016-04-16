@@ -33,7 +33,9 @@ void Tequilibrium(Real temperature, Real coef1, Real coef2, Real coef3,
 void Tcompton(Real temperature, Real coef1, Real coef2, Real coef3, Real coef4,
       Real *fval, Real *dfval);
 
+void Laguer(Real *coef, int m, Real &root);
 
+int ExactPolynomial(const Real coef4, const Real coef, const Real tconst, Real &root);
 
 namespace WallTimeLimit {
   void InitWTLimit(void);

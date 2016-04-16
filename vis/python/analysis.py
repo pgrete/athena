@@ -1,9 +1,11 @@
-from athena_read import *
+
+from athena_yt import *
 
 import sys
 sys.settrace
 import matplotlib
 #matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 import numpy as np
 import matplotlib.cm as cm
 import matplotlib.mlab as mlab
@@ -13,6 +15,13 @@ from pylab import *
 import struct
 import array
 import os
+import yt
+
+import h5py
+
+
+
+
 
 # setup latex fonts
 rcParams['text.usetex']=True
@@ -43,11 +52,11 @@ def PloTwoLines(xpos1, xpos2,var1, var2, xmin,xmax,xname,ymin, ymax, yname, outn
 
     axes.set_aspect('auto')
     axes.legend(frameon=False)
-    axes.spines["top"].set_visible(False)  
-    axes.spines["right"].set_visible(False)  
-    axes.get_xaxis().tick_bottom()  
-    axes.get_yaxis().tick_left()  
-    
+    axes.spines["top"].set_visible(False)
+    axes.spines["right"].set_visible(False)
+    axes.get_xaxis().tick_bottom()
+    axes.get_yaxis().tick_left()
+
 
     plt.savefig(outname,bbox_inches="tight")
     plt.close(plots)
@@ -55,76 +64,60 @@ def PloTwoLines(xpos1, xpos2,var1, var2, xmin,xmax,xname,ymin, ymax, yname, outn
 
 #################################################
 
-filename='Radshock.out4.00007.athdf'
-
-data=athdf(filename)
-
-Er =data[u'Er']
-Fr1=data[u'Fr1']
-Fr2=data[u'Fr2']
-Fr3=data[u'Fr3']
-
-Er0=data[u'Er0']
-Fr01=data[u'Fr01']
-Fr02=data[u'Fr02']
-Fr03=data[u'Fr03']
-
-Pr11=data[u'Pr11']
-Pr12=data[u'Pr12']
-Pr13=data[u'Pr13']
-Pr21=data[u'Pr21']
-Pr22=data[u'Pr22']
-Pr23=data[u'Pr23']
-Pr31=data[u'Pr31']
-Pr32=data[u'Pr32']
-Pr33=data[u'Pr33']
-
-sigma_a=data[u'Sigma_a']
-
-sigma_s=data[u'Sigma_s']
-
-rho=data[u'rho']
-
-press=data[u'press']
-
-v1=data[u'vel1']
-
-v2=data[u'vel2']
-
-v3=data[u'vel3']
+# function to make 2D image for scalar
+def MakeImage(data, minval, maxval, xmin, xmax, ymin, ymax,labelname,filename):
+    plots, axes = plt.subplots(figsize=(12,9),dpi=300)
+    im = axes.imshow(data,cmap='RdGy_r', norm=LogNorm(vmin = minval, vmax=maxval), origin='lower', extent=[xmin,xmax,ymin,ymax])
+    cbaxes = plots.add_axes([0.85,0.1,0.03,0.8])
+    cbar=plots.colorbar(im,cax=cbaxes)
+    cbar.set_label(labelname, size=20)
+    axes.set_aspect('auto')
+    plt.savefig(filename)
+    plt.close(plots)
 
 
-dim=rho.shape
+def loadhdf(filename):
+    f=h5py.File(filename,'r')
+    # to see all the available keys f.attrs.keys()
+    nblock=f.attrs['TotalMeshBlock']
+    block_size=f.attrs['MeshBlockSize']
+    root_grid_size=f.attrs['RootGridSize']
+    maxlevel=f.attrs['MaxLevel']
+    cycle=f.attrs['NCycle']
+    time=f.attrs['Time']
+    nvariable=f.attrs['NVariables']
+    #for quantities in each block
+    Er=np.array(f[u'MeshBlock0'][u'Er'])
 
-n3=dim[0]
-n2=dim[1]
-n1=dim[2]
-
-x1f=data[u'x1f']
-
-if n2 > 1:
-  x2f=data[u'x2f']
-
-if n3 > 1:
-  x3f=data[u'x3f']
-
-x1v=np.zeros(n1)
-for i in range(0,n1):
-  x1v[i]=0.5*(x1f[i]+x1f[i+1])
+vol = lambda x1m,x1p,x2m,x2p,x3m,x3p: 1.0/3.0 * (x1p**3-x1m**3) * abs(np.cos(x2m)-np.cos(x2p)) * (x3p-x3m)
 
 
-#################################################
 
+filename='PolarCap.out1.00157.athdf'
 
-crat=1.732e3
+data=yt_loadathdf(filename)
 
-Frini=np.loadtxt('rF_4096.dat')
-posxini=np.loadtxt('x_4096.dat')
+# for volume Rendering
+mi, ma=data.all_data().quantities.extrema('rho')
 
-Frini=Frini/crat
+mi=log10(mi.value)
+ma=log10(ma.value)
 
-Frend=Fr1[0][3][:]
+# create a transfer function
 
-outname='radFr.pdf'
+tf=yt.ColorTransferFunction((mi,ma))
+tf.add_layers(6,w=0.01)
 
-PloTwoLines(x1v,posxini,Frend,Frini, min(x1v),max(x1v),'${\\bf x}$',-0.2, 0.0015, '${\\bf F_r}$', outname, 0)
+# define the properties and size of the Camera viewpoint
+
+L=[0.3, 0.3, 0.2]  # the view point
+c=[0., 0.0, 5.0]  # the focual point
+w=1.5*data.domain_width[0] # width
+Npixels=512
+
+cam=data.camera(c,L,w,Npixels,tf,fields=['rho'], north_vector=[0,0,1],\
+              steady_north=True, sub_samples=5, log_fields=[False])
+
+cam.transfer_function.map_to_colormap(mi,ma,scale=1.0,colormap='algae')
+image=cam.snapshot(fn='test.png')
+cam.save_image(image,transparent=True)

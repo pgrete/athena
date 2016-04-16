@@ -65,7 +65,6 @@ void Mesh::TerminateUserMeshProperties(void)
 void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
 {
   
-     pblock->prad->EnrollInternalVariableFunction(LoadRadVariable);
 
 
   return;
@@ -86,7 +85,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   int flag=1;
   if(flag==1){
     tgas=1.0;
-    er =1.0;
+    er =10.0;
   
   }
   
@@ -97,7 +96,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
         phydro->u(IDN,k,j,i) = 1.0;
-        phydro->u(IM1,k,j,i) = 3.0;
+        phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS){
@@ -140,9 +139,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           }
           
           for (int ifr=0; ifr < nfreq; ++ifr){
-            prad->sigma_s(k,j,i,ifr) = 100.0;
-            prad->sigma_a(k,j,i,ifr) = 0.0;
-            prad->sigma_ae(k,j,i,ifr) = 0.0;
+            prad->sigma_s(k,j,i,ifr) = 0.0;
+            prad->sigma_a(k,j,i,ifr) = 100.0;
+            prad->sigma_ae(k,j,i,ifr) = 100.0;
             
           }
         }
@@ -167,33 +166,6 @@ void MeshBlock::UserWorkInLoop(void)
   return;
 }
 
-void LoadRadVariable(MeshBlock *pmb)
-{
-  int n1z = pmy_block->block_size.nx1 + 2*(NGHOST);
-  int n2z = pmy_block->block_size.nx2;
-  int n3z = pmy_block->block_size.nx3;
-  if(n2z > 1) n2z += (2*(NGHOST));
-  if(n3z > 1) n3z += (2*(NGHOST));
-  
-  for(int n=0; n<NRADFOV; ++n)
-    for(int k=0; k<n3z; ++k)
-      for(int j=0; j<n2z; ++j)
-        for(int i=0; i<n1z; ++i){
-          rad_ifov(n,k,j,i) = 0.0;
-        }
- 
-  for(int n=0; n<NRADFOV; ++n)
-  for(int k=0; k<n3z; ++k)
-    for(int j=0; j<n2z; ++j)
-      for(int i=0; i<n1z; ++i)
-        for(int ifr=0; ifr<nfreq; ++ifr){
-          rad_ifov(n,k,j,i) += wfreq(ifr) * ir(k,j,i,ifr*nang+n);
-        }
-  
-  
-  
-  return;
-}
 
 
 

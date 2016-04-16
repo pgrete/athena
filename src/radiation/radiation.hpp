@@ -45,7 +45,6 @@ public:
                        //sigma_a T and sigma_ae I
   AthenaArray<Real> grey_sigma_s, grey_sigma_a; // frequency integrated opacity
   AthenaArray<Real> rad_ifov; // internal radiation variable
-  std::string my_strings[NRADFOV]; // names of the internal variables
   AthenaArray<Real> mu, wmu; // angles and weight
   AthenaArray<Real> wfreq; // weight in frequency space
   
