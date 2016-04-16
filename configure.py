@@ -46,7 +46,7 @@ parser = argparse.ArgumentParser()
 pgen_directory = 'src/pgen/'
 # set pgen_choices to list of .cpp files in src/pgen/
 pgen_choices = glob.glob(pgen_directory + '*.cpp')
-# remove 'src/pgen/' prefix and '.cpp' extension from each filename 
+# remove 'src/pgen/' prefix and '.cpp' extension from each filename
 pgen_choices = [choice[len(pgen_directory):-4] for choice in pgen_choices]
 parser.add_argument('--prob',
     default='shock_tube',

@@ -14,7 +14,7 @@
 //--------------------------------------------------------------------------------------
 // macros which define physics and algorithms
 
-// problem generator 
+// problem generator
 #define PROBLEM_GENERATOR "@PROBLEM@"
 
 // coordinate system
@@ -59,7 +59,7 @@
 // openMP parallelization (OPENMP_PARALLEL or NOT_OPENMP_PARALLEL)
 #define @OPENMP_OPTION@
 
-// HDF5 Output (HDF5OUTPUT or NO_HDF5OUTPUT)
+// HDF5 output (HDF5OUTPUT or NO_HDF5OUTPUT)
 #define @HDF5_OPTION@
 
 // number of internal hydro output variables
@@ -72,11 +72,11 @@
 //--------------------------------------------------------------------------------------
 // macros associated with numerical algorithm (rarely modified)
 
-#define NHYDRO  (@NHYDRO_VARIABLES@)
-#define NFIELD  (@NFIELD_VARIABLES@)
-#define NWAVE   (@NWAVE_VALUE@)
-#define NGHOST   2
-#define NSTEP (@NSTEP@)
+#define NHYDRO @NHYDRO_VARIABLES@
+#define NFIELD @NFIELD_VARIABLES@
+#define NWAVE @NWAVE_VALUE@
+#define NGHOST 2
+#define NSTEP @NSTEP@
 
 //--------------------------------------------------------------------------------------
 // general purpose macros (never modified)

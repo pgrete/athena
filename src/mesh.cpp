@@ -269,7 +269,7 @@ Mesh::Mesh(ParameterInput *pin, int test_flag)
 // SMR / AMR: create finer grids here
   multilevel=false;
   adaptive=false;
-  if(pin->GetOrAddString("mesh","refinement","static")=="adaptive")
+  if(pin->GetOrAddString("mesh","refinement","none")=="adaptive")
     adaptive=true, multilevel=true;
   if(adaptive==true) {
     max_level = pin->GetOrAddInteger("mesh","numlevel",1)+root_level-1;
@@ -309,7 +309,8 @@ Mesh::Mesh(ParameterInput *pin, int test_flag)
 
   InputBlock *pib = pin->pfirst_block;
   while (pib != NULL) {
-    if (pib->block_name.compare(0,10,"refinement") == 0) {
+    if (pib->block_name.compare(0,10,"refinement") == 0 &&
+        pin->GetString("mesh","refinement") != "none") {
       RegionSize ref_size;
       ref_size.x1min=pin->GetReal(pib->block_name,"x1min");
       ref_size.x1max=pin->GetReal(pib->block_name,"x1max");
@@ -640,7 +641,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   }
 
   adaptive=false;
-  if(pin->GetOrAddString("mesh","refinement","static")=="adaptive")
+  if(pin->GetOrAddString("mesh","refinement","none")=="adaptive")
     adaptive=true, multilevel=true;
 
   //initialize user-enrollable functions
@@ -756,7 +757,6 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
 
 Mesh::~Mesh()
 {
-  TerminateUserMeshProperties();
   while(pblock->prev != NULL) // should not be true
     delete pblock->prev;
   while(pblock->next != NULL)
@@ -2251,8 +2251,12 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   MPI_Allgatherv(MPI_IN_PLACE, nblist[Globals::my_rank], MPI_INT,
                  costlist, nblist, nslist, MPI_INT, MPI_COMM_WORLD);
 #endif
+
+  current_level=0;
   for(int n=0; n<ntot; n++) {
     int on=newtoold[n];
+    if(newloc[n].level>current_level) // set the current max level
+      current_level=newloc[n].level;
     if(newloc[n].level>=loclist[on].level) // same or refined
       newcost[n]=costlist[on];
     else {
