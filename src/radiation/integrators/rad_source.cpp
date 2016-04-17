@@ -281,7 +281,7 @@ void RadIntegrator::PredictVel(int k, int j, int i, Real dt, Real rho, Real *vx,
     Real &pr23=prad->rad_mom(IPR23,k,j,i);
     Real &pr33=prad->rad_mom(IPR33,k,j,i);
   
-    Real dtcsigma = ct * (prad->grey_sigma_s(k,j,i) + prad->grey_sigma_a(k,j,i));
+    Real dtcsigma = ct * (prad->grey_sigma(OPAS,k,j,i) + prad->grey_sigma(OPAA,k,j,i));
   
     Real vx0 = (*vx);
     Real vy0 = (*vy);

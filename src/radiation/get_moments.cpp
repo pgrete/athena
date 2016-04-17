@@ -103,14 +103,15 @@ void Radiation::CalculateMoment(AthenaArray<Real> &ir_in)
           i_mom(IFR2,k,j,i) += fry;
           i_mom(IFR3,k,j,i) += frz;
           i_mom(IPR11,k,j,i) += prxx;
+          i_mom(IPR22,k,j,i) += pryy;
+          i_mom(IPR33,k,j,i) += przz;
           i_mom(IPR12,k,j,i) += prxy;
           i_mom(IPR13,k,j,i) += prxz;
-          i_mom(IPR21,k,j,i) += prxy;
-          i_mom(IPR22,k,j,i) += pryy;
           i_mom(IPR23,k,j,i) += pryz;
+          i_mom(IPR21,k,j,i) += prxy;
           i_mom(IPR31,k,j,i) += prxz;
           i_mom(IPR32,k,j,i) += pryz;
-          i_mom(IPR33,k,j,i) += przz;
+          
           
         }// End frequency loop
 
@@ -240,8 +241,8 @@ void Radiation::CalculateComMoment()
           sum_sigma_s += sigmas[ifr] * wfreq(ifr);
           sum_sigma_a += sigmaa[ifr] * wfreq(ifr);
         }
-        grey_sigma_s(k,j,i) = sum_sigma_s;
-        grey_sigma_a(k,j,i) = sum_sigma_a;
+        grey_sigma(OPAS,k,j,i) = sum_sigma_s;
+        grey_sigma(OPAA,k,j,i) = sum_sigma_a;
 
       }
     }

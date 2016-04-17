@@ -553,7 +553,7 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
       pov = new OutputVariable;
       pov->type = "SCALARS";
       pov->name = "Sigma_s";
-      pov->data.InitWithShallowCopy(pmb->prad->grey_sigma_s);
+      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma,4,0,1);
       pod->AppendNode(pov); // scattering opacity
       var_added += 1;
     }
@@ -564,7 +564,7 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
       pov = new OutputVariable;
       pov->type = "SCALARS";
       pov->name = "Sigma_a";
-      pov->data.InitWithShallowCopy(pmb->prad->grey_sigma_a);
+      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma,4,1,1);
       pod->AppendNode(pov); // absorption opacity
       var_added += 1;
     }

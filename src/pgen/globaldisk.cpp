@@ -104,7 +104,7 @@ void Mesh::InitUserMeshProperties(ParameterInput *pin)
 //! \fn void Mesh::TerminateUserMeshProperties(void)
 //  \brief Clean up the Mesh properties
 //======================================================================================
-void Mesh::TerminateUserMeshProperties(void)
+void Mesh::TerminateUserMeshProperties(ParameterInput *pin)
 {
   // nothing to do
   return;

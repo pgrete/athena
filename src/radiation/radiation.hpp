@@ -29,8 +29,10 @@ typedef void (*Opacity_t)(MeshBlock *pmb, AthenaArray<Real> &prim);
 typedef void (*OutInternal_t)(MeshBlock *pmb);
 
 // Array indices for radiation moments
-enum {IER=0, IFR1=1, IFR2=2, IFR3=3, IPR11=4, IPR12=5, IPR13=6, IPR21=7,
-      IPR22=8, IPR23=9, IPR31=10, IPR32=11, IPR33=12};
+enum {IER=0, IFR1=1, IFR2=2, IFR3=3, IPR11=4, IPR22=5, IPR33=6, IPR12=7,
+      IPR13=8, IPR23=9, IPR21=10, IPR31=11, IPR32=12};
+
+enum {OPAS=0, OPAA=1}; // scattering and absorption opacity
 
 class Radiation {
   friend class RadIntegrator;
@@ -43,7 +45,7 @@ public:
   AthenaArray<Real> rad_mom_cm; // co-moving frame Er, Frx, Fry, Frz
   AthenaArray<Real> sigma_s, sigma_a, sigma_ae; //   opacity
                        //sigma_a T and sigma_ae I
-  AthenaArray<Real> grey_sigma_s, grey_sigma_a; // frequency integrated opacity
+  AthenaArray<Real> grey_sigma; // frequency integrated opacity
   AthenaArray<Real> rad_ifov; // internal radiation variable
   AthenaArray<Real> mu, wmu; // angles and weight
   AthenaArray<Real> wfreq; // weight in frequency space

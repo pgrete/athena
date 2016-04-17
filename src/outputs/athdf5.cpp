@@ -46,6 +46,7 @@
 #include "../coordinates/coordinates.hpp"  // Coordinates
 #include "../field/field.hpp"              // Field
 #include "../hydro/hydro.hpp"              // Hydro
+#include "../radiation/radiation.hpp"      // radiation
 
 //--------------------------------------------------------------------------------------
 
@@ -62,6 +63,8 @@
 //   opens file and writes file-level attributes
 //   creates datasets in file
 //   prepares dataspaces for both file and memory
+
+
 void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     bool walltime_limit=false)
 {
@@ -86,21 +89,43 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
   if (variable.compare("prim") == 0 or variable.compare("cons") == 0)
   {
     num_datasets = 1;
+    
     if (MAGNETIC_FIELDS_ENABLED)
-      num_datasets = 2;
+      num_datasets++;
+    
+    if(RADIATION_ENABLED)
+      num_datasets += 3;
+      
+
+
+    
+    
+    
     num_variables = new int[num_datasets];
-    num_variables[0] = NHYDRO;
+    int idx_set=0;
+    num_variables[idx_set++] = NHYDRO;
     num_total_variables = NHYDRO;
-    if (MAGNETIC_FIELDS_ENABLED)
-    {
-      num_variables[1] = 3;
+    if (MAGNETIC_FIELDS_ENABLED) {
+      num_variables[idx_set++] = 3;
       num_total_variables += 3;
     }
+    if (RADIATION_ENABLED){
+    // For radiation, write lab frame moments, co-moving moments, opacity
+
+      num_variables[idx_set++] = 10;
+      num_variables[idx_set++] = 4;
+      num_variables[idx_set++] = 2;
+      num_total_variables += 16;
+    }
+    
+    int idx_var=0;
+    idx_set = 0;
+    
     dataset_names = new char[num_datasets][max_name_length+1];
     variable_names = new char[num_total_variables][max_name_length+1];
     if (variable.compare("prim") == 0)
     {
-      std::strncpy(dataset_names[0], "prim", max_name_length+1);
+      std::strncpy(dataset_names[idx_set++], "prim", max_name_length+1);
       for (int n = 0; n < NHYDRO; ++n)
         switch (n)
         {
@@ -123,7 +148,7 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     }
     else
     {
-      std::strncpy(dataset_names[0], "cons", max_name_length+1);
+      std::strncpy(dataset_names[idx_set++], "cons", max_name_length+1);
       for (int n = 0; n < NHYDRO; ++n)
         switch (n)
         {
@@ -144,12 +169,38 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
             break;
         }
     }
-    if (MAGNETIC_FIELDS_ENABLED)
-    {
-      std::strncpy(dataset_names[1], "B", max_name_length+1);
-      std::strncpy(variable_names[NHYDRO], "B1", max_name_length+1);
-      std::strncpy(variable_names[NHYDRO+1], "B2", max_name_length+1);
-      std::strncpy(variable_names[NHYDRO+2], "B3", max_name_length+1);
+    idx_var += NHYDRO;
+    
+    if (MAGNETIC_FIELDS_ENABLED) {
+      std::strncpy(dataset_names[idx_set++], "B", max_name_length+1);
+      
+      std::strncpy(variable_names[idx_var++], "B1", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "B2", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "B3", max_name_length+1);
+    }
+    if (RADIATION_ENABLED){
+    
+      std::strncpy(dataset_names[idx_set++], "rad", max_name_length+1);
+      std::strncpy(dataset_names[idx_set++], "rad_cm", max_name_length+1);
+      std::strncpy(dataset_names[idx_set++], "opacity", max_name_length+1);
+      
+      std::strncpy(variable_names[idx_var++], "Er", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Fr1", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Fr2", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Fr3", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Pr11", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Pr22", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Pr33", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Pr12", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Pr13", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Pr23", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Er0", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Fr01", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Fr02", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Fr03", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Sigma_s", max_name_length+1);
+      std::strncpy(variable_names[idx_var++], "Sigma_a", max_name_length+1);
+    
     }
   }
   else if (variable.compare("d") == 0)
@@ -183,9 +234,9 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     dataset_names = new char[num_datasets][max_name_length+1];
     variable_names = new char[num_total_variables][max_name_length+1];
     std::strncpy(dataset_names[0], "v", max_name_length+1);
-    std::strncpy(variable_names[1], "vel1", max_name_length+1);
-    std::strncpy(variable_names[2], "vel2", max_name_length+1);
-    std::strncpy(variable_names[3], "vel3", max_name_length+1);
+    std::strncpy(variable_names[0], "vel1", max_name_length+1);
+    std::strncpy(variable_names[1], "vel2", max_name_length+1);
+    std::strncpy(variable_names[2], "vel3", max_name_length+1);
   }
   else if (variable.compare("D") == 0)
   {
@@ -218,9 +269,9 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     dataset_names = new char[num_datasets][max_name_length+1];
     variable_names = new char[num_total_variables][max_name_length+1];
     std::strncpy(dataset_names[0], "m", max_name_length+1);
-    std::strncpy(variable_names[1], "mom1", max_name_length+1);
-    std::strncpy(variable_names[2], "mom2", max_name_length+1);
-    std::strncpy(variable_names[3], "mom3", max_name_length+1);
+    std::strncpy(variable_names[0], "mom1", max_name_length+1);
+    std::strncpy(variable_names[1], "mom2", max_name_length+1);
+    std::strncpy(variable_names[2], "mom3", max_name_length+1);
   }
   else if (MAGNETIC_FIELDS_ENABLED and variable.compare("b") == 0)
   {
@@ -231,9 +282,95 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     dataset_names = new char[num_datasets][max_name_length+1];
     variable_names = new char[num_total_variables][max_name_length+1];
     std::strncpy(dataset_names[0], "B", max_name_length+1);
-    std::strncpy(variable_names[1], "B1", max_name_length+1);
-    std::strncpy(variable_names[2], "B2", max_name_length+1);
-    std::strncpy(variable_names[3], "B3", max_name_length+1);
+    std::strncpy(variable_names[0], "B1", max_name_length+1);
+    std::strncpy(variable_names[1], "B2", max_name_length+1);
+    std::strncpy(variable_names[2], "B3", max_name_length+1);
+  }
+  else if (RADIATION_ENABLED and variable.compare("Er") == 0)
+  {
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = 1;
+    num_total_variables = 1;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "Er", max_name_length+1);
+    std::strncpy(variable_names[0], "Er", max_name_length+1);
+  }
+  else if (RADIATION_ENABLED and variable.compare("Er0") == 0)
+  {
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = 1;
+    num_total_variables = 1;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "Er0", max_name_length+1);
+    std::strncpy(variable_names[0], "Er0", max_name_length+1);
+  }
+  else if (RADIATION_ENABLED and variable.compare("Sigma_s") == 0)
+  {
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = 1;
+    num_total_variables = 1;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "Sigma_s", max_name_length+1);
+    std::strncpy(variable_names[0], "Sigma_s", max_name_length+1);
+  }
+  else if (RADIATION_ENABLED and variable.compare("Sigma_a") == 0)
+  {
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = 1;
+    num_total_variables = 1;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "Sigma_a", max_name_length+1);
+    std::strncpy(variable_names[0], "Sigma_a", max_name_length+1);
+  }
+  else if (RADIATION_ENABLED and variable.compare("Fr") == 0)
+  {
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = 3;
+    num_total_variables = 3;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "Fr", max_name_length+1);
+    std::strncpy(variable_names[0], "Fr1", max_name_length+1);
+    std::strncpy(variable_names[1], "Fr2", max_name_length+1);
+    std::strncpy(variable_names[2], "Fr3", max_name_length+1);
+  }
+  else if (RADIATION_ENABLED and variable.compare("Fr0") == 0)
+  {
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = 3;
+    num_total_variables = 3;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "Fr0", max_name_length+1);
+    std::strncpy(variable_names[0], "Fr01", max_name_length+1);
+    std::strncpy(variable_names[1], "Fr02", max_name_length+1);
+    std::strncpy(variable_names[2], "Fr03", max_name_length+1);
+  }
+  else if (RADIATION_ENABLED and variable.compare("Pr") == 0)
+  {
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = 6;
+    num_total_variables = 6;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "Pr", max_name_length+1);
+    std::strncpy(variable_names[0], "Pr11", max_name_length+1);
+    std::strncpy(variable_names[1], "Pr22", max_name_length+1);
+    std::strncpy(variable_names[2], "Pr33", max_name_length+1);
+    std::strncpy(variable_names[3], "Pr12", max_name_length+1);
+    std::strncpy(variable_names[4], "Pr13", max_name_length+1);
+    std::strncpy(variable_names[5], "Pr23", max_name_length+1);
   }
   else if (variable.compare("ifov") == 0)
   {
@@ -265,6 +402,38 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     variable_names = new char[num_total_variables][max_name_length+1];
     std::strncpy(dataset_names[0], "ifov", max_name_length+1);
     for (int n = 0; n < NIFOV; ++n)
+      std::sprintf(variable_names[n], "ifov%d", n);
+  }
+  else if (RADIATION_ENABLED and variable.compare("rad_fov") == 0)
+  {
+    if (NRADFOV <= 0)
+    {
+      std::stringstream message;
+      message << "### FATAL ERROR in athdf5 initialization\n"
+              << "No variables to output\n";
+      throw std::runtime_error(message.str().c_str());
+    }
+    int max_rad_fov_digits = max_name_length - std::strlen("rfov");
+    int max_rad_fov = 1;
+    for (int n = 0; n < max_rad_fov_digits; ++n)
+      max_rad_fov *= 10;
+    if (max_rad_fov_digits <= 0)
+      max_rad_fov = 0;
+    if (NRADFOV > max_rad_fov)
+    {
+      std::stringstream message;
+      message << "### FATAL ERROR in athdf5 initialization\n"
+              << "Can only support " << max_rad_fov << " rad_fov outputs\n";
+      throw std::runtime_error(message.str().c_str());
+    }
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = NRADFOV;
+    num_total_variables = NRADFOV;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "rfov", max_name_length+1);
+    for (int n = 0; n < NRADFOV; ++n)
       std::sprintf(variable_names[n], "ifov%d", n);
   }
   else
@@ -640,15 +809,38 @@ void ATHDF5Output::LoadOutputData(OutputData *pout_data, MeshBlock *pblock)
     std::string variable = output_params.variable;
     if (variable.compare("prim") == 0)
     {
-      data_arrays[0].InitWithShallowSlice(pblock_current->phydro->w, 4, 0, NHYDRO);
+      int idx_set =0;
+      data_arrays[idx_set++].InitWithShallowSlice(pblock_current->phydro->w,
+                             4, 0, NHYDRO);
       if (MAGNETIC_FIELDS_ENABLED)
-        data_arrays[1].InitWithShallowSlice(pblock_current->pfield->bcc, 4, 0, 3);
+        data_arrays[idx_set++].InitWithShallowSlice(pblock_current->pfield->bcc,
+                             4, 0, 3);
+      if (RADIATION_ENABLED){
+        data_arrays[idx_set++].InitWithShallowSlice(pblock_current->prad->rad_mom,
+                             4, 0, 10);
+        data_arrays[idx_set++].InitWithShallowSlice(pblock_current->prad->rad_mom_cm,
+                             4, 0, 4);
+        data_arrays[idx_set++].InitWithShallowSlice(pblock_current->prad->grey_sigma,
+                             4, 0, 2);
+      }
+      
     }
     else if (variable.compare("cons") == 0)
     {
-      data_arrays[0].InitWithShallowSlice(pblock_current->phydro->u, 4, 0, NHYDRO);
+      int idx_set = 0;
+      data_arrays[idx_set++].InitWithShallowSlice(pblock_current->phydro->u,
+                             4, 0, NHYDRO);
       if (MAGNETIC_FIELDS_ENABLED)
-        data_arrays[1].InitWithShallowSlice(pblock_current->pfield->bcc, 4, 0, 3);
+        data_arrays[idx_set++].InitWithShallowSlice(pblock_current->pfield->bcc,
+                             4, 0, 3);
+      if (RADIATION_ENABLED){
+        data_arrays[idx_set++].InitWithShallowSlice(pblock_current->prad->rad_mom,
+                             4, 0, 10);
+        data_arrays[idx_set++].InitWithShallowSlice(pblock_current->prad->rad_mom_cm,
+                             4, 0, 4);
+        data_arrays[idx_set++].InitWithShallowSlice(pblock_current->prad->grey_sigma,
+                             4, 0, 2);
+      }
     }
     else if (variable.compare("d") == 0)
       data_arrays[0].InitWithShallowSlice(pblock_current->phydro->w, 4, IDN, 1);
@@ -664,6 +856,22 @@ void ATHDF5Output::LoadOutputData(OutputData *pout_data, MeshBlock *pblock)
       data_arrays[0].InitWithShallowSlice(pblock_current->phydro->u, 4, IM1, 3);
     else if (variable.compare("b") == 0)
       data_arrays[0].InitWithShallowSlice(pblock_current->pfield->bcc, 4, 0, 3);
+    else if (variable.compare("Er") == 0)
+      data_arrays[0].InitWithShallowSlice(pblock_current->prad->rad_mom, 4, IER, 1);
+    else if (variable.compare("Fr") == 0)
+      data_arrays[0].InitWithShallowSlice(pblock_current->prad->rad_mom, 4, IFR1, 3);
+    else if (variable.compare("Pr") == 0)
+      data_arrays[0].InitWithShallowSlice(pblock_current->prad->rad_mom, 4, IPR11, 6);
+    else if (variable.compare("Er0") == 0)
+      data_arrays[0].InitWithShallowSlice(pblock_current->prad->rad_mom_cm,4,IER,1);
+    else if (variable.compare("Fr0") == 0)
+      data_arrays[0].InitWithShallowSlice(pblock_current->prad->rad_mom_cm,4,IFR1,3);
+    else if (variable.compare("Sigma_s") == 0)
+      data_arrays[0].InitWithShallowSlice(pblock_current->prad->grey_sigma,4,OPAS,1);
+    else if (variable.compare("Sigma_a") == 0)
+      data_arrays[0].InitWithShallowSlice(pblock_current->prad->grey_sigma,4,OPAA,1);
+    else if (variable.compare("rad_fov") == 0)
+      data_arrays[0].InitWithShallowSlice(pblock_current->prad->rad_ifov,4,0,NRADFOV);
     else
       data_arrays[0].InitWithShallowSlice(pblock_current->phydro->ifov, 4, 0, NIFOV);
 
