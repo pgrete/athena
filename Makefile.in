@@ -39,11 +39,12 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/mesh_refinement/*.cpp) \
 	     $(wildcard src/outputs/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
-	     src/pgen/default_pgen.cpp \
-         $(wildcard src/radiation/*.cpp) \
-         $(wildcard src/radiation/integrators/*.cpp) \
-         $(wildcard src/radiation/integrators/radflux/*.cpp) \
-         $(wildcard src/radiation/integrators/srcterms/*.cpp)
+	     src/pgen/$(PROBLEM_FILE) \
+             src/pgen/default_pgen.cpp \
+             $(wildcard src/radiation/*.cpp) \
+             $(wildcard src/radiation/integrators/*.cpp) \
+             $(wildcard src/radiation/integrators/radflux/*.cpp) \
+             $(wildcard src/radiation/integrators/srcterms/*.cpp)
 
 
 OBJ_DIR := obj/

@@ -46,32 +46,6 @@
 
 static Real eps0 = 1.e-4;
 
-void Mesh::InitUserMeshProperties(ParameterInput *pin)
-{
-
-  return;
-}
-
-void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
-{
-  
-  
-  
-
-  return;
-}
-
-
-//======================================================================================
-//! \fn void Mesh::TerminateUserMeshProperties(void)
-//  \brief Clean up the Mesh properties
-//======================================================================================
-void Mesh::TerminateUserMeshProperties(ParameterInput *pin)
-{
-  // nothing to do
-  return;
-}
-
 
 
 //======================================================================================
@@ -159,16 +133,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   return;
 }
 
-//======================================================================================
-//! \fn void MeshBlock::UserWorkInLoop(void)
-//  \brief User-defined work function for every time step
-//======================================================================================
 
-void MeshBlock::UserWorkInLoop(void)
-{
-  // nothing to do
-  return;
-}
 
 
 

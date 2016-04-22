@@ -91,7 +91,7 @@ void PseudoNewtonian( MeshBlock *pmb, const Real time, const Real dt,
   const AthenaArray<Real> &prim,
   AthenaArray<Real> &bcc, AthenaArray<Real> &cons);
 
-void Mesh::InitUserMeshProperties(ParameterInput *pin)
+void Mesh::InitUserMeshData(ParameterInput *pin)
 {
   
     // Enroll boundary functions
@@ -163,7 +163,7 @@ void Mesh::InitUserMeshProperties(ParameterInput *pin)
 //! \fn void Mesh::TerminateUserMeshProperties(void)
 //  \brief Clean up the Mesh properties
 //======================================================================================
-void Mesh::TerminateUserMeshProperties(ParameterInput *pin)
+void Mesh::UserWorkAfterLoop(ParameterInput *pin)
 {
   // free memory
   if(RADIATION_ENABLED){
@@ -465,18 +465,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   
   return;
 }
-
-//======================================================================================
-//! \fn void MeshBlock::UserWorkInLoop(void)
-//  \brief User-defined work function for every time step
-//======================================================================================
-
-void MeshBlock::UserWorkInLoop(void)
-{
-  // nothing to do
-  return;
-}
-
 
 void DiskOpacity(MeshBlock *pmb, AthenaArray<Real> &prim)
 {

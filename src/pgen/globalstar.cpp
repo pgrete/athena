@@ -89,9 +89,8 @@ void Outflow_rad_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
                      int is, int ie, int js, int je, int ks, int ke);
 
 
-void Mesh::InitUserMeshProperties(ParameterInput *pin)
+void Mesh::InitUserMeshData(ParameterInput *pin)
 {
-
 
    tfloor = pin->GetOrAddReal("radiation", "tfloor", 0.01);
    tunit = pin->GetOrAddReal("radiation","Tunit",1.66724e5);
@@ -163,7 +162,7 @@ void Mesh::InitUserMeshProperties(ParameterInput *pin)
 //! \fn void Mesh::TerminateUserMeshProperties(void)
 //  \brief Clean up the Mesh properties
 //======================================================================================
-void Mesh::TerminateUserMeshProperties(ParameterInput *pin)
+void Mesh::UserWorkAfterLoop(ParameterInput *pin)
 {
   
      if(RADIATION_ENABLED){
@@ -327,16 +326,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   return;
 }
 
-//======================================================================================
-//! \fn void MeshBlock::UserWorkInLoop(void)
-//  \brief User-defined work function for every time step
-//======================================================================================
-
-void MeshBlock::UserWorkInLoop(void)
-{
-  // nothing to do
-  return;
-}
 
 void LoadRadVariable(MeshBlock *pmb)
 {

@@ -49,8 +49,9 @@ static int octnum;
 void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
                      int is, int ie, int js, int je, int ks, int ke);
 
-void Mesh::InitUserMeshProperties(ParameterInput *pin)
+void Mesh::InitUserMeshData(ParameterInput *pin)
 {
+
   ang = pin->GetOrAddInteger("problem","ang",0);
   octnum = pin->GetOrAddInteger("problem","octnum",0);
   
@@ -61,26 +62,6 @@ void Mesh::InitUserMeshProperties(ParameterInput *pin)
   return;
 }
 
-void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
-{
-  
-  
- 
-
-  return;
-}
-
-
-
-//======================================================================================
-//! \fn void Mesh::TerminateUserMeshProperties(void)
-//  \brief Clean up the Mesh properties
-//======================================================================================
-void Mesh::TerminateUserMeshProperties(ParameterInput *pin)
-{
-  // nothing to do
-  return;
-}
 
 
 
@@ -161,16 +142,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   return;
 }
 
-//======================================================================================
-//! \fn void MeshBlock::UserWorkInLoop(void)
-//  \brief User-defined work function for every time step
-//======================================================================================
-
-void MeshBlock::UserWorkInLoop(void)
-{
-  // nothing to do
-  return;
-}
 
 
 void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,

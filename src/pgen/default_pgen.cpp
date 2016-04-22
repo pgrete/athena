@@ -70,3 +70,11 @@ void __attribute__((weak)) Mesh::UserWorkAfterLoop(ParameterInput *pin)
   // do nothing
   return;
 }
+
+void __attribute__((weak)) MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
+{
+  
+
+
+  return;
+}
