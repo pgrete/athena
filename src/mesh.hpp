@@ -153,10 +153,10 @@ private:
   RadBValFunc_t RadBoundaryFunction_[6]; // Function Pointer for radiation
   AMRFlag_t AMRFlag_;
 
-  void MeshTest(int dim);
+  void OutputMeshStructure(int dim);
 
   // methods in /pgen
-  void InitUserMeshProperties(ParameterInput *pin);
+  void InitUserMeshData(ParameterInput *pin);
 
   void EnrollUserBoundaryFunction (enum BoundaryFace face, BValFunc_t my_func);
   void EnrollUserRadBoundaryFunction (enum BoundaryFace face, RadBValFunc_t my_func);
@@ -205,7 +205,7 @@ public:
   void TestConservation(void);
 
   // methods in /pgen
-  void TerminateUserMeshProperties(ParameterInput *pin);
+  void UserWorkAfterLoop(ParameterInput *pin);
 };
 
 
