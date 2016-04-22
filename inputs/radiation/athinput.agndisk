@@ -53,19 +53,21 @@ ox3_bc     = periodic  # inner-X3 boundary flag
 ix3_rad_bc = periodic
 ox3_rad_bc = periodic
 
+refinement = static
+
 <meshblock>
-nx1         = 16 
+nx1         = 8 
 nx2         = 16 
 nx3         = 16
 
 <refinement1>
 x1min       = 2
 x1max       = 50
-x2min       = 1.22173
-x2max       = 1.91986
+x2min       = 1.39627
+x2max       = 1.74532
 x3min       = 0.0
 x3max       = 6.28318530718
-level       = 3
+level       = 4
 
 <hydro>
 gamma           = 1.6666666666667       # gamma = C_p/C_v

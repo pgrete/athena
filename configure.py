@@ -117,7 +117,7 @@ parser.add_argument('-vis',
 # --cxx=[name] argument
 parser.add_argument('--cxx',
     default='g++',
-    choices=['g++','icc','cray','bgxl'],
+    choices=['g++','icc','cray','bgxl','mac'],
     help='select C++ compiler')
 
 # -debug argument
@@ -311,6 +311,12 @@ if args['cxx'] == 'cray':
   makefile_options['COMPILER_FLAGS'] = '-O3 -h aggress -h vector3 -hfp3'
   makefile_options['LINKER_FLAGS'] = '-hwp -hpl=obj/lib'
   makefile_options['LIBRARY_FLAGS'] = '-lm'
+if args['cxx'] == 'mac':
+  definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'g++'
+  makefile_options['PREPROCESSOR_FLAGS'] = ''
+  makefile_options['COMPILER_FLAGS'] = '-O3'
+  makefile_options['LINKER_FLAGS'] = ''
+  makefile_options['LIBRARY_FLAGS'] = ''
 if args['cxx'] == 'bgxl':
   # suppressed messages:
   #   1500-036:  nostrict option can change semantics
@@ -325,7 +331,7 @@ if args['cxx'] == 'bgxl':
 # -debug argument
 if args['debug']:
   definitions['DEBUG'] = 'DEBUG'
-  if args['cxx'] == 'g++' or args['cxx'] == 'icc':
+  if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'mac':
     makefile_options['COMPILER_FLAGS'] = '-O0 -g'
   if args['cxx'] == 'cray':
     makefile_options['COMPILER_FLAGS'] = '-O0'
@@ -337,7 +343,7 @@ else:
 # -mpi argument
 if args['mpi']:
   definitions['MPI_OPTION'] = 'MPI_PARALLEL'
-  if args['cxx'] == 'g++' or args['cxx'] == 'icc':
+  if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'mac':
     definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'mpicxx'
   if args['cxx'] == 'cray':
     makefile_options['COMPILER_FLAGS'] += ' -h mpi1'
@@ -349,7 +355,7 @@ else:
 # -omp argument
 if args['omp']:
   definitions['OPENMP_OPTION'] = 'OPENMP_PARALLEL'
-  if args['cxx'] == 'g++':
+  if args['cxx'] == 'g++' or args['cxx'] == 'mac':
     makefile_options['COMPILER_FLAGS'] += ' -fopenmp'
   if args['cxx'] == 'icc':
     makefile_options['COMPILER_FLAGS'] += ' -openmp'
@@ -374,6 +380,9 @@ if args['hdf5']:
   definitions['HDF5_OPTION'] = 'HDF5OUTPUT'
   if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'cray':
     makefile_options['LIBRARY_FLAGS'] += ' -lhdf5'
+  if args['cxx'] == 'mac':
+     makefile_options['LIBRARY_FLAGS'] += '-L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5'
+     makefile_options['COMPILER_FLAGS'] += ' -I/usr/local/Cellar/hdf5/1.8.16_1/include/'
   if args['cxx'] == 'bgxl':
     makefile_options['PREPROCESSOR_FLAGS'] += \
         ' -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_BSD_SOURCE' \
