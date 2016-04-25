@@ -379,6 +379,8 @@ int main(int argc, char *argv[])
 
   } // END OF MAIN INTEGRATION LOOP ====================================================
 
+  pmesh->UserWorkAfterLoop(pinput);
+
 #ifdef MPI_PARALLEL
   WallTimeLimit::FinalizeWTLimit(walltime_flag);
 #endif

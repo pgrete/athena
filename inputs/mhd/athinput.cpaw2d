@@ -1,14 +1,15 @@
 <comment>
-problem   = linear wave convergence
-reference =
-configure = -b --prob=linear_wave
+problem = 2D Circularly Polarized Alfven Wave
+author  = G. Toth
+journal = JCP, vol. 161, pp. 605-662 (2000).
+config  = -b --prob=cpaw
 
 <job>
-problem_id = LinWave   # problem ID: basename of output filenames
+problem_id = cpaw      # problem ID: basename of output filenames
 
 <output1>
 file_type  = hst       # History data dump
-dt         = 0.01      # time increment between outputs
+dt         = 0.1      # time increment between outputs
 
 <output2>
 file_type  = vtk       # Binary data dump
@@ -38,6 +39,19 @@ x3min      = -0.5      # minimum value of X3
 x3max      = 0.5       # maximum value of X3
 
 num_threads = 1        # maximum number of OMP threads
+refinement  = none
+
+<meshblock>
+nx1        = 256       # Number of zones in X1-direction
+nx2        = 128       # Number of zones in X2-direction
+nx3        = 128       # Number of zones in X3-direction
+
+<refinement1>
+x1min = 1.0
+x1max = 1.2
+x2min = 0.5
+x2max = 0.6
+level=1
 
 <hydro>
 gamma = 1.666666666666667 # gamma = C_p/C_v
@@ -45,7 +59,10 @@ iso_sound_speed = 1.0     # isothermal sound speed
 
 <problem>
 compute_error = 0     # set value to one to compute L1 error compared to initial data
-wave_flag = 0         # Wave family number (0 - 6 for adiabatic MHD)
-amp       = 1.0e-6    # Wave Amplitude
-vflow     = 0.0       # background flow velocity
-ang_2     = 0.0       # rotation of k around x2 axis
+b_par   = 1.0         # B parallel
+b_perp  = 0.1         # B perpendicular
+pres    = 0.1         # pressure
+v_par   = 0.0         # vpar = {0, 1} -> {traveling, standing} wave
+ang_2   = 0.0         # rotation of k around x2 axis
+dir     = 1           # 1: right polarization (whistler wave), 2: left
+
