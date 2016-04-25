@@ -147,6 +147,7 @@ void ODEWrapper::Integrate() {
         flag = CVodeReInit(cvode_mem_, tinit, y_);
         CheckFlag(&flag, "CVodeReInit", 1);
         //step 3: integration. update array abundance over time dt
+        //TODO: correct negative abundance?
         flag = CVode(cvode_mem_, tfinal, y_, &treturn, CV_NORMAL);
         CheckFlag(&flag, "CVode", 3);
       }
