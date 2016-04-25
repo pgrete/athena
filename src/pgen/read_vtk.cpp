@@ -49,16 +49,11 @@ static void readvtk(MeshBlock *mb, std::string filename, std::string field,
 //swap bytes
 static void ath_bswap(void *vdat, int len, int cnt);
 
-void Mesh::InitUserMeshProperties(ParameterInput *pin)
-{
-  return;
-}
-
 //======================================================================================
 //! \fn void Mesh::TerminateUserMeshProperties(void)
 //  \brief Clean up the Mesh properties
 //======================================================================================
-void Mesh::TerminateUserMeshProperties(void)
+void Mesh::UserWorkAfterLoop(ParameterInput *pin)
 {
   FILE *pf = fopen("chem_network.dat", "w");
   pblock->pspec->pchemnet->OutputProperties(pf);
