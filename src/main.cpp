@@ -45,9 +45,10 @@
 #include "outputs/wrapper.hpp"
 #include "utils/utils.hpp"
 //chemistry headers
-//TODO: if move chemistry main loop away, this won't be needed
+#ifdef INCLUDE_CHEMISTRY
 #include "chemistry/species.hpp" 
 #include "chemistry/network/network.hpp" 
+#endif
 
 // MPI/OpenMP headers
 #ifdef MPI_PARALLEL
@@ -323,6 +324,7 @@ int main(int argc, char *argv[])
     //pmesh->UpdateOneStep();
     //TODO: this needs to be moved in a function in Mesh, maybe called
     //someting like operater split
+#ifdef INCLUDE_CHEMISTRY
     if (CHEMISTRY_ENABLED) {
       MeshBlock *pmb = pmesh->pblock;
       while (pmb != NULL)  {
@@ -330,6 +332,7 @@ int main(int argc, char *argv[])
         pmb=pmb->next;
       }
     }
+#endif
 
     pmesh->ncycle++;
     pmesh->time += pmesh->dt;

@@ -25,7 +25,7 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
 {
   // read in the parameters
   int six_ray_flag = pin->GetOrAddInteger("radiation","six_ray_flag",0);
-  nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
+	nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
   
   pmy_block = pmb;
   

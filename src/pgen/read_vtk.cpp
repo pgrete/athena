@@ -33,10 +33,12 @@
 #include "../parameter_input.hpp"
 #include "../mesh.hpp"
 #include "../hydro/hydro.hpp"
-#include "../chemistry/species.hpp"
 #include "../field/field.hpp"
 #include "../hydro/eos/eos.hpp"
 #include "../coordinates/coordinates.hpp"
+#ifdef INCLUDE_CHEMISTRY
+#include "../chemistry/species.hpp"
+#endif
 
 
 //function to split a string into a vector
@@ -49,10 +51,7 @@ static void readvtk(MeshBlock *mb, std::string filename, std::string field,
 //swap bytes
 static void ath_bswap(void *vdat, int len, int cnt);
 
-//======================================================================================
-//! \fn void Mesh::TerminateUserMeshProperties(void)
-//  \brief Clean up the Mesh properties
-//======================================================================================
+#ifdef INCLUDE_CHEMISTRY
 void Mesh::UserWorkAfterLoop(ParameterInput *pin)
 {
   FILE *pf = fopen("chem_network.dat", "w");
@@ -60,6 +59,7 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
   fclose(pf);
   return;
 }
+#endif
 
 //======================================================================================
 //! \fn void MeshBlock::ProblemGenerator(ParameterInput *pin)
@@ -176,6 +176,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   }
 
 	//intialize chemical species
+#ifdef INCLUDE_CHEMISTRY
 	if (CHEMISTRY_ENABLED) {
       for (int k=ks; k<=ke; ++k) {
         for (int j=js; j<=je; ++j) {
@@ -187,6 +188,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         }
       }
 	}
+#endif
 
   //change primative variables to conservative variables.
   phydro->peos->PrimitiveToConserved(phydro->w, b, phydro->u, pcoord,

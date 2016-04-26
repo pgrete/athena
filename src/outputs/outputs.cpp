@@ -72,9 +72,11 @@
 #include "../parameter_input.hpp"
 #include "../mesh.hpp"
 #include "../hydro/hydro.hpp"
-#include "../chemistry/species.hpp"
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp" // Coordinates
+#ifdef INCLUDE_CHEMISTRY
+#include "../chemistry/species.hpp"
+#endif
 
 // this class header
 #include "outputs.hpp"
@@ -389,7 +391,9 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
 {
   Hydro *phyd = pmb->phydro;
   Field *pfld = pmb->pfield;
+#ifdef INCLUDE_CHEMISTRY
 	ChemSpecies *pspec = pmb->pspec;
+#endif
   std::stringstream str;
 
 // Create OutputData header
@@ -487,7 +491,7 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
       var_added+=3;
     }
   }
-
+#ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
 		//go over each species, and output as scaler fields
 		for (int ispec=0; ispec < NSPECIES; ispec++) {
@@ -503,6 +507,7 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
 			}
 		}
   }
+#endif
 
   if (output_params.variable.compare("ifov") == 0) {
     for (int n=0; n<(NIFOV); ++n) {

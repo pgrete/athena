@@ -35,7 +35,6 @@
 #include "athena_arrays.hpp"
 #include "coordinates/coordinates.hpp"
 #include "hydro/hydro.hpp" 
-#include "chemistry/species.hpp" 
 #include "field/field.hpp"
 #include "bvals/bvals.hpp"
 #include "hydro/eos/eos.hpp"
@@ -48,6 +47,9 @@
 #include "mesh_refinement/mesh_refinement.hpp"
 #include "utils/buffer_utils.hpp"
 #include "radiation/radiation.hpp"
+#ifdef INCLUDE_CHEMISTRY
+#include "chemistry/species.hpp" 
+#endif
 
 // this class header
 #include "mesh.hpp"
@@ -928,11 +930,13 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   if(pm->multilevel==true)
     pmr = new MeshRefinement(this, pin);
   phydro = new Hydro(this, pin);
+#ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
     pspec = new ChemSpecies(this, pin);
   } else {
     pspec = NULL;
   }
+#endif
   if (RADIATION_ENABLED) {
     prad = new Radiation(this, pin);
   } else {
@@ -1019,9 +1023,11 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   if(pm->multilevel==true)
     pmr = new MeshRefinement(this, pin);
   phydro = new Hydro(this, pin);
+#ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
     pspec = new ChemSpecies(this, pin);
   }
+#endif
   if (RADIATION_ENABLED) {
     prad = new Radiation(this, pin);
   }
@@ -1066,10 +1072,12 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     memcpy(pfield->b1.x3f.GetArrayPointer(), pfield->b.x3f.GetArrayPointer(),
            pfield->b.x3f.GetSize()*sizeof(Real));
   }
+#ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
     if( resfile.Read(pspec->s.GetArrayPointer(),sizeof(Real),
                pspec->s.GetSize()) != pspec->s.GetSize() ) nerr++;
   }
+#endif
   //TODO: note the order
   if (RADIATION_ENABLED) {
     if(resfile.Read(prad->ir.GetArrayPointer(),sizeof(Real),
@@ -1094,9 +1102,11 @@ MeshBlock::~MeshBlock()
 
   delete pcoord;
   delete phydro;
+#ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
     delete pspec;
   }
+#endif
   if (RADIATION_ENABLED) {
     delete prad;
   }
@@ -1339,9 +1349,11 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
   if (MAGNETIC_FIELDS_ENABLED)
     size+=sizeof(Real)*(pfield->b.x1f.GetSize()+pfield->b.x2f.GetSize()
                        +pfield->b.x3f.GetSize());
+#ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
     size+=sizeof(Real)*pspec->s.GetSize();
   }
+#endif
   if (RADIATION_ENABLED){
     size+=sizeof(Real)*prad->ir.GetSize();
   }

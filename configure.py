@@ -345,14 +345,21 @@ if args['std'] == 'c++11':
 # -chemistry argument
 if args['chemistry'] == "gow16":
   definitions['CHEMISTRY_ENABLED'] = '1'
+  definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
   definitions['NUM_SPECIES'] = '13'
-  makefile_options['CHEMNET_FILE'] = args['chemistry'] + '.cpp'
+  makefile_options['CHEMNET_FILE'] = 'src/chemistry/network/' \
+                                      + args['chemistry'] + '.cpp'
+  makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
+  #TODO: need to change this
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
   makefile_options['INCLUDE_DIR'] = '-I/usr/local/include/'
   makefile_options['LIBRARY_DIR'] = '-L/usr/local/lib/'
 else:
+  definitions['CHEMISTRY_OPTION'] = 'NOT_INCLUDE_CHEMISTRY'
   definitions['CHEMISTRY_ENABLED'] = '0'
-  makefile_options['CHEMNET_FILE'] = '*.cpp'
+  definitions['NUM_SPECIES'] = '0'
+  makefile_options['CHEMNET_FILE'] = ''
+  makefile_options['CHEMISTRY_FILE'] = ''
   makefile_options['INCLUDE_DIR'] = ''
   makefile_options['LIBRARY_DIR'] = ''
 
@@ -468,7 +475,8 @@ print('  Special relativity:      ' + ('ON' if args['s'] else 'OFF'))
 print('  General relativity:      ' + ('ON' if args['g'] else 'OFF'))
 print('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF'))
 print('  Viscosity:               ' + ('ON' if args['vis'] else 'OFF'))
-print('  Chemistry:               ' + args['chemistry'])
+print('  Chemistry:               ' + (args['chemistry'] if  args['chemistry'] \
+        !=  None else 'OFF'))
 print('  Post processing:         ' + ('ON' if args['pp'] else 'OFF'))
 print('  Compiler and flags:      ' + makefile_options['COMPILER_CHOICE'] + ' ' \
     + makefile_options['PREPROCESSOR_FLAGS'] + ' ' + makefile_options['COMPILER_FLAGS'])

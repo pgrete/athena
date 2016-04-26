@@ -17,12 +17,10 @@
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
 
-//CVODE headers. TODO: need to do this when Jim settle library with Kengo
+//CVODE headers. 
 #include <sundials/sundials_types.h> // realtype type
 #include <nvector/nvector_serial.h> // N_Vector type
 #include <sundials/sundials_dense.h> // definitions DlsMat DENSE_ELEM
-//TODO: maybe move sundial.h here.
-//#include "sundial.h" /*Ith IJth macro and CheckFlag function*/
 
 class ChemSpecies;
 class ParameterInput;
@@ -64,7 +62,8 @@ public:
 	static std::string species_names[NSPECIES];
 
 	//Set the rates of chemical reactions, eg. through density and radiation field.
-  void InitializeNextStep();
+  //k, j, i are the corresponding index of the grid
+  void InitializeNextStep(int k, int j, int i);
   //output properties of network. Can be used in eg. ProblemGenerator.
   void OutputProperties(FILE *pf) const;
 

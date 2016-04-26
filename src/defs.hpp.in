@@ -68,6 +68,9 @@
 // HDF5 output (HDF5OUTPUT or NO_HDF5OUTPUT)
 #define @HDF5_OPTION@
 
+// chemistry modules (INCLUDE_CHEMISTRY or NOT_INCLUDE_CHEMISTRY)
+#define @CHEMISTRY_OPTION@
+
 // number of internal hydro output variables
 #define NIFOV @NUM_IFOV@
 

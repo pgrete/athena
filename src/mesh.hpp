@@ -28,12 +28,14 @@ class Mesh;
 class MeshRefinement;
 class Coordinates;
 class Hydro;
-class ChemSpecies;
 class Field;
 class BoundaryValues;
 class TaskList;
 class MeshBlockTree;
 class Radiation;
+#ifdef INCLUDE_CHEMISTRY
+class ChemSpecies;
+#endif
 
 //! \struct NeighborBlock
 //  \brief neighbor rank, level, and ids
@@ -89,7 +91,9 @@ private:
   friend class BoundaryValues;
   friend class Mesh;
   friend class Hydro;
+#ifdef INCLUDE_CHEMISTRY
   friend class ChemSpecies;
+#endif
   friend class TaskList;
   friend class Radiation;
 #ifdef HDF5OUTPUT
@@ -120,7 +124,9 @@ public:
 
   Coordinates *pcoord;
   Hydro *phydro;
+#ifdef INCLUDE_CHEMISTRY
   ChemSpecies *pspec;
+#endif
   Field *pfield;
   Radiation *prad;
   BoundaryValues *pbval;

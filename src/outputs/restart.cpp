@@ -34,8 +34,10 @@
 #include "../mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../hydro/hydro.hpp"
-#include "../chemistry/species.hpp"
 #include "../field/field.hpp"
+#ifdef INCLUDE_CHEMISTRY
+#include "../chemistry/species.hpp"
+#endif
 
 // This class header
 #include "outputs.hpp"
@@ -219,9 +221,11 @@ void RestartOutput::WriteOutputFile(OutputData *pod, MeshBlock *pmb)
     resfile.Write(pmb->pfield->b.x3f.GetArrayPointer(),sizeof(Real),
                          pmb->pfield->b.x3f.GetSize());
   }
+#ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
     resfile.Write(pmb->pspec->s.GetArrayPointer(),sizeof(Real),
                          pmb->pspec->s.GetSize());
   }
+#endif
   return;
 }

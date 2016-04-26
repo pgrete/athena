@@ -44,17 +44,7 @@ public:
   //Constructor: Initialize CVODE, allocate memory for the ODE solver.
   ODEWrapper(ChemSpecies *pspec, ParameterInput *pin);
   ~ODEWrapper();
-  //Setting the parameter for the solver.
-  //void SetRelTol(const double reltol); This would be done from input block,
-  //such as <chemistry> relative tolerance
-  //... other parameters, such as absolute tolerance, maximum step...
-
   //Update abundance in species over time dt.
-  //For post-processing, can design a function to solve to equilibrium. 
-  //For time-dependent chemistry, dt = hydro timestep ?
-  //
-  // The integration steps:
-  //
   // For each cell:
   // Step 1: Set the radiation field strength in ChemNetwork.
   // Depends on the data structure of radiation field, this can be copying
@@ -72,6 +62,15 @@ public:
 
   //solve the chemical abundance to equilibrium. Useful for post-processing.
   void SolveEq();
+
+  //void SethInit(const Real h_init);
+  //Get the last step size
+  Real GetLastStep() const;
+  //Get the next step size
+  Real GetNextStep() const;
+  //Get the number of steps between two reinits.
+  long int GetNsteps() const;
+
 private:
   ChemSpecies *pmy_spec_;
   Real reltol_;//relative tolerance
@@ -82,7 +81,7 @@ private:
 
   //CVODE checkflag
   void CheckFlag(const void *flagvalue, const char *funcname, 
-                 const int opt);
+                 const int opt) const;
 };
 
 

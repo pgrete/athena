@@ -24,6 +24,9 @@
 //athena++ header
 #include "../species.hpp"
 #include "../../parameter_input.hpp"       //ParameterInput
+#include "../../mesh.hpp"
+#include "../../hydro/hydro.hpp"
+#include "../../radiation/radiation.hpp"
 
 //c++ header
 #include <vector>
@@ -42,6 +45,11 @@ static const int ngs_ = 7;
 static const std::string ghost_species_names_[ngs_] = 
 {"*Si", "*S", "*C", "*O", "*He", "*e", "*H"};
 static std::string species_names_all_[NSPECIES+ngs_];//all species
+static Real nH_; //density, updated at InitializeNextStep
+//units of density and radiation
+static Real unit_density_in_nH_;
+static Real unit_radiation_in_draine1987_;
+
 
 //find the index of element in the array of strings.
 //report error if find repetitive elements
@@ -83,6 +91,10 @@ static const Real mCO_ = 4.68e-23;
 static const int n_cr_ = 8;
 static const int n_2body_ = 30;
 static const int n_ph_ = 8;
+static const int n_freq_ = n_ph_ + 2;
+//radiation field in unit of Draine 1987 field (G0), updated at InitializeNextStep 
+//vector: [Gph, GPE, GISRF]
+static Real rad_[n_freq_];
 static const int n_gr_ = 6;
 static const int nE_ = 15;//number of heating and cooling processes
 static Real kcr_[n_cr_]; //rates for cosmic-ray reactions.
@@ -271,6 +283,16 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	//number of species and a list of name of species
   pmy_spec_ = pspec;
 	pmy_mb_ = pspec->pmy_block;
+  //check whether number of frequencies equal to the input file specification
+  const int nfreq = pin->GetOrAddInteger("radiation", "n_frequency",1);
+  std::stringstream msg; //error message
+  if (nfreq != n_freq_) {
+    msg << "### FATAL ERROR in ChemNetwork constructor" << std::endl
+      << "number of frequencies in radiation:" << nfreq 
+      << " not equal to that in chemistry" << n_freq_  << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+
 	//set the parameters from input file
 	zdg_ = pin->GetOrAddReal("chemistry", "Zdg", 1.);//dust and gas metallicity
 	xHe_ = pin->GetOrAddReal("chemistry", "xHe", 0.1);//He aboundance per H
@@ -283,7 +305,10 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	cr_rate_ = pin->GetOrAddReal("chemistry", "CR", 2e-16);
 	//Veolcity dispersion of CO in km/s for calculating NCOeff in CO cooling
 	bCO_ = pin->GetOrAddReal("chemistry", "bCO", 1.);
-
+  //units of density and radiation
+	unit_density_in_nH_ = pin->GetReal("chemistry", "unit_density_in_nH");
+	unit_radiation_in_draine1987_ = pin->GetReal(
+                                "chemistry", "unit_radiation_in_draine1987");
   //initialize rates to zero
   for (int i=0; i<n_cr_; i++) {
     kcr_[i] = 0;
@@ -307,11 +332,15 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 
 }
 
-ChemNetwork::~ChemNetwork() {}
+ChemNetwork::~ChemNetwork() {
+}
 
 void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES]) {
   for (int i=0; i<NSPECIES; i++) {
-    ydot[i] = i;
+    ydot[i] = nH_;
+    for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
+      ydot[i] += rad_[ifreq];
+    }
   }
   return;
 }
@@ -328,7 +357,20 @@ void ChemNetwork::Jacobian(const Real t,
   return;
 }
 
-void ChemNetwork::InitializeNextStep() {
+void ChemNetwork::InitializeNextStep(int k, int j, int i) {
+  Real rad_sum;
+  int nang = pmy_mb_->prad->nang;
+  //density
+  nH_ = pmy_mb_->phydro->u(IDN, k, j, i) / unit_density_in_nH_;
+  //average radiation field of all angles
+  for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
+    rad_sum = 0;
+    for (int iang=0; iang < nang; ++iang) {
+      rad_sum += pmy_mb_->prad->ir(k, j, i, ifreq * nang + iang);
+    }
+    rad_[ifreq] = rad_sum / nang / unit_radiation_in_draine1987_;
+  }
+  
 	return;
 }
 

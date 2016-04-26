@@ -60,6 +60,14 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
   }
   //user input Jacobian flag
   int user_jac = pin->GetOrAddInteger("chemistry", "user_jac", 0);
+  //maximum number of steps
+  long int maxsteps = pin->GetOrAddInteger("chemistry", "maxsteps", 1e4);
+  //maximum order
+  int maxorder = pin->GetOrAddInteger("chemistry", "maxorder", 3);
+  //stability limit detection
+  int stldet = pin->GetOrAddInteger("chemistry", "stldet", 0);
+  //initial step
+  Real h_init = pin->GetOrAddReal("chemistry", "h_init", 0.0);
 
   // -----------Initialize absolute value vector----------
   N_Vector abstol_vec = N_VNew_Serial(NSPECIES);
@@ -94,6 +102,23 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
   flag = CVDense(cvode_mem_, NSPECIES);
   CheckFlag(&flag, "CVDense", 1);
 
+  //set maximum number of steps
+  flag = CVodeSetMaxNumSteps(cvode_mem_, maxsteps);
+  CheckFlag(&flag, "CVodeSetMaxNumSteps", 1);
+
+  //set maximum order
+  flag = CVodeSetMaxOrd(cvode_mem_, maxorder);
+  CheckFlag(&flag, "CVodeSetMaxOrd", 1);
+
+  //set whether enable stability limit detection
+  //Only used to reduce the order of the order is larger than 3
+  flag = CVodeSetStabLimDet(cvode_mem_, stldet);
+  CheckFlag(&flag, "CVodeSetStabLimDet", 1);
+
+  //set initial step
+  flag = CVodeSetInitStep(cvode_mem_, h_init);
+  CheckFlag(&flag, "CVodeSetInitStep", 1);
+
   // Set the Jacobian routine to Jac (user-supplied)
 	if (user_jac) {
 		flag = CVDlsSetDenseJacFn(cvode_mem_, pmy_spec_->pchemnet->WrapJacobian);
@@ -102,7 +127,6 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
 
   //Free abstol_ vector
   N_VDestroy_Serial(abstol_vec);
-  
   
 }
 
@@ -139,7 +163,7 @@ void ODEWrapper::Integrate() {
       //loop over each cell
       for (int i=is; i<=ie; ++i) {
         //step 1: initialize chemistry network
-        pmy_spec_->pchemnet->InitializeNextStep();
+        pmy_spec_->pchemnet->InitializeNextStep(k, j, i);
         //step 2: re-initialize CVODE with starting time t, and vector y
         //allocate s1(i, *) to y_.
         //TODO: make sure Real and realtype are the same.
@@ -167,7 +191,7 @@ void ODEWrapper::SolveEq() {
 }
 
 void ODEWrapper::CheckFlag(const void *flagvalue, const char *funcname, 
-               const int opt) {
+               const int opt) const {
    int *errflag;
 
    // Check if SUNDIALS function returned NULL pointer - no memory allocated 
@@ -207,4 +231,29 @@ void ODEWrapper::CheckFlag(const void *flagvalue, const char *funcname,
        return; 
      }
    }
+}
+
+Real ODEWrapper::GetLastStep() const {
+  Real hlast;
+	int flag;
+  flag = CVodeGetLastStep(cvode_mem_, &hlast);
+  CheckFlag(&flag, "CVodeGetLastStep", 1);
+	return hlast;
+}
+
+Real ODEWrapper::GetNextStep() const {
+  Real hlast;
+	int flag;
+  flag = CVodeGetCurrentStep(cvode_mem_, &hlast);
+  CheckFlag(&flag, "CVodeGetLastStep", 1);
+	return hlast;
+}
+
+long int ODEWrapper::GetNsteps() const {
+  long int nst;
+  int flag;
+  flag = CVodeGetNumSteps(cvode_mem_, &nst);
+  CheckFlag(&flag, "CVodeGetNumSteps", 1);
+  return nst;
+
 }
