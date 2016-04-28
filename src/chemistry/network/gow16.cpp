@@ -49,15 +49,21 @@ static Real nH_; //density, updated at InitializeNextStep
 //units of density and radiation
 static Real unit_density_in_nH_;
 static Real unit_radiation_in_draine1987_;
+static Real temperature_;
+static int is_const_temp_; //flag for constant temperature
 
 
 //find the index of element in the array of strings.
 //report error if find repetitive elements
 static int FindStrIndex(const std::string *str_arr, const int len,
 		                    const std::string name);
+static void GetGhostSpecies(const Real *y, Real yall[NSPECIES+ngs_]); 
+static Real CII_rec_rate_(const Real temp);
+static void UpdateRates(const Real y[NSPECIES+ngs_]);
 
 //parameters of the netowork
-static Real zdg_, xHe_, xC_std_, xO_std_, xS_std_, xSi_std_, cr_rate_, bCO_;
+static Real zdg_, xHe_, xC_std_, xO_std_, xS_std_, xSi_std_, xC_, xO_, xS_,
+            xSi_,cr_rate_, bCO_;
 //index of species
 static int iHeplus_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "He+");
 static int iOHx_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "OHx");
@@ -92,6 +98,8 @@ static const int n_cr_ = 8;
 static const int n_2body_ = 30;
 static const int n_ph_ = 8;
 static const int n_freq_ = n_ph_ + 2;
+static const int index_gpe_ = n_ph_;
+//static const int index_gisrf_ = n_ph_ + 1; TODO: in dust cooling
 //radiation field in unit of Draine 1987 field (G0), updated at InitializeNextStep 
 //vector: [Gph, GPE, GISRF]
 static Real rad_[n_freq_];
@@ -309,6 +317,19 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	unit_density_in_nH_ = pin->GetReal("chemistry", "unit_density_in_nH");
 	unit_radiation_in_draine1987_ = pin->GetReal(
                                 "chemistry", "unit_radiation_in_draine1987");
+  //constant temperature
+  is_const_temp_ = pin->GetOrAddInteger("chemistry", "const_T_flag", 0);
+  if (is_const_temp_) {
+    temperature_ = pin->GetReal("chemistry", "temperature");
+  } else {
+    temperature_ = 0.;
+  }
+  //atomic abundance
+  xC_ = zdg_ * xC_std_;
+  xO_ = zdg_ * xO_std_;
+  xS_ = zdg_ * xS_std_;
+  xSi_ = zdg_ * xSi_std_;
+
   //initialize rates to zero
   for (int i=0; i<n_cr_; i++) {
     kcr_[i] = 0;
@@ -336,12 +357,57 @@ ChemNetwork::~ChemNetwork() {
 }
 
 void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES]) {
-  for (int i=0; i<NSPECIES; i++) {
-    ydot[i] = nH_;
-    for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
-      ydot[i] += rad_[ifreq];
-    }
+	Real rate;
+	//store previous y includeing ghost species
+	Real yprev[NSPECIES+ngs_];
+	Real ydotg[NSPECIES+ngs_];
+
+	for(int i=0; i<NSPECIES+ngs_; i++) {
+		ydotg[i] = 0.0;
+	}
+
+	// copy y to yprev and set ghost species
+	GetGhostSpecies(y, yprev);
+  UpdateRates(yprev);
+
+	//cosmic ray reactions
+	for (int i=0; i<n_cr_; i++) {
+		rate = kcr_[i] * yprev[incr_[i]];
+		ydotg[incr_[i]] -= rate;
+		ydotg[outcr_[i]] += rate;
+	}
+
+	for (int i=0; i<n_2body_; i++) {
+		rate =  k2body_[i] * yprev[in2body1_[i]] * yprev[in2body2_[i]];
+		ydotg[in2body1_[i]] -= rate;
+		ydotg[in2body2_[i]] -= rate;
+		ydotg[out2body1_[i]] += rate;
+		ydotg[out2body2_[i]] += rate;
+	}
+
+	//photo reactions
+	for (int i=0; i<n_ph_; i++) {
+		rate = kph_[i] * yprev[inph_[i]];
+		ydotg[inph_[i]] -= rate;
+		ydotg[outph1_[i]] += rate;
+	}
+
+	//grain assisted reactions
+	for (int i=0; i<n_gr_; i++) {
+		rate = kgr_[i] * yprev[ingr_[i]];
+		ydotg[ingr_[i]] -= rate;
+		ydotg[outgr_[i]] += rate;
+	}
+
+  //energy equation
+  //TODO: need to include energy equation later.
+  if (!is_const_temp_) {
+    //ydotg[iE_] = dEdt_(yprev);
   }
+	//set ydot to return
+	for (int i=0; i<NSPECIES; i++) {
+		ydot[i] = ydotg[i];
+	}
   return;
 }
 
@@ -349,15 +415,79 @@ void ChemNetwork::Jacobian(const Real t,
                const Real y[NSPECIES], const Real fy[NSPECIES], 
                Real jac[NSPECIES][NSPECIES],
                Real tmp1[NSPECIES], Real tmp2[NSPECIES], Real tmp3[NSPECIES]) {
-  for (int i=0; i<NSPECIES; i++) {
-    for (int j=0; j<NSPECIES; j++) {
-      jac[i][j] = 0;
-    }
-  }
+	Real rate_pa = 0; // rate for partial derivative respect to species a
+	Real rate_pb = 0;
+	int ia, ib, ic, id;//index for species a, b, c, d
+	//store previous y with ghost species
+	double yprev[NSPECIES+ngs_];
+	//Jacobian include ghost indexes
+	Real jac_[NSPECIES+ngs_][NSPECIES+ngs_];
+
+	// copy y to yprev and set ghost species
+	GetGhostSpecies(y, yprev);
+  // TODO: We can might skip this, which was caluclated in RHS
+  //UpdateRates(yprev);
+
+	//initialize jac_ to be zero
+	for (int i=0; i<NSPECIES+ngs_; i++) {
+		for (int j=0; j<NSPECIES+ngs_; j++) {
+			jac_[i][j] = 0;
+		}
+	}
+
+	// 2 body reactions: a+b -> c+d
+	for (int i=0; i<n_2body_; i++) {
+		ia = in2body1_[i];
+		ib = in2body2_[i];
+		ic = out2body1_[i];
+		id = out2body2_[i];
+		rate_pa = k2body_[i] * yprev[ib];
+		rate_pb = k2body_[i] * yprev[ia];
+		jac_[ia][ia] -= rate_pa;
+		jac_[ib][ia] -= rate_pa;
+		jac_[ic][ia] += rate_pa;
+		jac_[id][ia] += rate_pa;
+		jac_[ia][ib] -= rate_pb;
+		jac_[ib][ib] -= rate_pb;
+		jac_[ic][ib] += rate_pb;
+		jac_[id][ib] += rate_pb;
+	}
+	// photo reactions a + photon -> c+d
+	for (int i=0; i<n_ph_; i++) {
+		ia = inph_[i];
+		ic = outph1_[i];
+		rate_pa = kph_[i];
+		jac_[ia][ia] -= rate_pa;
+		jac_[ic][ia] += rate_pa;
+	}
+	//Cosmic ray reactions a + cr -> c
+	for (int i=0; i<n_cr_; i++) {
+		ia = incr_[i];
+		ic = outcr_[i];
+		rate_pa = kcr_[i];
+		jac_[ia][ia] -= rate_pa;
+		jac_[ic][ia] += rate_pa;
+	}
+
+	//grain reactions a + gr -> c
+	for (int i=0; i<n_gr_; i++) {
+		ia = ingr_[i];
+		ic = outgr_[i];
+		rate_pa = kgr_[i];
+		jac_[ia][ia] -= rate_pa;
+		jac_[ic][ia] += rate_pa;
+	}
+
+	//copy J to return
+	for (int i=0; i<NSPECIES; i++) {
+		for (int j=0; j<NSPECIES; j++) {
+			jac[i][j] = jac_[i][j];
+		}
+	}
   return;
 }
 
-void ChemNetwork::InitializeNextStep(int k, int j, int i) {
+void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
   Real rad_sum;
   int nang = pmy_mb_->prad->nang;
   //density
@@ -370,7 +500,6 @@ void ChemNetwork::InitializeNextStep(int k, int j, int i) {
     }
     rad_[ifreq] = rad_sum / nang / unit_radiation_in_draine1987_;
   }
-  
 	return;
 }
 
@@ -392,9 +521,8 @@ void ChemNetwork::OutputProperties(FILE *pf) const {
 		 kph_base_[i], kph_avfac_[i]);
 	}
 	for (int i=0; i<n_gr_; i++) {
-		fprintf(pf, "gr  + %4s -> %4s,     kgr = %.1e s-1 H-1\n", 
-		 species_names_all_[ingr_[i]].c_str(), species_names_all_[outgr_[i]].c_str(),
-		 kgr_[i]);
+		fprintf(pf, "gr  + %4s -> %4s\n", 
+		 species_names_all_[ingr_[i]].c_str(), species_names_all_[outgr_[i]].c_str());
 	}
   return;
 }
@@ -420,3 +548,203 @@ static int FindStrIndex(const std::string *str_arr, const int len,
       throw std::runtime_error(msg.str().c_str());
 	}
 }
+
+static void GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
+	//copy the aboundances in y to yghost
+	for (int i=0; i<NSPECIES; i++) {
+		yghost[i] = y[i];
+	}
+	//set the ghost species
+ 	yghost[igC_] = xC_ - yghost[iHCOplus_] -  yghost[iCHx_] 
+                     - yghost[iCO_] - yghost[iCplus_]; 
+	yghost[igO_] = xO_ - yghost[iHCOplus_] -  yghost[iOHx_] 
+                     - yghost[iCO_]; 
+	yghost[igHe_] = xHe_ - yghost[iHeplus_]; 
+	yghost[igS_] = xS_ - yghost[iSplus_]; 
+	yghost[igSi_] = xSi_ - yghost[iSiplus_]; 
+  yghost[ige_] = yghost[iHeplus_] + yghost[iCplus_] + yghost[iHCOplus_]
+                     + yghost[iH3plus_] + yghost[iH2plus_] + yghost[iHplus_]
+                     + yghost[iSplus_] + yghost[iSiplus_]; 
+	yghost[igH_] = 1.0 - (yghost[iOHx_] + yghost[iCHx_] + yghost[iHCOplus_]
+                     + 3.0*yghost[iH3plus_] + 2.0*yghost[iH2plus_] + yghost[iHplus_]
+										 + 2.0*yghost[iH2_]);
+	return;
+}
+
+static Real CII_rec_rate_(const Real temp) {
+  Real A, B, T0, T1, C, T2, BN, term1, term2, alpharr, alphadr;
+  A = 2.995e-9;
+  B = 0.7849;
+  T0 =  6.670e-3;
+  T1 = 1.943e6;
+  C = 0.1597;
+  T2 = 4.955e4;
+  BN = B + C * exp(-T2/temp);
+  term1 = sqrt(temp/T0);
+  term2 = sqrt(temp/T1);
+  alpharr = A / ( term1*pow(1.0+term1, 1.0-BN) * pow(1.0+term2, 1.0+BN) );
+  alphadr = pow( temp, -3.0/2.0 ) * ( 6.346e-9 * exp(-1.217e1/temp) +
+        9.793e-09 * exp(-7.38e1/temp) + 1.634e-06 * exp(-1.523e+04/temp) );
+  return (alpharr+alphadr);
+}
+
+static void UpdateRates(const Real y[NSPECIES+ngs_]) {
+  Real T;
+  //temperature TODO: constant for now, need evolution later.
+  if (is_const_temp_) {
+    T = temperature_;
+  } else {
+    //need to calculate temperature. In slab models:
+    //T = y[iE_] / Thermo::CvCold(y[iH2_], xHe_, y[ie_]);
+  }
+	const Real logT = log10(T);
+	const Real logT4 = log10(T/1.0e4);
+	const Real lnTe = log(T * 8.6173e-5);
+  Real ncr, n2ncr;
+	Real psi; /*H+ grain recombination parameter*/
+  Real kcr_H_fac;//ratio of total rate to primary rate
+  Real psi_gr_fac_;
+  const Real kida_fac = ( 0.62 + 45.41 / sqrt(T) ) * nH_;
+	/*cosmic ray reactions*/
+	for (int i=0; i<n_cr_; i++) {
+		kcr_[i] = kcr_base_[i] * cr_rate_;
+	}
+  //cosmic ray induced photo-reactions, proportional to x(H2)
+  //(0) cr + H2 -> H2+ + *e
+  //(1) cr + *He -> He+ + *e 
+  //(2) cr + *H  -> H+ + *e 
+  //(3) cr + *C -> C+ + *e     --including direct and cr induce photo reactions 
+  //(4) crphoto + CO -> *O + *C 
+  //(6) cr + S -> S+ + e, simply use 2 times rate of C, as in UMIST12
+  //(7) cr + Si -> Si+ + e, UMIST12 
+  kcr_H_fac = 1.15 * 2*y[iH2_] + 1.5 * y[igH_];
+  kcr_[0] *= kcr_H_fac;
+  kcr_[2] *= kcr_H_fac;
+  kcr_[3] *= (2*y[iH2_] + 3.85/kcr_base_[3]);
+  kcr_[4] *= 2*y[iH2_];
+  kcr_[6] *= 2*y[iH2_];
+  kcr_[7] *= 2*y[iH2_];
+	//2 body reactions
+	for (int i=0; i<n_2body_; i++){
+		k2body_[i] = k2body_base_[i] * pow(T, k2Texp_[i]) * nH_;
+	}
+	/*Special treatment of rates for some equations*/
+	/*(3) He+ + H2 -> H+ + *He + *H   --(89) exp(-35/T) */
+	k2body_[3] *= exp(-35./T);
+  /*(5) C+ + H2 -> CH + *H         -- schematic reaction for C+ + H2 -> CH2+*/
+  k2body_[5] *= exp(-23./T);
+  /* ---branching of C+ + H2 ------
+ (22) C+ + H2 + *e -> *C + *H + *H*/
+  k2body_[22] *= exp(-23./T);
+  /* (6) C+ + OH -> HCO+             -- Schematic equation for C+ + OH -> CO+ + H.
+     Use rates in KIDA website.*/
+  k2body_[6] = 9.15e-10 * kida_fac;
+  /*(8) OH + *C -> CO + *H          --exp(0.108/T)*/
+  k2body_[8] *= exp(0.108/T);
+	/*(9) He+ + *e -> *He             --(17) Case B */
+	k2body_[9] *= 11.19 + (-1.676 + (-0.2852 + 0.04433*logT) * logT )* logT;
+  /* (11) C+ + *e -> *C              -- Include RR and DR, Badnell2003, 2006. */
+  k2body_[11] = CII_rec_rate_(T) * nH_;
+  /* (13) H2+ + H2 -> H3+ + *H       --(54) exp(-T/46600) */
+  k2body_[13] *= exp(- T/46600.);
+	/* (14) H+ + *e -> *H              --(12) Case B */
+	k2body_[14] *= pow( 315614.0 / T, 1.5) 
+									 * pow(  1.0 + pow( 115188.0 / T, 0.407) , -2.242 );
+  //k2body_[14] = 3.5e-12 * pow( 300./T, 0.75 ) * nH_;
+  /* (28) He+ + OH -> *H + *He + *O(O+)*/
+  k2body_[28] = 1.35e-9 * kida_fac;
+  /*--- H2O+ + e branching--
+  (1) H3+ + *O -> OH + H2        
+  (27) H3+ + *O + *e -> H2 + *O + *H     */
+  const double h2oplus_ratio = 
+                k2body_[1] * y[iH2_] / ( 3.5e-7 * sqrt(300./T) * y[ige_] * nH_ );
+  k2body_[1] *= h2oplus_ratio / (h2oplus_ratio + 1.);
+  k2body_[27] *= 1. / (h2oplus_ratio + 1.);
+
+  //Collisional dissociation, k>~1.0e-30 at T>~5e2.
+  Real k9l, k9h, k10l, k10h, ncrH, ncrH2;
+  if (T > temp_coll_) {
+    /*(15) H2 + *H -> 3 *H   
+     *(16) H2 + H2 -> H2 + 2 *H
+     * --(9) Density dependent. See Glover+MacLow2007*/
+  	k9l = 6.67e-12 * sqrt(T) * exp(-(1. + 63590./T)); 
+    k9h = 3.52e-9 * exp(-43900.0 / T);
+    k10l = 5.996e-30 * pow(T, 4.1881) / pow((1.0 + 6.761e-6 * T), 5.6881)  
+            * exp(-54657.4 / T);
+    k10h = 1.3e-9 * exp(-53300.0 / T); 
+    ncrH = pow(10, (3.0 - 0.416 * logT4 - 0.327 * logT4*logT4));
+    ncrH2 = pow(10, (4.845 - 1.3 * logT4 + 1.62 * logT4*logT4));
+    ncr = 1. / ( y[igH_]/ncrH + y[iH2_]/ncrH2 );
+    n2ncr = nH_ / ncr;
+    k2body_[15] = pow(10, log10(k9h) *  n2ncr/(1. + n2ncr) 
+                         + log10(k9l) / (1. + n2ncr)) * nH_;
+    k2body_[16] = pow(10, log10(k10h) *  n2ncr/(1. + n2ncr) 
+                         + log10(k10l) / (1. + n2ncr)) * nH_;
+    /* (17) *H + *e -> H+ + 2 *e       --(11) Relates to Te */
+    k2body_[17] *= exp( -3.271396786e1 + 
+                      (1.35365560e1 + (- 5.73932875 + (1.56315498 
+                    + (- 2.877056e-1 + (3.48255977e-2 + (- 2.63197617e-3
+                    + (1.11954395e-4 + (-2.03914985e-6)
+        *lnTe)*lnTe)*lnTe)*lnTe)*lnTe)*lnTe)*lnTe)*lnTe
+                     );
+  } else {
+    k2body_[15] = 0.;
+    k2body_[16] = 0.;
+    k2body_[17] = 0.;
+  }
+  
+	//photo reactions
+	for (int i=0; i<n_ph_; i++) {
+    kph_[i] = kph_base_[i] * rad_[i];
+	}
+
+	// Grain assisted recombination of H and H2
+	//	 (0) *H + *H + gr -> H2 + gr , from Draine book chapter 31.2 page 346,
+	//	 Jura 1975
+	kgr_[0] = 3.0e-18 * sqrt(T) * nH_ * zdg_;
+	//	 (1) H+ + *e + gr -> *H + gr
+  //	 (2) C+ + *e + gr -> *C + gr
+  //   (3) He+ + *e + gr -> *He + gr
+  //   (4) S+ + *e + gr -> *S + gr
+  //   (5) Si+ + *e + gr -> *Si + gr
+  //   , rate dependent on e aboundance. 
+	psi_gr_fac_ = 1.7 * rad_[index_gpe_] * sqrt(T) / nH_; 
+	psi = psi_gr_fac_ / y[ige_];
+	kgr_[1] = 1.0e-14 * cHp_[0] / 
+		           (
+			           1.0 + cHp_[1]*pow(psi, cHp_[2]) * 
+								   (1.0 + cHp_[3] * pow(T, cHp_[4])
+										             *pow( psi, -cHp_[5]-cHp_[6]*log(T) ) 
+									 ) 
+								) * nH_ * zdg_;
+	kgr_[2] = 1.0e-14 * cCp_[0] / 
+		           (
+			           1.0 + cCp_[1]*pow(psi, cCp_[2]) * 
+								   (1.0 + cCp_[3] * pow(T, cCp_[4])
+										             *pow( psi, -cCp_[5]-cCp_[6]*log(T) ) 
+									 ) 
+								) * nH_ * zdg_;
+	kgr_[3] = 1.0e-14 * cHep_[0] / 
+		           (
+			           1.0 + cHep_[1]*pow(psi, cHep_[2]) * 
+								   (1.0 + cHep_[3] * pow(T, cHep_[4])
+										             *pow( psi, -cHep_[5]-cHep_[6]*log(T) ) 
+									 ) 
+								) * nH_ * zdg_;
+	kgr_[4] = 1.0e-14 * cSp_[0] / 
+		           (
+			           1.0 + cSp_[1]*pow(psi, cSp_[2]) * 
+								   (1.0 + cSp_[3] * pow(T, cSp_[4])
+										             *pow( psi, -cSp_[5]-cSp_[6]*log(T) ) 
+									 ) 
+								) * nH_ * zdg_;
+	kgr_[5] = 1.0e-14 * cSip_[0] / 
+		           (
+			           1.0 + cSip_[1]*pow(psi, cSip_[2]) * 
+								   (1.0 + cSip_[3] * pow(T, cSip_[4])
+										             *pow( psi, -cSip_[5]-cSip_[6]*log(T) ) 
+									 ) 
+								) * nH_ * zdg_;
+  return;
+}
+

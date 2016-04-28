@@ -32,6 +32,7 @@ public:
   //maybe parallelize i with openmpi later.
   AthenaArray<Real> s;  //fractional abundance of species s = n(s)/n(H)
   AthenaArray<Real> s1; //abundance of species copy at intermediate step
+  AthenaArray<Real> h; //next stepsize  
 
   ChemNetwork *pchemnet; //pointer to chemical network
   ODEWrapper *podew; //pointer to ode solver
@@ -63,7 +64,7 @@ public:
   //solve the chemical abundance to equilibrium. Useful for post-processing.
   void SolveEq();
 
-  //void SethInit(const Real h_init);
+  void SetInitStep(const Real h_init);
   //Get the last step size
   Real GetLastStep() const;
   //Get the next step size
@@ -78,6 +79,7 @@ private:
   void *cvode_mem_;
   N_Vector y_;
   Real *ydata_;
+  Real h_init_;
 
   //CVODE checkflag
   void CheckFlag(const void *flagvalue, const char *funcname, 

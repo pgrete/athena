@@ -22,6 +22,7 @@
 #include <stdio.h> //c style io
 #include <string>
 #include <stdexcept> //throw exceptions
+#include <ctime> //time
 
 // Athena++ classes headers
 #include "../parameter_input.hpp"
@@ -58,16 +59,16 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
       abstol_[i] = abstol_all;
     }
   }
+  //read initial step
+  h_init_ = pin->GetOrAddReal("chemistry", "h_init", 0.);
   //user input Jacobian flag
   int user_jac = pin->GetOrAddInteger("chemistry", "user_jac", 0);
   //maximum number of steps
-  long int maxsteps = pin->GetOrAddInteger("chemistry", "maxsteps", 1e4);
+  long int maxsteps = pin->GetOrAddInteger("chemistry", "maxsteps", 10000);
   //maximum order
   int maxorder = pin->GetOrAddInteger("chemistry", "maxorder", 3);
   //stability limit detection
   int stldet = pin->GetOrAddInteger("chemistry", "stldet", 0);
-  //initial step
-  Real h_init = pin->GetOrAddReal("chemistry", "h_init", 0.0);
 
   // -----------Initialize absolute value vector----------
   N_Vector abstol_vec = N_VNew_Serial(NSPECIES);
@@ -115,10 +116,6 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
   flag = CVodeSetStabLimDet(cvode_mem_, stldet);
   CheckFlag(&flag, "CVodeSetStabLimDet", 1);
 
-  //set initial step
-  flag = CVodeSetInitStep(cvode_mem_, h_init);
-  CheckFlag(&flag, "CVodeSetInitStep", 1);
-
   // Set the Jacobian routine to Jac (user-supplied)
 	if (user_jac) {
 		flag = CVDlsSetDenseJacFn(cvode_mem_, pmy_spec_->pchemnet->WrapJacobian);
@@ -149,9 +146,16 @@ void ODEWrapper::Integrate() {
   Real *pdata_s1 = pmy_spec_->s1.GetArrayPointer();
   Real tinit = pmy_spec_->pmy_block->pmy_mesh->time;
   Real dt = pmy_spec_->pmy_block->pmy_mesh->dt;
+  int ncycle = pmy_spec_->pmy_block->pmy_mesh->ncycle;
   Real tfinal = tinit + dt;
   Real treturn = 0;
   int flag;
+  bool is_first_zone = true;
+  //timing of the chemistry in each cycle
+  int nzones = (ie-is+1) * (je-js+1) * (ke-ks+1);
+  clock_t begin, end;
+  Real elapsed_secs;
+  begin = std::clock();
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       //copy s to s1
@@ -162,18 +166,31 @@ void ODEWrapper::Integrate() {
       }
       //loop over each cell
       for (int i=is; i<=ie; ++i) {
-        //step 1: initialize chemistry network
+        //step 1: initialize chemistry network, eg: density, radiation
+        NV_DATA_S(y_) = pdata_s1 + i*NSPECIES;
         pmy_spec_->pchemnet->InitializeNextStep(k, j, i);
         //step 2: re-initialize CVODE with starting time t, and vector y
         //allocate s1(i, *) to y_.
         //TODO: make sure Real and realtype are the same.
-        NV_DATA_S(y_) = pdata_s1 + i*NSPECIES;
         flag = CVodeReInit(cvode_mem_, tinit, y_);
         CheckFlag(&flag, "CVodeReInit", 1);
+        //set initial step
+        //TODO: make sure h in restart file
+        if (ncycle == 0) {
+          SetInitStep(h_init_);
+        } else {
+          SetInitStep(pmy_spec_->h(k, j, i));
+        }
         //step 3: integration. update array abundance over time dt
         //TODO: correct negative abundance?
         flag = CVode(cvode_mem_, tfinal, y_, &treturn, CV_NORMAL);
         CheckFlag(&flag, "CVode", 3);
+        //update next step size
+        if (ncycle == 0) {
+          //h_init_ = GetLastStep();
+        } else {
+          pmy_spec_->h(k, j, i) = GetNextStep();
+        }
       }
       //copy s1 back to s
       for (int ispec=0; ispec<NSPECIES; ispec++) {
@@ -183,6 +200,16 @@ void ODEWrapper::Integrate() {
       }
     }
   }
+  end = std::clock();
+  elapsed_secs = Real(end - begin) / CLOCKS_PER_SEC;
+  printf("ncycle = %d, total time in sec = %.2e, zone/sec=%.2e\n",
+      ncycle, elapsed_secs, elapsed_secs/Real(nzones) );
+  return;
+}
+
+void ODEWrapper::SetInitStep(const Real h_init) {
+  int flag = CVodeSetInitStep(cvode_mem_, h_init);
+  CheckFlag(&flag, "CVodeSetInitStep", 1);
   return;
 }
 

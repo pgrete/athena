@@ -63,7 +63,7 @@ public:
 
 	//Set the rates of chemical reactions, eg. through density and radiation field.
   //k, j, i are the corresponding index of the grid
-  void InitializeNextStep(int k, int j, int i);
+  void InitializeNextStep(const int k, const int j, const int i);
   //output properties of network. Can be used in eg. ProblemGenerator.
   void OutputProperties(FILE *pf) const;
 

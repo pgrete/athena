@@ -50,6 +50,9 @@ ChemSpecies::ChemSpecies(MeshBlock *pmb, ParameterInput *pin) {
   //allocate memory for the copy of s at intermediate step
   s1.NewAthenaArray(ncells1, NSPECIES);
 
+  //next step size
+  h.NewAthenaArray(ncells3, ncells2, ncells1);
+
   //construct ptrs to objects related to solving chemistry source term.
   pchemnet = new ChemNetwork(this, pin);
   podew = new ODEWrapper(this, pin);
@@ -58,6 +61,7 @@ ChemSpecies::ChemSpecies(MeshBlock *pmb, ParameterInput *pin) {
 ChemSpecies::~ChemSpecies() {
   s.DeleteAthenaArray();
   s1.DeleteAthenaArray();
+  h.DeleteAthenaArray();
   delete pchemnet;
   delete podew;
 }
