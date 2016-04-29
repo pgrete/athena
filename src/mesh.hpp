@@ -100,7 +100,9 @@ public:
             Mesh *pm, ParameterInput *pin, bool ref_flag = false);
 
   MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin, LogicalLocation iloc,
-  IOWrapper& resfile, IOWrapperSize_t offset, Real icost, int *ranklist, int *nslist);
+            RegionSize input_block, enum BoundaryFlag *input_bcs,
+            enum BoundaryFlag *input_rad_bcs, Real icost,
+            int *ranklist, int *nslist, Real *mbdata);
   ~MeshBlock();
   size_t GetBlockSizeInBytes(void);
   void SearchAndSetNeighbors(MeshBlockTree &tree, int *ranklist, int *nslist);
