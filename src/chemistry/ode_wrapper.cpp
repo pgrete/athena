@@ -107,6 +107,10 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
   flag = CVodeSetMaxNumSteps(cvode_mem_, maxsteps);
   CheckFlag(&flag, "CVodeSetMaxNumSteps", 1);
 
+  //set maximum number of convergence failure
+  flag = CVodeSetMaxConvFails(cvode_mem_, 50);
+  CheckFlag(&flag, "CVodeSetMaxNumSteps", 1);
+
   //set maximum order
   flag = CVodeSetMaxOrd(cvode_mem_, maxorder);
   CheckFlag(&flag, "CVodeSetMaxOrd", 1);
