@@ -599,7 +599,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   if(resfile.Read(&time, sizeof(Real), 1)!=1) nerr++;
   if(resfile.Read(&dt, sizeof(Real), 1)!=1) nerr++;
   if(resfile.Read(&ncycle, sizeof(int), 1)!=1) nerr++;
-  if(resfile.Read(&(datasize), sizeof(IOWrapperSize_t), 1)!=1) nerr;
+  if(resfile.Read(&(datasize), sizeof(IOWrapperSize_t), 1)!=1) nerr++;
   if(nerr>0) {
     msg << "### FATAL ERROR in Mesh constructor" << std::endl
         << "The restarting file is broken." << std::endl;
@@ -1140,12 +1140,6 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     os += prad->ir.GetSize();
   }
 
-  if(nerr>0) {
-    msg << "### FATAL ERROR in MeshBlock constructor" << std::endl
-        << "The restarting file is broken." << std::endl;
-    resfile.Close();
-    throw std::runtime_error(msg.str().c_str());
-  }
   
   InitUserMeshBlockProperties(pin);
   
@@ -1438,7 +1432,7 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
 {
   size_t size;
 
-  size+=sizeof(Real)*phydro->u.GetSize();
+  size=sizeof(Real)*phydro->u.GetSize();
   if (GENERAL_RELATIVITY) {
     size+=sizeof(Real)*phydro->w.GetSize();
     size+=sizeof(Real)*phydro->w1.GetSize();
