@@ -102,7 +102,12 @@ void RadIntegrator::Absorption(const AthenaArray<Real> &wmu_cm,
       if(coef[4] > 0.0 && coef[1] > 0.0 && coef[0] > 0.0){
         badcell = 1;
         tgasnew = tgas;
-      }else if(fabs(coef[4]) > 1.e-13){
+      }else if(coef[4]/coef[1] > 1.e6){
+        tgasnew = pow(-coef[0]/coef[4],0.25);
+      }else if(fabs(coef[4]) < 1.e-13){
+        tgasnew = -coef[0]/coef[1];
+      } else {
+      
         int flag = ExactPolynomial(coef[4], coef[1], coef[0], tgasnew);
         if(flag == -1){
          // take the larger value to avoid negative root
@@ -111,8 +116,8 @@ void RadIntegrator::Absorption(const AthenaArray<Real> &wmu_cm,
          Laguer(coef, 4, tgasnew);
         }
       }
-      else
-        tgasnew = -coef[0]/coef[1];
+      
+        
     }
     
     // even if tr=told, there can be change for intensity, making them isotropic

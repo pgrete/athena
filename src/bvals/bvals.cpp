@@ -3973,10 +3973,15 @@ void BoundaryValues::ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst)
     if (RadBoundaryFunction_[INNER_X2] != NULL) {
       RadBoundaryFunction_[INNER_X2](pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
     }
+    
     // Apply boundary function on outer-x2
     if (RadBoundaryFunction_[OUTER_X2] != NULL) {
       RadBoundaryFunction_[OUTER_X2](pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
 
+    }
+    if(pmb->prad->rotate==1){
+      RotateHPi_InnerX2(pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
+      RotateHPi_OuterX2(pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
     }
   }
 

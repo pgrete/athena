@@ -48,6 +48,8 @@ ox3_bc     = user  # inner-X3 boundary flag
 ix3_rad_bc = reflecting
 ox3_rad_bc = user
 
+refinement = static
+
 <meshblock>
 nx1         = 16 
 nx2         = 16 

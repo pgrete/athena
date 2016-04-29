@@ -111,6 +111,14 @@ void RadVacuumOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
 void RadVacuumOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &buf,
                     int is, int ie, int js, int je, int ks, int ke);
 
+
+void RotateHPi_InnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+                    int is, int ie, int js, int je, int ks, int ke);
+
+void RotateHPi_OuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+                    int is, int ie, int js, int je, int ks, int ke);
+
+
 // function to return boundary flag given input string
 enum BoundaryFlag GetBoundaryFlag(std::string input_string);
 

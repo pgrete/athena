@@ -178,6 +178,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
         Real frx0 = 0.0;
         Real fry0 = 0.0;
         Real frz0 = 0.0;
+      if(prad->set_source_flag > 0){
         
         for(int ifr=0; ifr<nfreq; ++ifr){
 #pragma simd
@@ -193,8 +194,8 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
            fry0 *= prad->wfreq(ifr);
            frz0 *= prad->wfreq(ifr);
         }
-        
-        
+      }
+       
        // now update the lab frame intensity
         for(int ifr=0; ifr<nfreq; ++ifr){
 #pragma simd
@@ -206,6 +207,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
 
        // now calculate the new moments
                // first, calculate Er and Fr in lab frame before the step
+      if(prad->set_source_flag > 0){
         Real er = 0.0;
         Real frx = 0.0;
         Real fry = 0.0;
@@ -248,6 +250,8 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
           u(IM3,k,j,i) *= factor;
         
         }
+        
+       }//source flag
         
       }// end i
     }// end j

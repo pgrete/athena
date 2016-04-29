@@ -82,7 +82,7 @@ Crat        = 5694.76
 Tunit       = 2.e5
 rhounit     = 1.e-8
 lunit       = 1.48428e14
-Compton     = 1
+Compton     = 0
 tfloor      = 0.01
 
 <problem>

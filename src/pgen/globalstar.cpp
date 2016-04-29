@@ -50,15 +50,16 @@ static AthenaArray<Real> opacitytable;
 static AthenaArray<Real> logttable;
 static AthenaArray<Real> logrhottable;
 
+
 // The global variable
 static Real grav0 = 1.20343;
-static Real consFr = 6.48071e-5;
+static Real consFr = 5.67062e-5;
 static Real kappaes = 80.1216;
 
 static Real rhounit = 3.6e-9;
 static Real tunit;
 static Real lunit = 6.955e10;
-
+static Real tbot[NGHOST];
 static Real tfloor;
 
 static Real lbottom=65.579;
@@ -150,8 +151,6 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
      fclose(fkappa);
      fclose(flogT);
      fclose(flogrhoT);
-
-
    
    }// End Radiation
 
@@ -187,10 +186,70 @@ void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
      if(NRADFOV > 0)
         prad->EnrollInternalVariableFunction(LoadRadVariable);
     
+      // the bottom value of z coordinate in the block
+     AthenaArray<Real> height, tgas, density;
+    
 
-  }else{
+     // first, get the coordinate at the bottom of box
+    
 
-  }
+    
+
+    
+     // Initial profile from input data
+     // Only the block with physical boundary condition needs this
+     Real &x1 = pcoord->x1v(is-1);
+     if(x1 < pmy_mesh->mesh_size.x1min){
+     
+        height.NewAthenaArray(ninputline);
+        tgas.NewAthenaArray(ninputline);
+        density.NewAthenaArray(ninputline);
+    
+        FILE *finput;
+        if ( (finput=fopen("./Input.txt","r"))==NULL )
+	      {
+		      printf("Open input file error");
+		      return;
+	      }
+        for(int i=0; i<ninputline; ++i){
+          fscanf(finput,"%lf",&(height(i)));
+          fscanf(finput,"%lf",&(tgas(i)));
+	 	      fscanf(finput,"%lf",&(density(i)));
+        }
+  
+        fclose(finput);
+       
+        // Get the temperature at the ghozt zones
+        for(int i=1; i<=NGHOST; ++i){
+           Real &x1 = pcoord->x1v(is-i);
+         // get the position
+           int lleft=0;
+
+          int lright=1;
+          while((x1 > height(lright)) && (lright < ninputline-1)){
+              lright = lright+1;
+          }
+          if(lright - lleft > 1) lleft = lright -1;
+    
+          tbot[i-1] = tgas(lleft) + (x1 - height(lleft)) *
+                                (tgas(lright) - tgas(lleft))
+                               /(height(lright) - height(lleft));
+        }
+    
+    
+        height.DeleteAthenaArray();
+        tgas.DeleteAthenaArray();
+        density.DeleteAthenaArray();
+       
+       
+     
+     
+      }
+
+
+   }else{
+
+   }
   
 
   return;
@@ -236,6 +295,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   
   fclose(finput);
 
+
+
   //////////////////////////////////////////////
   
   // Initialize hydro variable
@@ -259,16 +320,16 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
                                 (tgas(lright) - tgas(lleft))
                                /(height(lright) - height(lleft));
     
-    if(rho > 1.e-3) amp = 1.e-3;
+    if(rho > 5.e-1 && x1 > 50.0) amp = 1.e-3;
     else amp = 0.0;
     
-    rho *= (1.0 + amp * ((double)rand()/(double)RAND_MAX-0.5));
+//    rho *= (1.0 + amp * ((double)rand()/(double)RAND_MAX-0.5));
     
     
     for (int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
         phydro->u(IDN,k,j,i) = rho;
-        phydro->u(IM1,k,j,i) = 0.0;
+        phydro->u(IM1,k,j,i) = rho * (amp * ((double)rand()/(double)RAND_MAX-0.5));
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
         if (NON_BAROTROPIC_EOS){
@@ -566,7 +627,68 @@ void Outflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFiel
   return;
 }
 
+// Fix the radiation temperature and flux
 void Inflow_rad_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+                     int is, int ie, int js, int je, int ks, int ke)
+{
+  Radiation *prad=pmb->prad;
+  
+
+        
+  // construct \sum W I=jlocal and \sum Wnr I=frlocal
+  // Assum I is uniform for all nx>0
+  // and I is uniform for all nx<0
+
+  
+  for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+      for (int i=1; i<=NGHOST; ++i) {
+      
+        Real x1 = pmb->pcoord->x1v(is-i);
+        Real radratio = (lbottom/x1) * (lbottom/x1);
+
+        Real er = tbot[i-1] * tbot[i-1] * tbot[i-1] * tbot[i-1];
+        for(int ifr=0; ifr<prad->nfreq; ++ifr){
+            Real coefa = 0.0, coefb = 0.0;
+            Real coefa1 = 0.0, coefb1 = 0.0;
+            for(int n=0; n<prad->nang; ++n){
+              // spherical polar coordinate
+              Real &miuz = prad->mu(0,k,j,is-i,n);
+              Real &weight = prad->wmu(n);
+              if(miuz > 0.0){
+                coefa += weight;
+                coefb += (miuz * weight);
+              }else{
+                coefa1 += weight;
+                coefb1 += (miuz * weight);
+              }
+              
+            }
+            
+            for(int n=0; n<prad->nang; ++n){
+              Real &miuz = prad->mu(0,k,j,i,n);
+            
+              if(miuz > 0.0){
+                prad->ir(k,j,is-i,ifr*prad->nang+n) = 0.5 *
+                                       (er/coefa + consFr * radratio/coefb);
+              }else{
+                prad->ir(k,j,is-i,ifr*prad->nang+n) = 0.5 *
+                                       (er/coefa1 + consFr * radratio/coefb1);
+              }
+            }
+      }// end ifr
+        
+        
+     }// end i
+    }// end j
+  }// end k
+  
+
+  return;
+}
+
+
+void Inflow_rad_X1_old(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
                      int is, int ie, int js, int je, int ks, int ke)
 {
   Radiation *prad=pmb->prad;

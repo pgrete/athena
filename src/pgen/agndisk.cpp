@@ -51,6 +51,8 @@ static Real rhofloor; // density floor
 static int bconf = 0; // bconf=1: pure B_phi
                       // bconf=0: vector potential proportional to density
                       // bconf=2: two loops
+
+static int nloop = 1;
 static Real lprofile= 0.4;
 static Real vs0 = 100.0;
 
@@ -159,6 +161,8 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   return;
 }
 
+
+
 //======================================================================================
 //! \fn void Mesh::TerminateUserMeshProperties(void)
 //  \brief Clean up the Mesh properties
@@ -187,16 +191,30 @@ void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
     
       gm = 0.5 * prad->crat * prad->crat;
     
-    
 
       if(NRADFOV > 0)
         prad->EnrollInternalVariableFunction(LoadRadVariable);
+
+      prad->set_source_flag = 0;
+
 
   }else{
       gm = 0.5 * 5694.76 * 5694.76;
   }
   
 
+  return;
+}
+
+
+void MeshBlock::UserWorkInLoop(void)
+{
+  if(RADIATION_ENABLED){
+  
+    if(prad->set_source_flag > 0)
+       prad->set_source_flag--;
+  
+  }
   return;
 }
 
@@ -352,7 +370,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     
 
 
-
+  if(nloop==1){
     // need vector potential
     if(bconf == 0 || bconf == 2){
       Real aphi;
@@ -386,6 +404,77 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     
     
     }// end bconf=0 and bconf=2
+  }else if(nloop==3){
+     Real lambdaB = 2.0;
+     Real ri = 15.0;
+     Real ro = 48.0;
+     Real aphi;
+
+     for(int k=ks; k<=ku; ++k){
+     for(int j=jl; j<=ju; ++j){
+     for(int i=il; i<=iu; ++i){
+      Real rho = phydro->u(IDN,k,j,i);
+    
+      // reconstruct the density at (r, pi/2)
+      Real &x1 = pcoord->x1v(i);
+      // the cylindrical radius
+      Real angradius = x1;
+      Real langular = l0 * pow(angradius/r0,lprofile);
+      Real vphi = langular/angradius;
+      Real effphi = -crat*crat/(2.0*(x1-1.0))
+                  +pow((langular/angradius),2.0)/(2.0*(1.0-lprofile));
+      Real effphi0 = -crat*crat/(2.0*(r0-1.0))
+                  +pow((l0/r0),2.0)/(2.0*(1.0-lprofile));
+    
+      Real tempphi = ((effphi-effphi0)/nindex)/(vs0*vs0);
+      Real rhomid;
+      if((fabs(tempphi)<1.0) && (x1 > 8.0)){
+        rhomid = rho0*pow(fabs(1.0-tempphi),nindex);
+        rhomid = std::max(rhomid,rhofloor);
+      }else{
+        rhomid = rhofloor;
+      }
+      
+      // reconstruct the density at (ro, pi/2)
+      angradius = ro;
+      langular = l0 * pow(angradius/r0,lprofile);
+      vphi = langular/angradius;
+      effphi = -crat*crat/(2.0*(ro-1.0))
+                  +pow((langular/angradius),2.0)/(2.0*(1.0-lprofile));
+      effphi0 = -crat*crat/(2.0*(r0-1.0))
+                  +pow((l0/r0),2.0)/(2.0*(1.0-lprofile));
+    
+      tempphi = ((effphi-effphi0)/nindex)/(vs0*vs0);
+      Real rhoend;
+      if((fabs(tempphi)<1.0) && (ro > 8.0)){
+        rhoend = rho0*pow(fabs(1.0-tempphi),nindex);
+        rhoend = std::max(rhoend,rhofloor);
+      }else{
+        rhoend = rhofloor;
+      }
+      
+      Real qfactor;
+      Real rhoratio = (rho-rhoend)/(rhomid-rhoend);
+      if(x1 > ri && x1 < ro && rho > 1000*rhofloor){
+        Real sintheta = sin(pcoord->x2v(j));
+        qfactor = sintheta*sintheta*sintheta*(rhoratio - 0.2)/0.8;
+      }else{
+        qfactor = 0.0;
+      }
+      Real ffactor = (pow(x1,2.0/3.0)+15.0*pow(x1,-0.4)/8.0)/lambdaB;
+      Real fifactor = (pow(ri,2.0/3.0)+15.0*pow(ri,-0.4)/8.0)/lambdaB;
+      
+      aphi = inib0 * qfactor * sin(ffactor - fifactor)*sin(0.5*PI-pcoord->x2v(j));
+      
+      baphi(k,j,i) = aphi;
+
+  
+  
+     }}}// end k, j, i
+  
+  
+  
+  }
 
        
     //B=div X Phi
@@ -399,7 +488,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     
     // For non-zero A_phi component, B_r, B_theta poloidal component are non-zero
     
-
+  if(bconf ==0 || bconf==2){
     for (int k=ks; k<=ke; ++k) {
       // reset loop limits for polar boundary
       jl=js; ju=je+1;
@@ -437,6 +526,49 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       }
 
     }// end nx2 > 1
+  }else if(bconf==1){
+  
+ 
+    for (int k=ks; k<=ke; ++k) {
+      // reset loop limits for polar boundary
+      jl=js; ju=je+1;
+      if (block_bcs[INNER_X2] == POLAR_BNDRY) jl=js+1;
+      if (block_bcs[OUTER_X2] == POLAR_BNDRY) ju=je;
+      for (int j=jl; j<=ju; ++j) {
+        pcoord->Face2Area(k,j,is,ie,area);
+        pcoord->Edge3Length(k,j,is,ie+1,len);
+        for (int i=is; i<=ie; ++i) {
+          pfield->b.x2f(k,j,i) = inib0;
+        }
+      }
+    }
+
+    for (int k=ks; k<=ke+1; ++k) {
+      for (int j=js; j<=je; ++j) {
+        for (int i=is; i<=ie; ++i) {
+          pfield->b.x3f(k,j,i) = 0.0;
+        }
+      }
+    }
+
+    if (block_size.nx2 > 1) {
+      for (int k=ks; k<=ke; ++k) {
+        for (int j=js; j<=je; ++j) {
+          pcoord->Face1Area(k,j,is,ie+1,area);
+          pcoord->Edge3Length(k,j  ,is,ie+1,len);
+          pcoord->Edge3Length(k,j+1,is,ie+1,len_p1);
+          for (int i=is; i<=ie+1; ++i) {
+            pfield->b.x1f(k,j,i) = 0.0;
+          }
+        }
+      }
+
+    }// end nx2 > 1
+
+ 
+  
+  
+  }
 
 
       

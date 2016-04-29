@@ -80,7 +80,7 @@ nmu         = 4
 Prat        = 5.46103
 Crat        = 805.338
 Tunit       = 1.e7
-Compton     = 1
+Compton     = 0
 tfloor      = 0.01
 
 <problem>

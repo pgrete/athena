@@ -1,10 +1,10 @@
 <comment>
 problem   = Radiation beam test
 reference = 
-configure = --prob=globaldisk
+configure = --prob=globalstar
 
 <job>
-problem_id = disk        # problem ID: basename of output filenames
+problem_id = star        # problem ID: basename of output filenames
 
 <output1>
 file_type  = hdf5       # Binary data dump
@@ -18,7 +18,7 @@ variable   = prim
 
 <output3>
 file_type  = rst       # Binary data dump
-dt         = 0.01       # time increment between outputs
+dt         = 0.005       # time increment between outputs
 
 
 <time>
@@ -27,16 +27,16 @@ nlim       = -1    # cycle limit
 tlim       = 2000000.0      # time limit
 
 <mesh>
-nx1        = 64       # Number of zones in X1-direction
-x1min      = 25.0     # minimum value of X1
-x1max      = 300.0      # maximum value of X1
+nx1        = 24       # Number of zones in X1-direction
+x1min      = 30.0     # minimum value of X1
+x1max      = 283.946      # maximum value of X1
 ix1_bc     = user  # inner-X1 boundary flag
 ox1_bc     = user  # inner-X1 boundary flag
 ix1_rad_bc = user
 ox1_rad_bc = user
-x1rat      = 1.03959
+x1rat      = 1.0981748
 
-nx2        = 80       # Number of zones in X2-direction
+nx2        = 32       # Number of zones in X2-direction
 x2min      = 0.00      # minimum value of X2
 x2max      = 3.14159265358979       # maximum value of X2
 ix2_bc     = polar  # inner-X2 boundary flag
@@ -45,7 +45,7 @@ ix2_rad_bc = polar
 ox2_rad_bc = polar
 
 
-nx3        = 160       # Number of zones in X3-direction
+nx3        = 64       # Number of zones in X3-direction
 x3min      = 0.0      # minimum value of X3
 x3max      = 6.28318530718       # maximum value of X3
 ix3_bc     = periodic  # inner-X3 boundary flag
@@ -53,19 +53,21 @@ ox3_bc     = periodic  # inner-X3 boundary flag
 ix3_rad_bc = periodic
 ox3_rad_bc = periodic
 
+refinement = static
+
 <meshblock>
-nx1         = 16 
-nx2         = 20 
-nx3         = 20
+nx1         = 6 
+nx2         = 8
+nx3         = 8
 
 <refinement1>
-x1min       = 25
-x1max       = 200
+x1min       = 30
+x1max       = 150
 x2min       = 0.7854
-x2max       = 2.3562
+x2max       = 2.3561
 x3min       = 0.0
 x3max       = 6.28318530718
-level       = 2
+level       = 3
 
 <hydro>
 gamma           = 1.6666666666667       # gamma = C_p/C_v

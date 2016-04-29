@@ -85,6 +85,10 @@ public:
   void AngularGrid(int angle_flag, int nmu);
 
   void FrequencyGrid();
+  
+  int rotate; // flag to rotate the boundary
+  
+  int set_source_flag; // flag to add radiation source term or not
 
 
 private:

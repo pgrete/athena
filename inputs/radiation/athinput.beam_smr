@@ -57,6 +57,7 @@ ox3_bc     = periodic  # inner-X3 boundary flag
 ix3_rad_bc = periodic
 ox3_rad_bc = periodic
 
+refinement = static
 
 <meshblock>
 nx1 = 16 
