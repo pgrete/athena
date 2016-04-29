@@ -36,6 +36,7 @@
 #include "../field/field.hpp"
 #include "../hydro/eos/eos.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../radiation/radiation.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../chemistry/species.hpp"
 #endif
@@ -85,6 +86,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   std::string str_vectors = pin->GetString("problem", "vectors");
   std::vector<std::string> scaler_fields = split(str_scalers, ',');
   std::vector<std::string> vector_fields = split(str_vectors, ',');
+	//read radiation field strength and initial abundance
+	const Real G0 = pin->GetReal("problem", "G0");
+	const Real s_init = pin->GetReal("problem", "s_init");
   
   //find coresponding filename.
   if (loc.lx1 == 0 && loc.lx2 == 0 && loc.lx3 == 0) {
@@ -175,14 +179,29 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     }
   }
 
-	//intialize chemical species
+	//intialize radiation field
+	if (RADIATION_ENABLED) {
+      for (int k=ks; k<=ke; ++k) {
+        for (int j=js; j<=je; ++j) {
+          for (int i=is; i<=ie; ++i) {
+						for (int ifreq=0; ifreq < prad->nfreq; ++ifreq) {
+							for (int iang=0; iang < prad->nang; ++iang) {
+								prad->ir(k, j, i, ifreq * prad->nang + iang) = G0;
+							}
+						}
+          }
+        }
+      }
+	}
+
+  //intialize chemical species
 #ifdef INCLUDE_CHEMISTRY
 	if (CHEMISTRY_ENABLED) {
       for (int k=ks; k<=ke; ++k) {
         for (int j=js; j<=je; ++j) {
           for (int i=is; i<=ie; ++i) {
 						for (int ispec=0; ispec < NSPECIES; ++ispec) {
-							pspec->s(ispec, k, j, i) = 0.5 + ispec;
+							pspec->s(ispec, k, j, i) = s_init;
 						}
           }
         }

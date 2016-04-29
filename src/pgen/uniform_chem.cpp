@@ -93,6 +93,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 	}
 
 	//intialize chemical species
+#ifdef INCLUDE_CHEMISTRY
 	if (CHEMISTRY_ENABLED) {
       for (int k=ks; k<=ke; ++k) {
         for (int j=js; j<=je; ++j) {
@@ -104,6 +105,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         }
       }
 	}
+#endif
 
   return;
 }
