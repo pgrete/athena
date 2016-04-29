@@ -96,7 +96,7 @@ static const Real mCO_ = 4.68e-23;
 //number of different reactions
 static const int n_cr_ = 8;
 static const int n_2body_ = 30;
-static const int n_ph_ = 8;
+static const int n_ph_ = 7;
 static const int n_freq_ = n_ph_ + 2;
 static const int index_gpe_ = n_ph_;
 //static const int index_gisrf_ = n_ph_ + 1; TODO: in dust cooling
@@ -249,15 +249,15 @@ static const Real k2body_base_[n_2body_] =
  */
 static const int inph_[n_ph_] = {
               igC_, iCHx_, iCO_,
-              iOHx_, iHCOplus_, iH2_, igS_, igSi_};
+              iOHx_, iH2_, igS_, igSi_};
 static const int outph1_[n_ph_] = {
               iCplus_, igC_, igC_,
-              igO_, iCO_, igH_, iSplus_, iSiplus_};
+              igO_, igH_, iSplus_, iSiplus_};
 static const Real kph_base_[n_ph_] = {3.1e-10, 9.2e-10, 2.6e-10/*Visser2009*/,   
-																			  3.9e-10, 5.40e-12, 5.6e-11, 
+																			  3.9e-10, 5.6e-11, 
                                         6e-10, 3.1e-9}; 
 static const Real kph_avfac_[n_ph_] = {3.33, 1.72, 3.53/*Visser2009*/,  
-	                                       2.24, 3.32, 3.74/*Draine+Bertoldi1996*/,
+	                                       2.24, 3.74/*Draine+Bertoldi1996*/,
                                          3.10, 2.3};
 
 /* Grain assisted recombination of H, H2, C+ and H+
