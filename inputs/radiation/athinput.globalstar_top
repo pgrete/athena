@@ -8,7 +8,7 @@ problem_id = star        # problem ID: basename of output filenames
 
 <output1>
 file_type  = hdf5       # Binary data dump
-dt         = 0.005       # time increment between outputs
+dt         = 0.01       # time increment between outputs
 variable   = prim
 
 #<output2>
@@ -18,7 +18,7 @@ variable   = prim
 
 <output3>
 file_type  = rst       # Binary data dump
-dt         = 0.005       # time increment between outputs
+dt         = 0.01       # time increment between outputs
 
 
 <time>
@@ -27,16 +27,16 @@ nlim       = -1    # cycle limit
 tlim       = 2000000.0      # time limit
 
 <mesh>
-nx1        = 384       # Number of zones in X1-direction
-x1min      = 28.0     # minimum value of X1
-x1max      = 293.301      # maximum value of X1
+nx1        = 16       # Number of zones in X1-direction
+x1min      = 12     # minimum value of X1
+x1max      = 17.6876      # maximum value of X1
 ix1_bc     = user  # inner-X1 boundary flag
 ox1_bc     = user  # inner-X1 boundary flag
 ix1_rad_bc = user
 ox1_rad_bc = user
-x1rat      = 1.0061359
+x1rat      = 1.02454
 
-nx2        = 256       # Number of zones in X2-direction
+nx2        = 64       # Number of zones in X2-direction
 x2min      = 0.7853981634      # minimum value of X2
 x2max      = 2.3561944901       # maximum value of X2
 ix2_bc     = periodic  # inner-X2 boundary flag
@@ -45,8 +45,7 @@ ix2_rad_bc = periodic
 ox2_rad_bc = periodic
 
 
-
-nx3        = 512       # Number of zones in X3-direction
+nx3        = 128       # Number of zones in X3-direction
 x3min      = 0.0      # minimum value of X3
 x3max      = 3.14159265358  # maximum value of X3      
 ix3_bc     = periodic  # inner-X3 boundary flag
@@ -54,21 +53,21 @@ ox3_bc     = periodic  # inner-X3 boundary flag
 ix3_rad_bc = periodic
 ox3_rad_bc = periodic
 
-#refinement = static
+refinement = static
 
 <meshblock>
-nx1         = 24 
+nx1         = 16 
 nx2         = 16
 nx3         = 16
 
 <refinement1>
-x1min       = 230
-x1max       = 150
-x2min       = 0.7854
-x2max       = 2.3561
+x1min       = 12
+x1max       = 14
+x2min       = 1.48353
+x2max       = 1.65806
 x3min       = 0.0
-x3max       = 6.28318530718
-level       = 3
+x3max       = 3.14159265358
+level       = 4
 
 <hydro>
 gamma           = 1.6666666666667       # gamma = C_p/C_v
@@ -76,14 +75,14 @@ dfloor          = 0.00001
 pfloor          = 1.e-7
 
 <problem>
-GM          = 5.17549e3
+GM          = 7.20529e3
 
 
 <radiation>
 nmu         = 4
-Prat        = 78.9724
-Crat        = 6610.49
-Tunit       = 1.66724e5
+Prat        = 39.6473
+Crat        = 6538.09
+Tunit       = 1.57036e5
 Compton     = 0
 tfloor      = 0.01
 rotate_theta = 1

@@ -592,14 +592,14 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   // read from the restarting file (everyone)
   // the file is already open and the pointer is set to after <par_end>
   nerr=0;
-  if(resfile.Read(&nbtotal, sizeof(int), 1)!=1) nerr++;
-  if(resfile.Read(&root_level, sizeof(int), 1)!=1) nerr++;
+  if(resfile.Read_all(&nbtotal, sizeof(int), 1)!=1) nerr++;
+  if(resfile.Read_all(&root_level, sizeof(int), 1)!=1) nerr++;
   current_level=root_level;
-  if(resfile.Read(&mesh_size, sizeof(RegionSize), 1)!=1) nerr++;
-  if(resfile.Read(&time, sizeof(Real), 1)!=1) nerr++;
-  if(resfile.Read(&dt, sizeof(Real), 1)!=1) nerr++;
-  if(resfile.Read(&ncycle, sizeof(int), 1)!=1) nerr++;
-  if(resfile.Read(&(datasize), sizeof(IOWrapperSize_t), 1)!=1) nerr++;
+  if(resfile.Read_all(&mesh_size, sizeof(RegionSize), 1)!=1) nerr++;
+  if(resfile.Read_all(&time, sizeof(Real), 1)!=1) nerr++;
+  if(resfile.Read_all(&dt, sizeof(Real), 1)!=1) nerr++;
+  if(resfile.Read_all(&ncycle, sizeof(int), 1)!=1) nerr++;
+  if(resfile.Read_all(&(datasize), sizeof(IOWrapperSize_t), 1)!=1) nerr++;
   if(nerr>0) {
     msg << "### FATAL ERROR in Mesh constructor" << std::endl
         << "The restarting file is broken." << std::endl;
@@ -651,14 +651,12 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   // read the id list (serial, because we need the costs for load balancing)
   multilevel=false;
   nerr=0;
-  listsize=sizeof(int)+sizeof(LogicalLocation)+sizeof(Real);
+  listsize=sizeof(LogicalLocation)+sizeof(Real);
   //allocate the idlist buffer
-  char *idlist = new char [listsize];
+  char *idlist = new char [listsize*nbtotal];
+  if(resfile.Read(idlist,listsize,nbtotal)!=nbtotal) nerr++;
+  int os=0;
   for(int i=0;i<nbtotal;i++) {
-    if(resfile.Read(idlist,listsize,1)!=1) nerr++;
-    int os=0, bgid;
-    memcpy(&bgid, &(idlist[os]), sizeof(int));
-    os+=sizeof(int);
     memcpy(&(loclist[i]), &(idlist[os]), sizeof(LogicalLocation));
     os+=sizeof(LogicalLocation);
     memcpy(&(costlist[i]), &(idlist[os]), sizeof(Real));
@@ -761,25 +759,26 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   }
 
   // allocate data buffer
-  Real *mbdata = new Real [datasize/sizeof(Real)];
-  // load MeshBlocks (parallel)
+  int nb=nblist[Globals::my_rank];
   int nbs=nslist[Globals::my_rank];
-  int nbe=nbs+nblist[Globals::my_rank]-1;  
+  int nbe=nbs+nb-1;
+  Real *mbdata = new Real [datasize/sizeof(Real)*nb];
+  // load MeshBlocks (parallel)
+  resfile.Read_at_all(mbdata, datasize, nb, headeroffset+nbs*datasize);
   for(i=nbs;i<=nbe;i++) {
-    SetBlockSizeAndBoundaries(loclist[i], block_size, block_bcs,block_rad_bcs);
-    // load the data into the buffer
-    resfile.Read_at(mbdata, datasize, 1, headeroffset+i*datasize);
+    int buff_os = datasize/sizeof(Real) * (i-nbs);
+    SetBlockSizeAndBoundaries(loclist[i], block_size, block_bcs, block_rad_bcs);
     // create a block and add into the link list
     if(i==nbs) {
       pblock = new MeshBlock(i, i-nbs, this, pin, loclist[i], block_size,
                              block_bcs, block_rad_bcs,
-                             costlist[i], ranklist, nslist, mbdata);
+                             costlist[i], mbdata+buff_os);
       pfirst = pblock;
     }
     else {
       pblock->next = new MeshBlock(i, i-nbs, this, pin, loclist[i], block_size,
                                    block_bcs, block_rad_bcs, costlist[i],
-                                   ranklist, nslist, mbdata);
+                                   mbdata+buff_os);
       pblock->next->prev = pblock;
       pblock = pblock->next;
     }
@@ -1037,8 +1036,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
 
 MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
            LogicalLocation iloc, RegionSize input_block, enum BoundaryFlag *input_bcs,
-           enum BoundaryFlag *input_rad_bcs,
-           Real icost, int *ranklist, int *nslist, Real *mbdata)
+           enum BoundaryFlag *input_rad_bcs, Real icost, Real *mbdata)
 {
   std::stringstream msg;
   pmy_mesh = pm;

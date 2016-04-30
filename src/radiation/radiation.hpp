@@ -86,7 +86,8 @@ public:
 
   void FrequencyGrid();
   
-  int rotate; // flag to rotate the boundary
+  int rotate_theta; // flag to rotate the boundary
+  int rotate_phi;
   
   int set_source_flag; // flag to add radiation source term or not
 

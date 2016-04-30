@@ -52,19 +52,19 @@ static AthenaArray<Real> logrhottable;
 
 
 // The global variable
-static Real grav0 = 1.20343;
-static Real consFr = 5.67062e-5;
-static Real kappaes = 80.1216;
+static Real grav0 = 38.8416;
+static Real consFr = 2.46224e-3;
+static Real kappaes = 122.87;
 
-static Real rhounit = 3.6e-9;
+static Real rhounit = 5.52077e-9;
 static Real tunit;
 static Real lunit = 6.955e10;
 static Real tbot[NGHOST];
 static Real tfloor;
 
-static Real lbottom=65.579;
+static Real lbottom=13.62;
 
-static int ninputline = 1024;
+static int ninputline = 2048;
 
 
 void StarOpacity(MeshBlock *pmb, AthenaArray<Real> &prim);
@@ -94,7 +94,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 {
 
    tfloor = pin->GetOrAddReal("radiation", "tfloor", 0.01);
-   tunit = pin->GetOrAddReal("radiation","Tunit",1.66724e5);
+   tunit = pin->GetOrAddReal("radiation","Tunit",1.57036e5);
   
    EnrollUserBoundaryFunction(INNER_X1, Inflow_X1);
    EnrollUserBoundaryFunction(OUTER_X1, Outflow_X2);
@@ -320,7 +320,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
                                 (tgas(lright) - tgas(lleft))
                                /(height(lright) - height(lleft));
     
-    if(rho > 5.e-1 && x1 > 50.0) amp = 1.e-3;
+    if(rho > 1.e-1 && x1 > 12.5) amp = 1.e-3;
     else amp = 0.0;
     
 //    rho *= (1.0 + amp * ((double)rand()/(double)RAND_MAX-0.5));

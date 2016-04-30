@@ -3979,7 +3979,7 @@ void BoundaryValues::ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst)
       RadBoundaryFunction_[OUTER_X2](pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
 
     }
-    if(pmb->prad->rotate==1){
+    if(pmb->prad->rotate_theta==1){
       RotateHPi_InnerX2(pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
       RotateHPi_OuterX2(pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
     }
@@ -4000,6 +4000,19 @@ void BoundaryValues::ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst)
     if (RadBoundaryFunction_[OUTER_X3] != NULL) {
       RadBoundaryFunction_[OUTER_X3](pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
     }
+    
+    if(pmb->prad->rotate_phi==1){
+      
+      RotateHPi_InnerX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
+      RotateHPi_OuterX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
+      
+    }else if(pmb->prad->rotate_phi==2){
+      
+      RotatePi_InnerX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
+      RotatePi_OuterX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
+    
+    }
+    
   }
 
   return;

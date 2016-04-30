@@ -56,7 +56,8 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   int angle_flag = pin->GetOrAddInteger("radiation","angle_flag",0);
   prat = pin->GetReal("radiation","Prat");
   crat = pin->GetReal("radiation","Crat");
-  rotate=pin->GetOrAddInteger("radiation","rotate",0);
+  rotate_theta=pin->GetOrAddInteger("radiation","rotate_theta",0);
+  rotate_phi=pin->GetOrAddInteger("radiation","rotate_phi",0);
   reduced_c  = crat * pin->GetOrAddReal("radiation","reduced_factor",1.0);
   nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
   vmax = pin->GetOrAddReal("radiation","vmax",0.9);
@@ -162,14 +163,15 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
     }
       // damp the angular grid in one cell
     // The angles are still in cartesian
-    fprintf(pfile,"Prat      %4.2e \n",prat);
-    fprintf(pfile,"Crat      %4.2e \n",crat);
-    fprintf(pfile,"reduced_c %4.2e \n",reduced_c);
-    fprintf(pfile,"Vmax      %4.2e \n",vmax);
-    fprintf(pfile,"Tunit     %4.2e \n",tunit);
-    fprintf(pfile,"Compt     %d  \n",pradintegrator->compton_flag_);
-    fprintf(pfile,"Tfloor    %4.2e \n",t_floor_);
-    fprintf(pfile,"rotate    %d  \n",rotate);
+    fprintf(pfile,"Prat          %4.2e \n",prat);
+    fprintf(pfile,"Crat          %4.2e \n",crat);
+    fprintf(pfile,"reduced_c     %4.2e \n",reduced_c);
+    fprintf(pfile,"Vmax          %4.2e \n",vmax);
+    fprintf(pfile,"Tunit         %4.2e \n",tunit);
+    fprintf(pfile,"Compt         %d  \n",pradintegrator->compton_flag_);
+    fprintf(pfile,"Tfloor        %4.2e \n",t_floor_);
+    fprintf(pfile,"rotate_theta  %d  \n",rotate_theta);
+    fprintf(pfile,"rotate_phi    %d  \n",rotate_phi);
     
     for(int n=0; n<nang; ++n){
       fprintf(pfile,"%2d   %e   %e   %e    %e\n",n,mu(0,0,0,0,n),mu(1,0,0,0,n),
