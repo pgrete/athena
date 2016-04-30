@@ -22,7 +22,7 @@ dt         = 0.005       # time increment between outputs
 
 
 <time>
-cfl_number = 0.4       # The Courant, Friedrichs, & Lewy (CFL) Number
+cfl_number = 0.3       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = -1    # cycle limit
 tlim       = 2000000.0      # time limit
 
