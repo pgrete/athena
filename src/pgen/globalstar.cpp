@@ -525,7 +525,7 @@ Real rossopacity(const Real rho, const Real tgas)
 void Inflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
                int is, int ie, int js, int je, int ks, int ke)
 {
-
+   // set density based on the effective gravity
   
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
@@ -623,7 +623,7 @@ void Outflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFiel
 }
 
 // Fix the radiation temperature and flux
-void Inflow_rad_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+void Inflow_rad_X1_old(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
                      int is, int ie, int js, int je, int ks, int ke)
 {
   Radiation *prad=pmb->prad;
@@ -683,7 +683,7 @@ void Inflow_rad_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 }
 
 
-void Inflow_rad_X1_old(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+void Inflow_rad_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
                      int is, int ie, int js, int je, int ks, int ke)
 {
   Radiation *prad=pmb->prad;
