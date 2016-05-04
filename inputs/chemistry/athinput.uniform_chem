@@ -17,7 +17,7 @@ variable   = prim      # variables to be output
 dt         = 3.154e15  # time increment between outputs
 
 <time>
-cfl_number = 0.4       # The Courant, Friedrichs, & Lewy (CFL) Number
+cfl_number = 0.3       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = 10        # cycle limit
 tlim       = 3.154e16  # time limit, 1 Gyr
 

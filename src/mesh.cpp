@@ -131,21 +131,26 @@ Mesh::Mesh(ParameterInput *pin, int test_flag)
     throw std::runtime_error(msg.str().c_str());
   }
 
+  dim=1;
+  if(mesh_size.nx2>1) dim=2;
+  if(mesh_size.nx3>1) dim=3;
+
 // check cfl_number
-  if(cfl_number > 1.0 && mesh_size.nx2==1) {
+  if(cfl_number > 1.0 && dim==1) {
     msg << "### FATAL ERROR in Mesh constructor" << std::endl
         << "The CFL number must be smaller than 1.0 in 1D simulation" << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
-  if(cfl_number > 0.5 && mesh_size.nx2 > 1) {
+  if(cfl_number > 0.5 && dim==2) {
     msg << "### FATAL ERROR in Mesh constructor" << std::endl
-        << "The CFL number must be smaller than 0.5 in 2D/3D simulation" << std::endl;
+        << "The CFL number must be smaller than 0.5 in 2D simulation" << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
-
-  dim=1;
-  if(mesh_size.nx2>1) dim=2;
-  if(mesh_size.nx3>1) dim=3;
+  if(cfl_number > 1.0/3.0 && dim==3) {
+    msg << "### FATAL ERROR in Mesh constructor" << std::endl
+        << "The CFL number must be smaller than 1/3 in 3D simulation" << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
 
 // read physical size of mesh (root level) from input file.  
 
@@ -516,9 +521,10 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
 {
   std::stringstream msg;
   RegionSize block_size;
+  enum BoundaryFlag block_bcs[6];
   MeshBlock *pfirst;
   int i, j, nerr, dim;
-  IOWrapperSize_t *offset;
+  IOWrapperSize_t *offset, datasize, listsize, headeroffset;
 
 // mesh test
   if(test_flag>0) Globals::nranks=test_flag;
@@ -539,21 +545,28 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
     throw std::runtime_error(msg.str().c_str());
   }
 
+  // read BC flags for each of the 6 boundaries
+  mesh_bcs[INNER_X1] = GetBoundaryFlag(pin->GetOrAddString("mesh","ix1_bc","none"));
+  mesh_bcs[OUTER_X1] = GetBoundaryFlag(pin->GetOrAddString("mesh","ox1_bc","none"));
+  mesh_bcs[INNER_X2] = GetBoundaryFlag(pin->GetOrAddString("mesh","ix2_bc","none"));
+  mesh_bcs[OUTER_X2] = GetBoundaryFlag(pin->GetOrAddString("mesh","ox2_bc","none"));
+  mesh_bcs[INNER_X3] = GetBoundaryFlag(pin->GetOrAddString("mesh","ix3_bc","none"));
+  mesh_bcs[OUTER_X3] = GetBoundaryFlag(pin->GetOrAddString("mesh","ox3_bc","none"));
+
   // read from the restarting file (everyone)
   // the file is already open and the pointer is set to after <par_end>
   nerr=0;
-  if(resfile.Read(&nbtotal, sizeof(int), 1)!=1) nerr++;
-  if(resfile.Read(&root_level, sizeof(int), 1)!=1) nerr++;
+  if(resfile.Read_all(&nbtotal, sizeof(int), 1)!=1) nerr++;
+  if(resfile.Read_all(&root_level, sizeof(int), 1)!=1) nerr++;
   current_level=root_level;
-  if(resfile.Read(&mesh_size, sizeof(RegionSize), 1)!=1) nerr++;
-  if(resfile.Read(mesh_bcs, sizeof(enum BoundaryFlag), 6)!=6) nerr++;
-  if(resfile.Read(&time, sizeof(Real), 1)!=1) nerr++;
-  if(resfile.Read(&dt, sizeof(Real), 1)!=1) nerr++;
-  if(resfile.Read(&ncycle, sizeof(int), 1)!=1) nerr++;
+  if(resfile.Read_all(&mesh_size, sizeof(RegionSize), 1)!=1) nerr++;
+  if(resfile.Read_all(&time, sizeof(Real), 1)!=1) nerr++;
+  if(resfile.Read_all(&dt, sizeof(Real), 1)!=1) nerr++;
+  if(resfile.Read_all(&ncycle, sizeof(int), 1)!=1) nerr++;
+  if(resfile.Read_all(&(datasize), sizeof(IOWrapperSize_t), 1)!=1) nerr++;
   if(nerr>0) {
     msg << "### FATAL ERROR in Mesh constructor" << std::endl
         << "The restarting file is broken." << std::endl;
-    resfile.Close();
     throw std::runtime_error(msg.str().c_str());
   }
 
@@ -564,14 +577,19 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   if(mesh_size.nx3>1) dim=3;
 
 // check cfl_number
-  if(cfl_number > 1.0 && mesh_size.nx2==1) {
+  if(cfl_number > 1.0 && dim==1) {
     msg << "### FATAL ERROR in Mesh constructor" << std::endl
         << "The CFL number must be smaller than 1.0 in 1D simulation" << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
-  if(cfl_number > 0.5 && mesh_size.nx2 > 1) {
+  if(cfl_number > 0.5 && dim==2) {
     msg << "### FATAL ERROR in Mesh constructor" << std::endl
-        << "The CFL number must be smaller than 0.5 in 2D/3D simulation" << std::endl;
+        << "The CFL number must be smaller than 0.5 in 2D simulation" << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+  if(cfl_number > 1.0/3.0 && dim==3) {
+    msg << "### FATAL ERROR in Mesh constructor" << std::endl
+        << "The CFL number must be smaller than 1/3 in 3D simulation" << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
 
@@ -583,34 +601,48 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
   nslist=new int[Globals::nranks];
   nblist=new int[Globals::nranks];
 
-  int nx1 = pin->GetOrAddReal("meshblock","nx1",mesh_size.nx1);
-  int nx2 = pin->GetOrAddReal("meshblock","nx2",mesh_size.nx2);
-  int nx3 = pin->GetOrAddReal("meshblock","nx3",mesh_size.nx3);
+  block_size.nx1 = pin->GetOrAddReal("meshblock","nx1",mesh_size.nx1);
+  block_size.nx2 = pin->GetOrAddReal("meshblock","nx2",mesh_size.nx2);
+  block_size.nx3 = pin->GetOrAddReal("meshblock","nx3",mesh_size.nx3);
 
 // calculate the number of the blocks
-  nrbx1=mesh_size.nx1/nx1;
-  nrbx2=mesh_size.nx2/nx2;
-  nrbx3=mesh_size.nx3/nx3;
+  nrbx1=mesh_size.nx1/block_size.nx1;
+  nrbx2=mesh_size.nx2/block_size.nx2;
+  nrbx3=mesh_size.nx3/block_size.nx3;
+
 
   // read the id list (serial, because we need the costs for load balancing)
-  // ... perhaps I should pack them.
   multilevel=false;
-  nerr=0;
+  listsize=sizeof(LogicalLocation)+sizeof(Real);
+  //allocate the idlist buffer
+  char *idlist = new char [listsize*nbtotal];
+  if(Globals::my_rank==0) { // only the master process reads the ID list
+    if(resfile.Read(idlist,listsize,nbtotal)!=nbtotal) {
+      msg << "### FATAL ERROR in Mesh constructor" << std::endl
+          << "The restarting file is broken." << std::endl;
+      throw std::runtime_error(msg.str().c_str());
+    }
+  }
+  else { // the others just seek the file pointer
+    resfile.Seek(resfile.GetPosition()+listsize*nbtotal);
+  }
+#ifdef MPI_PARALLEL
+  // then broadcast the ID list
+  MPI_Bcast(idlist, listsize*nbtotal, MPI_BYTE, 0, MPI_COMM_WORLD);
+#endif
+
+  int os=0;
   for(int i=0;i<nbtotal;i++) {
-    int bgid;
-    if(resfile.Read(&bgid,sizeof(int),1)!=1) nerr++;
-    if(resfile.Read(&(loclist[i]),sizeof(LogicalLocation),1)!=1) nerr++;
+    memcpy(&(loclist[i]), &(idlist[os]), sizeof(LogicalLocation));
+    os+=sizeof(LogicalLocation);
+    memcpy(&(costlist[i]), &(idlist[os]), sizeof(Real));
+    os+=sizeof(Real);
     if(loclist[i].level!=root_level) multilevel=true;
     if(loclist[i].level>current_level) current_level=loclist[i].level;
-    if(resfile.Read(&(costlist[i]),sizeof(Real),1)!=1) nerr++;
-    if(resfile.Read(&(offset[i]),sizeof(IOWrapperSize_t),1)!=1) nerr++;
   }
-  if(nerr>0) {
-    msg << "### FATAL ERROR in Mesh constructor" << std::endl
-        << "The restarting file is broken." << std::endl;
-    resfile.Close();
-    throw std::runtime_error(msg.str().c_str());
-  }
+  delete [] idlist;
+  // get the header offset
+  headeroffset=resfile.GetPosition();
 
   adaptive=false;
   if(pin->GetOrAddString("mesh","refinement","none")=="adaptive")
@@ -694,25 +726,44 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int test_flag)
     return;
   }
 
-  // load MeshBlocks (parallel)
+  // allocate data buffer
+  int nb=nblist[Globals::my_rank];
   int nbs=nslist[Globals::my_rank];
-  int nbe=nbs+nblist[Globals::my_rank]-1;  
+  int nbe=nbs+nb-1;
+  Real *mbdata = new Real [datasize/sizeof(Real)*nb];
+  // load MeshBlocks (parallel)
+  if(resfile.Read_at_all(mbdata, datasize, nb, headeroffset+nbs*datasize)!=nb) {
+    msg << "### FATAL ERROR in Mesh constructor" << std::endl
+        << "The restarting file is broken or input parameters are inconsistent."
+        << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
   for(i=nbs;i<=nbe;i++) {
+    int buff_os = datasize/sizeof(Real) * (i-nbs);
+    SetBlockSizeAndBoundaries(loclist[i], block_size, block_bcs);
     // create a block and add into the link list
     if(i==nbs) {
-      pblock = new MeshBlock(i, i-nbs, this, pin, loclist[i], resfile, offset[i],
-                             costlist[i], ranklist, nslist);
+      pblock = new MeshBlock(i, i-nbs, this, pin, loclist[i], block_size,
+                             block_bcs, costlist[i], mbdata+buff_os);
       pfirst = pblock;
     }
     else {
-      pblock->next = new MeshBlock(i, i-nbs, this, pin, loclist[i], resfile,
-                                   offset[i], costlist[i], ranklist, nslist);
+      pblock->next = new MeshBlock(i, i-nbs, this, pin, loclist[i], block_size,
+                                   block_bcs, costlist[i], mbdata+buff_os);
       pblock->next->prev = pblock;
       pblock = pblock->next;
     }
     pblock->SearchAndSetNeighbors(tree, ranklist, nslist);
   }
   pblock=pfirst;
+  delete [] mbdata;
+  // check consistency
+  if(datasize!=pblock->GetBlockSizeInBytes()) {
+    msg << "### FATAL ERROR in Mesh constructor" << std::endl
+        << "The restarting file is broken or input parameters are inconsistent."
+        << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
 
 // create new Task List
   ptlist = new TaskList(this);
@@ -865,8 +916,8 @@ void Mesh::OutputMeshStructure(int dim)
             << ", Average cost = " << totalcost/nbtotal << std::endl << std::endl;
   std::cout << "See the 'mesh_structure.dat' file for a complete list"
             << " of MeshBlocks." << std::endl;
-  std::cout << "Use 'python ../vis/python/plot_mesh.py' to visualize mesh structure."
-            << std::endl << std::endl;
+  std::cout << "Use 'python ../vis/python/plot_mesh.py' or gnuplot"
+            << " to visualize mesh structure." << std::endl << std::endl;
 
   return;
 }
@@ -962,8 +1013,8 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
 // MeshBlock constructor for restarting
 
 MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
-                     LogicalLocation iloc, IOWrapper& resfile, IOWrapperSize_t offset,
-                     Real icost, int *ranklist, int *nslist)
+           LogicalLocation iloc, RegionSize input_block, enum BoundaryFlag *input_bcs,
+           Real icost, Real *mbdata)
 {
   std::stringstream msg;
   pmy_mesh = pm;
@@ -973,24 +1024,10 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   lid=ilid;
   loc=iloc;
   cost=icost;
-  int nerr=0;
-//  task=NULL;
-
-  // seek the file
-  resfile.Seek(offset);
-  // load block structure
-  if(resfile.Read(&block_size, sizeof(RegionSize), 1)!=1) nerr++;
-  if(resfile.Read(block_bcs, sizeof(int), 6)!=6) nerr++;
-
-  if(nerr>0) {
-    msg << "### FATAL ERROR in MeshBlock constructor" << std::endl
-        << "The restarting file is broken." << std::endl;
-    resfile.Close();
-    throw std::runtime_error(msg.str().c_str());
-  }
+  block_size = input_block;
+  for(int i=0; i<6; i++) block_bcs[i] = input_bcs[i];
 
 // initialize grid indices
-
   is = NGHOST;
   ie = is + block_size.nx1 - 1;
 
@@ -1046,50 +1083,50 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   }
 
   // load hydro and field data
-  nerr=0;
-  if(resfile.Read(phydro->u.GetArrayPointer(),sizeof(Real),
-                         phydro->u.GetSize())!=phydro->u.GetSize()) nerr++;
-  // copy it into the half-step arrays
-  memcpy(phydro->u1.GetArrayPointer(), phydro->u.GetArrayPointer(),
-         phydro->u.GetSize()*sizeof(Real));
+  int os=0;
+  memcpy(phydro->u.GetArrayPointer(), &(mbdata[os]), phydro->u.GetSize()*sizeof(Real));
+  // load it into the half-step arrays too
+  memcpy(phydro->u1.GetArrayPointer(), &(mbdata[os]), phydro->u1.GetSize()*sizeof(Real));
+  os += phydro->u.GetSize();
   if (GENERAL_RELATIVITY) {
-    if(resfile.Read(phydro->w.GetArrayPointer(),sizeof(Real),
-                           phydro->w.GetSize())!=phydro->w.GetSize()) nerr++;
-    if(resfile.Read(phydro->w1.GetArrayPointer(),sizeof(Real),
-                           phydro->w1.GetSize())!=phydro->w1.GetSize()) nerr++;
+    memcpy(phydro->w.GetArrayPointer(), &(mbdata[os]), phydro->w.GetSize()*sizeof(Real));
+    os += phydro->w.GetSize();
+    memcpy(phydro->w1.GetArrayPointer(), &(mbdata[os]), phydro->w1.GetSize()*sizeof(Real));
+    os += phydro->w1.GetSize();
   }
   if (MAGNETIC_FIELDS_ENABLED) {
-    if(resfile.Read(pfield->b.x1f.GetArrayPointer(),sizeof(Real),
-               pfield->b.x1f.GetSize())!=pfield->b.x1f.GetSize()) nerr++;
-    if(resfile.Read(pfield->b.x2f.GetArrayPointer(),sizeof(Real),
-               pfield->b.x2f.GetSize())!=pfield->b.x2f.GetSize()) nerr++;
-    if(resfile.Read(pfield->b.x3f.GetArrayPointer(),sizeof(Real),
-               pfield->b.x3f.GetSize())!=pfield->b.x3f.GetSize()) nerr++;
-    memcpy(pfield->b1.x1f.GetArrayPointer(), pfield->b.x1f.GetArrayPointer(),
+    memcpy(pfield->b.x1f.GetArrayPointer(), &(mbdata[os]),
            pfield->b.x1f.GetSize()*sizeof(Real));
-    memcpy(pfield->b1.x2f.GetArrayPointer(), pfield->b.x2f.GetArrayPointer(),
+    memcpy(pfield->b1.x1f.GetArrayPointer(), &(mbdata[os]),
+           pfield->b1.x1f.GetSize()*sizeof(Real));
+    os += pfield->b.x1f.GetSize();
+    memcpy(pfield->b.x2f.GetArrayPointer(), &(mbdata[os]),
            pfield->b.x2f.GetSize()*sizeof(Real));
-    memcpy(pfield->b1.x3f.GetArrayPointer(), pfield->b.x3f.GetArrayPointer(),
+    memcpy(pfield->b1.x2f.GetArrayPointer(), &(mbdata[os]),
+           pfield->b1.x2f.GetSize()*sizeof(Real));
+    os += pfield->b.x2f.GetSize();
+    memcpy(pfield->b.x3f.GetArrayPointer(), &(mbdata[os]),
            pfield->b.x3f.GetSize()*sizeof(Real));
+    memcpy(pfield->b1.x3f.GetArrayPointer(), &(mbdata[os]),
+           pfield->b1.x3f.GetSize()*sizeof(Real));
+    os += pfield->b.x3f.GetSize();
   }
+
+  // please add new physics here
 #ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
-    if( resfile.Read(pspec->s.GetArrayPointer(),sizeof(Real),
-               pspec->s.GetSize()) != pspec->s.GetSize() ) nerr++;
+    memcpy(pspec->s.GetArrayPointer(), &(mbdata[os]),
+           pspec->s.GetSize()*sizeof(Real));
+    os += pspec->s.GetSize();
   }
 #endif
   //TODO: note the order
   if (RADIATION_ENABLED) {
-    if(resfile.Read(prad->ir.GetArrayPointer(),sizeof(Real),
-                    prad->ir.GetSize())!=prad->ir.GetSize()) nerr++;
+    memcpy(prad->ir.GetArrayPointer(), &(mbdata[os]),
+           prad->ir.GetSize()*sizeof(Real));
+    os += prad->ir.GetSize();
   }
 
-  if(nerr>0) {
-    msg << "### FATAL ERROR in MeshBlock constructor" << std::endl
-        << "The restarting file is broken." << std::endl;
-    resfile.Close();
-    throw std::runtime_error(msg.str().c_str());
-  }
   return;
 }
 
@@ -1311,14 +1348,13 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
     }
   } while(iflag==false);
 
-  if(res_flag==0 || res_flag==2) {
-    pmb = pblock;
-    while (pmb != NULL)  {
-      pmb->phydro->NewBlockTimeStep(pmb);
-      pmb=pmb->next;
-    }
-    NewTimeStep();
+  // calculate the first time step
+  pmb = pblock;
+  while (pmb != NULL)  {
+    pmb->phydro->NewBlockTimeStep(pmb);
+    pmb=pmb->next;
   }
+  NewTimeStep();
   return;
 }
 
@@ -1333,15 +1369,14 @@ int64_t Mesh::GetTotalCells(void)
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn long int MeshBlock::GetBlockSizeInBytes(void)
+//! \fn size_t MeshBlock::GetBlockSizeInBytes(void)
 //  \brief Calculate the block data size required for restarting.
 
 size_t MeshBlock::GetBlockSizeInBytes(void)
 {
   size_t size;
 
-  size =sizeof(RegionSize)+sizeof(int)*6;
-  size+=sizeof(Real)*phydro->u.GetSize();
+  size=sizeof(Real)*phydro->u.GetSize();
   if (GENERAL_RELATIVITY) {
     size+=sizeof(Real)*phydro->w.GetSize();
     size+=sizeof(Real)*phydro->w1.GetSize();
@@ -1349,6 +1384,7 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
   if (MAGNETIC_FIELDS_ENABLED)
     size+=sizeof(Real)*(pfield->b.x1f.GetSize()+pfield->b.x2f.GetSize()
                        +pfield->b.x3f.GetSize());
+  // please add the size counter here when new physics is introduced
 #ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
     size+=sizeof(Real)*pspec->s.GetSize();
@@ -1357,7 +1393,6 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
   if (RADIATION_ENABLED){
     size+=sizeof(Real)*prad->ir.GetSize();
   }
-  // please add the size counter here when new physics is introduced
 
   return size;
 }

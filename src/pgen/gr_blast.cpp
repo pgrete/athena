@@ -12,8 +12,10 @@
 #include "../parameter_input.hpp"          // ParameterInput
 #include "../coordinates/coordinates.hpp"  // Coordinates
 #include "../field/field.hpp"              // Field
-#include "../hydro/hydro.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../hydro/hydro.hpp"              // Hydro
+#include "../hydro/eos/eos.hpp"            // HydroEqnOfState
+
+//--------------------------------------------------------------------------------------
 
 // Function for setting initial conditions
 // Inputs:
@@ -93,7 +95,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           {
             if (x_index == 0 && y_index == 0)
               continue;
-            Real center_y = y_index * y_spacing; 
+            Real center_y = y_index * y_spacing;
             Real separation = pcoord->DistanceBetweenPoints(x1, x2, x3, center_x,
                 center_y, 0.0);
             min_separation = std::min(min_separation, separation);

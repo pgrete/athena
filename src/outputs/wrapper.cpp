@@ -91,6 +91,44 @@ int IOWrapper::Read(void *buf, IOWrapperSize_t size, IOWrapperSize_t count)
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn int IOWrapper::Read_all(void *buf, IOWrapperSize_t size, IOWrapperSize_t count)
+//  \brief wrapper for {MPI_File_read_all} versus {fread}
+
+int IOWrapper::Read_all(void *buf, IOWrapperSize_t size, IOWrapperSize_t count)
+{
+#ifdef MPI_PARALLEL
+  MPI_Status status;
+  int ierr, nread;
+  if(MPI_File_read_all(fh,buf,count*size,MPI_BYTE,&status)!=MPI_SUCCESS) return -1;
+  if(MPI_Get_count(&status,MPI_BYTE,&nread)==MPI_UNDEFINED) return -1;
+  return nread/size;
+#else
+  return fread(buf,size,count,fh);
+#endif
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn int IOWrapper::Read_at_all(void *buf, IOWrapperSize_t size,
+//                             IOWrapperSize_t count, IOWrapperSize_t offset)
+//  \brief wrapper for {MPI_File_read_at_all} versus {fseek+fread}
+
+int IOWrapper::Read_at_all(void *buf, IOWrapperSize_t size,
+                           IOWrapperSize_t count, IOWrapperSize_t offset)
+{
+#ifdef MPI_PARALLEL
+  MPI_Status status;
+  int ierr, nread;
+  if(MPI_File_read_at_all(fh,offset,buf,count*size,MPI_BYTE,&status)!=MPI_SUCCESS)
+    return -1;
+  if(MPI_Get_count(&status,MPI_BYTE,&nread)==MPI_UNDEFINED) return -1;
+  return nread/size;
+#else
+  fseek(fh, offset, SEEK_SET);
+  return fread(buf,size,count,fh);
+#endif
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn int IOWrapper::Write(const void *buf, IOWrapperSize_t size, IOWrapperSize_t cnt)
 //  \brief wrapper for {MPI_File_write} versus {fwrite}
 
@@ -107,6 +145,29 @@ int IOWrapper::Write(const void *buf, IOWrapperSize_t size, IOWrapperSize_t cnt)
   return fwrite(buf,size,cnt,fh);
 #endif
 }
+
+//--------------------------------------------------------------------------------------
+//! \fn int IOWrapper::Write_at_all(const void *buf, IOWrapperSize_t size,
+//                                  IOWrapperSize_t cnt, IOWrapperSize_t offset)
+//  \brief wrapper for {MPI_File_write_at_all} versus {fseek+fwrite}.
+
+int IOWrapper::Write_at_all(const void *buf, IOWrapperSize_t size,
+                            IOWrapperSize_t cnt, IOWrapperSize_t offset)
+{
+#ifdef MPI_PARALLEL
+  MPI_Status status;
+  int ierr, nwrite;
+  if(MPI_File_write_at_all(fh,offset,const_cast<void*>(buf),cnt*size,MPI_BYTE,&status)
+     !=MPI_SUCCESS)
+    return -1;
+  if(MPI_Get_count(&status,MPI_BYTE,&nwrite)==MPI_UNDEFINED) return -1;
+  return nwrite/size;
+#else
+  fseek(fh, offset, SEEK_SET);
+  return fwrite(buf,size,cnt,fh);
+#endif
+}
+
 
 //--------------------------------------------------------------------------------------
 //! \fn void IOWrapper::Close(void)
