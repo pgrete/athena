@@ -119,7 +119,7 @@ parser.add_argument('-vis',
 # --chemistry argument
 parser.add_argument('--chemistry',
     default=None,
-    choices=["gow16"],
+    choices=["gow16", "gow16_ng"],
     help='select chemical network')
 
 # -pp argument
@@ -343,6 +343,7 @@ if args['std'] == 'c++11':
   makefile_options['COMPILER_FLAGS'] = "-std=c++11 " + makefile_options['COMPILER_FLAGS']
 
 # -chemistry argument
+#TODO: CHEMISTRY_ENABLED and CHEMISTRY_OPTION repeated.
 if args['chemistry'] == "gow16":
   definitions['CHEMISTRY_ENABLED'] = '1'
   definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
@@ -350,18 +351,25 @@ if args['chemistry'] == "gow16":
   makefile_options['CHEMNET_FILE'] = 'src/chemistry/network/' \
                                       + args['chemistry'] + '.cpp'
   makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
-  #TODO: need to change this
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
-  makefile_options['INCLUDE_DIR'] = '-I/usr/local/include/'
-  makefile_options['LIBRARY_DIR'] = '-L/usr/local/lib/'
+  makefile_options['PREPROCESSOR_FLAGS'] += ' -I/usr/local/include/'
+  makefile_options['LINKER_FLAGS'] += ' -L/usr/local/lib/'
+elif args['chemistry'] == "gow16_ng":
+  definitions['CHEMISTRY_ENABLED'] = '1'
+  definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
+  definitions['NUM_SPECIES'] = '19'
+  makefile_options['CHEMNET_FILE'] = 'src/chemistry/network/' \
+                                      + args['chemistry'] + '.cpp'
+  makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
+  makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
+  makefile_options['PREPROCESSOR_FLAGS'] += ' -I/usr/local/include/'
+  makefile_options['LINKER_FLAGS'] += ' -L/usr/local/lib/'
 else:
   definitions['CHEMISTRY_OPTION'] = 'NOT_INCLUDE_CHEMISTRY'
   definitions['CHEMISTRY_ENABLED'] = '0'
   definitions['NUM_SPECIES'] = '0'
   makefile_options['CHEMNET_FILE'] = ''
   makefile_options['CHEMISTRY_FILE'] = ''
-  makefile_options['INCLUDE_DIR'] = ''
-  makefile_options['LIBRARY_DIR'] = ''
 
 # -debug argument
 if args['debug']:
@@ -483,8 +491,6 @@ print('  Compiler and flags:      ' + makefile_options['COMPILER_CHOICE'] + ' ' 
 print('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF'))
 print('  Linker flags:            ' + makefile_options['LINKER_FLAGS'] + ' ' \
     + makefile_options['LIBRARY_FLAGS'])
-print('  Includes directory:      ' + makefile_options['INCLUDE_DIR'])
-print('  Libary directory:        ' + makefile_options['LIBRARY_DIR'])
 print('  MPI parallelism:         ' + ('ON' if args['mpi'] else 'OFF'))
 print('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF'))
 print('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF'))

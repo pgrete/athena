@@ -22,8 +22,6 @@ CPPFLAGS := @PREPROCESSOR_FLAGS@
 CXXFLAGS := @COMPILER_FLAGS@
 LDFLAGS := @LINKER_FLAGS@
 LDLIBS := @LIBRARY_FLAGS@
-INCLUDE_DIR := @INCLUDE_DIR@
-LIB_DIR := @LIBRARY_DIR@
 
 # Preliminary definitions
 
@@ -71,7 +69,7 @@ $(OBJ_DIR):
 # Link objects into executable
 
 $(EXECUTABLE) : $(OBJ_FILES)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LIB_DIR) $(LDLIBS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 ## Create static library containing default problem generator functions
 #
@@ -81,7 +79,7 @@ $(EXECUTABLE) : $(OBJ_FILES)
 # Create objects from source files
 
 $(OBJ_DIR)%.o : %.cpp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIR) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 # Cleanup
 
