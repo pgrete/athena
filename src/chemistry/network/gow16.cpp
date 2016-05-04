@@ -184,17 +184,15 @@ static const Real kcr_base_[n_cr_] =
 static const int in2body1_[n_2body_] = 
           {iH3plus_, iH3plus_, iH3plus_, iHeplus_, iHeplus_,    
            iCplus_, iCplus_, iCHx_, iOHx_, iHeplus_,
-           iH3plus_, iCplus_, iHCOplus_,
-					 iH2plus_, iHplus_, iH2_, iH2_, igH_,
-					 iH3plus_, iHeplus_, 
+           iH3plus_, iCplus_, iHCOplus_, iH2plus_, iHplus_,
+           iH2_, iH2_, igH_, iH3plus_, iHeplus_, 
            iCHx_, iOHx_, iCplus_, iSplus_, iCplus_,
            iSiplus_, iCplus_, iH3plus_, iHeplus_, iH2plus_};
 static const int in2body2_[n_2body_] = 
           {igC_, igO_, iCO_, iH2_, iCO_,   
            iH2_, iOHx_, igO_, igC_, ige_,   
-           ige_, ige_, ige_,
-					 iH2_, ige_, igH_, iH2_, ige_,
-					 ige_, iH2_, 
+           ige_, ige_, ige_, iH2_, ige_,
+           igH_, iH2_, ige_, ige_, iH2_, 
            igH_, igO_, iH2_, ige_, igS_,
            ige_, igSi_, igO_, iOHx_, igH_};
 /*Note: output to ghost species doesn't matter. The abundances of ghost species
@@ -202,33 +200,29 @@ static const int in2body2_[n_2body_] =
 static const int out2body1_[n_2body_] = 
           {iCHx_, iOHx_, iHCOplus_, iHplus_, iCplus_,   
            iCHx_, iHCOplus_, iCO_, iCO_, igHe_,   
-           iH2_, igC_, iCO_,
-					 iH3plus_, igH_, igH_, iH2_, iHplus_,
-					 igH_, iH2plus_, 
+           iH2_, igC_, iCO_, iH3plus_, igH_,
+           igH_, iH2_, iHplus_, igH_, iH2plus_, 
            iH2_, igO_, igC_, igS_, iSplus_,
            igSi_, iSiplus_, iH2_, iOHx_, iHplus_};
 static const int out2body2_[n_2body_] = 
           {iH2_, iH2_, iH2_, igHe_, igO_,   
            igH_, igH_, igH_, igH_, igH_,   
-           igH_, igH_, igH_,
-					 igH_, igH_, igH_, igH_, ige_,
-					 igH_, igHe_, 
+           igH_, igH_, igH_, igH_, igH_,
+           igH_, igH_, ige_, igH_, igHe_, 
            igC_, igH_, igH_, igH_, igC_,
            igH_, igC_, igO_, igHe_, iH2_};
 static const Real k2Texp_[n_2body_] = 
  {0.0, -0.190, 0.0, 0.0, 0.0, 
   -1.3, 0.0, 0.0, -0.339, -0.5, 
-  -0.52, 0.0, -0.64,
-  0.042, 0.0, 0.0, 0.0, 0.0,
-  -0.52, 0.0,
+  -0.52, 0.0, -0.64, 0.042, 0.0,
+  0.0, 0.0, 0.0, -0.52, 0.0,
   0.26, 0.0, -1.3, -0.59, 0.0,
   -0.62, 0.0, -0.190, 0.0, 0.0};
 static const Real k2body_base_[n_2body_] = 
                 {2.0e-9, 1.99e-9, 1.7e-9, 3.7e-14, 1.6e-9, 
                  3.3e-13 * 0.7, 1.00, 7.0e-11, 7.95e-10, 1.0e-11, 
-                 4.54e-7, 1.00, 1.15e-5,
-								 2.84e-9, 2.753e-14, 1.00, 1.00, 1.00,
-								 8.46e-7, 7.20e-15, 
+                 4.54e-7, 1.00, 1.15e-5, 2.84e-9, 2.753e-14,
+                 1.00, 1.00, 1.00, 8.46e-7, 7.20e-15, 
                  2.81e-11, 3.5e-11, 3.3e-13 * 0.3, 1.6e-10, 5e-11,
                  1.46e-10, 2.1e-9, 1.99e-9, 1.00, 6.4e-10};
 
@@ -239,13 +233,12 @@ static const Real k2body_base_[n_2body_] =
  (1) h nu + CH -> *C + *H
  (2) h nu + CO -> *C + *O            --self-shielding and shielding by H2
  (3) h nu + OH -> *O + *H
- (4) h nu + HCO+ -> CO + *H
  ----added in GO2012--------
- (5) h nu + H2 -> *H + *H            --self- and dust shielding
+ (4) h nu + H2 -> *H + *H            --self- and dust shielding
  ----S, from UMIST12
- (6) h nu + *S -> S+
+ (5) h nu + *S -> S+
  ----Si, from UMIST12
- (7) h nu + *Si -> Si+
+ (6) h nu + *Si -> Si+
  */
 static const int inph_[n_ph_] = {
               igC_, iCHx_, iCO_,

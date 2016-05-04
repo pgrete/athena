@@ -69,7 +69,6 @@ temperature = 20  #T in Kelvin, if const_T_flag is true.
 #chemistry solver parameters
 reltol     = 1.0e-2  #relative tolerance, default 1.0e-2
 abstol     = 1.0e-15 #absolute tolerance, default 1.0e-12
-abstol_HCO+ = 1.0e-18 #absolute tolerance, default 1.0e-12
 user_jac   = 0       #flag for whether use user provided Jacobian. default false/0
 maxsteps   = 1000     #maximum number of steps in one integration. default 10000
 h_init      = 1e12    #first step of first zone. Default 0/CVODE algorithm.
