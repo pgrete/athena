@@ -8,7 +8,7 @@ problem_id = disk        # problem ID: basename of output filenames
 
 <output1>
 file_type  = hdf5       # Binary data dump
-dt         = 0.005       # time increment between outputs
+dt         = 0.0002       # time increment between outputs
 variable   = prim
 
 #<output2>
@@ -18,11 +18,11 @@ variable   = prim
 
 <output3>
 file_type  = rst       # Binary data dump
-dt         = 0.005       # time increment between outputs
+dt         = 0.0005       # time increment between outputs
 
 
 <time>
-cfl_number = 0.4       # The Courant, Friedrichs, & Lewy (CFL) Number
+cfl_number = 0.3       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = -1    # cycle limit
 tlim       = 2000000.0      # time limit
 
@@ -38,7 +38,7 @@ x1rat      = 1.09817
 
 nx2        = 32       # Number of zones in X2-direction
 x2min      = 0.00      # minimum value of X2
-x2max      = 3.14159265358979       # maximum value of X2
+x2max      = 3.141592653589793       # maximum value of X2
 ix2_bc     = polar  # inner-X2 boundary flag
 ox2_bc     = polar  # inner-X2 boundary flag
 ix2_rad_bc = polar
@@ -47,7 +47,7 @@ ox2_rad_bc = polar
 
 nx3        = 64         # Number of zones in X3-direction
 x3min      = 0.0      # minimum value of X3
-x3max      = 6.28318530718       # maximum value of X3
+x3max      = 6.283185307179586       # maximum value of X3
 ix3_bc     = periodic  # inner-X3 boundary flag
 ox3_bc     = periodic  # inner-X3 boundary flag
 ix3_rad_bc = periodic
@@ -57,17 +57,17 @@ refinement = static
 
 <meshblock>
 nx1         = 8 
-nx2         = 16 
-nx3         = 16
+nx2         = 8 
+nx3         = 8
 
 <refinement1>
 x1min       = 2
-x1max       = 50
-x2min       = 1.39627
-x2max       = 1.74532
+x1max       = 60
+x2min       = 1.30900
+x2max       = 1.83259
 x3min       = 0.0
-x3max       = 6.28318530718
-level       = 4
+x3max       = 6.283185307179586 
+level       = 3
 
 <hydro>
 gamma           = 1.6666666666667       # gamma = C_p/C_v

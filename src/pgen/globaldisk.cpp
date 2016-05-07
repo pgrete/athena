@@ -53,7 +53,7 @@ static int bconf = 0; // bconf=1: pure B_phi
                       // bconf=2: two loops
 static int nloop = 1;
 static Real lprofile= 0.4;
-static Real vs0 = 18.0;
+static Real vs0 = 15.0;
 
 static Real gm;
 
@@ -134,8 +134,58 @@ void MeshBlock::UserWorkInLoop(void)
   
     if(prad->set_source_flag > 0)
        prad->set_source_flag--;
+    
+    int il=is, iu=ie, jl=js, ju=je, kl=ks, ku=ke;
+    il -= NGHOST;
+    iu += NGHOST;
+    if(ju>jl){
+       jl -= NGHOST;
+       ju += NGHOST;
+    }
+    if(ku>kl){
+      kl -= NGHOST;
+      ku += NGHOST;
+    }
+    Real gm1 = phydro->peos->GetGamma() - 1.0;
+    
+     for (int k=kl; k<=ku; ++k){
+      for (int j=jl; j<=ju; ++j){
+       for (int i=il; i<=iu; ++i){
+         
+          Real& vx=phydro->w(IVX,k,j,i);
+          Real& vy=phydro->w(IVY,k,j,i);
+          Real& vz=phydro->w(IVZ,k,j,i);
+         
+          Real& rho=phydro->w(IDN,k,j,i);
+         
+          Real vel = sqrt(vx*vx+vy*vy+vz*vz);
+
+          if(vel > prad->vmax * prad->crat){
+            Real ratio = prad->vmax * prad->crat / vel;
+            vx *= ratio;
+            vy *= ratio;
+            vz *= ratio;
+            
+            phydro->u(IM1,k,j,i) = rho*vx;
+            phydro->u(IM2,k,j,i) = rho*vy;
+            phydro->u(IM3,k,j,i) = rho*vz;
+
+            Real ke = 0.5 * rho * (vx*vx+vy*vy+vz*vz);
+            
+            Real pb=0.0;
+            if(MAGNETIC_FIELDS_ENABLED){
+               pb = 0.5*(SQR(pfield->bcc(IB1,k,j,i))+SQR(pfield->bcc(IB2,k,j,i))
+                     +SQR(pfield->bcc(IB3,k,j,i)));
+            }
+            
+            Real  eint = phydro->w(IEN,k,j,i)/gm1;
+            
+            phydro->u(IEN,k,j,i) = eint + ke + pb;
+
+          }
   
-  }
+      }}}
+    }
   return;
 }
 
@@ -493,13 +543,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       
      // Update total energy with mangefew
     if(RADIATION_ENABLED){
+     // Get cell-centered magnetic field
+     pfield->CalculateCellCenteredField(pfield->b,pfield->bcc,pcoord,is,ie,js,je,ks,ke);
+    
+    
       for(int k=ks; k<=ke; ++k){
       for(int j=js; j<=je; ++j){
       for(int i=is; i<=ie; ++i){
           phydro->u(IEN,k,j,i) +=
-            0.5*(SQR(0.5*(pfield->b.x1f(k,j,i+1) + pfield->b.x1f(k,j,i)))
-               + SQR(0.5*(pfield->b.x2f(k,j+1,i) + pfield->b.x2f(k,j,i)))
-               + SQR(0.5*(pfield->b.x3f(k+1,j,i) + pfield->b.x3f(k,j,i))));
+            0.5*(SQR((pfield->bcc(IB1,k,j,i)))
+               + SQR((pfield->bcc(IB2,k,j,i)))
+               + SQR((pfield->bcc(IB3,k,j,i))));
         
          }
       }}

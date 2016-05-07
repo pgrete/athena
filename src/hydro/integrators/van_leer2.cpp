@@ -117,7 +117,7 @@ void HydroIntegrator::CalculateFluxes(MeshBlock *pmb,AthenaArray<Real> &u,
       // store fluxes
       if(k>=ks && k<=ke && j>=js && j<=je) {
         for(int n=0; n<NHYDRO; n++) {
-#pragma simd
+//#pragma simd
           for(int i=is; i<=ie+1; i++)
             x1flux(n,k,j,i)=flx(n,i);
         }
@@ -126,7 +126,7 @@ void HydroIntegrator::CalculateFluxes(MeshBlock *pmb,AthenaArray<Real> &u,
       // store electric fields, compute weights for GS07 CT algorithm
       // no correction to the EMFs is required; they are corrected later
       if (MAGNETIC_FIELDS_ENABLED) {
-#pragma simd
+//#pragma simd
         for (int i=is; i<=ie+1; ++i){
           ei_x1f(X1E3,k,j,i) = -flx(IBY,i); // flux(IBY) = (v1*b2 - v2*b1) = -EMFZ
           ei_x1f(X1E2,k,j,i) =  flx(IBZ,i); // flux(IBZ) = (v1*b3 - v3*b1) =  EMFY
@@ -168,7 +168,7 @@ void HydroIntegrator::CalculateFluxes(MeshBlock *pmb,AthenaArray<Real> &u,
         // store fluxes
         if(k>=ks && k<=ke) {
           for(int n=0; n<NHYDRO; n++) {
-#pragma simd
+//#pragma simd
             for(int i=is; i<=ie; i++)
               x2flux(n,k,j,i)=flx(n,i);
           }
@@ -177,7 +177,7 @@ void HydroIntegrator::CalculateFluxes(MeshBlock *pmb,AthenaArray<Real> &u,
         // store electric fields, compute weights for GS07 CT algorithm
         // no correction to the EMFs is required; they are corrected later
         if (MAGNETIC_FIELDS_ENABLED) {
-#pragma simd
+//#pragma simd
           for (int i=il; i<=iu; ++i){
             ei_x2f(X2E1,k,j,i) = -flx(IBY,i); // flx(IBY) = (v2*b3 - v3*b2) = -EMFX
             ei_x2f(X2E3,k,j,i) =  flx(IBZ,i); // flx(IBZ) = (v2*b1 - v1*b2) =  EMFZ
@@ -215,7 +215,7 @@ void HydroIntegrator::CalculateFluxes(MeshBlock *pmb,AthenaArray<Real> &u,
 
         if(j>=js && j<=je) {
           for(int n=0; n<NHYDRO; n++) {
-#pragma simd
+//#pragma simd
             for(int i=is; i<=ie; i++)
               x3flux(n,k,j,i)=flx(n,i);
           }
@@ -224,7 +224,7 @@ void HydroIntegrator::CalculateFluxes(MeshBlock *pmb,AthenaArray<Real> &u,
         // store electric fields, compute weights for GS07 CT algorithm
         // no correction to the EMFs is required; they are corrected later
         if (MAGNETIC_FIELDS_ENABLED) {
-#pragma simd
+//#pragma simd
           for (int i=il; i<=iu; ++i){
             ei_x3f(X3E2,k,j,i) = -flx(IBY,i); // flx(IBY) = (v3*b1 - v1*b3) = -EMFY
             ei_x3f(X3E1,k,j,i) =  flx(IBZ,i); // flx(IBZ) = (v3*b2 - v2*b3) =  EMFX
@@ -312,7 +312,7 @@ void HydroIntegrator::FluxDivergence(MeshBlock *pmb,AthenaArray<Real> &u,
       pmb->pcoord->Face2Area(k,j  ,is,ie,x2area   );
       pmb->pcoord->Face2Area(k,j+1,is,ie,x2area_p1);
       for (int n=0; n<NHYDRO; ++n) {
-#pragma simd
+//#pragma simd
         for (int i=is; i<=ie; ++i) {
           u(n,k,j,i) -= dt*(x1area(i+1) *x1flux(n,k,j,i+1) 
                           - x1area(i)   *x1flux(n,k,j,i)
@@ -328,7 +328,7 @@ void HydroIntegrator::FluxDivergence(MeshBlock *pmb,AthenaArray<Real> &u,
     pmb->pcoord->Face1Area(k,j,is,ie+1,x1area);
 #pragma omp for schedule(static)
     for (int n=0; n<NHYDRO; ++n) {
-#pragma simd
+//#pragma simd
       for (int i=is; i<=ie; ++i) {
         u(n,k,j,i) -= dt*(x1area(i+1)*x1flux(n,k,j,i+1) 
                         - x1area(i)*  x1flux(n,k,j,i))/vol(i);

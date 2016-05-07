@@ -29,7 +29,8 @@
 
 //--------------------------------------------------------------------------------------
 //! \fn HydroIntegrator::ReconstructionFuncX1()
-//  \brief 
+//  \brief
+
 
 void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
   const int il, const int iu,
@@ -40,7 +41,7 @@ void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
   Real dql,dqr,dqc,q_im1,q_i;
   for (int n=0; n<NWAVE; ++n) {
     if (n==NHYDRO){
-#pragma simd
+//#pragma simd
       for (int i=il; i<=iu; ++i){
         Real& dx_im2 = pco->dx1v(i-2);
         Real& dx_im1 = pco->dx1v(i-1);
@@ -54,7 +55,7 @@ void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
         // compute ql_(i-1/2) using Mignone 2014's modified van-Leer limiter
         Real dq2 = dql*dqc;
         ql(n,i) = q_im1;
-        if(dq2>0.0) {
+        if(dq2>TINY_NUMBER) {
           Real dxfr=pco->x1f(i)-pco->x1v(i-1);
           Real cf=dx_im1/dxfr;
           Real cb=dx_im2/(pco->x1v(i-1)-pco->x1f(i-1));
@@ -64,7 +65,7 @@ void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
         // compute qr_(i-1/2) using Mignone 2014's modified van-Leer limiter
         dq2 = dqc*dqr;
         qr(n,i) = q_i;
-        if(dq2>0.0) {
+        if(dq2>TINY_NUMBER) {
           Real dxfl=pco->x1v(i)-pco->x1f(i);
           Real cf=dx_i/(pco->x1f(i+1)-pco->x1v(i));
           Real cb=dx_im1/dxfl;
@@ -72,7 +73,7 @@ void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
         }
       }
     } else if (n==(NHYDRO+1)) {
-#pragma simd
+//#pragma simd
       for (int i=il; i<=iu; ++i){
         Real& dx_im2 = pco->dx1v(i-2);
         Real& dx_im1 = pco->dx1v(i-1);
@@ -86,7 +87,7 @@ void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
         // compute ql_(i-1/2) using Mignone 2014's modified van-Leer limiter
         Real dq2 = dql*dqc;
         ql(n,i) = q_im1;
-        if(dq2>0.0) {
+        if(dq2>TINY_NUMBER) {
           Real dxfr=pco->x1f(i)-pco->x1v(i-1);
           Real cf=dx_im1/dxfr;
           Real cb=dx_im2/(pco->x1v(i-1)-pco->x1f(i-1));
@@ -96,7 +97,7 @@ void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
         // compute qr_(i-1/2) using Mignone 2014's modified van-Leer limiter
         dq2 = dqc*dqr;
         qr(n,i) = q_i;
-        if(dq2>0.0) {
+        if(dq2>TINY_NUMBER) {
           Real dxfl=pco->x1v(i)-pco->x1f(i);
           Real cf=dx_i/(pco->x1f(i+1)-pco->x1v(i));
           Real cb=dx_im1/dxfl;
@@ -104,7 +105,7 @@ void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
         }
       }
     } else {
-#pragma simd
+//#pragma simd
       for (int i=il; i<=iu; ++i){
         Real& dx_im2 = pco->dx1v(i-2);
         Real& dx_im1 = pco->dx1v(i-1);
@@ -118,7 +119,7 @@ void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
         // compute ql_(i-1/2) using Mignone 2014's modified van-Leer limiter
         Real dq2 = dql*dqc;
         ql(n,i) = q_im1;
-        if(dq2>0.0) {
+        if(dq2>TINY_NUMBER) {
           Real dxfr=pco->x1f(i)-pco->x1v(i-1);
           Real cf=dx_im1/dxfr;
           Real cb=dx_im2/(pco->x1v(i-1)-pco->x1f(i-1));
@@ -128,7 +129,7 @@ void HydroIntegrator::PiecewiseLinearX1(const int k, const int j,
         // compute qr_(i-1/2) using Mignone 2014's modified van-Leer limiter
         dq2 = dqc*dqr;
         qr(n,i) = q_i;
-        if(dq2>0.0) {
+        if(dq2>TINY_NUMBER) {
           Real dxfl=pco->x1v(i)-pco->x1f(i);
           Real cf=dx_i/(pco->x1f(i+1)-pco->x1v(i));
           Real cb=dx_im1/dxfl;
@@ -164,7 +165,7 @@ void HydroIntegrator::PiecewiseLinearX2(const int k, const int j,
 
   for (int n=0; n<NWAVE; ++n) {
     if (n==NHYDRO){
-#pragma simd
+//#pragma simd
       for (int i=il; i<=iu; ++i){
         q_jm1 = bcc(IB3,k,j-1,i);
         q_j   = bcc(IB3,k,j  ,i);
@@ -174,17 +175,17 @@ void HydroIntegrator::PiecewiseLinearX2(const int k, const int j,
         // Apply monotonicity constraints, compute ql_(i-1/2)
         Real dq2 = dql*dqc;
         ql(n,i) = q_jm1;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           ql(n,i) += dxfr*dq2*(cfm*dql+cbm*dqc)/(dql*dql+(cfm+cbm-2.0)*dq2+dqc*dqc);
         
         // Apply monotonicity constraints, compute qr_(i-1/2)
         dq2 = dqc*dqr;
         qr(n,i) = q_j;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           qr(n,i) -= dxfl*dq2*(cfp*dqc+cbp*dqr)/(dqc*dqc+(cfp+cbp-2.0)*dq2+dqr*dqr);
       }
     } else if (n==(NHYDRO+1)) {
-#pragma simd
+//#pragma simd
       for (int i=il; i<=iu; ++i){
         q_jm1 = bcc(IB1,k,j-1,i);
         q_j   = bcc(IB1,k,j  ,i);
@@ -194,17 +195,17 @@ void HydroIntegrator::PiecewiseLinearX2(const int k, const int j,
         // Apply monotonicity constraints, compute ql_(i-1/2)
         Real dq2 = dql*dqc;
         ql(n,i) = q_jm1;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           ql(n,i) += dxfr*dq2*(cfm*dql+cbm*dqc)/(dql*dql+(cfm+cbm-2.0)*dq2+dqc*dqc);
         
         // Apply monotonicity constraints, compute qr_(i-1/2)
         dq2 = dqc*dqr;
         qr(n,i) = q_j;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           qr(n,i) -= dxfl*dq2*(cfp*dqc+cbp*dqr)/(dqc*dqc+(cfp+cbp-2.0)*dq2+dqr*dqr);
       }
     } else {
-#pragma simd
+//#pragma simd
       for (int i=il; i<=iu; ++i){
         q_jm1 = q(n,k,j-1,i);
         q_j   = q(n,k,j  ,i);
@@ -215,13 +216,13 @@ void HydroIntegrator::PiecewiseLinearX2(const int k, const int j,
         // Apply monotonicity constraints, compute ql_(i-1/2)
         Real dq2 = dql*dqc;
         ql(n,i) = q_jm1;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           ql(n,i) += dxfr*dq2*(cfm*dql+cbm*dqc)/(dql*dql+(cfm+cbm-2.0)*dq2+dqc*dqc);
         
         // Apply monotonicity constraints, compute qr_(i-1/2)
         dq2 = dqc*dqr;
         qr(n,i) = q_j;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           qr(n,i) -= dxfl*dq2*(cfp*dqc+cbp*dqr)/(dqc*dqc+(cfp+cbp-2.0)*dq2+dqr*dqr);
       }
     }
@@ -253,7 +254,7 @@ void HydroIntegrator::PiecewiseLinearX3(const int k, const int j,
 
   for (int n=0; n<NWAVE; ++n) {
     if (n==NHYDRO){
-#pragma simd
+//#pragma simd
       for (int i=il; i<=iu; ++i){
         q_km1 = bcc(IB1,k-1,j,i);
         q_k   = bcc(IB1,k  ,j,i);
@@ -264,17 +265,17 @@ void HydroIntegrator::PiecewiseLinearX3(const int k, const int j,
         // Apply monotonicity constraints, compute ql_(i-1/2)
         Real dq2 = dql*dqc;
         ql(n,i) = q_km1;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           ql(n,i) += dxfr*dq2*(cfm*dql+cbm*dqc)/(dql*dql+(cfm+cbm-2.0)*dq2+dqc*dqc);
       
         // Apply monotonicity constraints, compute qr_(i-1/2)
         dq2 = dqc*dqr;
         qr(n,i) = q_k;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           qr(n,i) -= dxfl*dq2*(cfp*dqc+cbp*dqr)/(dqc*dqc+(cfp+cbp-2.0)*dq2+dqr*dqr);
       }
     } else if (n==(NHYDRO+1)) {
-#pragma simd
+//#pragma simd
       for (int i=il; i<=iu; ++i){
         q_km1 = bcc(IB2,k-1,j,i);
         q_k   = bcc(IB2,k  ,j,i);
@@ -285,17 +286,17 @@ void HydroIntegrator::PiecewiseLinearX3(const int k, const int j,
         // Apply monotonicity constraints, compute ql_(i-1/2)
         Real dq2 = dql*dqc;
         ql(n,i) = q_km1;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           ql(n,i) += dxfr*dq2*(cfm*dql+cbm*dqc)/(dql*dql+(cfm+cbm-2.0)*dq2+dqc*dqc);
       
         // Apply monotonicity constraints, compute qr_(i-1/2)
         dq2 = dqc*dqr;
         qr(n,i) = q_k;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           qr(n,i) -= dxfl*dq2*(cfp*dqc+cbp*dqr)/(dqc*dqc+(cfp+cbp-2.0)*dq2+dqr*dqr);
       }
     } else {
-#pragma simd
+//#pragma simd
       for (int i=il; i<=iu; ++i){
         q_km1 = q(n,k-1,j,i);
         q_k   = q(n,k  ,j,i);
@@ -306,13 +307,13 @@ void HydroIntegrator::PiecewiseLinearX3(const int k, const int j,
         // Apply monotonicity constraints, compute ql_(i-1/2)
         Real dq2 = dql*dqc;
         ql(n,i) = q_km1;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           ql(n,i) += dxfr*dq2*(cfm*dql+cbm*dqc)/(dql*dql+(cfm+cbm-2.0)*dq2+dqc*dqc);
       
         // Apply monotonicity constraints, compute qr_(i-1/2)
         dq2 = dqc*dqr;
         qr(n,i) = q_k;
-        if(dq2>0.0)
+        if(dq2>TINY_NUMBER)
           qr(n,i) -= dxfl*dq2*(cfp*dqc+cbp*dqr)/(dqc*dqc+(cfp+cbp-2.0)*dq2+dqr*dqr);
       }
     }

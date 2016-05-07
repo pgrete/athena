@@ -73,7 +73,7 @@ void HydroEqnOfState::ConservedToPrimitive(AthenaArray<Real> &cons,
   for (int k=ks; k<=ke; ++k){
 #pragma omp for schedule(dynamic)
   for (int j=js; j<=je; ++j){
-#pragma simd
+//#pragma simd
     for (int i=is; i<=ie; ++i){
       Real& u_d  = cons(IDN,k,j,i);
       Real& u_m1 = cons(IVX,k,j,i);
@@ -134,7 +134,7 @@ void HydroEqnOfState::PrimitiveToConserved(const AthenaArray<Real> &prim,
   for (int k=ks; k<=ke; ++k){
 #pragma omp for schedule(dynamic)
   for (int j=js; j<=je; ++j){
-#pragma simd
+//#pragma simd
     for (int i=is; i<=ie; ++i){
       Real& u_d  = cons(IDN,k,j,i);
       Real& u_m1 = cons(IM1,k,j,i);

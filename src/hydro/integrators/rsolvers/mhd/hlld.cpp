@@ -56,7 +56,7 @@ void HydroIntegrator::RiemannSolver(const int k,const int j, const int il, const
 
   Real gm1 = pmy_hydro->peos->GetGamma() - 1.0;
 
-#pragma simd
+//#pragma simd
   for (int i=il; i<=iu; ++i){
 
 //--- Step 1.  Load L/R states into local variables

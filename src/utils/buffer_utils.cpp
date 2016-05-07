@@ -37,7 +37,7 @@ void Pack4DData(AthenaArray<Real> &src, Real *buf, int s4, int e4,
   for (int n=s4; n<=e4; ++n) {
     for (int k=s3; k<=e3; k++) {
       for (int j=s2; j<=e2; j++) {
-#pragma simd
+//#pragma simd
         for (int i=s1; i<=e1; i++)
             buf[offset++]=src(n,k,j,i);
       }
@@ -56,7 +56,7 @@ void Unpack4DData(Real *buf, AthenaArray<Real> &dst, int s4, int e4,
   for (int n=s4; n<=e4; ++n) {
     for (int k=s3; k<=e3; ++k) {
       for (int j=s2; j<=e2; ++j) {
-#pragma simd
+//#pragma simd
         for (int i=s1; i<=e1; ++i)
           dst(n,k,j,i) = buf[offset++];
       }
@@ -75,7 +75,7 @@ void Pack3DData(AthenaArray<Real> &src, Real *buf,
 {
   for (int k=sk; k<=ek; k++) {
     for (int j=sj; j<=ej; j++) {
-#pragma simd
+//#pragma simd
       for (int i=si; i<=ei; i++)
           buf[offset++]=src(k, j, i);
     }
@@ -93,7 +93,7 @@ void Unpack3DData(Real *buf, AthenaArray<Real> &dst,
 {
   for (int k=sk; k<=ek; ++k) {
     for (int j=sj; j<=ej; ++j) {
-#pragma simd
+//#pragma simd
       for (int i=si; i<=ei; ++i)
         dst(k,j,i) = buf[offset++];
     }
