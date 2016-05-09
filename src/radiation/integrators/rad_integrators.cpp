@@ -13,47 +13,28 @@
 // You should have received a copy of GNU GPL in the file LICENSE included in the code
 // distribution.  If not see <http://www.gnu.org/licenses/>.
 //======================================================================================
-//! \file radiation.cpp
-//  \brief implementation of functions in class Radiation
+//! \file rad_integrators.cpp
+//  \brief implementation of radiation integrators
 //======================================================================================
 
+
 // Athena++ headers
-#include "radiation.hpp"
-#include "integrators/rad_integrators.hpp"
-#include "../mesh.hpp"
+#include "../../athena.hpp"
+#include "../../athena_arrays.hpp"
+#include "../../parameter_input.hpp"
+#include "../../mesh.hpp"
+#include "../radiation.hpp"
+#include "rad_integrators.hpp"
 
-Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
+
+
+RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 {
-  // read in the parameters
-  int six_ray_flag = pin->GetOrAddInteger("radiation","six_ray_flag",0);
-	nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
-  
-  pmy_block = pmb;
-  
-	if (six_ray_flag) {
-		nang = 6;
-	} else {
-		nang = 1;
-	}
-  
-  n_fre_ang = nang * nfreq;
-  
-  
-  // allocate arrays
-  int ncells1 = pmy_block->block_size.nx1 + 2*(NGHOST);
-  int ncells2 = 1, ncells3 = 1;
-  if (pmy_block->block_size.nx2 > 1) ncells2 = pmy_block->block_size.nx2 + 2*(NGHOST);
-  if (pmy_block->block_size.nx3 > 1) ncells3 = pmy_block->block_size.nx3 + 2*(NGHOST);
-  // store frequency and angles as [nfre][ang]
-  ir.NewAthenaArray(ncells3, ncells2, ncells1, n_fre_ang);
-
-  //radiation integrator
-  pradintegrator = new RadIntegrator(this, pin);
+  pmy_rad = prad;
 }
 
-// destructor
+RadIntegrator::~RadIntegrator() {}
 
-Radiation::~Radiation()
-{
-  ir.DeleteAthenaArray();
+
+void RadIntegrator::UpdateRadJeans() {
 }

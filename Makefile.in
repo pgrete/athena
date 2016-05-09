@@ -45,6 +45,7 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/outputs/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
        $(wildcard src/radiation/$(RADIATION_FILE)) \
+       $(wildcard src/radiation/integrators/*.cpp) \
 	     src/pgen/$(PROBLEM_FILE) \
 	     src/pgen/default_pgen.cpp
 OBJ_DIR := obj/

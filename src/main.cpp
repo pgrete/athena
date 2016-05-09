@@ -48,6 +48,7 @@
 #ifdef INCLUDE_CHEMISTRY
 #include "chemistry/species.hpp" 
 #include "chemistry/network/network.hpp" 
+#include "radiation/integrators/rad_integrators.hpp"
 #endif
 
 // MPI/OpenMP headers
@@ -349,6 +350,14 @@ int main(int argc, char *argv[])
       MeshBlock *pmb = pmesh->pblock;
       while (pmb != NULL)  {
         pmb->pspec->podew->Integrate();
+        pmb=pmb->next;
+      }
+    }
+    //TODO: need to integrate with Yanfei's radiation
+    if (RADIATION_ENABLED) {
+      MeshBlock *pmb = pmesh->pblock;
+      while (pmb != NULL)  {
+        pmb->prad->pradintegrator->UpdateRadJeans();
         pmb=pmb->next;
       }
     }
