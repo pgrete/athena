@@ -265,15 +265,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 }
 
 //======================================================================================
-//! \fn void MeshBlock::UserWorkInLoop(void)
-//  \brief User-defined work function for every time step
-//======================================================================================
-void MeshBlock::UserWorkInLoop(void)
-{
-  return;
-}
-
-//======================================================================================
 //! \fn static std::vector<std::string> split(std::string str, char delimiter)
 //  \brief split a string, and store sub strings in a vector
 //======================================================================================
