@@ -561,6 +561,11 @@ static void GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
 	yghost[igH_] = 1.0 - (yghost[iOHx_] + yghost[iCHx_] + yghost[iHCOplus_]
                      + 3.0*yghost[iH3plus_] + 2.0*yghost[iH2plus_] + yghost[iHplus_]
 										 + 2.0*yghost[iH2_]);
+	for (int i=NSPECIES; i<NSPECIES+ngs_; i++) {
+		if (yghost[i] < 0) {
+			yghost[i] = 0;
+		}
+	}
 	return;
 }
 
