@@ -71,6 +71,9 @@
 // chemistry modules (INCLUDE_CHEMISTRY or NOT_INCLUDE_CHEMISTRY)
 #define @CHEMISTRY_OPTION@
 
+// ChemNetwork class header file included in species.hpp
+#define CHEMNETWORK_HEADER "@CHEMNETWORK_HEADER@"
+
 // number of internal hydro output variables
 #define NIFOV @NUM_IFOV@
 

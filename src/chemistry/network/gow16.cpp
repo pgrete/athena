@@ -19,97 +19,81 @@
 //======================================================================================
 
 // this class header
-#include "network.hpp"
+#include "gow16.hpp"
 
 //athena++ header
+#include "network.hpp"
 #include "../species.hpp"
 #include "../../parameter_input.hpp"       //ParameterInput
 #include "../../mesh.hpp"
 #include "../../hydro/hydro.hpp"
 #include "../../radiation/radiation.hpp"
+#include "../../utils/cgk_utils.hpp"
 
 //c++ header
-#include <vector>
 #include <stdexcept>  // std::runtime_error()
 #include <sstream>    // stringstream
 #include <iostream>   // endl
 #include <math.h> //a^x = pow(a,x)
+#include <stdio.h> //FILE, fprintf()
+
+//constants
+const Real ChemNetwork::temp_coll_ = 7.0e2;
 
 //species names
-std::string ChemNetwork::species_names[NSPECIES] = 
+const std::string ChemNetwork::species_names[NSPECIES] = 
 {"He+", "OHx", "CHx", "CO", "C+", "HCO+", "H2", "H+", "H3+", "H2+", "S+", "Si+", "E"};
 
 //below are ghost species. The aboundances of ghost species are
 // recalculated in RHS everytime by other species.
-static const int ngs_ = 7;
-static const std::string ghost_species_names_[ngs_] = 
+const std::string ChemNetwork::ghost_species_names_[ngs_] = 
 {"*Si", "*S", "*C", "*O", "*He", "*e", "*H"};
-static std::string species_names_all_[NSPECIES+ngs_];//all species
-static Real nH_; //density, updated at InitializeNextStep
-//units of density and radiation
-static Real unit_density_in_nH_;
-static Real unit_radiation_in_draine1987_;
-static Real temperature_;
-static int is_const_temp_; //flag for constant temperature
 
-
-//find the index of element in the array of strings.
-//report error if find repetitive elements
-static int FindStrIndex(const std::string *str_arr, const int len,
-		                    const std::string name);
-static void GetGhostSpecies(const Real *y, Real yall[NSPECIES+ngs_]); 
-static Real CII_rec_rate_(const Real temp);
-static void UpdateRates(const Real y[NSPECIES+ngs_]);
-
-//parameters of the netowork
-static Real zdg_, xHe_, xC_std_, xO_std_, xS_std_, xSi_std_, xC_, xO_, xS_,
-            xSi_,cr_rate_, bCO_;
 //index of species
-static int iHeplus_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "He+");
-static int iOHx_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "OHx");
-static int iCHx_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "CHx");
-static int iCO_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "CO");
-static int iCplus_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "C+");
-static int iHCOplus_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "HCO+");
-static int iH2_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "H2");
-static int iHplus_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "H+");
-static int iH3plus_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "H3+");
-static int iH2plus_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "H2+");
-static int iSplus_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "S+");
-static int iSiplus_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "Si+");
-static int iE_ = FindStrIndex(ChemNetwork::species_names, NSPECIES, "E");
+const int ChemNetwork::iHeplus_ =
+	CGKUtility::FindStrIndex(species_names, NSPECIES, "He+");
+const int ChemNetwork::iOHx_ = 
+	CGKUtility::FindStrIndex(species_names, NSPECIES, "OHx");
+const int ChemNetwork::iCHx_ = 
+	CGKUtility::FindStrIndex(species_names, NSPECIES, "CHx");
+const int ChemNetwork::iCO_ =
+	CGKUtility::FindStrIndex(species_names, NSPECIES, "CO");
+const int ChemNetwork::iCplus_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "C+");
+const int ChemNetwork::iHCOplus_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "HCO+");
+const int ChemNetwork::iH2_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "H2");
+const int ChemNetwork::iHplus_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "H+");
+const int ChemNetwork::iH3plus_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "H3+");
+const int ChemNetwork::iH2plus_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "H2+");
+const int ChemNetwork::iSplus_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "S+");
+const int ChemNetwork::iSiplus_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "Si+");
+const int ChemNetwork::iE_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "E");
 //index of ghost species
-static int igSi_ = FindStrIndex(ghost_species_names_, ngs_, "*Si") + NSPECIES;
-static int igS_ = FindStrIndex(ghost_species_names_, ngs_, "*S") + NSPECIES;
-static int igC_ = FindStrIndex(ghost_species_names_, ngs_, "*C") + NSPECIES;
-static int igO_ = FindStrIndex(ghost_species_names_, ngs_, "*O") + NSPECIES;
-static int igHe_ = FindStrIndex(ghost_species_names_, ngs_, "*He") + NSPECIES;
-static int ige_ = FindStrIndex(ghost_species_names_, ngs_, "*e") + NSPECIES;
-static int igH_ = FindStrIndex(ghost_species_names_, ngs_, "*H") + NSPECIES;
-//physical constants
-static const Real temp_coll_ = 7.0e2;
-static const Real mH_ = 1.67e-24;
-static const Real mCO_ = 4.68e-23;
+const int ChemNetwork::igSi_ =
+  CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*Si") + NSPECIES;
+const int ChemNetwork::igS_ =
+  CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*S") + NSPECIES;
+const int ChemNetwork::igC_ =
+  CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*C") + NSPECIES;
+const int ChemNetwork::igO_ =
+  CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*O") + NSPECIES;
+const int ChemNetwork::igHe_ =
+  CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*He") + NSPECIES;
+const int ChemNetwork::ige_ =
+  CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*e") + NSPECIES;
+const int ChemNetwork::igH_ =
+  CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*H") + NSPECIES;
 
 
 //-------------------chemical network---------------------
-//number of different reactions
-static const int n_cr_ = 8;
-static const int n_2body_ = 30;
-static const int n_ph_ = 7;
-static const int n_freq_ = n_ph_ + 2;
-static const int index_gpe_ = n_ph_;
-//static const int index_gisrf_ = n_ph_ + 1; TODO: in dust cooling
-//radiation field in unit of Draine 1987 field (G0), updated at InitializeNextStep 
-//vector: [Gph, GPE, GISRF]
-static Real rad_[n_freq_];
-static const int n_gr_ = 6;
-static const int nE_ = 15;//number of heating and cooling processes
-static Real kcr_[n_cr_]; //rates for cosmic-ray reactions.
-static Real k2body_[n_2body_]; //rates for 2 body reacrtions.
-static Real kph_[n_ph_]; //rates for photo- reactions.
-static Real kgr_[n_gr_]; //rates for grain assisted reactions.
-
 //cosmic ray chemistry network
 // (0) cr + H2 -> H2+ + *e
 // (1) cr + *He -> He+ + *e 
@@ -122,16 +106,21 @@ static Real kgr_[n_gr_]; //rates for grain assisted reactions.
 // (6) cr + S -> S+ + e, simply use 2 times rate of C, as in UMIST12
 // -----Si, CR induced photo ionization, experimenting----
 // (7) cr + Si -> Si+ + e, UMIST12
-static const int incr_[n_cr_] = {iH2_, igHe_, igH_, 
-                                 igC_, iCO_, iCO_,
-                                 igS_, igSi_};
-static const int outcr_[n_cr_] = {iH2plus_, iHeplus_, iHplus_, 
-                                  iCplus_, igO_, iHCOplus_,
-                                  iSplus_, iSiplus_};
-static const Real kcr_base_[n_cr_] = 
-{2.0, 1.1, 1.0, 
-1020., 10., 6.52,
-2040., 4200.}; 
+const int ChemNetwork::icr_H2_ = 0;
+const int ChemNetwork::icr_He_ = 1;
+const int ChemNetwork::icr_H_ = 2;
+const int ChemNetwork::incr_[n_cr_] = 
+												 {iH2_, igHe_, igH_, 
+													igC_, iCO_, iCO_,
+													igS_, igSi_};
+const int ChemNetwork::outcr_[n_cr_] =
+												 {iH2plus_, iHeplus_, iHplus_, 
+													iCplus_, igO_, iHCOplus_,
+													iSplus_, iSiplus_};
+const Real ChemNetwork::kcr_base_[n_cr_] = 
+												 {2.0, 1.1, 1.0, 
+													1020., 10., 6.52,
+													2040., 4200.}; 
 
 /*2 body reactions*/
 /*NOTE: photons from recombination are ignored*/
@@ -181,14 +170,17 @@ static const Real kcr_base_[n_cr_] =
  --- H2+ charge exchange with H ---
  (29) H2+ + *H -> H+ + H2 
  */
-static const int in2body1_[n_2body_] = 
+const int ChemNetwork::i2body_H2_H = 15;
+const int ChemNetwork::i2body_H2_H2 = 16;
+const int ChemNetwork::i2body_H_e = 17;
+const int ChemNetwork::in2body1_[n_2body_] = 
           {iH3plus_, iH3plus_, iH3plus_, iHeplus_, iHeplus_,    
            iCplus_, iCplus_, iCHx_, iOHx_, iHeplus_,
            iH3plus_, iCplus_, iHCOplus_, iH2plus_, iHplus_,
            iH2_, iH2_, igH_, iH3plus_, iHeplus_, 
            iCHx_, iOHx_, iCplus_, iSplus_, iCplus_,
            iSiplus_, iCplus_, iH3plus_, iHeplus_, iH2plus_};
-static const int in2body2_[n_2body_] = 
+const int ChemNetwork::in2body2_[n_2body_] = 
           {igC_, igO_, iCO_, iH2_, iCO_,   
            iH2_, iOHx_, igO_, igC_, ige_,   
            ige_, ige_, ige_, iH2_, ige_,
@@ -197,28 +189,28 @@ static const int in2body2_[n_2body_] =
            ige_, igSi_, igO_, iOHx_, igH_};
 /*Note: output to ghost species doesn't matter. The abundances of ghost species
  * are updated using the other species at every timestep*/
-static const int out2body1_[n_2body_] = 
+const int ChemNetwork::out2body1_[n_2body_] = 
           {iCHx_, iOHx_, iHCOplus_, iHplus_, iCplus_,   
            iCHx_, iHCOplus_, iCO_, iCO_, igHe_,   
            iH2_, igC_, iCO_, iH3plus_, igH_,
            igH_, iH2_, iHplus_, igH_, iH2plus_, 
            iH2_, igO_, igC_, igS_, iSplus_,
            igSi_, iSiplus_, iH2_, iOHx_, iHplus_};
-static const int out2body2_[n_2body_] = 
+const int ChemNetwork::out2body2_[n_2body_] = 
           {iH2_, iH2_, iH2_, igHe_, igO_,   
            igH_, igH_, igH_, igH_, igH_,   
            igH_, igH_, igH_, igH_, igH_,
            igH_, igH_, ige_, igH_, igHe_, 
            igC_, igH_, igH_, igH_, igC_,
            igH_, igC_, igO_, igHe_, iH2_};
-static const Real k2Texp_[n_2body_] = 
+const Real ChemNetwork::k2Texp_[n_2body_] = 
  {0.0, -0.190, 0.0, 0.0, 0.0, 
   -1.3, 0.0, 0.0, -0.339, -0.5, 
   -0.52, 0.0, -0.64, 0.042, 0.0,
   0.0, 0.0, 0.0, -0.52, 0.0,
   0.26, 0.0, -1.3, -0.59, 0.0,
   -0.62, 0.0, -0.190, 0.0, 0.0};
-static const Real k2body_base_[n_2body_] = 
+const Real ChemNetwork::k2body_base_[n_2body_] = 
                 {2.0e-9, 1.99e-9, 1.7e-9, 3.7e-14, 1.6e-9, 
                  3.3e-13 * 0.7, 1.00, 7.0e-11, 7.95e-10, 1.0e-11, 
                  4.54e-7, 1.00, 1.15e-5, 2.84e-9, 2.753e-14,
@@ -240,16 +232,19 @@ static const Real k2body_base_[n_2body_] =
  ----Si, from UMIST12
  (6) h nu + *Si -> Si+
  */
-static const int inph_[n_ph_] = {
+const int ChemNetwork::iph_C_ = 0;
+const int ChemNetwork::iph_CO_ = 2;
+const int ChemNetwork::iph_H2_ = 4;
+const int ChemNetwork::inph_[n_ph_] = {
               igC_, iCHx_, iCO_,
               iOHx_, iH2_, igS_, igSi_};
-static const int outph1_[n_ph_] = {
+const int ChemNetwork::outph1_[n_ph_] = {
               iCplus_, igC_, igC_,
               igO_, igH_, iSplus_, iSiplus_};
-static const Real kph_base_[n_ph_] = {3.1e-10, 9.2e-10, 2.6e-10/*Visser2009*/,   
+const Real ChemNetwork::kph_base_[n_ph_] = {3.1e-10, 9.2e-10, 2.6e-10/*Visser2009*/,   
 																			  3.9e-10, 5.6e-11, 
                                         6e-10, 3.1e-9}; 
-static const Real kph_avfac_[n_ph_] = {3.33, 1.72, 3.53/*Visser2009*/,  
+const Real ChemNetwork::kph_avfac_[n_ph_] = {3.33, 1.72, 3.53/*Visser2009*/,  
 	                                       2.24, 3.74/*Draine+Bertoldi1996*/,
                                          3.10, 2.3};
 
@@ -262,21 +257,22 @@ static const Real kph_avfac_[n_ph_] = {3.33, 1.72, 3.53/*Visser2009*/,
  (4) S+ + *e + gr -> *S + gr
  ------Si, from WD2001-----
  (5) Si+ + *e + gr -> *Si + gr
- */
-static const int ingr_[n_gr_] = {igH_, iHplus_, iCplus_, iHeplus_, 
-                                 iSplus_, iSiplus_};
-static const int outgr_[n_gr_] = {iH2_, igH_, igC_, igHe_, 
-                                 igS_, igSi_};
-static const Real cHp_[7] = {12.25, 8.074e-6, 1.378, 5.087e2, 1.586e-2,
-															 0.4723, 1.102e-5}; 
-static const Real cCp_[7] = {45.58, 6.089e-3, 1.128, 4.331e2, 4.845e-2,
-                               0.8120, 1.333e-4};
-static const Real cHep_[7] = {5.572, 3.185e-7, 1.512, 5.115e3, 3.903e-7,
-                                0.4956, 5.494e-7};
-static const Real cSp_[7] = {3.064, 7.769e-5, 1.319, 1.087e2, 3.475e-1,
-                               0.4790, 4.689e-2};
-static const Real cSip_[7] = {2.166, 5.678e-8, 1.874, 4.375e4, 1.635e-6,
-                               0.8964, 7.538e-5};
+ */   
+const int ChemNetwork::igr_H_ = 0;
+const int ChemNetwork::ingr_[n_gr_] = {igH_, iHplus_, iCplus_, iHeplus_, 
+                                       iSplus_, iSiplus_};
+const int ChemNetwork::outgr_[n_gr_] = {iH2_, igH_, igC_, igHe_, 
+                                        igS_, igSi_};
+const Real ChemNetwork::cHp_[7] = {12.25, 8.074e-6, 1.378, 5.087e2, 1.586e-2,
+ 											             0.4723, 1.102e-5}; 
+const Real ChemNetwork::cCp_[7] = {45.58, 6.089e-3, 1.128, 4.331e2, 4.845e-2,
+                                   0.8120, 1.333e-4};
+const Real ChemNetwork::cHep_[7] = {5.572, 3.185e-7, 1.512, 5.115e3, 3.903e-7,
+                                    0.4956, 5.494e-7};
+const Real ChemNetwork::cSp_[7] = {3.064, 7.769e-5, 1.319, 1.087e2, 3.475e-1,
+                                   0.4790, 4.689e-2};
+const Real ChemNetwork::cSip_[7] = {2.166, 5.678e-8, 1.874, 4.375e4, 1.635e-6,
+                                    0.8964, 7.538e-5};
 //-----------------end of chemical network---------------------
 
 
@@ -520,29 +516,7 @@ void ChemNetwork::OutputProperties(FILE *pf) const {
   return;
 }
 
-static int FindStrIndex(const std::string *str_arr, const int len,
-		                    const std::string name) {
-	std::vector<int> ifind;
-  std::stringstream msg; //error message
-	for (int i=0; i<len; i++) {
-		if (str_arr[i] == name) {
-			ifind.push_back(i);
-		}
-	}
-	if (ifind.size() == 1) {
-		return ifind[0];
-	} else if (ifind.size() == 0) {
-		msg <<  "### FATAL ERROR in ChemNetwork [FindStrIndex]" << std::endl
-			<< name << " not found." << std::endl; 
-      throw std::runtime_error(msg.str().c_str());
-	} else {
-		msg <<  "### FATAL ERROR in ChemNetwork [FindStrIndex]" << std::endl
-			<< name << " found more than once (" << ifind.size() << ")."  << std::endl; 
-      throw std::runtime_error(msg.str().c_str());
-	}
-}
-
-static void GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
+void ChemNetwork::GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
 	//copy the aboundances in y to yghost
 	for (int i=0; i<NSPECIES; i++) {
 		yghost[i] = y[i];
@@ -569,7 +543,7 @@ static void GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
 	return;
 }
 
-static Real CII_rec_rate_(const Real temp) {
+Real ChemNetwork::CII_rec_rate_(const Real temp) {
   Real A, B, T0, T1, C, T2, BN, term1, term2, alpharr, alphadr;
   A = 2.995e-9;
   B = 0.7849;
@@ -586,7 +560,7 @@ static Real CII_rec_rate_(const Real temp) {
   return (alpharr+alphadr);
 }
 
-static void UpdateRates(const Real y[NSPECIES+ngs_]) {
+void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
   Real T;
   //temperature TODO: constant for now, need evolution later.
   if (is_const_temp_) {

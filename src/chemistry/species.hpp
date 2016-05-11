@@ -12,11 +12,13 @@
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "network/network.hpp" //ChemNetwork class
+#include "network/network.hpp" 
+#include  CHEMNETWORK_HEADER //ChemNetwork class
 
 class MeshBlock;
 class ParameterInput;
 class ODEWrapper;
+class ChemNetwork;
 
 //! \class ChemSpecies
 //  \brief Chemical species data and functions

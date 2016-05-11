@@ -17,24 +17,120 @@
 //  \brief implementation of radiation integrators
 //======================================================================================
 
+//c++ headers
+#include <math.h>
 
 // Athena++ headers
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
 #include "../../parameter_input.hpp"
 #include "../../mesh.hpp"
+#include "../../utils/cgk_utils.hpp"
+#include "../../hydro/hydro.hpp"
+#include "../../hydro/eos/eos.hpp"
 #include "../radiation.hpp"
 #include "rad_integrators.hpp"
-
-
+#ifdef INCLUDE_CHEMISTRY
+#include "../../chemistry/species.hpp"
+#include "../../chemistry/shielding.hpp"
+#endif
 
 RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 {
   pmy_rad = prad;
+  rad_G0_ = pin->GetReal("problem", "G0");
 }
 
 RadIntegrator::~RadIntegrator() {}
 
 
+#ifdef INCLUDE_CHEMISTRY
 void RadIntegrator::UpdateRadJeans() {
+  const Real Tceiling = 40.; //temperature ceiling in Kelvin
+  const Real Tfloor = 1.; //temperature ceiling in Kelvin
+  const Real bH2 = 3.0e5; //H2 velocity dispersion
+  //TODO: sigmaPE and signaISRF orignally in Thermo class
+  const Real sigmaPE = 1.0e-21;
+  const Real sigmaISRF = 3.0e-22;
+  MeshBlock *pb = pmy_rad->pmy_block;
+  const Real Zd = pb->pspec->pchemnet->zdg_;
+  const int iH2 = pb->pspec->pchemnet->iH2_;
+  const int iCO = pb->pspec->pchemnet->iCO_;
+  const int iph_H2 = ChemNetwork::iph_H2_;
+  const int iph_CO = ChemNetwork::iph_CO_;
+  const int iPE = pb->pspec->pchemnet->index_gpe_;
+  const int iISRF = pb->pspec->pchemnet->index_gisrf_;
+  Real press, dens, dens_cgs, temp, cs, cs_sq, cs_floor, cs_max;
+  Real gm = pb->phydro->peos->GetGamma();
+  Real Lshield; //in cm
+  Real NH, NH2, NCO, AV;
+
+  //maximum Lshield at T=Tceiling
+  cs_max = sqrt( gm * CGKUtility::kB * Tceiling / (CGKUtility::mumax * CGKUtility::mH)
+       ); //maximum sounds speed in cgs
+  //maximum Lshield at T=Tceiling
+  cs_floor = sqrt( gm * CGKUtility::kB * Tfloor / (CGKUtility::mumax * CGKUtility::mH)); //minimum sounds speed in cgs
+
+  //loop over each cell
+  for (int k=pb->ks; k<=pb->ke; ++k) {
+    for (int j=pb->js; j<=pb->je; ++j) {
+      for (int i=pb->is; i<=pb->ie; ++i) {
+        //calculate the shielding length
+        press = pb->phydro->w(IEN, k, j, i);
+        dens = pb->phydro->w(IDN, k, j, i);
+        dens_cgs = dens *  CGKUtility::unitD;
+        temp = CGKUtility::get_temp(press, dens);
+        if (temp < Tceiling) {
+          cs_sq = ( gm * press / dens ) * SQR(CGKUtility::unitV); //cs in cgs
+          if (cs_sq < SQR(cs_floor) ) {
+            cs = cs_floor;
+          } else {
+            cs = sqrt(cs_sq);
+          }
+          Lshield = GetLJ(cs, dens_cgs);
+        } else {
+          Lshield = GetLJ(cs_max, dens_cgs);
+        }
+        //calculate NH, NH2, NCO
+        NH = dens * Lshield;
+        AV = NH * Zd / 1.87e21;
+        NH2 = pb->pspec->s(iH2, k, j, i) * Lshield;
+        NCO = pb->pspec->s(iCO, k, j, i) * Lshield;
+        //dust shielding
+        //photo-reactions
+        for (int ifreq=0; ifreq < pmy_rad->nfreq-2; ++ifreq) {
+          pmy_rad->ir(k, j, i, ifreq * pmy_rad->nang) = rad_G0_
+            * exp( -ChemNetwork::kph_avfac_[ifreq] * AV );
+        }
+        //H2 and CO self-sheilding
+        Real fs_CO = Shielding::fShield_CO_V09(NCO, NH2);
+        Real fs_H2 = Shielding::fShield_H2(NH2, bH2);
+        pmy_rad->ir(k, j, i, iph_H2 * pmy_rad->nang) *= 
+          fs_H2;
+        pmy_rad->ir(k, j, i, iph_CO * pmy_rad->nang) *= 
+          fs_CO;
+
+        //GPE and GISRF
+        pmy_rad->ir(k, j, i, iPE * pmy_rad->nang) = rad_G0_
+          *  exp(-NH * sigmaPE * Zd);
+        pmy_rad->ir(k, j, i, iISRF * pmy_rad->nang) = rad_G0_
+          *  exp(-NH * sigmaISRF * Zd);
+
+        //copy to other angles
+        for (int ifreq=0; ifreq < pmy_rad->nfreq; ++ifreq) {
+          for (int iang=1; iang < pmy_rad->nang; ++iang) {
+            pmy_rad->ir(k, j, i, ifreq * pmy_rad->nang + iang) = 
+              pmy_rad->ir(k, j, i, ifreq * pmy_rad->nang);
+          }
+        }
+
+      }
+    }
+  }
+}
+#endif
+
+Real RadIntegrator::GetLJ(Real cs, Real dens) {
+  const Real G = 6.67259e-8;//gravitational constant in cgs
+  return cs * sqrt( PI / (G * dens)  );
 }

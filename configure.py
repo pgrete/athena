@@ -348,6 +348,8 @@ if args['chemistry'] == "gow16":
   definitions['CHEMISTRY_ENABLED'] = '1'
   definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
   definitions['NUM_SPECIES'] = '13'
+  #ChemNetwork class header file included in species.hpp
+  definitions['CHEMNETWORK_HEADER'] = 'network/gow16.hpp'
   makefile_options['CHEMNET_FILE'] = 'src/chemistry/network/' \
                                       + args['chemistry'] + '.cpp'
   makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
@@ -358,6 +360,7 @@ elif args['chemistry'] == "gow16_ng":
   definitions['CHEMISTRY_ENABLED'] = '1'
   definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
   definitions['NUM_SPECIES'] = '19'
+  definitions['CHEMNETWORK_HEADER'] = 'network/gow16_ng.hpp'
   makefile_options['CHEMNET_FILE'] = 'src/chemistry/network/' \
                                       + args['chemistry'] + '.cpp'
   makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
@@ -370,6 +373,7 @@ else:
   definitions['NUM_SPECIES'] = '0'
   makefile_options['CHEMNET_FILE'] = ''
   makefile_options['CHEMISTRY_FILE'] = ''
+  definitions['CHEMNETWORK_HEADER'] = 'network/network.hpp'
 
 # -debug argument
 if args['debug']:

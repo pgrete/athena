@@ -20,7 +20,10 @@ namespace CGKUtility
 	//physical constants
 	const Real kB = 1.380658e-16;
 	const Real mH = 1.6733e-24; 
+	const Real mCO = 4.68e-23;
+  const Real pc = 3.085678e18; //parsec in cm
 	//units
+	const Real unitL = pc;
 	const Real unitD = muH * mH;
 	const Real unitV = 1.0e5;
 	const Real unitT = unitD * unitV * unitV / (kB * muH);

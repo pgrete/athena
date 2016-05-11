@@ -30,8 +30,13 @@ public:
   
   Radiation *pmy_rad;
 
+#ifdef INCLUDE_CHEMISTRY
   //update radiation assuming Jean's shielding
   void UpdateRadJeans();
+#endif
+private:
+  Real rad_G0_; //unshielded radiation field strengh, uniform.
+  Real GetLJ(Real cs, Real dens); //calculate Jean's length
 };
 
 #endif // RADINTEGRATORS_HPP
