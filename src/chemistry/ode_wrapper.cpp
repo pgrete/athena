@@ -108,7 +108,7 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
   CheckFlag(&flag, "CVodeSetMaxNumSteps", 1);
 
   //set maximum number of convergence failure
-  flag = CVodeSetMaxConvFails(cvode_mem_, 50);
+  flag = CVodeSetMaxConvFails(cvode_mem_, 500);
   CheckFlag(&flag, "CVodeSetMaxNumSteps", 1);
 
   //set maximum order
@@ -154,7 +154,6 @@ void ODEWrapper::Integrate() {
   Real tfinal = tinit + dt;
   Real treturn = 0;
   int flag;
-  bool is_first_zone = true;
   //timing of the chemistry in each cycle
   int nzones = (ie-is+1) * (je-js+1) * (ke-ks+1);
   clock_t begin, end;
