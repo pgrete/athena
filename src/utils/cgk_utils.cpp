@@ -20,18 +20,11 @@
 //======================================================================================
 #include "cgk_utils.hpp"
 #include <math.h>
+#include <vector>     // vector container
+#include <sstream>    // stringstream
 
-static const Real mumin=0.6182, mumax=1.295;
 static int get_Tidx(const Real temp);
 static const int NTBL=801;
-static const Real muH = 1.4271;
-//physical constants
-static const Real kB = 1.380658e-16;
-static const Real mH = 1.6733e-24; 
-//units
-static const Real unitD = muH * mH;
-static const Real unitV = 1.0e5;
-static const Real unitT = unitD * unitV * unitV / (kB * muH);
 //tables
 static Real T1_tbl[NTBL] = {
          1.00000000e+01,   1.02329299e+01,   1.04712855e+01,
@@ -603,6 +596,29 @@ namespace CGKUtility
     temp = get_temp_from_t1(T1);
     return temp;
   }
+
+	int FindStrIndex(const std::string *str_arr, const int len,
+			const std::string name) {
+		std::vector<int> ifind;
+		std::stringstream msg; //error message
+		for (int i=0; i<len; i++) {
+			if (str_arr[i] == name) {
+				ifind.push_back(i);
+			}
+		}
+		if (ifind.size() == 1) {
+			return ifind[0];
+		} else if (ifind.size() == 0) {
+			msg <<  "### FATAL ERROR in ChemNetwork [FindStrIndex]" << std::endl
+				<< name << " not found." << std::endl; 
+			throw std::runtime_error(msg.str().c_str());
+		} else {
+			msg <<  "### FATAL ERROR in ChemNetwork [FindStrIndex]" << std::endl
+				<< name << " found more than once (" << ifind.size() << ")."  << std::endl; 
+			throw std::runtime_error(msg.str().c_str());
+		}
+	}
+
 }
 
 static int get_Tidx(const Real temp){
