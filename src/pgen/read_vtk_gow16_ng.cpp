@@ -37,6 +37,7 @@
 #include "../hydro/eos/eos.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
+#include "../utils/cgk_utils.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../chemistry/species.hpp"
 #endif
@@ -261,6 +262,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 
   data.DeleteAthenaArray();
   b.DeleteAthenaArray();
+  //----initial temperature output---
+  if (NIFOV > 0) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+        for (int i=is; i<=ie; ++i) {
+          phydro->ifov(0, k, j, i) = CGKUtility::get_temp(
+              phydro->w(IEN, k, j, i), phydro->w(IDN, k, j, i) );
+        }
+      }
+    }
+  }
   return;
 }
 

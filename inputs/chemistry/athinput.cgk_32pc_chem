@@ -16,9 +16,14 @@ file_type  = rst       # restart data dump
 variable   = prim      # variables to be output
 dt         = 3.154e15      # time increment between outputs
 
+<output3>
+file_type  = vtk       # vtk data dump
+variable   = ifov      # variables to be output
+dt         = 3.154e15      # time increment between outputs
+
 <time>
-cfl_number = 0.4       # The Courant, Friedrichs, & Lewy (CFL) Number
-nlim       = 10        # cycle limit
+cfl_number = 0.3       # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim       = 100        # cycle limit
 tlim       = 3.154e16       # time limit
 
 <mesh>
@@ -70,7 +75,7 @@ temperature = 20  #T in Kelvin, if const_T_flag is true.
 reltol     = 1.0e-2  #relative tolerance, default 1.0e-2
 abstol     = 1.0e-15 #absolute tolerance, default 1.0e-12
 user_jac   = 0       #flag for whether use user provided Jacobian. default false/0
-maxsteps   = 1000     #maximum number of steps in one integration. default 10000
+maxsteps   = 10000     #maximum number of steps in one integration. default 10000
 h_init      = 1e12    #first step of first zone. Default 0/CVODE algorithm.
 #code units
 unit_density_in_nH = 1.
