@@ -9,46 +9,46 @@
 //! \file shielding.hpp
 //  \brief definition of shielding class.
 //======================================================================================
-#include <math.h> /*a^x = pow(a,x)*/
+#include "../athena.hpp"
+#include <math.h> //a^x = pow(a,x)
 
 //! \class Shielding
 //  \brief Shielding functions.
 class Shielding {
   public:
-		/*van Dishoeck & Black's shielding function.
-		 * NCO, NH2: column densith of CO and H2 in cm^-2.*/
+		//van Dishoeck & Black's shielding function.
+		// NCO, NH2: column densith of CO and H2 in cm^-2.
     Shielding();
     ~Shielding();
-		static double fShield_CO_vDB(const double NCO, const double NH2);
-    /*CO sheilding from Visser+2009, Table 5*/
-    /*TODO: change b(CO) or Tex(CO)?*/
-		static double fShield_CO_V09(const double NCO, const double NH2);
-    /*H2 self shielding from Draine+Bertoldi1996*/
-    /*TODO: talk to Bruce!*/
-		static double fShield_H2(const double NH2, const double bH2);
-    /*CI self shielding. TODO: ref from Mark wolfire*/
-		static double fShield_C(const double NC, const double NH2);
+		static Real fShield_CO_vDB(const Real NCO, const Real NH2);
+    //CO sheilding from Visser+2009, Table 5
+    //TODO: change b(CO) or Tex(CO)?
+		static Real fShield_CO_V09(const Real NCO, const Real NH2);
+    //H2 self shielding from Draine+Bertoldi1996
+		static Real fShield_H2(const Real NH2, const Real bH2);
+    //CI self shielding. TODO: ref from Mark wolfire
+		static Real fShield_C(const Real NC, const Real NH2);
   private:
-		/*CO column density for DB table*/
+		//CO column density for DB table
 		static const int len_NCO_DB_ = 8;
-		static const double logNCOvDB_[len_NCO_DB_];
-		/* H2 column densities for DB table*/
+		static const Real logNCOvDB_[len_NCO_DB_];
+		// H2 column densities for DB table
 		static const int len_NH2_DB_ = 6;
-		static const double logNH2vDB_[len_NH2_DB_];
-		/* Tabulated shielding factors */
-		static const double ThetavDB_[len_NH2_DB_][len_NCO_DB_];
+		static const Real logNH2vDB_[len_NH2_DB_];
+		// Tabulated shielding factors 
+		static const Real ThetavDB_[len_NH2_DB_][len_NCO_DB_];
 
-    /*Visser+ 2009 Table 5, b(CO)=0.3, Tex(CO)=5K*/
+    //Visser+ 2009 Table 5, b(CO)=0.3, Tex(CO)=5K
     static const int len_NCO_V09_ = 47;
-    static const double logNCOV09_[len_NCO_V09_];
+    static const Real logNCOV09_[len_NCO_V09_];
     static const int len_NH2_V09_ = 42;
-    static const double logNH2V09_[len_NH2_V09_];
-		static const double ThetaV09_[len_NH2_V09_][len_NCO_V09_];
+    static const Real logNH2V09_[len_NH2_V09_];
+		static const Real ThetaV09_[len_NH2_V09_][len_NCO_V09_];
 
-		/* Find index of linear interpretation, return the first index i for i,
-		 * i+1.*/
-		static int LinearInterpIndex(const int len, const double xarr[], 
-                                 const double x){
+		// Find index of linear interpretation, return the first index i for i,
+		// i+1.
+		static int LinearInterpIndex(const int len, const Real xarr[], 
+                                 const Real x){
       int i = 0;
       if ( x < xarr[0]) {
         return 0;
@@ -60,11 +60,11 @@ class Shielding {
       }
     }
 
-		static double LinearInterp(const double x0, const double x1,
-                               const double y0, const double y1,
-                               const double x){
+		static Real LinearInterp(const Real x0, const Real x1,
+                               const Real y0, const Real y1,
+                               const Real x){
       return y0 + ( (y1-y0)/(x1-x0) ) * (x-x0);
     }
 };
 
-#endif /*SHIELDING_HPP*/
+#endif //SHIELDING_HPP

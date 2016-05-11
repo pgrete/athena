@@ -18,12 +18,12 @@
 //======================================================================================
 #include "shielding.hpp"
 
-/*CO column density for DB table*/
-const double Shielding::logNCOvDB_[len_NCO_DB_] = {0, 13, 14, 15, 16, 17, 18, 19};
-/* H2 column densities for DB table*/
-const double Shielding::logNH2vDB_[len_NH2_DB_] = {0, 19, 20, 21, 22, 23};
-/* Tabulated shielding factors */
-const double Shielding::ThetavDB_[len_NH2_DB_][len_NCO_DB_] = {
+//CO column density for DB table
+const Real Shielding::logNCOvDB_[len_NCO_DB_] = {0, 13, 14, 15, 16, 17, 18, 19};
+// H2 column densities for DB table
+const Real Shielding::logNH2vDB_[len_NH2_DB_] = {0, 19, 20, 21, 22, 23};
+// Tabulated shielding factors 
+const Real Shielding::ThetavDB_[len_NH2_DB_][len_NCO_DB_] = {
 	{1.0, 9.681e-1, 7.764e-1, 3.631e-1, 7.013e-2, 1.295e-2, 1.738e-3, 9.985e-5},
   {8.215e-1, 7.916e-1, 6.160e-1, 2.749e-1, 5.351e-2, 1.065e-2, 1.519e-3, 8.818e-5},
   {7.160e-1, 6.900e-1, 5.360e-1, 2.359e-1, 4.416e-2, 8.769e-3, 1.254e-3, 7.558e-5},
@@ -32,12 +32,12 @@ const double Shielding::ThetavDB_[len_NH2_DB_][len_NCO_DB_] = {
   {1.310e-4, 1.293e-4, 1.160e-4, 6.346e-5, 1.822e-5, 6.842e-6, 3.622e-6, 3.572e-7}
 };
 
-/*-------------------Visser 2009 Table 5---------------------------*/
-const double Shielding::logNCOV09_[len_NCO_V09_] = {
+//-------------------Visser 2009 Table 5---------------------------
+const Real Shielding::logNCOV09_[len_NCO_V09_] = {
   0.000,10.000,10.200,10.400,10.600,10.800,11.000,11.200,11.400,11.600,11.800,12.000,12.200,12.400,12.600,12.800,13.000,13.200,13.400,13.600,13.800,14.000,14.200,14.400,14.600,14.800,15.000,15.200,15.400,15.600,15.800,16.000,16.200,16.400,16.600,16.800,17.000,17.200,17.400,17.600,17.800,18.000,18.200,18.400,18.600,18.800,19.000};
-const double Shielding::logNH2V09_[len_NH2_V09_] = {
+const Real Shielding::logNH2V09_[len_NH2_V09_] = {
 0.000,15.000,15.200,15.400,15.600,15.800,16.000,16.200,16.400,16.600,16.800,17.000,17.200,17.400,17.600,17.800,18.000,18.200,18.400,18.600,18.800,19.000,19.200,19.400,19.600,19.800,20.000,20.200,20.400,20.600,20.800,21.000,21.200,21.400,21.600,21.800,22.000,22.200,22.400,22.600,22.800,23.000};
-const double Shielding::ThetaV09_[len_NH2_V09_][len_NCO_V09_] = {
+const Real Shielding::ThetaV09_[len_NH2_V09_][len_NCO_V09_] = {
   {1.000e+00,9.997e-01,9.995e-01,9.992e-01,9.988e-01,9.981e-01,9.970e-01,9.953e-01,9.926e-01,9.883e-01,9.817e-01,9.716e-01,9.563e-01,9.338e-01,9.021e-01,8.599e-01,8.080e-01,7.498e-01,6.900e-01,6.323e-01,5.777e-01,5.250e-01,4.720e-01,4.177e-01,3.614e-01,3.028e-01,2.434e-01,1.871e-01,1.387e-01,1.012e-01,7.401e-02,5.467e-02,4.075e-02,3.063e-02,2.323e-02,1.775e-02,1.362e-02,1.044e-02,7.963e-03,6.037e-03,4.541e-03,3.378e-03,2.470e-03,1.759e-03,1.210e-03,8.046e-04,5.240e-04},
 {8.985e-01,8.983e-01,8.981e-01,8.978e-01,8.974e-01,8.967e-01,8.956e-01,8.939e-01,8.913e-01,8.871e-01,8.807e-01,8.707e-01,8.558e-01,8.338e-01,8.030e-01,7.621e-01,7.122e-01,6.569e-01,6.014e-01,5.494e-01,5.021e-01,4.578e-01,4.137e-01,3.681e-01,3.201e-01,2.694e-01,2.177e-01,1.683e-01,1.256e-01,9.224e-02,6.786e-02,5.034e-02,3.767e-02,2.844e-02,2.167e-02,1.664e-02,1.282e-02,9.868e-03,7.556e-03,5.743e-03,4.325e-03,3.223e-03,2.363e-03,1.690e-03,1.169e-03,7.815e-04,5.112e-04},
 {8.966e-01,8.963e-01,8.962e-01,8.959e-01,8.955e-01,8.948e-01,8.937e-01,8.920e-01,8.894e-01,8.852e-01,8.788e-01,8.688e-01,8.539e-01,8.319e-01,8.011e-01,7.602e-01,7.103e-01,6.551e-01,5.996e-01,5.476e-01,5.004e-01,4.562e-01,4.122e-01,3.667e-01,3.190e-01,2.685e-01,2.171e-01,1.679e-01,1.254e-01,9.214e-02,6.781e-02,5.031e-02,3.765e-02,2.842e-02,2.166e-02,1.663e-02,1.282e-02,9.865e-03,7.554e-03,5.741e-03,4.323e-03,3.222e-03,2.362e-03,1.689e-03,1.169e-03,7.811e-04,5.110e-04},
@@ -81,78 +81,91 @@ const double Shielding::ThetaV09_[len_NH2_V09_][len_NCO_V09_] = {
 {1.546e-06,1.546e-06,1.546e-06,1.546e-06,1.546e-06,1.546e-06,1.545e-06,1.545e-06,1.545e-06,1.545e-06,1.545e-06,1.545e-06,1.545e-06,1.545e-06,1.544e-06,1.544e-06,1.542e-06,1.541e-06,1.538e-06,1.534e-06,1.527e-06,1.516e-06,1.500e-06,1.477e-06,1.442e-06,1.393e-06,1.329e-06,1.251e-06,1.168e-06,1.092e-06,1.032e-06,9.867e-07,9.497e-07,9.197e-07,8.973e-07,8.813e-07,8.701e-07,8.624e-07,8.574e-07,8.539e-07,8.513e-07,8.490e-07,8.467e-07,8.444e-07,8.421e-07,8.397e-07,8.374e-07},
 {3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.938e-07,3.937e-07,3.937e-07,3.937e-07,3.937e-07,3.936e-07,3.935e-07,3.933e-07,3.931e-07,3.928e-07,3.923e-07,3.918e-07,3.913e-07,3.908e-07,3.904e-07,3.901e-07,3.898e-07,3.896e-07,3.894e-07,3.893e-07,3.893e-07,3.892e-07,3.891e-07,3.891e-07,3.890e-07,3.890e-07,3.889e-07,3.887e-07,3.885e-07,3.881e-07,3.875e-07}};
 
-/*------------------Constructor and Destructor---------------------*/
+//------------------Constructor and Destructor---------------------
 Shielding::Shielding() {}
 Shielding::~Shielding() {}
 
-/*-----------------------CO self-sheilding and sheilding by * H2-------------*/
+//-----------------------CO self-sheilding and sheilding by * H2-------------
 
-double Shielding::fShield_CO_vDB(const double NCO, const double NH2) {
-	const double logNCO = log10(NCO);
-	const double logNH2 = log10(NH2);
+Real Shielding::fShield_CO_vDB(const Real NCO, const Real NH2) {
+	const Real logNCO = log10(NCO);
+	const Real logNH2 = log10(NH2);
 	int iCO0, iCO1;
 	int iH20, iH21;
-	/*interpretation value of first, second line, and final value*/
-	double fl1, fl2, fl; 
-	/*find which two points are we interpolate/extroplating*/
+	//interpretation value of first, second line, and final value
+	Real fl1, fl2, fl; 
+	//find which two points are we interpolate/extroplating
 	iCO0 = LinearInterpIndex(len_NCO_DB_, logNCOvDB_, logNCO);
 	iCO1 = iCO0+1;
 	iH20 = LinearInterpIndex(len_NH2_DB_, logNH2vDB_, logNH2);
 	iH21 = iH20+1;
-	/*linear interpretation of the rows*/
+	//linear interpretation of the rows
 	fl1 = LinearInterp(logNCOvDB_[iCO0], logNCOvDB_[iCO1],
 										 log(ThetavDB_[iH20][iCO0]),  log(ThetavDB_[iH20][iCO1]), logNCO);
 	fl2 = LinearInterp(logNCOvDB_[iCO0], logNCOvDB_[iCO1],
 										 log(ThetavDB_[iH21][iCO0]),  log(ThetavDB_[iH21][iCO1]), logNCO);
-	/*linear interpretation of the column*/
+	//linear interpretation of the column
 	fl = LinearInterp(logNH2vDB_[iH20], logNH2vDB_[iH21],
 										fl1, fl2, logNH2);
 	return exp(fl);
 }
 
-double Shielding::fShield_CO_V09(const double NCO, const double NH2) {
-  const double N_small_ = 1.0e10;
-  if (NCO < N_small_ and NH2 < N_small_) {
-    return 1.0;
-  }
-	const double logNCO = log10(NCO);
-	const double logNH2 = log10(NH2);
+Real Shielding::fShield_CO_V09(const Real NCO, const Real NH2) {
+  const Real N_small_ = 1.0e10;
+	Real logNCO, logNH2;
+	//restrain values on the table
+  if (NCO < N_small_ && NH2 < N_small_) {
+		return 1.0;
+	}
+	if (NCO < N_small_) {
+		logNCO = 10.;
+	} else if (NH2 < N_small_) {
+		logNH2 = 10.;
+	} else {
+	 logNCO = log10(NCO);
+	 logNH2 = log10(NH2);
+	}
+
 	int iCO0, iCO1;
 	int iH20, iH21;
-	/*interpretation value of first, second line, and final value*/
-	double fl1, fl2, fl; 
-	/*find which two points are we interpolate/extroplating*/
+	//interpretation value of first, second line, and final value
+	Real fl1, fl2, fl; 
+	//find which two points are we interpolate/extroplating
 	iCO0 = LinearInterpIndex(len_NCO_V09_, logNCOV09_, logNCO);
 	iCO1 = iCO0+1;
 	iH20 = LinearInterpIndex(len_NH2_V09_, logNH2V09_, logNH2);
 	iH21 = iH20+1;
-	/*linear interpretation of the rows*/
+	//linear interpretation of the rows
 	fl1 = LinearInterp(logNCOV09_[iCO0], logNCOV09_[iCO1],
 										 log(ThetaV09_[iH20][iCO0]),  log(ThetaV09_[iH20][iCO1]), logNCO);
 	fl2 = LinearInterp(logNCOV09_[iCO0], logNCOV09_[iCO1],
 										 log(ThetaV09_[iH21][iCO0]),  log(ThetaV09_[iH21][iCO1]), logNCO);
-	/*linear interpretation of the column*/
+	//linear interpretation of the column
 	fl = LinearInterp(logNH2V09_[iH20], logNH2V09_[iH21],
 										fl1, fl2, logNH2);
 	return exp(fl);
 }
 
-double Shielding::fShield_H2(const double NH2, const double bH2) {
-  const double b5 = bH2 / 1.0e5;
-  const double x = NH2 / 5.0e14;
-  double p1, p2, term; /*first and second term*/
+Real Shielding::fShield_H2(const Real NH2, const Real bH2) {
+	const Real N_small_ = 10.;
+	if (NH2 < N_small_){
+		return 1.;
+	}
+  const Real b5 = bH2 / 1.0e5;
+  const Real x = NH2 / 5.0e14;
+  Real p1, p2, term; //first and second term
   p1 = 0.965 / ( (1.+x/b5) * (1.+x/b5) );
   term = sqrt(1. + x);
   p2 = 0.035/term * exp(-8.5e-4*term);
   return p1 + p2;
 }
 
-double Shielding::fShield_C(const double NC, const double NH2) {
+Real Shielding::fShield_C(const Real NC, const Real NH2) {
   //Tielens+Hollenbach1985 (A6) and (A7). Also see Wolfire's email on April 18,
   //2016.
-  const double AH2 = 1.17e-8;
-  const double tau_H2 = 1.2e-14 * 2 * NH2;
-  const double y = AH2 * tau_H2;
-  const double ry = exp(-y) * (1. + y);
+  const Real AH2 = 1.17e-8;
+  const Real tau_H2 = 1.2e-14 * 2 * NH2;
+  const Real y = AH2 * tau_H2;
+  const Real ry = exp(-y) * (1. + y);
   return exp(-1.6e-17*NC) * ry;
 }
