@@ -322,6 +322,8 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	Real inf = std::numeric_limits<Real>::infinity();
 	temp_max_heat_ = pin->GetOrAddReal("chemistry", "temp_max_heat", inf);
 	temp_min_cool_ = pin->GetOrAddReal("chemistry", "temp_min_cool", 1.);
+	//minimum temperature for reaction rates
+	temp_min_rates_ = pin->GetOrAddReal("chemistry", "temp_min_rates", 1.);
 	//CO cooling parameters
 	//default: not use LVG approximation
 	isNCOeff_LVG_ = pin->GetOrAddInteger("chemistry", "isNCOeff_LVG", 0);
@@ -383,6 +385,7 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 		if (yprev[i] < 0) {
 			yprev[i] = 0;
 		}
+	}
 #ifdef DEBUG
 		if (isnan(yprev[i]) || isinf(yprev[i]) ) {
 			for (int i=0; i<NSPECIES+ngs_; i++) {
@@ -606,8 +609,8 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
   }
 	//TODO: justify this
 	//cap T above some minimum temperature
-	if (T < temp_min_thermo_) {
-		T = temp_min_thermo_;
+	if (T < temp_min_rates_) {
+		T = temp_min_rates_;
 	}
 	const Real logT = log10(T);
 	const Real logT4 = log10(T/1.0e4);
