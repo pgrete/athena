@@ -33,6 +33,7 @@
 #ifdef INCLUDE_CHEMISTRY
 #include "../../chemistry/species.hpp"
 #include "../../chemistry/shielding.hpp"
+#include "../../chemistry/thermo.hpp"
 #endif
 
 RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
@@ -49,9 +50,8 @@ void RadIntegrator::UpdateRadJeans() {
   const Real Tceiling = 40.; //temperature ceiling in Kelvin
   const Real Tfloor = 1.; //temperature ceiling in Kelvin
   const Real bH2 = 3.0e5; //H2 velocity dispersion
-  //TODO: sigmaPE and signaISRF orignally in Thermo class
-  const Real sigmaPE = 1.0e-21;
-  const Real sigmaISRF = 3.0e-22;
+  const Real sigmaPE = Thermo::sigmaPE_;
+  const Real sigmaISRF = Thermo::sigmaISRF_;
   MeshBlock *pb = pmy_rad->pmy_block;
   const Real Zd = pb->pspec->pchemnet->zdg_;
   const int iH2 = pb->pspec->pchemnet->iH2_;
@@ -96,6 +96,8 @@ void RadIntegrator::UpdateRadJeans() {
         AV = NH * Zd / 1.87e21;
         NH2 = pb->pspec->s(iH2, k, j, i) * Lshield;
         NCO = pb->pspec->s(iCO, k, j, i) * Lshield;
+        //set CO column for calculating CO cooling
+        pb->pspec->pchemnet->colCO_(k, j, i) = NCO;
         //dust shielding
         //photo-reactions
         for (int ifreq=0; ifreq < pmy_rad->nfreq-2; ++ifreq) {

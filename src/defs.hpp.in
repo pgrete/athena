@@ -83,6 +83,9 @@
 // number of species
 #define NSPECIES  @NUM_SPECIES@
 
+// debug option
+#define @DEBUG@
+
 //--------------------------------------------------------------------------------------
 // macros associated with numerical algorithm (rarely modified)
 

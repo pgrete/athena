@@ -15,17 +15,20 @@
 // Athena++ classes headers
 #include "network.hpp"
 #include "../../athena.hpp"
+#include "../../athena_arrays.hpp"
 
 //! \class ChemNetwork
 //  \brief Chemical Network that defines the reaction rates between species.
 class ChemNetwork : public NetworkWrapper {
 	friend class RadIntegrator;
+	friend class MeshBlock;
 public:
   ChemNetwork(ChemSpecies *pspec, ParameterInput *pin);
   ~ChemNetwork();
 
 	//a list of species name, used in output
 	static const std::string species_names[NSPECIES];
+
 
 	//Set the rates of chemical reactions, eg. through density and radiation field.
   //k, j, i are the corresponding index of the grid
@@ -65,6 +68,9 @@ private:
 	Real unit_density_in_nH_;
 	Real unit_radiation_in_draine1987_;
 	Real temperature_;
+	Real temp_max_heat_; 
+	Real temp_min_cool_; 
+	//maximum temperature above which heating and cooling is turned off 
 	int is_const_temp_; //flag for constant temperature
 	//parameters of the netowork
 	Real zdg_;
@@ -78,7 +84,6 @@ private:
 	Real xS_;
 	Real xSi_;
 	Real cr_rate_;
-	Real bCO_;
 	//index of species
 	static const int iHeplus_;
 	static const int iOHx_;
@@ -154,11 +159,6 @@ private:
 	//factor to calculate psi in H+ recombination on grain
 	Real psi_gr_fac_;
 	//--------------heating and cooling--------
-	//CO cooling
-	//absolute value of velocity gradiant
-	Real gradv_;
-	//absolute value of number density gradiant
-	Real gradnH_;
 	Real LCR_;
 	Real LPE_;
 	Real LH2gr_;
@@ -174,11 +174,26 @@ private:
 	Real GRec_;
 	Real GH2diss_;
 	Real GHIion_;
+	//parameters related to CO cooling
+  AthenaArray<Real> colCO_;  //CO column density.
+	int isNCOeff_LVG_; 
+	//these are needed for LVG approximation
+	Real gradv_; //abosolute value of velocity gradient in cgs, >0
+	Real gradnH_; //abosolute value of density gradient in cgs, >0
+	Real dx_cell_; //cell size
+	Real Leff_CO_max_; //maximum effective length for CO cooling
+	//these are needed for assigned NCO and bCO
+	Real NCO_;
+	Real bCO_;
+	//a small number to avoid divide by zero.
+	static const Real small_;
 	
 	//functions
 	void UpdateRates(const Real y[NSPECIES+ngs_]);
 	void GetGhostSpecies(const Real *y, Real yall[NSPECIES+ngs_]); 
 	Real CII_rec_rate_(const Real temp);
+	Real dEdt_(const Real y[NSPECIES+ngs_]);
+	void OutputRates(FILE *pf) const;
 
 
 

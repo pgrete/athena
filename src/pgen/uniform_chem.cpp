@@ -34,6 +34,7 @@
 #include "../mesh.hpp"
 #include "../hydro/hydro.hpp"
 #include "../chemistry/species.hpp"
+#include "../chemistry/thermo.hpp"
 #include "../radiation/radiation.hpp"
 #include "../field/field.hpp"
 #include "../hydro/eos/eos.hpp"
@@ -101,6 +102,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 						for (int ispec=0; ispec < NSPECIES; ++ispec) {
 							pspec->s(ispec, k, j, i) = s_init;
 						}
+						//temperature
+							pspec->s(pspec->pchemnet->iE_, k, j, i) = 20. *
+								Thermo::CvCold(0., 0.1, 0.);
           }
         }
       }
