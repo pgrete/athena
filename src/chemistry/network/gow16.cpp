@@ -794,71 +794,96 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
   //NOTE: because these depends on rates, make sure ChemInit is called before.
   //NOTE: the kcr_[i] assume the order of equastions are not changed
 	//cut-off heating at high temperature
-  const Real LCR = Thermo::HeatingCr(y[ige_],  nH_,
-										        y[igH_],  y[igHe_],  y[iH2_],
-		   							        kcr_[icr_H_],  kcr_[icr_He_],  kcr_[icr_H2_]);
-  //photo electric effect on dust
-  const Real LPE = Thermo::HeatingPE(rad_[index_gpe_], zdg_, T, nH_*y[ige_]);
-  //H2 formation on dust grains
-  const Real LH2gr = Thermo::HeatingH2gr(y[igH_],  y[iH2_],  nH_,
-                                           T,  kgr_[igr_H_]);
-  //H2 UV pumping
-  const Real dot_xH2_photo = kph_[iph_H2_] * y[iH2_];
-  const Real LH2pump = Thermo::HeatingH2pump(y[igH_],  y[iH2_],  nH_,
-                                               T,  dot_xH2_photo);
-  //H2 photo dissiociation.
-  const Real LH2diss = Thermo::HeatingH2diss(dot_xH2_photo);
+	Real LCR, LPE, LH2gr, dot_xH2_photo, LH2pump, LH2diss;
+	if (T > temp_max_heat_) {
+		LCR = 0.;
+		LPE = 0;
+		LH2gr = 0;
+		LH2pump = 0.;
+		LH2diss = 0.;
+	} else {
+		LCR = Thermo::HeatingCr(y[ige_],  nH_,
+				y[igH_],  y[igHe_],  y[iH2_],
+				kcr_[icr_H_],  kcr_[icr_He_],  kcr_[icr_H2_]);
+		//photo electric effect on dust
+		LPE = Thermo::HeatingPE(rad_[index_gpe_], zdg_, T, nH_*y[ige_]);
+		//H2 formation on dust grains
+		LH2gr = Thermo::HeatingH2gr(y[igH_],  y[iH2_],  nH_,
+				T,  kgr_[igr_H_]);
+		//H2 UV pumping
+		dot_xH2_photo = kph_[iph_H2_] * y[iH2_];
+		LH2pump = Thermo::HeatingH2pump(y[igH_],  y[iH2_],  nH_,
+				T,  dot_xH2_photo);
+		//H2 photo dissiociation.
+		LH2diss = Thermo::HeatingH2diss(dot_xH2_photo);
+	}
   //--------------------------cooling-----------------------------
-  // C+ fine structure line 
-  const Real GCII = Thermo::CoolingCII(y[iCplus_],  nH_*y[igH_],  nH_*y[iH2_],
-                                         nH_*y[ige_],  T);
-  // CI fine structure line 
-  const Real GCI = Thermo:: CoolingCI(y[igC_],  nH_*y[igH_],  nH_*y[iH2_],
-                                        nH_*y[ige_],  T);
-  // OI fine structure line 
-  const Real GOI = Thermo:: CoolingOI(y[igO_],  nH_*y[igH_],  nH_*y[iH2_],
-                                        nH_*y[ige_],  T);
-  // collisional exicited lyman alphya line 
-  const Real GLya = Thermo::CoolingLya(y[igH_], nH_*y[ige_],  T);
-  // CO rotational lines 
-  // Calculate effective CO column density
-  const Real vth = sqrt(2. * Thermo::kb_ * T / CGKUtility::mCO);
-  const Real nCO = nH_ * y[iCO_];
-	const Real grad_small_ = 1e-100;
+	//cut-off cooling at low temperature
+	Real GCII, GCI, GOI, GLya, GCOR, GH2, GDust, GRec, GH2diss, GHIion;
+	Real vth, nCO, grad_small_;
   Real NCOeff, Leff_n, Leff_v, Leff;
-  if (isNCOeff_LVG_) {
-    if (gradv_ > vth / dx_cell_) {
-      NCOeff = nCO / gradv_;
-    } else {
-      Leff_n = nH_ / gradnH_;
-      Leff_v = vth / gradv_;
-			if (gradnH_ < grad_small_ || gradv_ < grad_small_
-					|| Leff_n > Leff_CO_max_ || Leff_v > Leff_CO_max_ ) {
-				Leff = Leff_CO_max_;
+	if (T < temp_min_cool_) {
+		GCII = 0.;
+		GCI = 0;
+		GOI = 0.;
+		GLya = 0;
+		GCOR = 0;
+		GH2 = 0;
+		GDust = 0;
+		GRec = 0;
+		GH2diss = 0;
+		GHIion = 0;
+	} else {
+		// C+ fine structure line 
+		GCII = Thermo::CoolingCII(y[iCplus_],  nH_*y[igH_],  nH_*y[iH2_],
+				nH_*y[ige_],  T);
+		// CI fine structure line 
+		GCI = Thermo:: CoolingCI(y[igC_],  nH_*y[igH_],  nH_*y[iH2_],
+				nH_*y[ige_],  T);
+		// OI fine structure line 
+		GOI = Thermo:: CoolingOI(y[igO_],  nH_*y[igH_],  nH_*y[iH2_],
+				nH_*y[ige_],  T);
+		// collisional exicited lyman alphya line 
+		GLya = Thermo::CoolingLya(y[igH_], nH_*y[ige_],  T);
+		// CO rotational lines 
+		// Calculate effective CO column density
+		vth = sqrt(2. * Thermo::kb_ * T / CGKUtility::mCO);
+		nCO = nH_ * y[iCO_];
+		grad_small_ = 1e-100;
+		if (isNCOeff_LVG_) {
+			if (gradv_ > vth / dx_cell_) {
+				NCOeff = nCO / gradv_;
 			} else {
-				Leff = std::min(Leff_n, Leff_v);
+				Leff_n = nH_ / gradnH_;
+				Leff_v = vth / gradv_;
+				if (gradnH_ < grad_small_ || gradv_ < grad_small_
+						|| Leff_n > Leff_CO_max_ || Leff_v > Leff_CO_max_ ) {
+					Leff = Leff_CO_max_;
+				} else {
+					Leff = std::min(Leff_n, Leff_v);
+				}
+				NCOeff = nCO * Leff / vth;
 			}
-      NCOeff = nCO * Leff / vth;
-    }
-  } else {
-      NCOeff = NCO_ / sqrt(bCO_*bCO_ + vth*vth);
-  }
-  const Real GCOR = Thermo::CoolingCOR(y[iCO_], nH_*y[igH_],  nH_*y[iH2_],
-                                         nH_*y[ige_],  T,  NCOeff);
-  // H2 vibration and rotation lines 
-  const Real GH2 = Thermo::CoolingH2(y[iH2_], nH_*y[igH_],  nH_*y[iH2_],
-                                       nH_*y[igHe_],  nH_*y[iHplus_], nH_*y[ige_],
-                                       T);
-  // dust thermo emission 
-  const Real GDust = Thermo::CoolingDust(zdg_,  nH_, T, rad_[index_gisrf_]);
-  // reconbination of e on PAHs 
-  const Real GRec = Thermo::CoolingRec(zdg_,  T,  nH_*y[ige_], rad_[index_gpe_]);
-  // collisional dissociation of H2 
-  const Real GH2diss = Thermo::CoolingH2diss(y[igH_],  y[iH2_], k2body_[i2body_H2_H],
-                                               k2body_[i2body_H2_H2]);
-  // collisional ionization of HI 
-  const Real GHIion = Thermo::CoolingHIion(y[igH_],  y[ige_],
-                                             k2body_[i2body_H_e]);
+		} else {
+			NCOeff = NCO_ / sqrt(bCO_*bCO_ + vth*vth);
+		}
+		GCOR = Thermo::CoolingCOR(y[iCO_], nH_*y[igH_],  nH_*y[iH2_],
+				nH_*y[ige_],  T,  NCOeff);
+		// H2 vibration and rotation lines 
+		GH2 = Thermo::CoolingH2(y[iH2_], nH_*y[igH_],  nH_*y[iH2_],
+				nH_*y[igHe_],  nH_*y[iHplus_], nH_*y[ige_],
+				T);
+		// dust thermo emission 
+		GDust = Thermo::CoolingDust(zdg_,  nH_, T, rad_[index_gisrf_]);
+		// reconbination of e on PAHs 
+		GRec = Thermo::CoolingRec(zdg_,  T,  nH_*y[ige_], rad_[index_gpe_]);
+		// collisional dissociation of H2 
+		GH2diss = Thermo::CoolingH2diss(y[igH_],  y[iH2_], k2body_[i2body_H2_H],
+				k2body_[i2body_H2_H2]);
+		// collisional ionization of HI 
+		GHIion = Thermo::CoolingHIion(y[igH_],  y[ige_],
+				k2body_[i2body_H_e]);
+	}
   dEdt = (LCR + LPE + LH2gr + LH2pump + LH2diss)
             - (GCII + GCI + GOI + GLya + GCOR 
                 + GH2 + GDust + GRec + GH2diss + GHIion);
