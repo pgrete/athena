@@ -27,6 +27,7 @@ public:
   AthenaArray<Real> ir; // radiation specific intensity
 
   int nang, nfreq, n_fre_ang; // n_fre_ang=nang*nfreq
+  int jeans_shielding_flag;
 };
 
 #endif // RADIATION_HPP

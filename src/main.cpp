@@ -356,9 +356,11 @@ int main(int argc, char *argv[])
     //TODO: need to integrate with Yanfei's radiation
     if (RADIATION_ENABLED) {
       MeshBlock *pmb = pmesh->pblock;
-      while (pmb != NULL)  {
-        pmb->prad->pradintegrator->UpdateRadJeans();
-        pmb=pmb->next;
+      if (pmb->prad->jeans_shielding_flag) {
+        while (pmb != NULL)  {
+          pmb->prad->pradintegrator->UpdateRadJeans();
+          pmb=pmb->next;
+        }
       }
     }
 #endif
