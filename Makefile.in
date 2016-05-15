@@ -10,7 +10,6 @@ RECONSTRUCT_FILE = @RECONSTRUCT_FILE@
 RSOLVER_FILE = @RSOLVER_FILE@
 RSOLVER_DIR = @RSOLVER_DIR@
 HYDRO_INT_FILE = @HYDRO_INT_FILE@
-VIS_FILE = @VIS_FILE@
 CHEMNET_FILE = @CHEMNET_FILE@
 CHEMISTRY_FILE = @CHEMISTRY_FILE@
 RADIATION_FILE = @RADIATION_FILE@
@@ -34,7 +33,6 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/field/integrators/*.cpp) \
 	     $(wildcard src/hydro/*.cpp) \
 	     $(wildcard src/hydro/srcterms/*.cpp) \
-	     $(wildcard src/hydro/viscosity/$(VIS_FILE)) \
 			 $(wildcard $(CHEMISTRY_FILE)) \
        $(CHEMNET_FILE) \
 	     src/hydro/eos/$(EOS_FILE) \
