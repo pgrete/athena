@@ -189,6 +189,14 @@ class Thermo {
     // Return:
     // Cooling rate for collisional ionization of HI in erg H^-1 s^-1.
     static Real CoolingHIion(const Real xHI, const Real xe, const Real k_H_e);
+		// Cooling by Radiative recombination in hot gas, use CIE
+		// T = 10^3.8-10^8. For T>10^8, use free-free emmission.
+		// Arguments:
+		// nH: hydrogen number density in cm^-3
+		// T: temperature in Kelvin
+		// Zg: gas metalicity relative to solar
+		// Return: Cooling rate for hot gas in erg H^-1 s^-1
+		static Real CoolingHotGas(const Real nH, const Real T, const Real Zg);
     // specific heat, assume that H2 rotational and vibrational levels not
     // excited.
     // xH2, xe = nH2 or ne / nH
@@ -253,6 +261,11 @@ class Thermo {
     static const Real LLTECO_[lenNeffCO_*lenTCO_];
     static const Real nhalfCO_[lenNeffCO_*lenTCO_];
     static const Real alphaCO_[lenNeffCO_*lenTCO_];
+		//-----radiative cooling from Schure 2009 -------
+		static const int len_rad_cool_ = 110;
+		static const Real log_Trad_[len_rad_cool_];
+		static const Real log_gamma_H_He_[len_rad_cool_];
+		static const Real log_gamma_Z_[len_rad_cool_];
     //-----PE heating coefficients from WD2001 Table 2, second last line ---
     static const Real CPE_[7];
     //-----Collisional cooling included in PE heating, WD2001 Table3, second
