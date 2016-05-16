@@ -3980,8 +3980,10 @@ void BoundaryValues::ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst)
 
     }
     if(pmb->prad->rotate_theta==1){
-      RotateHPi_InnerX2(pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
-      RotateHPi_OuterX2(pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
+      if(pco->x2v(pmb->js-1) < pmb->pmy_mesh->mesh_size.x2min)
+         RotateHPi_InnerX2(pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
+      if(pco->x2v(pmb->je+1) > pmb->pmy_mesh->mesh_size.x2max)
+         RotateHPi_OuterX2(pmb, pco, pdst,bis,bie, pmb->js,pmb->je, bks,bke);
     }
   }
 
@@ -4001,15 +4003,17 @@ void BoundaryValues::ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst)
       RadBoundaryFunction_[OUTER_X3](pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
     }
     
-    if(pmb->prad->rotate_phi==1){
-      
-      RotateHPi_InnerX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
-      RotateHPi_OuterX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
-      
-    }else if(pmb->prad->rotate_phi==2){
-      
-      RotatePi_InnerX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
-      RotatePi_OuterX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
+    if(pco->x3v(pmb->ks-1) < pmb->pmy_mesh->mesh_size.x3min){
+      if(pmb->prad->rotate_phi==1)
+        RotateHPi_InnerX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
+      else if(pmb->prad->rotate_phi==2)
+        RotatePi_InnerX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
+    }
+    if(pco->x3v(pmb->ke+1) > pmb->pmy_mesh->mesh_size.x3max){
+      if(pmb->prad->rotate_phi==1)
+        RotateHPi_OuterX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
+      else if(pmb->prad->rotate_phi==2)
+        RotatePi_OuterX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
     
     }
     

@@ -38,7 +38,7 @@
 #include "../radiation/integrators/rad_integrators.hpp"
 #include "../utils/utils.hpp"
 
-static Real inib0 = 0.0;
+static Real inib0 = 0.5;
 static Real rhoinf;
 static Real rang;
 static Real csinf;

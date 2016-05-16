@@ -36,7 +36,7 @@ x1rat      = 1.09817
 
 nx2        = 32       # Number of zones in X2-direction
 x2min      = 0.05      # minimum value of X2
-x2max      = 3.09159265358979       # maximum value of X2
+x2max      = 3.091592653589793       # maximum value of X2
 ix2_bc     = reflecting  # inner-X2 boundary flag
 ox2_bc     = reflecting  # inner-X2 boundary flag
 
@@ -53,14 +53,14 @@ refinement = static
 
 <meshblock>
 nx1         = 32 
-nx2         = 32 
+nx2         = 16 
 
 <refinement1>
 x1min       = 0.0005
 x1max       = 0.5
-x2min       = 1.4720
+x2min       = 1.0472
 x2max       = 2.094395
-level       = 1
+level       = 3
 
 <hydro>
 gamma           = 1.5       # gamma = C_p/C_v

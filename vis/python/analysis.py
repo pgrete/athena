@@ -1,5 +1,5 @@
 
-from athena_yt import *
+from athena_read import *
 
 import sys
 sys.settrace
@@ -15,17 +15,14 @@ from pylab import *
 import struct
 import array
 import os
-import yt
 
 import h5py
-
-
-
 
 
 # setup latex fonts
 rcParams['text.usetex']=True
 rcParams['text.latex.unicode']=True
+
 
 matplotlib.rc('font', family='serif', serif='cm10')
 matplotlib.rc('text', usetex=True)
@@ -37,7 +34,7 @@ def PloTwoLines(xpos1, xpos2,var1, var2, xmin,xmax,xname,ymin, ymax, yname, outn
     plots, axes = plt.subplots(figsize=(12,9),dpi=300)
     plt.xlabel(xname, size = 20)
     plt.ylabel(yname, size = 20)
-    plt.subplots_adjust(left=0.14,right=0.95,top=0.9,bottom=0.15)
+    plt.subplots_adjust(left=0.1,right=0.95,top=0.9,bottom=0.15)
     plt.xticks(fontsize=20)
     plt.yticks(fontsize=20)
     plt.xlim([xmin,xmax])
@@ -65,59 +62,94 @@ def PloTwoLines(xpos1, xpos2,var1, var2, xmin,xmax,xname,ymin, ymax, yname, outn
 #################################################
 
 # function to make 2D image for scalar
-def MakeImage(data, minval, maxval, xmin, xmax, ymin, ymax,labelname,filename):
+def MakeImage(data, minval, maxval, xmin, xmax, ymin, ymax,logrticks,rticks,labelname,filename):
     plots, axes = plt.subplots(figsize=(12,9),dpi=300)
-    im = axes.imshow(data,cmap='RdGy_r', norm=LogNorm(vmin = minval, vmax=maxval), origin='lower', extent=[xmin,xmax,ymin,ymax])
-    cbaxes = plots.add_axes([0.85,0.1,0.03,0.8])
+    plt.xlabel('$ \\log(r/r_s)$', size = 20)
+    plt.ylabel('$ \\theta$', size = 20)
+    plt.subplots_adjust(left=0.1,right=0.8,top=0.9,bottom=0.1)
+    plt.xticks(logrticks,rticks)
+    
+    im = axes.imshow(data,cmap='RdGy_r', norm=LogNorm(vmin = minval, vmax=maxval), \
+                     origin='lower', extent=[xmin,xmax,ymin,ymax])
+    cbaxes = plots.add_axes([0.85,0.15,0.03,0.6])
     cbar=plots.colorbar(im,cax=cbaxes)
     cbar.set_label(labelname, size=20)
+    cbar.ax.tick_params(labelsize=15)
+    
+    axes.yaxis.set_tick_params(labelsize=20)
+    axes.xaxis.set_tick_params(labelsize=20)
     axes.set_aspect('auto')
     plt.savefig(filename)
     plt.close(plots)
 
 
-def loadhdf(filename):
-    f=h5py.File(filename,'r')
-    # to see all the available keys f.attrs.keys()
-    nblock=f.attrs['TotalMeshBlock']
-    block_size=f.attrs['MeshBlockSize']
-    root_grid_size=f.attrs['RootGridSize']
-    maxlevel=f.attrs['MaxLevel']
-    cycle=f.attrs['NCycle']
-    time=f.attrs['Time']
-    nvariable=f.attrs['NVariables']
-    #for quantities in each block
-    Er=np.array(f[u'MeshBlock0'][u'Er'])
+
 
 vol = lambda x1m,x1p,x2m,x2p,x3m,x3p: 1.0/3.0 * (x1p**3-x1m**3) * abs(np.cos(x2m)-np.cos(x2p)) * (x3p-x3m)
 
 
 
-filename='PolarCap.out1.00157.athdf'
+filename='disk.out1.00155.athdf'
 
-data=yt_loadathdf(filename)
 
-# for volume Rendering
-mi, ma=data.all_data().quantities.extrema('rho')
+# first use python hdf5 reader to get basic information
+df=h5py.File(filename,'r')
+time=df.attrs[u'Time']
+maxlevel=df.attrs[u'MaxLevel']
 
-mi=log10(mi.value)
-ma=log10(ma.value)
+df.close()
 
-# create a transfer function
+data=athdf(filename,quantities=['rho'],level=maxlevel,vol_func=vol)
 
-tf=yt.ColorTransferFunction((mi,ma))
-tf.add_layers(6,w=0.01)
+x1f=data['x1f']
+x2f=data['x2f']
+x3f=data['x3f']
 
-# define the properties and size of the Camera viewpoint
+rho=data['rho']
 
-L=[0.3, 0.3, 0.2]  # the view point
-c=[0., 0.0, 5.0]  # the focual point
-w=1.5*data.domain_width[0] # width
-Npixels=512
+n1=x1f.size-1
+n2=x2f.size-1
+n3=x3f.size-1
 
-cam=data.camera(c,L,w,Npixels,tf,fields=['rho'], north_vector=[0,0,1],\
-              steady_north=True, sub_samples=5, log_fields=[False])
 
-cam.transfer_function.map_to_colormap(mi,ma,scale=1.0,colormap='algae')
-image=cam.snapshot(fn='test.png')
-cam.save_image(image,transparent=True)
+x1v=np.zeros(n1)
+x2v=np.zeros(n2)
+x3v=np.zeros(n3)
+
+# calculate cell centered coordinate in spherical polar
+for i in range(0,n1):
+  x1v[i] = 0.75*(np.power(x1f[i+1],4.0) - np.power(x1f[i],4.0))/(np.power(x1f[i+1],3.0) - np.power(x1f[i],3.0))
+
+for i in range(0,n2):
+  x2v[i] = 0.5*(x2f[i+1] + x2f[i])
+
+for i in range(0,n3):
+  x3v[i] = 0.5*(x3f[i+1] + x3f[i])
+
+logr=np.log10(x1v)
+#take slice
+
+rhoslice=rho[n3/2,:,:]
+
+rhomax=np.max(rhoslice)
+rhomin=np.min(rhoslice)
+
+xmin=np.min(logr)
+xmax=np.max(logr)
+
+ymin=np.min(x2v)
+ymax=np.max(x2v)
+
+filename='rhoslice.png'
+labelname='$\\rho/\\rho_0$'
+
+logrticks=[logr[n1/6],logr[n1/3],logr[n1/2],logr[n1*2/3],logr[n1*5/6]]
+rticks=["%2.1f"%x1v[n1/6],"%2.1f"%x1v[n1/3],"%2.1f"%x1v[n1/2],"%2.1f"%x1v[n1*2/3],"%2.1f"%x1v[n1*5/6]]
+
+for i in range(len(rticks)):
+   rticks[i]="$"+rticks[i]+"$"
+
+MakeImage(rhoslice, rhomin, rhomax, xmin, xmax, ymin, ymax,logrticks,rticks,labelname,filename)
+
+
+
