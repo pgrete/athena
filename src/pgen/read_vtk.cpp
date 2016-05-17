@@ -222,7 +222,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
             pspec->s(ispec, k, j, i) = s_init;
           }
 					pspec->s(pspec->pchemnet->iE_, k, j, i) = 
-						phydro->w(IEN, k, j, i) * CGKUtility::unitE / gm1;
+						phydro->w(IEN, k, j, i) * CGKUtility::unitE / 
+						( gm1 * phydro->w(IDN, k, j, i) );
         }
       }
     }

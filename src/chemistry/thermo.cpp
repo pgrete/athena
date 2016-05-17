@@ -24,8 +24,6 @@
 
 //c++ headers
 #include <math.h>
-//debug
-#include <stdio.h>
 
 Thermo::Thermo(){}
 
@@ -464,11 +462,6 @@ Real Thermo::CoolingCOR(const Real xCO, const Real nHI, const Real nH2,
   const Real inv_LCO = 1./L0 + neff/LLTE 
                          + 1./L0 * pow(neff/nhalf, alpha) * (1. - nhalf*L0/LLTE);
 	const Real gco = (1./inv_LCO) * neff * xCO * facT;
-	//debug
-	if ( isnan(gco) ) {
-		printf("log_NCOeff=%.2e, L0=%.2e, neff=%.2e, LLTE=%.2e, nhalf=%.2e, alpha=%.2e, inv_LCO=%.2e, facT=%.2e, xCO=%.2e\n",
-				log_NCOeff, L0, neff, LLTE, nhalf, alpha, inv_LCO, facT, xCO);
-	}
 	return gco;
 }
 

@@ -159,7 +159,6 @@ void ODEWrapper::Integrate() {
   clock_t begin, end;
   Real elapsed_secs;
   begin = std::clock();
-	Real s1i;
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       //copy s to s1
@@ -194,17 +193,13 @@ void ODEWrapper::Integrate() {
         } else {
           pmy_spec_->h(k, j, i) = GetNextStep();
         }
+				//step 4: re-normalize species after integration. TODO: move this?
+				pmy_spec_->pchemnet->NormalizeSpecies(NV_DATA_S(y_));
       }
       //copy s1 back to s
       for (int ispec=0; ispec<NSPECIES; ispec++) {
         for (int i=is; i<=ie; ++i) {
-					//correct negative abundance
-					s1i = pmy_spec_->s1(i, ispec);
-					if ( s1i < 0) {
-						pmy_spec_->s(ispec, k, j, i) = 0.;
-					} else {
-						pmy_spec_->s(ispec, k, j, i) = s1i;
-					}
+					pmy_spec_->s(ispec, k, j, i) = pmy_spec_->s1(i, ispec);
         }
       }
     }

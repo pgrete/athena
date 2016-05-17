@@ -598,6 +598,62 @@ void ChemNetwork::GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
 	return;
 }
 
+void ChemNetwork::NormalizeSpecies(Real *y) {
+	Real yall[NSPECIES + ngs_];
+	GetGhostSpecies(y, yall);
+	//set negative abundance to zero
+	for (int i=0; i<NSPECIES+ngs_; i++) {
+		if (yall[i] < 0) {
+			yall[i] = 0;
+		}
+	}
+	//normalize to atomic abundance
+	//------ C --------
+	const int nC = 5;
+	const int iC_arr[nC] = {igC_, iHCOplus_, iCHx_, iCO_, iCplus_};
+	NormalizeAtom(nC, iC_arr, xC_, yall);
+	//------ O --------
+	const int nO = 4;
+	const int iO_arr[nO] = {igO_, iHCOplus_, iOHx_, iCO_};
+	NormalizeAtom(nO, iO_arr, xO_, yall);
+	//------ He --------
+	const int nHe = 2;
+	const int iHe_arr[nHe] = {igHe_, iHeplus_};
+	NormalizeAtom(nHe, iHe_arr, xHe_, yall);
+	//------ S --------
+	const int nS = 2;
+	const int iS_arr[nS] = {igS_, iSplus_};
+	NormalizeAtom(nS, iS_arr, xS_, yall);
+	//------ Si --------
+	const int nSi = 2;
+	const int iSi_arr[nSi] = {igSi_, iSiplus_};
+	NormalizeAtom(nSi, iSi_arr, xSi_, yall);
+	//------ H ---------, ignore OHx, CHx, HCO+
+	const int nH = 5;
+	const int iH_arr[nH] = {igH_, iH3plus_, iH2plus_, iHplus_, iH2_};
+	NormalizeAtom(nH, iH_arr, 1., yall);
+	//copy back to y
+	for (int i=0; i<NSPECIES; i++) {
+		y[i] = yall[i];
+	}
+	return;
+}
+
+void ChemNetwork::NormalizeAtom(const int nA, const int *iA_arr, const Real xA,
+																Real yall[NSPECIES+ngs_]) {
+	Real f_A;
+	Real yAtot = 0.;
+	for (int i=0; i<nA; i++) {
+		yAtot += yall[iA_arr[i]];
+	}
+	f_A = xA/yAtot;
+	for (int i=0; i<nA; i++) {
+		yall[iA_arr[i]] *= f_A;
+	}
+	return;
+}
+
+
 Real ChemNetwork::CII_rec_rate_(const Real temp) {
   Real A, B, T0, T1, C, T2, BN, term1, term2, alpharr, alphadr;
   A = 2.995e-9;

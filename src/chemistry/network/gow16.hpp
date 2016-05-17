@@ -35,6 +35,7 @@ public:
   void InitializeNextStep(const int k, const int j, const int i);
   //output properties of network. Can be used in eg. ProblemGenerator.
   void OutputProperties(FILE *pf) const;
+	void NormalizeSpecies(Real *y);//y[NSPECIES] 
 
   //RHS: right-hand-side of ODE. dy/dt = ydot(t, y). Here y are the abundance
   //of species. details see CVODE package documentation.
@@ -193,6 +194,8 @@ private:
 	//functions
 	void UpdateRates(const Real y[NSPECIES+ngs_]);
 	void GetGhostSpecies(const Real *y, Real yall[NSPECIES+ngs_]); 
+	void NormalizeAtom(const int nA, const int *iA_arr, const Real xA,
+					  				 Real yall[NSPECIES+ngs_]);//abundances all positive
 	Real CII_rec_rate_(const Real temp);
 	Real dEdt_(const Real y[NSPECIES+ngs_]);
 	void OutputRates(FILE *pf) const;
