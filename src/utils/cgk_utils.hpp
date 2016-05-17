@@ -27,6 +27,7 @@ namespace CGKUtility
 	const Real unitD = muH * mH;
 	const Real unitV = 1.0e5;
 	const Real unitT = unitD * unitV * unitV / (kB * muH);
+	const Real unitE = unitD * unitV * unitV;
   //calculate tempereature in Kelvin from t1=m_H P / (rho * k_B)
   Real get_temp_from_t1(const Real t1);
   //calculate temperature in Kelvin

@@ -108,7 +108,7 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
   CheckFlag(&flag, "CVodeSetMaxNumSteps", 1);
 
   //set maximum number of convergence failure
-  flag = CVodeSetMaxConvFails(cvode_mem_, 500);
+  flag = CVodeSetMaxConvFails(cvode_mem_, 10000);
   CheckFlag(&flag, "CVodeSetMaxNumSteps", 1);
 
   //set maximum order
@@ -159,6 +159,7 @@ void ODEWrapper::Integrate() {
   clock_t begin, end;
   Real elapsed_secs;
   begin = std::clock();
+	Real s1i;
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       //copy s to s1
@@ -185,7 +186,6 @@ void ODEWrapper::Integrate() {
           SetInitStep(pmy_spec_->h(k, j, i));
         }
         //step 3: integration. update array abundance over time dt
-        //TODO: correct negative abundance?
         flag = CVode(cvode_mem_, tfinal, y_, &treturn, CV_NORMAL);
         CheckFlag(&flag, "CVode", 3);
         //update next step size
@@ -198,7 +198,13 @@ void ODEWrapper::Integrate() {
       //copy s1 back to s
       for (int ispec=0; ispec<NSPECIES; ispec++) {
         for (int i=is; i<=ie; ++i) {
-          pmy_spec_->s(ispec, k, j, i) = pmy_spec_->s1(i, ispec); 
+					//correct negative abundance
+					s1i = pmy_spec_->s1(i, ispec);
+					if ( s1i < 0) {
+						pmy_spec_->s(ispec, k, j, i) = 0.;
+					} else {
+						pmy_spec_->s(ispec, k, j, i) = s1i;
+					}
         }
       }
     }

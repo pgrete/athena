@@ -24,6 +24,8 @@
 
 //c++ headers
 #include <math.h>
+//debug
+#include <stdio.h>
 
 Thermo::Thermo(){}
 
@@ -429,7 +431,7 @@ Real Thermo::CoolingCOR(const Real xCO, const Real nHI, const Real nH2,
   // TODO: need to take care for T>2000K 
   //factor to make the cooling rate goes to zero at T=0.
   const Real Tmax_CO = 2000.; //maximum temperature above which use Tmax
-  Real T = 0;;
+  Real T = 0;
   if (temp < Tmax_CO) {
     T = temp;
   } else {
@@ -461,7 +463,13 @@ Real Thermo::CoolingCOR(const Real xCO, const Real nHI, const Real nH2,
                                       alphaCO_, T, log_NCOeff);
   const Real inv_LCO = 1./L0 + neff/LLTE 
                          + 1./L0 * pow(neff/nhalf, alpha) * (1. - nhalf*L0/LLTE);
-  return (1./inv_LCO) * neff * xCO * facT;
+	const Real gco = (1./inv_LCO) * neff * xCO * facT;
+	//debug
+	if ( isnan(gco) ) {
+		printf("log_NCOeff=%.2e, L0=%.2e, neff=%.2e, LLTE=%.2e, nhalf=%.2e, alpha=%.2e, inv_LCO=%.2e, facT=%.2e, xCO=%.2e\n",
+				log_NCOeff, L0, neff, LLTE, nhalf, alpha, inv_LCO, facT, xCO);
+	}
+	return gco;
 }
 
 Real Thermo::CoolingH2(const Real xH2, const Real nHI, const Real nH2,
@@ -638,5 +646,11 @@ Real Thermo::HeatingH2diss(const Real dot_xH2_photo) {
 }
 
 Real Thermo::CvCold(const Real xH2, const Real xHe_total, const Real xe) {
-  return 1.5 * kb_ * ( (1. - 2.*xH2) + xH2 + xHe_total + xe );
+	Real xH20;
+	if (xH2 > 0.5) {
+		xH20 = 0.5;
+	} else {
+		xH20 = xH2;
+	}
+  return 1.5 * kb_ * ( (1. - 2.*xH20) + xH20 + xHe_total + xe );
 }

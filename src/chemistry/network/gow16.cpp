@@ -324,6 +324,10 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	temp_min_cool_ = pin->GetOrAddReal("chemistry", "temp_min_cool", 1.);
 	//minimum temperature for reaction rates
 	temp_min_rates_ = pin->GetOrAddReal("chemistry", "temp_min_rates", 1.);
+  //maximum temperature above which is set to be constant, used in cgk
+	//default:-1, not set
+	//Note: over-ride const_T_flag
+	temp_hot_cgk_ = pin->GetOrAddReal("chemistry", "temp_hot_cgk", -1);
 	//CO cooling parameters
 	//default: not use LVG approximation
 	isNCOeff_LVG_ = pin->GetOrAddInteger("chemistry", "isNCOeff_LVG", 0);
@@ -385,18 +389,15 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 		if (yprev[i] < 0) {
 			yprev[i] = 0;
 		}
-	}
-#ifdef DEBUG
 		if (isnan(yprev[i]) || isinf(yprev[i]) ) {
-			for (int i=0; i<NSPECIES+ngs_; i++) {
-				printf("%s: %.2e  ", species_names_all_[i].c_str(), yprev[i]);
+			for (int j=0; j<NSPECIES+ngs_; j++) {
+				printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
 			}
 			printf("\n");
 			OutputRates(stdout);
 			throw std::runtime_error("ChemNetwork (gow16): RHS: nan or inf species\n");
 		}
 	}
-#endif 
   UpdateRates(yprev);
 
 	//cosmic ray reactions
@@ -516,7 +517,7 @@ void ChemNetwork::Jacobian(const Real t,
 }
 
 void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
-  Real rad_sum;
+  Real rad_sum, temp;
   int nang = pmy_mb_->prad->nang;
   //density
   nH_ = pmy_mb_->phydro->u(IDN, k, j, i) / unit_density_in_nH_;
@@ -531,6 +532,20 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
 	//CO cooling paramters
 	NCO_ = colCO_(k, j, i);
 	bCO_ = 3.0e5; //3km/s, TODO: need to get from calculation
+	//Set high temperature hot gas to be constant temperature
+	//note: requires temperature to be stored in ifov(0, k, j, i)
+	if (temp_hot_cgk_ > 0) {
+		if (NIFOV < 0) {
+			throw std::runtime_error("ChemNetwork::InitializeNextStep():  NIFOV < 0\n");
+		}
+		temp = pmy_mb_->phydro->ifov(0, k, j, i);
+		if (temp > temp_hot_cgk_) {
+			is_const_temp_ = true;
+			temperature_ = temp;
+		} else {
+			is_const_temp_ = false;
+		}
+	}
 	return;
 }
 
@@ -819,14 +834,14 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
 	}
   //--------------------------cooling-----------------------------
 	//cut-off cooling at low temperature
-	Real GCII, GCI, GOI, GLya, GCOR, GH2, GDust, GRec, GH2diss, GHIion;
+	Real GCII, GCI, GOI, GHotGas, GCOR, GH2, GDust, GRec, GH2diss, GHIion;
 	Real vth, nCO, grad_small_;
   Real NCOeff, Leff_n, Leff_v, Leff;
 	if (T < temp_min_cool_) {
 		GCII = 0.;
 		GCI = 0;
 		GOI = 0.;
-		GLya = 0;
+		GHotGas = 0;
 		GCOR = 0;
 		GH2 = 0;
 		GDust = 0;
@@ -843,8 +858,8 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
 		// OI fine structure line 
 		GOI = Thermo:: CoolingOI(y[igO_],  nH_*y[igH_],  nH_*y[iH2_],
 				nH_*y[ige_],  T);
-		// collisional exicited lyman alphya line 
-		GLya = Thermo::CoolingLya(y[igH_], nH_*y[ige_],  T);
+		// cooling of hot gas: radiative cooling, free-free.
+		GHotGas = Thermo::CoolingHotGas(nH_,  T, zdg_);
 		// CO rotational lines 
 		// Calculate effective CO column density
 		vth = sqrt(2. * Thermo::kb_ * T / CGKUtility::mCO);
@@ -885,25 +900,23 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
 				k2body_[i2body_H_e]);
 	}
   dEdt = (LCR + LPE + LH2gr + LH2pump + LH2diss)
-            - (GCII + GCI + GOI + GLya + GCOR 
+            - (GCII + GCI + GOI + GHotGas + GCOR 
                 + GH2 + GDust + GRec + GH2diss + GHIion);
-#ifdef DEBUG
 	if ( isnan(dEdt) || isinf(dEdt) ) {
 		printf("LCR=%.2e, LPE=%.2e, LH2gr=%.2e, LH2pump=%.2e LH2diss=%.2e\n",
 				LCR , LPE , LH2gr , LH2pump , LH2diss);
-		printf("GCII=%.2e, GCI=%.2e, GOI=%.2e, GLya=%.2e, GCOR=%.2e\n",
-				GCII , GCI , GOI , GLya , GCOR);
+		printf("GCII=%.2e, GCI=%.2e, GOI=%.2e, GHotGas=%.2e, GCOR=%.2e\n",
+				GCII , GCI , GOI , GHotGas , GCOR);
 		printf("GH2=%.2e, GDust=%.2e, GRec=%.2e, GH2diss=%.2e, GHIio=%.2e\n",
 				GH2 , GDust , GRec , GH2diss , GHIion);
-		printf("T=%.2e, dEdt=%.2e, y[iE_]=%.2e, Cv=%.2e\n", T, dEdt, y[iE_],
-				Thermo::CvCold(y[iH2_], xHe_, y[ige_]));
+		printf("T=%.2e, dEdt=%.2e, y[iE_]=%.2e, Cv=%.2e, nH=%.2e\n", T, dEdt, y[iE_],
+				Thermo::CvCold(y[iH2_], xHe_, y[ige_]), nH_);
 		for (int i=0; i<NSPECIES+ngs_; i++) {
 			printf("%s: %.2e  ", species_names_all_[i].c_str(), y[i]);
 		}
 		printf("\n");
     throw std::runtime_error("ChemNetwork (gow16): dEdt: nan or inf number\n");
 	}
-#endif
   return dEdt;
 }
 

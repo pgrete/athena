@@ -80,6 +80,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   b.NewAthenaArray(Nz, Ny, Nx);
   std::stringstream msg; //error message
   std::string vtkfile; //corresponding vtk file for this meshblock
+	//gamma-1 for hydro eos
+	const Real gm1 = phydro->peos->GetGamma() - 1.0;
 
   //parse input parameters
   std::string vtkfile0 = pin->GetString("problem", "vtkfile");//id0 file
@@ -193,28 +195,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     }
 	}
 
-  //intialize chemical species
-#ifdef INCLUDE_CHEMISTRY
-  if (CHEMISTRY_ENABLED) {
-    Real s_init = pin->GetReal("problem", "s_init");
-    for (int k=ks; k<=ke; ++k) {
-      for (int j=js; j<=je; ++j) {
-        for (int i=is; i<=ie; ++i) {
-          for (int ispec=0; ispec < NSPECIES; ++ispec) {
-            pspec->s(ispec, k, j, i) = s_init;
-          }
-        }
-      }
-    }
-	}
-#endif
-
   //change primative variables to conservative variables.
   phydro->peos->PrimitiveToConserved(phydro->w, b, phydro->u, pcoord,
                                      is, ie, js, je, ks, ke);
 
-  data.DeleteAthenaArray();
-  b.DeleteAthenaArray();
   //----initial temperature output---
   if (NIFOV > 0) {
     for (int k=ks; k<=ke; ++k) {
@@ -226,6 +210,29 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       }
     }
   }
+
+  //intialize chemical species
+#ifdef INCLUDE_CHEMISTRY
+  if (CHEMISTRY_ENABLED) {
+    Real s_init = pin->GetReal("problem", "s_init");
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+        for (int i=is; i<=ie; ++i) {
+          for (int ispec=0; ispec < NSPECIES; ++ispec) {
+            pspec->s(ispec, k, j, i) = s_init;
+          }
+					pspec->s(pspec->pchemnet->iE_, k, j, i) = 
+						phydro->w(IEN, k, j, i) * CGKUtility::unitE / gm1;
+        }
+      }
+    }
+	}
+#endif
+
+
+
+  data.DeleteAthenaArray();
+  b.DeleteAthenaArray();
 
   return;
 }

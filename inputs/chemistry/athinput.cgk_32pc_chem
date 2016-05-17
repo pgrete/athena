@@ -67,14 +67,15 @@ s_init      = 1.0e-6 #initial abundances
 #chemistry network parameters
 Zdg        = 1. #metallicity, dust and gas metallicity are the same. default = 1.
 CR         = 2e-16  #Cosmic-ray ionization rate per H
-#temperature
-const_T_flag = 1   #constant temperature flag. default 0/false.
-temperature = 20  #T in Kelvin, if const_T_flag is true.
+#temperature of hot gas, above which T is constant
+temp_hot_cgk = 1.0e4
+temp_max_heat = 1.0e5 #temperature above which heating is turned off.
 #chemistry solver parameters
 reltol     = 1.0e-2  #relative tolerance, default 1.0e-2
 abstol     = 1.0e-15 #absolute tolerance, default 1.0e-12
+abstol_E   = 1.381e-17 #for internal energy. Set to 0.1 kb_
 user_jac   = 0       #flag for whether use user provided Jacobian. default false/0
-maxsteps   = 10000     #maximum number of steps in one integration. default 10000
+maxsteps   = 1000000     #maximum number of steps in one integration. default 10000
 h_init      = 1e12    #first step of first zone. Default 0/CVODE algorithm.
 #code units
 unit_density_in_nH = 1.
@@ -83,3 +84,4 @@ unit_radiation_in_draine1987 = 1
 <radiation>
 six_ray_flag = 0 #1 for using 6-ray
 n_frequency  = 9 
+jeans_shielding_flag = 1
