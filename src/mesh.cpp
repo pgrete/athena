@@ -1186,14 +1186,14 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   // please add new physics here
 #ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
-    memcpy(pspec->s.GetArrayPointer(), &(mbdata[os]),
+    memcpy(pspec->s.data(), &(mbdata[os]),
            pspec->s.GetSize()*sizeof(Real));
     os += pspec->s.GetSize();
   }
 #endif
   //TODO: note the order
   if (RADIATION_ENABLED) {
-    memcpy(prad->ir.GetArrayPointer(), &(mbdata[os]),
+    memcpy(prad->ir.data(), &(mbdata[os]),
            prad->ir.GetSize()*sizeof(Real));
     os += prad->ir.GetSize();
   }

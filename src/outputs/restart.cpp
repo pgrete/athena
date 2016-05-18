@@ -184,13 +184,13 @@ void RestartOutput::LoadOutputData(OutputData *pout_data, MeshBlock *pblock)
   }
 #ifdef INCLUDE_CHEMISTRY
 	if (CHEMISTRY_ENABLED) {
-    memcpy(pdata,pblock->pspec->s.GetArrayPointer(),
+    memcpy(pdata,pblock->pspec->s.data(),
            sizeof(Real)*pblock->pspec->s.GetSize());
     pdata+=pblock->pspec->s.GetSize();
 	}
 #endif
 	if (RADIATION_ENABLED) {
-    memcpy(pdata,pblock->prad->ir.GetArrayPointer(),
+    memcpy(pdata,pblock->prad->ir.data(),
            sizeof(Real)*pblock->prad->ir.GetSize());
     pdata+=pblock->prad->ir.GetSize();
 	}
