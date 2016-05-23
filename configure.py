@@ -21,6 +21,7 @@
 #   --cxx=choice      use choice as the C++ compiler
 #   --std=choice      use choice as the C++ standard
 #   --chemistry=choice enable chemistry, use choice as chemical network
+#   --cvode_path=path  path to CVODE libraries (chemistry requires the cvode library)
 #   -debug            enable debug flags (-g -O0); override other compiler options
 #   -mpi              enable parallelization with MPI
 #   -omp              enable parallelization with OpenMP
@@ -115,6 +116,12 @@ parser.add_argument('--chemistry',
     default=None,
     choices=["gow16", "gow16_ng"],
     help='select chemical network')
+
+# --cvode_path argument
+parser.add_argument('--cvode_path',
+    type=str,
+    default='',
+    help='path to CVODE libraries')
 
 # -pp argument
 parser.add_argument('-pp',
@@ -334,6 +341,10 @@ if args['cxx'] == 'bgxl':
 if args['std'] == 'c++11':
   makefile_options['COMPILER_FLAGS'] = "-std=c++11 " + makefile_options['COMPILER_FLAGS']
 
+# --cvode_path=[path] argument
+if args['cvode_path'] != '':
+  makefile_options['PREPROCESSOR_FLAGS'] += '-I%s/include' % args['cvode_path']
+  makefile_options['LINKER_FLAGS'] += '-L%s/lib' % args['cvode_path']
 # -chemistry argument
 #TODO: CHEMISTRY_ENABLED and CHEMISTRY_OPTION repeated.
 if args['chemistry'] == "gow16":
@@ -346,8 +357,6 @@ if args['chemistry'] == "gow16":
                                       + args['chemistry'] + '.cpp'
   makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
-  makefile_options['PREPROCESSOR_FLAGS'] += ' -I/usr/local/include/'
-  makefile_options['LINKER_FLAGS'] += ' -L/usr/local/lib/'
 elif args['chemistry'] == "gow16_ng":
   definitions['CHEMISTRY_ENABLED'] = '1'
   definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
@@ -357,8 +366,6 @@ elif args['chemistry'] == "gow16_ng":
                                       + args['chemistry'] + '.cpp'
   makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
-  makefile_options['PREPROCESSOR_FLAGS'] += ' -I/usr/local/include/'
-  makefile_options['LINKER_FLAGS'] += ' -L/usr/local/lib/'
 else:
   definitions['CHEMISTRY_OPTION'] = 'NOT_INCLUDE_CHEMISTRY'
   definitions['CHEMISTRY_ENABLED'] = '0'
