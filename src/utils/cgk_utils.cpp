@@ -22,6 +22,9 @@
 #include <math.h>
 #include <vector>     // vector container
 #include <sstream>    // stringstream
+#include <string>     // c_str()
+#include <iostream>   // endl
+#include <stdexcept>  // std::runtime_error()
 
 static int get_Tidx(const Real temp);
 static const int NTBL=801;

@@ -390,11 +390,17 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 			yprev[i] = 0;
 		}
 		if (isnan(yprev[i]) || isinf(yprev[i]) ) {
+            printf("RHS: ");
 			for (int j=0; j<NSPECIES+ngs_; j++) {
 				printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
 			}
 			printf("\n");
 			OutputRates(stdout);
+            printf("rad_ = ");
+            for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
+                printf("%.2e  ", rad_[ifreq]);
+            }
+            printf("\n");
 			throw std::runtime_error("ChemNetwork (gow16): RHS: nan or inf species\n");
 		}
 	}
@@ -527,7 +533,14 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
     for (int iang=0; iang < nang; ++iang) {
       rad_sum += pmy_mb_->prad->ir(k, j, i, ifreq * nang + iang);
     }
-    rad_[ifreq] = rad_sum / nang / unit_radiation_in_draine1987_;
+    rad_[ifreq] = rad_sum / float(nang) / unit_radiation_in_draine1987_;
+#ifdef DEBUG
+    if (isnan(rad_[ifreq])) {
+        printf("InitializeNextStep: ");
+        printf("ifreq=%d, nang=%d, rad_sum=%.2e\n", ifreq, nang, rad_sum);
+        OutputRates(stdout);
+    }
+#endif
   }
 	//CO cooling paramters
 	NCO_ = colCO_(k, j, i);
