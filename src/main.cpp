@@ -349,7 +349,6 @@ int main(int argc, char *argv[])
     if (CHEMISTRY_ENABLED) {
       MeshBlock *pmb = pmesh->pblock;
       while (pmb != NULL)  {
-        //std::cout << "calling Integrate in main(), gid=" << pmb->gid <<std::endl;
         pmb->pspec->podew->Integrate();
         pmb=pmb->next;
       }
@@ -359,7 +358,6 @@ int main(int argc, char *argv[])
       MeshBlock *pmb = pmesh->pblock;
       if (pmb->prad->jeans_shielding_flag) {
         while (pmb != NULL)  {
-          //std::cout << "calling UpdateRadJeans in main(), gid=" << pmb->gid <<std::endl;
           pmb->prad->pradintegrator->UpdateRadJeans();
           pmb=pmb->next;
         }
