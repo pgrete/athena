@@ -36,6 +36,7 @@ public:
   //output properties of network. Can be used in eg. ProblemGenerator.
   void OutputProperties(FILE *pf) const;
 	void NormalizeSpecies(Real *y);//y[NSPECIES] 
+  void RestrictAbundance(Real *y);
 
   //RHS: right-hand-side of ODE. dy/dt = ydot(t, y). Here y are the abundance
   //of species. details see CVODE package documentation.

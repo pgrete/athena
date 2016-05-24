@@ -380,29 +380,29 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 
 	for(int i=0; i<NSPECIES+ngs_; i++) {
 		ydotg[i] = 0.0;
-	}
+  }
 
-	// copy y to yprev and set ghost species
-	GetGhostSpecies(y, yprev);
-	//correct negative abundance
-	for (int i=0; i<NSPECIES+ngs_; i++) {
-		if (yprev[i] < 0) {
-			yprev[i] = 0;
-		}
-		if (isnan(yprev[i]) || isinf(yprev[i]) ) {
-            printf("RHS: ");
-			for (int j=0; j<NSPECIES+ngs_; j++) {
-				printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
-			}
-			printf("\n");
-			OutputRates(stdout);
-            printf("rad_ = ");
-            for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
-                printf("%.2e  ", rad_[ifreq]);
-            }
-            printf("\n");
-			throw std::runtime_error("ChemNetwork (gow16): RHS: nan or inf species\n");
-		}
+  // copy y to yprev and set ghost species
+  GetGhostSpecies(y, yprev);
+  //correct negative abundance
+  for (int i=0; i<NSPECIES+ngs_; i++) {
+    if (yprev[i] < 0) {
+      yprev[i] = 0;
+    }
+    if (isnan(yprev[i]) || isinf(yprev[i]) ) {
+      printf("RHS: ");
+      for (int j=0; j<NSPECIES+ngs_; j++) {
+        printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
+      }
+      printf("\n");
+      OutputRates(stdout);
+      printf("rad_ = ");
+      for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
+        printf("%.2e  ", rad_[ifreq]);
+      }
+      printf("\n");
+      throw std::runtime_error("ChemNetwork (gow16): RHS: nan or inf species\n");
+    }
 	}
   UpdateRates(yprev);
 
@@ -536,29 +536,29 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
     rad_[ifreq] = rad_sum / float(nang) / unit_radiation_in_draine1987_;
 #ifdef DEBUG
     if (isnan(rad_[ifreq])) {
-        printf("InitializeNextStep: ");
-        printf("ifreq=%d, nang=%d, rad_sum=%.2e\n", ifreq, nang, rad_sum);
-        OutputRates(stdout);
+      printf("InitializeNextStep: ");
+      printf("ifreq=%d, nang=%d, rad_sum=%.2e\n", ifreq, nang, rad_sum);
+      OutputRates(stdout);
     }
 #endif
   }
-	//CO cooling paramters
-	NCO_ = colCO_(k, j, i);
-	bCO_ = 3.0e5; //3km/s, TODO: need to get from calculation
-	//Set high temperature hot gas to be constant temperature
-	//note: requires temperature to be stored in ifov(0, k, j, i)
-	if (temp_hot_cgk_ > 0) {
-		if (NIFOV < 0) {
-			throw std::runtime_error("ChemNetwork::InitializeNextStep():  NIFOV < 0\n");
-		}
-		temp = pmy_mb_->phydro->ifov(0, k, j, i);
-		if (temp > temp_hot_cgk_) {
-			is_const_temp_ = true;
-			temperature_ = temp;
-		} else {
-			is_const_temp_ = false;
-		}
-	}
+  //CO cooling paramters
+  NCO_ = colCO_(k, j, i);
+  bCO_ = 3.0e5; //3km/s, TODO: need to get from calculation
+  //Set high temperature hot gas to be constant temperature
+  //note: requires temperature to be stored in ifov(0, k, j, i)
+  if (temp_hot_cgk_ > 0) {
+    if (NIFOV < 0) {
+      throw std::runtime_error("ChemNetwork::InitializeNextStep():  NIFOV < 0\n");
+    }
+    temp = pmy_mb_->phydro->ifov(0, k, j, i);
+    if (temp > temp_hot_cgk_) {
+      is_const_temp_ = true;
+      temperature_ = temp;
+    } else {
+      is_const_temp_ = false;
+    }
+  }
 	return;
 }
 
@@ -611,59 +611,77 @@ void ChemNetwork::GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
 	return;
 }
 
+void ChemNetwork::RestrictAbundance(Real *y) {
+  if (y[iCplus_] > xC_) {
+    y[iCplus_] = xC_;
+  }
+  if (y[iSplus_] > xS_) {
+    y[iSplus_] = xS_;
+  }
+  if (y[iSiplus_] > xSi_) {
+    y[iSiplus_] = xSi_;
+  }
+  if (y[iHeplus_] > xHe_) {
+    y[iHeplus_] = xHe_;
+  }
+  if (y[iHplus_] > 1.) {
+    y[iHplus_] = 1;
+  }
+}
+
 void ChemNetwork::NormalizeSpecies(Real *y) {
-	Real yall[NSPECIES + ngs_];
-	GetGhostSpecies(y, yall);
-	//set negative abundance to zero
-	for (int i=0; i<NSPECIES+ngs_; i++) {
-		if (yall[i] < 0) {
-			yall[i] = 0;
-		}
-	}
-	//normalize to atomic abundance
-	//------ C --------
-	const int nC = 5;
-	const int iC_arr[nC] = {igC_, iHCOplus_, iCHx_, iCO_, iCplus_};
-	NormalizeAtom(nC, iC_arr, xC_, yall);
-	//------ O --------
-	const int nO = 4;
-	const int iO_arr[nO] = {igO_, iHCOplus_, iOHx_, iCO_};
-	NormalizeAtom(nO, iO_arr, xO_, yall);
-	//------ He --------
-	const int nHe = 2;
-	const int iHe_arr[nHe] = {igHe_, iHeplus_};
-	NormalizeAtom(nHe, iHe_arr, xHe_, yall);
-	//------ S --------
-	const int nS = 2;
-	const int iS_arr[nS] = {igS_, iSplus_};
-	NormalizeAtom(nS, iS_arr, xS_, yall);
-	//------ Si --------
-	const int nSi = 2;
-	const int iSi_arr[nSi] = {igSi_, iSiplus_};
-	NormalizeAtom(nSi, iSi_arr, xSi_, yall);
-	//------ H ---------, ignore OHx, CHx, HCO+
-	const int nH = 5;
-	const int iH_arr[nH] = {igH_, iH3plus_, iH2plus_, iHplus_, iH2_};
-	NormalizeAtom(nH, iH_arr, 1., yall);
-	//copy back to y
-	for (int i=0; i<NSPECIES; i++) {
-		y[i] = yall[i];
-	}
-	return;
+  Real yall[NSPECIES + ngs_];
+  GetGhostSpecies(y, yall);
+  //set negative abundance to zero
+  for (int i=0; i<NSPECIES+ngs_; i++) {
+    if (yall[i] < 0) {
+      yall[i] = 0;
+    }
+  }
+  //normalize to atomic abundance when abundances are off
+  //------ C --------
+  const int nC = 5;
+  const int iC_arr[nC] = {igC_, iHCOplus_, iCHx_, iCO_, iCplus_};
+  NormalizeAtom(nC, iC_arr, xC_, yall);
+  //------ O --------
+  const int nO = 4;
+  const int iO_arr[nO] = {igO_, iHCOplus_, iOHx_, iCO_};
+  NormalizeAtom(nO, iO_arr, xO_, yall);
+  //------ He --------
+  const int nHe = 2;
+  const int iHe_arr[nHe] = {igHe_, iHeplus_};
+  NormalizeAtom(nHe, iHe_arr, xHe_, yall);
+  //------ S --------
+  const int nS = 2;
+  const int iS_arr[nS] = {igS_, iSplus_};
+  NormalizeAtom(nS, iS_arr, xS_, yall);
+  //------ Si --------
+  const int nSi = 2;
+  const int iSi_arr[nSi] = {igSi_, iSiplus_};
+  NormalizeAtom(nSi, iSi_arr, xSi_, yall);
+  //------ H ---------, ignore OHx, CHx, HCO+
+  const int nH = 5;
+  const int iH_arr[nH] = {igH_, iH3plus_, iH2plus_, iHplus_, iH2_};
+  NormalizeAtom(nH, iH_arr, 1., yall);
+  //copy back to y
+  for (int i=0; i<NSPECIES; i++) {
+    y[i] = yall[i];
+  }
+  return;
 }
 
 void ChemNetwork::NormalizeAtom(const int nA, const int *iA_arr, const Real xA,
-																Real yall[NSPECIES+ngs_]) {
-	Real f_A;
-	Real yAtot = 0.;
-	for (int i=0; i<nA; i++) {
-		yAtot += yall[iA_arr[i]];
-	}
-	f_A = xA/yAtot;
-	for (int i=0; i<nA; i++) {
-		yall[iA_arr[i]] *= f_A;
-	}
-	return;
+    Real yall[NSPECIES+ngs_]) {
+  Real f_A;
+  Real yAtot = 0.;
+  for (int i=0; i<nA; i++) {
+    yAtot += yall[iA_arr[i]];
+  }
+  f_A = xA/yAtot;
+  for (int i=0; i<nA; i++) {
+    yall[iA_arr[i]] *= f_A;
+  }
+  return;
 }
 
 
