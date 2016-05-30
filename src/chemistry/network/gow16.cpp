@@ -46,12 +46,12 @@ const Real ChemNetwork::small_ = 1e-50;
 
 //species names
 const std::string ChemNetwork::species_names[NSPECIES] = 
-{"He+", "OHx", "CHx", "CO", "C+", "HCO+", "H2", "H+", "H3+", "H2+", "S+", "Si+", "E"};
+{"He+", "OHx", "CHx", "CO", "C+", "HCO+", "H2", "H+", "H3+", "H2+", "O+", "Si+", "E"};
 
 //below are ghost species. The aboundances of ghost species are
 // recalculated in RHS everytime by other species.
 const std::string ChemNetwork::ghost_species_names_[ngs_] = 
-{"*Si", "*S", "*C", "*O", "*He", "*e", "*H"};
+{"*Si", "*C", "*O", "*He", "*e", "*H"};
 
 //index of species
 const int ChemNetwork::iHeplus_ =
@@ -74,8 +74,8 @@ const int ChemNetwork::iH3plus_ =
   CGKUtility::FindStrIndex(species_names, NSPECIES, "H3+");
 const int ChemNetwork::iH2plus_ =
   CGKUtility::FindStrIndex(species_names, NSPECIES, "H2+");
-const int ChemNetwork::iSplus_ =
-  CGKUtility::FindStrIndex(species_names, NSPECIES, "S+");
+const int ChemNetwork::iOplus_ =
+  CGKUtility::FindStrIndex(species_names, NSPECIES, "O+");
 const int ChemNetwork::iSiplus_ =
   CGKUtility::FindStrIndex(species_names, NSPECIES, "Si+");
 const int ChemNetwork::iE_ =
@@ -83,8 +83,6 @@ const int ChemNetwork::iE_ =
 //index of ghost species
 const int ChemNetwork::igSi_ =
   CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*Si") + NSPECIES;
-const int ChemNetwork::igS_ =
-  CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*S") + NSPECIES;
 const int ChemNetwork::igC_ =
   CGKUtility::FindStrIndex(ghost_species_names_, ngs_, "*C") + NSPECIES;
 const int ChemNetwork::igO_ =
@@ -106,25 +104,23 @@ const int ChemNetwork::igH_ =
 // (3) cr + *C -> C+ + *e     --including direct and cr induce photo reactions 
 // (4) crphoto + CO -> *O + *C       
 // (5) cr + CO -> HCO+ + e  --schematic for cr + CO -> CO+ + e
-// -----S, CR induced photo ionization, experimenting----
-// (6) cr + S -> S+ + e, simply use 2 times rate of C, as in UMIST12
 // -----Si, CR induced photo ionization, experimenting----
-// (7) cr + Si -> Si+ + e, UMIST12
+// (6) cr + Si -> Si+ + e, UMIST12
 const int ChemNetwork::icr_H2_ = 0;
 const int ChemNetwork::icr_He_ = 1;
 const int ChemNetwork::icr_H_ = 2;
 const int ChemNetwork::incr_[n_cr_] = 
 												 {iH2_, igHe_, igH_, 
 													igC_, iCO_, iCO_,
-													igS_, igSi_};
+													igSi_};
 const int ChemNetwork::outcr_[n_cr_] =
 												 {iH2plus_, iHeplus_, iHplus_, 
 													iCplus_, igO_, iHCOplus_,
-													iSplus_, iSiplus_};
+													iSiplus_};
 const Real ChemNetwork::kcr_base_[n_cr_] = 
 												 {2.0, 1.1, 1.0, 
 													1020., 10., 6.52,
-													2040., 4200.}; 
+													4200.}; 
 
 //2 body reactions
 //NOTE: photons from recombination are ignored
@@ -161,18 +157,20 @@ const Real ChemNetwork::kcr_base_[n_cr_] =
 // (21) OH + *O -> *O + *O + *H
 // ---branching of C+ + H2 ------
 // (22) C+ + H2 + *e -> *C + *H + *H
-// ---S , rate from UMIST12---
-// (23) S+ + *e -> *S
-// (24) C+ + *S -> S+ + *C
 // ---Si , rate from UMIST12---
-// (25) Si+ + *e -> *Si
-// (26) C+ + *Si -> Si+ + *C
+// (23) Si+ + *e -> *Si
 // --- H2O+ + e reaction ---
-// (27) H3+ + *O + *e -> H2 + *O + *H
+// (24) H3+ + *O + *e -> H2 + *O + *H
 // --- OH destruction with He+
-// (28) He+ + OH -> OH + *He 
+// (25) He+ + OH -> O+ + *He + *H 
 // --- H2+ charge exchange with H ---
-// (29) H2+ + *H -> H+ + H2 
+// (26) H2+ + *H -> H+ + H2 
+//  --- O+ reactions ---
+// (27) H+ + *O -> O+ + *H -- exp(-232/T)
+// (28) O+ + *H -> H+ + *O 
+// (29) O+ + H2 -> OH + *H     -- branching of H2O+
+// (30) O+ + H2 -> *O + *H + *H  -- branching of H2O+
+
 const int ChemNetwork::i2body_H2_H = 15;
 const int ChemNetwork::i2body_H2_H2 = 16;
 const int ChemNetwork::i2body_H_e = 17;
@@ -181,15 +179,17 @@ const int ChemNetwork::in2body1_[n_2body_] =
            iCplus_, iCplus_, iCHx_, iOHx_, iHeplus_,
            iH3plus_, iCplus_, iHCOplus_, iH2plus_, iHplus_,
            iH2_, iH2_, igH_, iH3plus_, iHeplus_, 
-           iCHx_, iOHx_, iCplus_, iSplus_, iCplus_,
-           iSiplus_, iCplus_, iH3plus_, iHeplus_, iH2plus_};
+           iCHx_, iOHx_, iCplus_, iSiplus_, iH3plus_,
+           iHeplus_, iH2plus_, iHplus_, iOplus_, iOplus_,
+           iOplus_};
 const int ChemNetwork::in2body2_[n_2body_] = 
           {igC_, igO_, iCO_, iH2_, iCO_,   
            iH2_, iOHx_, igO_, igC_, ige_,   
            ige_, ige_, ige_, iH2_, ige_,
            igH_, iH2_, ige_, ige_, iH2_, 
-           igH_, igO_, iH2_, ige_, igS_,
-           ige_, igSi_, igO_, iOHx_, igH_};
+           igH_, igO_, iH2_, ige_, igO_,
+           iOHx_, igH_, igO_, igH_, iH2_,
+           iH2_};
 //Note: output to ghost species doesn't matter. The abundances of ghost species
 // are updated using the other species at every timestep
 const int ChemNetwork::out2body1_[n_2body_] = 
@@ -197,29 +197,33 @@ const int ChemNetwork::out2body1_[n_2body_] =
            iCHx_, iHCOplus_, iCO_, iCO_, igHe_,   
            iH2_, igC_, iCO_, iH3plus_, igH_,
            igH_, iH2_, iHplus_, igH_, iH2plus_, 
-           iH2_, igO_, igC_, igS_, iSplus_,
-           igSi_, iSiplus_, iH2_, iOHx_, iHplus_};
+           iH2_, igO_, igC_, igSi_, iH2_,
+           iOplus_, iHplus_, iOplus_, iHplus_, iOHx_,
+           igO_};
 const int ChemNetwork::out2body2_[n_2body_] = 
           {iH2_, iH2_, iH2_, igHe_, igO_,   
            igH_, igH_, igH_, igH_, igH_,   
            igH_, igH_, igH_, igH_, igH_,
            igH_, igH_, ige_, igH_, igHe_, 
-           igC_, igH_, igH_, igH_, igC_,
-           igH_, igC_, igO_, igHe_, iH2_};
+           igC_, igH_, igH_, igH_, igO_,
+           igHe_, iH2_, igH_, igO_, igH_,
+           igH_};
 const Real ChemNetwork::k2Texp_[n_2body_] = 
  {0.0, -0.190, 0.0, 0.0, 0.0, 
   -1.3, 0.0, 0.0, -0.339, -0.5, 
   -0.52, 0.0, -0.64, 0.042, 0.0,
   0.0, 0.0, 0.0, -0.52, 0.0,
-  0.26, 0.0, -1.3, -0.59, 0.0,
-  -0.62, 0.0, -0.190, 0.0, 0.0};
+  0.26, 0.0, -1.3, -0.62, -0.190,
+  0.0, 0.0, 0.0, 0.0, 0.0,
+  0.0};
 const Real ChemNetwork::k2body_base_[n_2body_] = 
                 {2.0e-9, 1.99e-9, 1.7e-9, 3.7e-14, 1.6e-9, 
                  3.3e-13 * 0.7, 1.00, 7.0e-11, 7.95e-10, 1.0e-11, 
                  4.54e-7, 1.00, 1.15e-5, 2.84e-9, 2.753e-14,
                  1.00, 1.00, 1.00, 8.46e-7, 7.20e-15, 
-                 2.81e-11, 3.5e-11, 3.3e-13 * 0.3, 1.6e-10, 5e-11,
-                 1.46e-10, 2.1e-9, 1.99e-9, 1.00, 6.4e-10};
+                 2.81e-11, 3.5e-11, 3.3e-13 * 0.3, 1.46e-10, 1.99e-9,
+                 1.00, 6.4e-10, 7.00e-10, 6.8e-10, 1.6e-9,
+                 1.6e-9};
 
 // photo reactions.
 // Reaction rates in Drain 1978 field units.
@@ -230,48 +234,42 @@ const Real ChemNetwork::k2body_base_[n_2body_] =
 // (3) h nu + OH -> *O + *H
 // ----added in GO2012--------
 // (4) h nu + H2 -> *H + *H            --self- and dust shielding
-// ----S, from UMIST12
-// (5) h nu + *S -> S+
 // ----Si, from UMIST12
-// (6) h nu + *Si -> Si+
+// (5) h nu + *Si -> Si+
 const int ChemNetwork::iph_C_ = 0;
 const int ChemNetwork::iph_CO_ = 2;
 const int ChemNetwork::iph_H2_ = 4;
 const int ChemNetwork::inph_[n_ph_] = {
               igC_, iCHx_, iCO_,
-              iOHx_, iH2_, igS_, igSi_};
+              iOHx_, iH2_, igSi_};
 const int ChemNetwork::outph1_[n_ph_] = {
               iCplus_, igC_, igC_,
-              igO_, igH_, iSplus_, iSiplus_};
+              igO_, igH_, iSiplus_};
 const Real ChemNetwork::kph_base_[n_ph_] = {3.1e-10, 9.2e-10, 2.6e-10, //Visser2009,   
-																			  3.9e-10, 5.6e-11, 
-                                        6e-10, 3.1e-9}; 
+																			      3.9e-10, 5.6e-11,
+                                            3.1e-9}; 
 const Real ChemNetwork::kph_avfac_[n_ph_] = {3.33, 1.72, 3.53, //Visser2009,  
-	                                       2.24, 3.74, //Draine+Bertoldi1996,
-                                         3.10, 2.3};
+	                                           2.24, 3.74, //Draine+Bertoldi1996,
+                                             2.27};
 
 // Grain assisted recombination of H, H2, C+ and H+
 // (0) *H + *H + gr -> H2 + gr
 // (1) H+ + *e + gr -> *H + gr
 // (2) C+ + *e + gr -> *C + gr
 // (3) He+ + *e + gr -> *He + gr
-// ------S, from WD2001-----
-// (4) S+ + *e + gr -> *S + gr
 // ------Si, from WD2001-----
-// (5) Si+ + *e + gr -> *Si + gr
+// (4) Si+ + *e + gr -> *Si + gr
 const int ChemNetwork::igr_H_ = 0;
 const int ChemNetwork::ingr_[n_gr_] = {igH_, iHplus_, iCplus_, iHeplus_, 
-                                       iSplus_, iSiplus_};
+                                       iSiplus_};
 const int ChemNetwork::outgr_[n_gr_] = {iH2_, igH_, igC_, igHe_, 
-                                        igS_, igSi_};
+                                        igSi_};
 const Real ChemNetwork::cHp_[7] = {12.25, 8.074e-6, 1.378, 5.087e2, 1.586e-2,
  											             0.4723, 1.102e-5}; 
 const Real ChemNetwork::cCp_[7] = {45.58, 6.089e-3, 1.128, 4.331e2, 4.845e-2,
                                    0.8120, 1.333e-4};
 const Real ChemNetwork::cHep_[7] = {5.572, 3.185e-7, 1.512, 5.115e3, 3.903e-7,
                                     0.4956, 5.494e-7};
-const Real ChemNetwork::cSp_[7] = {3.064, 7.769e-5, 1.319, 1.087e2, 3.475e-1,
-                                   0.4790, 4.689e-2};
 const Real ChemNetwork::cSip_[7] = {2.166, 5.678e-8, 1.874, 4.375e4, 1.635e-6,
                                     0.8964, 7.538e-5};
 //-----------------end of chemical network---------------------
@@ -286,8 +284,8 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
   std::stringstream msg; //error message
   if (nfreq != n_freq_) {
     msg << "### FATAL ERROR in ChemNetwork constructor" << std::endl
-      << "number of frequencies in radiation:" << nfreq 
-      << " not equal to that in chemistry" << n_freq_  << std::endl;
+      << "number of frequencies in radiation: " << nfreq 
+      << " not equal to that in chemistry: " << n_freq_  << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
 	//array for storying CO column for CO cooling
@@ -303,7 +301,6 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	//metal abundance at Z=1
 	xC_std_ = pin->GetOrAddReal("chemistry", "xC", 1.6e-4); 
 	xO_std_ = pin->GetOrAddReal("chemistry", "xO", 3.2e-4);
-	xS_std_ = pin->GetOrAddReal("chemistry", "xS", 3.5e-6);
 	xSi_std_ = pin->GetOrAddReal("chemistry", "xSi", 1.7e-6);
 	//cosmic ray ionization rate per H
 	cr_rate_ = pin->GetOrAddReal("chemistry", "CR", 2e-16);
@@ -342,7 +339,6 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
   //atomic abundance
   xC_ = zdg_ * xC_std_;
   xO_ = zdg_ * xO_std_;
-  xS_ = zdg_ * xS_std_;
   xSi_ = zdg_ * xSi_std_;
 
   //set species abundance to constant if true, default false
@@ -605,13 +601,12 @@ void ChemNetwork::GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
  	yghost[igC_] = xC_ - yghost[iHCOplus_] -  yghost[iCHx_] 
                      - yghost[iCO_] - yghost[iCplus_]; 
 	yghost[igO_] = xO_ - yghost[iHCOplus_] -  yghost[iOHx_] 
-                     - yghost[iCO_]; 
+                     - yghost[iCO_] - yghost[iOplus_]; 
 	yghost[igHe_] = xHe_ - yghost[iHeplus_]; 
-	yghost[igS_] = xS_ - yghost[iSplus_]; 
 	yghost[igSi_] = xSi_ - yghost[iSiplus_]; 
   yghost[ige_] = yghost[iHeplus_] + yghost[iCplus_] + yghost[iHCOplus_]
                      + yghost[iH3plus_] + yghost[iH2plus_] + yghost[iHplus_]
-                     + yghost[iSplus_] + yghost[iSiplus_]; 
+                     + yghost[iOplus_] + yghost[iSiplus_]; 
 	yghost[igH_] = 1.0 - (yghost[iOHx_] + yghost[iCHx_] + yghost[iHCOplus_]
                      + 3.0*yghost[iH3plus_] + 2.0*yghost[iH2plus_] + yghost[iHplus_]
 										 + 2.0*yghost[iH2_]);
@@ -621,9 +616,6 @@ void ChemNetwork::GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
 void ChemNetwork::RestrictAbundance(Real *y) {
   if (y[iCplus_] > xC_) {
     y[iCplus_] = xC_;
-  }
-  if (y[iSplus_] > xS_) {
-    y[iSplus_] = xS_;
   }
   if (y[iSiplus_] > xSi_) {
     y[iSiplus_] = xSi_;
@@ -652,7 +644,6 @@ void ChemNetwork::Finalize(Real *y) {
     y[iHplus_] = 1;
     y[iH3plus_] = 0;
     y[iH2plus_] = 0;
-    y[iSplus_] = xS_;
     y[iSiplus_] = xSi_;
     return;
   }
@@ -672,10 +663,6 @@ void ChemNetwork::Finalize(Real *y) {
   const int nHe = 2;
   const int iHe_arr[nHe] = {igHe_, iHeplus_};
   NormalizeAtom(nHe, iHe_arr, xHe_, yall);
-  //------ S --------
-  const int nS = 2;
-  const int iS_arr[nS] = {igS_, iSplus_};
-  NormalizeAtom(nS, iS_arr, xS_, yall);
   //------ Si --------
   const int nSi = 2;
   const int iSi_arr[nSi] = {igSi_, iSiplus_};
@@ -780,15 +767,14 @@ void ChemNetwork::UpdateRates(const Real y0[NSPECIES+ngs_]) {
   //(2) cr + *H  -> H+ + *e 
   //(3) cr + *C -> C+ + *e     --including direct and cr induce photo reactions 
   //(4) crphoto + CO -> *O + *C 
-  //(6) cr + S -> S+ + e, simply use 2 times rate of C, as in UMIST12
-  //(7) cr + Si -> Si+ + e, UMIST12 
+  //(5) cr + CO -> HCO+ + e  --schematic for cr + CO -> CO+ + e
+  //(6) cr + Si -> Si+ + e, UMIST12 
   kcr_H_fac = 1.15 * 2*y[iH2_] + 1.5 * y[igH_];
   kcr_[0] *= kcr_H_fac;
   kcr_[2] *= kcr_H_fac;
   kcr_[3] *= (2*y[iH2_] + 3.85/kcr_base_[3]);
   kcr_[4] *= 2*y[iH2_];
   kcr_[6] *= 2*y[iH2_];
-  kcr_[7] *= 2*y[iH2_];
 	//2 body reactions
 	for (int i=0; i<n_2body_; i++){
 		k2body_[i] = k2body_base_[i] * pow(T, k2Texp_[i]) * nH_;
@@ -815,21 +801,29 @@ void ChemNetwork::UpdateRates(const Real y0[NSPECIES+ngs_]) {
 	// (14) H+ + *e -> *H              --(12) Case B 
 	k2body_[14] *= pow( 315614.0 / T, 1.5) 
 									 * pow(  1.0 + pow( 115188.0 / T, 0.407) , -2.242 );
-  //k2body_[14] = 3.5e-12 * pow( 300./T, 0.75 ) * nH_;
-  // (28) He+ + OH -> *H + *He + *O(O+)
-  k2body_[28] = 1.35e-9 * kida_fac;
   //--- H2O+ + e branching--
   //(1) H3+ + *O -> OH + H2        
-  //(27) H3+ + *O + *e -> H2 + *O + *H     
-	Real h2oplus_ratio;
+  //(24) H3+ + *O + *e -> H2 + *O + *H     
+	Real h2oplus_ratio, fac_H2Oplus_H2, fac_H2Oplus_e;
 	if (y[ige_] < small_) {
 		h2oplus_ratio = 1.0e10;
 	} else {
-		h2oplus_ratio = 
-                k2body_[1] * y[iH2_] / ( 3.5e-7 * sqrt(300./T) * y[ige_] * nH_ );
+		h2oplus_ratio = 6e-10 * y[iH2_] / ( 5.3e-6 / sqrt(T) * y[ige_] );
 	}
-  k2body_[1] *= h2oplus_ratio / (h2oplus_ratio + 1.);
-  k2body_[27] *= 1. / (h2oplus_ratio + 1.);
+  fac_H2Oplus_H2 = h2oplus_ratio / (h2oplus_ratio + 1.);
+  fac_H2Oplus_e = 1. / (h2oplus_ratio + 1.);
+  k2body_[1] *= fac_H2Oplus_H2;
+  k2body_[24] *= fac_H2Oplus_e;
+  // (25) He+ + OH -> *H + *He + *O(O+)
+  k2body_[25] = 1.35e-9 * kida_fac;
+  //  --- O+ reactions ---
+  //  (27) H+ + *O -> O+ + *H -- exp(-232/T)
+  //  (29) O+ + H2 -> OH + *H     -- branching of H2O+
+  //  (30) O+ + H2 -> *O + *H + *H  -- branching of H2O+ */
+  k2body_[27] *= exp(-232/T);
+  k2body_[29] *= fac_H2Oplus_H2;
+  k2body_[30] *= fac_H2Oplus_e;
+
 
   //Collisional dissociation, k>~1.0e-30 at T>~5e2.
   Real k9l, k9h, k10l, k10h, ncrH, ncrH2, div_ncr;
@@ -880,8 +874,7 @@ void ChemNetwork::UpdateRates(const Real y0[NSPECIES+ngs_]) {
 	//	 (1) H+ + *e + gr -> *H + gr
   //	 (2) C+ + *e + gr -> *C + gr
   //   (3) He+ + *e + gr -> *He + gr
-  //   (4) S+ + *e + gr -> *S + gr
-  //   (5) Si+ + *e + gr -> *Si + gr
+  //   (4) Si+ + *e + gr -> *Si + gr
   //   , rate dependent on e aboundance. 
 	if (y[ige_] > small_) {
 		psi_gr_fac_ = 1.7 * rad_[index_gpe_] * sqrt(T) / nH_; 
@@ -907,14 +900,7 @@ void ChemNetwork::UpdateRates(const Real y0[NSPECIES+ngs_]) {
 																	 *pow( psi, -cHep_[5]-cHep_[6]*log(T) ) 
 										 ) 
 									) * nH_ * zdg_;
-		kgr_[4] = 1.0e-14 * cSp_[0] / 
-								 (
-									 1.0 + cSp_[1]*pow(psi, cSp_[2]) * 
-										 (1.0 + cSp_[3] * pow(T, cSp_[4])
-																	 *pow( psi, -cSp_[5]-cSp_[6]*log(T) ) 
-										 ) 
-									) * nH_ * zdg_;
-		kgr_[5] = 1.0e-14 * cSip_[0] / 
+		kgr_[4] = 1.0e-14 * cSip_[0] / 
 								 (
 									 1.0 + cSip_[1]*pow(psi, cSip_[2]) * 
 										 (1.0 + cSip_[3] * pow(T, cSip_[4])

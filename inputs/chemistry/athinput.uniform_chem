@@ -65,6 +65,7 @@ temperature = 20  #T in Kelvin, if const_T_flag is true.
 #chemistry solver parameters
 reltol     = 1.0e-2  #relative tolerance, default 1.0e-2
 abstol     = 1.0e-15 #absolute tolerance, default 1.0e-12
+abstol_E   = 1.381e-18 #for internal energy. Set to 0.01 kb_
 user_jac   = 0       #flag for whether use user provided Jacobian. default false/0
 maxsteps   = 1000     #maximum number of steps in one integration. default 10000
 h_init      = 1e12    #first step of first zone. Default 0/CVODE algorithm.
@@ -86,5 +87,6 @@ stldet     = 0       #stability limit detection. Default 0/false.
 
 <radiation>
 six_ray_flag = 0 #1 for using 6-ray
-n_frequency  = 9 
+n_frequency  = 8
+jeans_shielding_flag = 0
 

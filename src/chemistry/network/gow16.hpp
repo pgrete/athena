@@ -53,11 +53,11 @@ private:
 	MeshBlock *pmy_mb_;
 
 	//constants
-	static const int ngs_ = 7;
-	static const int n_cr_ = 8;
-	static const int n_2body_ = 30;
-	static const int n_ph_ = 7;
-	static const int n_gr_ = 6;
+	static const int ngs_ = 6;
+	static const int n_cr_ = 7;
+	static const int n_2body_ = 31;
+	static const int n_ph_ = 6;
+	static const int n_gr_ = 5;
 	static const int nE_ = 15;
 	static const int n_freq_ = n_ph_ + 2;
 	static const int index_gpe_ = n_ph_;
@@ -82,11 +82,9 @@ private:
 	Real xHe_;
 	Real xC_std_;
 	Real xO_std_;
-	Real xS_std_;
 	Real xSi_std_;
 	Real xC_;
 	Real xO_;
-	Real xS_;
 	Real xSi_;
 	Real cr_rate_;
 	//index of species
@@ -100,12 +98,11 @@ private:
 	static const int iHplus_;
 	static const int iH3plus_;
 	static const int iH2plus_;
-	static const int iSplus_;
+	static const int iOplus_;
 	static const int iSiplus_;
 	static const int iE_;
 	//index of ghost species
 	static const int igSi_;
-	static const int igS_;
 	static const int igC_;
 	static const int igO_;
 	static const int igHe_;
@@ -159,7 +156,6 @@ private:
 	static const Real cHp_[7]; 
 	static const Real cCp_[7]; 
 	static const Real cHep_[7]; 
-	static const Real cSp_[7]; 
 	static const Real cSip_[7]; 
 	//factor to calculate psi in H+ recombination on grain
 	Real psi_gr_fac_;
