@@ -35,7 +35,7 @@ public:
   void InitializeNextStep(const int k, const int j, const int i);
   //output properties of network. Can be used in eg. ProblemGenerator.
   void OutputProperties(FILE *pf) const;
-	void NormalizeSpecies(Real *y);//y[NSPECIES] 
+	void Finalize(Real *y);//y[NSPECIES] 
   void RestrictAbundance(Real *y);
 
   //RHS: right-hand-side of ODE. dy/dt = ydot(t, y). Here y are the abundance
@@ -76,6 +76,7 @@ private:
 	Real temp_hot_cgk_; 
 	//maximum temperature above which heating and cooling is turned off 
 	int is_const_temp_; //flag for constant temperature
+	bool is_const_abundance_; //flag for constant abundance
 	//parameters of the netowork
 	Real zdg_;
 	Real xHe_;
@@ -197,6 +198,8 @@ private:
 	void GetGhostSpecies(const Real *y, Real yall[NSPECIES+ngs_]); 
 	void NormalizeAtom(const int nA, const int *iA_arr, const Real xA,
 					  				 Real yall[NSPECIES+ngs_]);//abundances all positive
+	void NormalizeAtom(const int nA, const int *iA_arr, const Real xA,
+					  				 Real yall[NSPECIES+ngs_], const Real *iA_weights);//abundances all positive
 	Real CII_rec_rate_(const Real temp);
 	Real dEdt_(const Real y[NSPECIES+ngs_]);
 	void OutputRates(FILE *pf) const;

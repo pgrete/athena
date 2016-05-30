@@ -64,7 +64,7 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
   //user input Jacobian flag
   int user_jac = pin->GetOrAddInteger("chemistry", "user_jac", 0);
   //maximum number of steps
-  long int maxsteps = pin->GetOrAddInteger("chemistry", "maxsteps", 10000);
+  long int maxsteps = pin->GetOrAddInteger("chemistry", "maxsteps", 1000);
   //maximum order
   int maxorder = pin->GetOrAddInteger("chemistry", "maxorder", 3);
   //stability limit detection
@@ -108,7 +108,7 @@ ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
   CheckFlag(&flag, "CVodeSetMaxNumSteps", 1);
 
   //set maximum number of convergence failure
-  flag = CVodeSetMaxConvFails(cvode_mem_, 10000);
+  flag = CVodeSetMaxConvFails(cvode_mem_, 100000);
   CheckFlag(&flag, "CVodeSetMaxNumSteps", 1);
 
   //set maximum order
@@ -193,8 +193,9 @@ void ODEWrapper::Integrate() {
         } else {
           pmy_spec_->h(k, j, i) = GetNextStep();
         }
-				//step 4: re-normalize species after integration. TODO: move this?
-				pmy_spec_->pchemnet->NormalizeSpecies(NV_DATA_S(y_));
+        //step 4: finalize before output: eg. renormalize, set abundance in hot
+        //gas
+        pmy_spec_->pchemnet->Finalize(NV_DATA_S(y_));
       }
       //copy s1 back to s
       for (int ispec=0; ispec<NSPECIES; ispec++) {
