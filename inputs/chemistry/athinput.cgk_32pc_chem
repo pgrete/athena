@@ -73,6 +73,12 @@ temp_max_heat = 1.0e5 #temperature above which heating is turned off.
 #chemistry solver parameters
 reltol     = 1.0e-2  #relative tolerance, default 1.0e-2
 abstol     = 1.0e-15 #absolute tolerance, default 1.0e-12
+abstol_OHx   = 1.0e-25 
+abstol_CHx   = 1.0e-25 
+abstol_CO   = 1.0e-25 
+abstol_H3+   = 1.0e-20 
+abstol_HCO+   = 1.0e-32 
+abstol_H2   = 1.0e-10 
 abstol_E   = 1.381e-18 #for internal energy. Set to 0.01 kb_
 user_jac   = 0       #flag for whether use user provided Jacobian. default false/0
 maxsteps   = 1000000     #maximum number of steps in one integration. default 10000
@@ -83,5 +89,5 @@ unit_radiation_in_draine1987 = 1
 
 <radiation>
 six_ray_flag = 0 #1 for using 6-ray
-n_frequency  = 9 
+n_frequency  = 8 
 jeans_shielding_flag = 0

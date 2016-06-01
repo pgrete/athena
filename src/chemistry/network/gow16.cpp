@@ -375,36 +375,40 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 	Real rate;
 	//store previous y includeing ghost species
 	Real yprev[NSPECIES+ngs_];
+	Real yprev0[NSPECIES+ngs_];//correct negative abundance
 	Real ydotg[NSPECIES+ngs_];
 
 	for(int i=0; i<NSPECIES+ngs_; i++) {
 		ydotg[i] = 0.0;
   }
 
-  if (!is_const_abundance_) {
-    // copy y to yprev and set ghost species
-    GetGhostSpecies(y, yprev);
-    //correct negative abundance
-    for (int i=0; i<NSPECIES+ngs_; i++) {
-      if (yprev[i] < 0) {
-        yprev[i] = 0;
-      }
-      if (isnan(yprev[i]) || isinf(yprev[i]) ) {
-        printf("RHS: ");
-        for (int j=0; j<NSPECIES+ngs_; j++) {
-          printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
-        }
-        printf("\n");
-        OutputRates(stdout);
-        printf("rad_ = ");
-        for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
-          printf("%.2e  ", rad_[ifreq]);
-        }
-        printf("\n");
-        throw std::runtime_error("ChemNetwork (gow16): RHS: nan or inf species\n");
-      }
+  // copy y to yprev and set ghost species
+  GetGhostSpecies(y, yprev);
+  //correct negative abundance
+  for (int i=0; i<NSPECIES+ngs_; i++) {
+    if (yprev[i] < 0) {
+      yprev0[i] = 0;
+    } else {
+      yprev0[i] = yprev[i];
     }
-    UpdateRates(yprev);
+    if (isnan(yprev[i]) || isinf(yprev[i]) ) {
+      printf("RHS: ");
+      for (int j=0; j<NSPECIES+ngs_; j++) {
+        printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
+      }
+      printf("\n");
+      OutputRates(stdout);
+      printf("rad_ = ");
+      for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
+        printf("%.2e  ", rad_[ifreq]);
+      }
+      printf("\n");
+      throw std::runtime_error("ChemNetwork (gow16): RHS: nan or inf species\n");
+    }
+  }
+
+  if (!is_const_abundance_) {
+    UpdateRates(yprev0);
 
     //cosmic ray reactions
     for (int i=0; i<n_cr_; i++) {
@@ -414,7 +418,7 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
     }
 
     for (int i=0; i<n_2body_; i++) {
-      rate =  k2body_[i] * yprev[in2body1_[i]] * yprev[in2body2_[i]];
+      rate =  k2body_[i] * yprev0[in2body1_[i]] * yprev0[in2body2_[i]];
       ydotg[in2body1_[i]] -= rate;
       ydotg[in2body2_[i]] -= rate;
       ydotg[out2body1_[i]] += rate;
@@ -438,7 +442,7 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 
   //energy equation
   if (!is_const_temp_) {
-    ydotg[iE_] = dEdt_(yprev);
+    ydotg[iE_] = dEdt_(yprev0);
   }
 	//set ydot to return
 	for (int i=0; i<NSPECIES; i++) {
@@ -647,35 +651,37 @@ void ChemNetwork::Finalize(Real *y) {
     y[iSiplus_] = xSi_;
     return;
   }
-  //in atomic/molecular gas, normalize abundance
   //set negative abundance to zero
-  for (int i=0; i<NSPECIES+ngs_; i++) {
-    if (yall[i] < 0) {
-      yall[i] = 0;
-    }
-  }
+  //for (int i=0; i<NSPECIES+ngs_; i++) {
+  //  if (yall[i] < 0) {
+  //    yall[i] = 0;
+  //  }
+  //}
+  //restrict ion abundances
+  //RestrictAbundance(y);
+
   //normalize to atomic abundance when abundances are off
   //------ C --------
-  const int nC = 5;
-  const int iC_arr[nC] = {igC_, iHCOplus_, iCHx_, iCO_, iCplus_};
-  NormalizeAtom(nC, iC_arr, xC_, yall);
-  //------ He --------
-  const int nHe = 2;
-  const int iHe_arr[nHe] = {igHe_, iHeplus_};
-  NormalizeAtom(nHe, iHe_arr, xHe_, yall);
-  //------ Si --------
-  const int nSi = 2;
-  const int iSi_arr[nSi] = {igSi_, iSiplus_};
-  NormalizeAtom(nSi, iSi_arr, xSi_, yall);
-  //------ O --------, CO already normalized in C
-  //const int nO = 4;
-  //const int iO_arr[nO] = {igO_, iHCOplus_, iOHx_, iCO_};
-  //NormalizeAtom(nO, iO_arr, xO_, yall);
-  //------ H ---------, ignore OHx, CHx, HCO+,
-  const int nH = 5;
-  const int iH_arr[nH] = {igH_, iH3plus_, iH2plus_, iHplus_, iH2_};
-  const Real iH_weights[nH] = {1, 3, 2, 1, 2};
-  NormalizeAtom(nH, iH_arr, 1., yall, iH_weights);
+  //const int nC = 5;
+  //const int iC_arr[nC] = {igC_, iHCOplus_, iCHx_, iCO_, iCplus_};
+  //NormalizeAtom(nC, iC_arr, xC_, yall);
+  ////------ He --------
+  //const int nHe = 2;
+  //const int iHe_arr[nHe] = {igHe_, iHeplus_};
+  //NormalizeAtom(nHe, iHe_arr, xHe_, yall);
+  ////------ Si --------
+  //const int nSi = 2;
+  //const int iSi_arr[nSi] = {igSi_, iSiplus_};
+  //NormalizeAtom(nSi, iSi_arr, xSi_, yall);
+  ////------ O --------, CO already normalized in C
+  ////const int nO = 4;
+  ////const int iO_arr[nO] = {igO_, iHCOplus_, iOHx_, iCO_};
+  ////NormalizeAtom(nO, iO_arr, xO_, yall);
+  ////------ H ---------, ignore OHx, CHx, HCO+,
+  //const int nH = 5;
+  //const int iH_arr[nH] = {igH_, iH3plus_, iH2plus_, iHplus_, iH2_};
+  //const Real iH_weights[nH] = {1, 3, 2, 1, 2};
+  //NormalizeAtom(nH, iH_arr, 1., yall, iH_weights);
   //copy back to y
   for (int i=0; i<NSPECIES; i++) {
     y[i] = yall[i];
@@ -728,17 +734,8 @@ Real ChemNetwork::CII_rec_rate_(const Real temp) {
   return (alpharr+alphadr);
 }
 
-void ChemNetwork::UpdateRates(const Real y0[NSPECIES+ngs_]) {
+void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
   Real T;
-  Real y[NSPECIES+ngs_];
-  //negative abundance are considered to be zero
-  for (int i=0; i<NSPECIES+ngs_; i++) {
-    if (y0[i] < 0) {
-      y[i] = 0;
-    } else {
-      y[i] = y0[i];
-    }
-  }
   //constant or evolve temperature
   if (is_const_temp_) {
     T = temperature_;

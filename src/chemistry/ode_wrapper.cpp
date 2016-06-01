@@ -195,7 +195,7 @@ void ODEWrapper::Integrate() {
         }
         //step 4: finalize before output: eg. renormalize, set abundance in hot
         //gas
-        //pmy_spec_->pchemnet->Finalize(NV_DATA_S(y_));
+        pmy_spec_->pchemnet->Finalize(NV_DATA_S(y_));
       }
       //copy s1 back to s
       for (int ispec=0; ispec<NSPECIES; ispec++) {
