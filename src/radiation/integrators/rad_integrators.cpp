@@ -60,7 +60,7 @@ void RadIntegrator::UpdateRadJeans() {
   const int iph_CO = ChemNetwork::iph_CO_;
   const int iPE = pb->pspec->pchemnet->index_gpe_;
   const int iISRF = pb->pspec->pchemnet->index_gisrf_;
-  Real press, dens, dens_cgs, temp, cs, cs_sq, cs_floor, cs_max;
+  Real press, dens, dens_cgs, temp, cs, cs_sq;
   Real gm = pb->phydro->peos->GetGamma();
   Real Lshield; //in cm
   Real NH, NH2, NCO, AV, yH2, ye;
@@ -68,11 +68,6 @@ void RadIntegrator::UpdateRadJeans() {
   Real dens_small_ = 1e-20;
   Real mu_i;
 
-  //maximum Lshield at T=Tceiling
-  cs_max = sqrt( gm * CGKUtility::kB * Tceiling / (CGKUtility::mumax * CGKUtility::mH)
-       ); //maximum sounds speed in cgs
-  //maximum Lshield at T=Tceiling
-  cs_floor = sqrt( gm * CGKUtility::kB * Tfloor / (CGKUtility::mumax * CGKUtility::mH)); //minimum sounds speed in cgs
 
   //loop over each cell
   for (int k=pb->ks; k<=pb->ke; ++k) {
@@ -86,34 +81,30 @@ void RadIntegrator::UpdateRadJeans() {
         ye = 0.;
         temp = pb->pspec->s(pb->pspec->pchemnet->iE_, k, j, i) / 
           Thermo::CvCold(yH2, xHe, ye);
+        //set T ceilling and floor
+        if (temp > Tceiling) {
+          temp = Tceiling;
+        } else if (temp < Tfloor) {
+          temp = Tfloor;
+        }
         if (dens < dens_small_) {
           Lshield = 0.;
         } else {
-          if (temp < Tceiling) {
-            mu_i = 1.5 * CGKUtility::kB * (1. + 4.*xHe) / 
-              Thermo::CvCold(yH2, xHe, ye);
-            cs_sq = ( gm * temp * CGKUtility::kB ) / ( mu_i * CGKUtility::mH ); //cs in cgs
-            if (cs_sq < SQR(cs_floor) ) {
-              cs = cs_floor;
-            } else {
-              cs = sqrt(cs_sq);
-            }
-            Lshield = GetLJ(cs, dens_cgs);
-          } else {
-            Lshield = GetLJ(cs_max, dens_cgs);
-          }
+          mu_i = 1.5 * CGKUtility::kB * (1. + 4.*xHe) / 
+            Thermo::CvCold(yH2, xHe, ye);
+          cs_sq = ( gm * temp * CGKUtility::kB ) / ( mu_i * CGKUtility::mH ); //cs in cgs
+          cs = sqrt(cs_sq);
+          Lshield = GetLJ(cs, dens_cgs);
         }
         //calculate NH, NH2, NCO
-        NH = dens * Lshield;
+        if (dens < 0) {
+          NH = 0;
+        } else {
+          NH = dens * Lshield;
+        }
         AV = NH * Zd / 1.87e21;
-        NH2 = pb->pspec->s(iH2, k, j, i) * Lshield;
-        NCO = pb->pspec->s(iCO, k, j, i) * Lshield;
-        if (NH2 < 0) {
-          NH2 = 0;
-        }
-        if (NCO < 0) {
-          NCO = 0;
-        }
+        NH2 = pb->pspec->s(iH2, k, j, i) * NH;
+        NCO = pb->pspec->s(iCO, k, j, i) * NH;
         //set CO column for calculating CO cooling
         pb->pspec->pchemnet->colCO_(k, j, i) = NCO;
         //dust shielding
@@ -130,12 +121,12 @@ void RadIntegrator::UpdateRadJeans() {
         pmy_rad->ir(k, j, i, iph_CO * pmy_rad->nang) *= 
           fs_CO;
         //debug
-        if (dens > 200.) {
+#ifdef DEBUG
+        if (dens > 5.) {
           printf("RadIntegrator: nH=%.2e, temp=%.2e, cs=%.2e, Lshield=%.2e, NCO=%.2e, NH2=%.2e",
                  dens, temp, cs, Lshield, NCO, NH2);
-          printf(", yH2=%.2e, ye=%.2e\n", yH2, ye);
+          printf(", mui=%.2e, yH2=%.2e, ye=%.2e\n",mu_i, yH2, ye);
         }
-#ifdef DEBUG
         if (isnan(fs_CO) ) {
           printf("RadIntegrator::UpdateRadJeans(): fs_CO=nan, Lshield=%.2e\n", Lshield);
           printf("press=%.2e, dens=%.2e, temp=%.2e, cs=%.2e, CO=%.2e, NCO=%.2e, NH2=%.2e\n",
