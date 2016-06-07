@@ -867,7 +867,7 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
 	// Grain assisted recombination of H and H2
 	//	 (0) *H + *H + gr -> H2 + gr , from Draine book chapter 31.2 page 346,
 	//	 Jura 1975
-	kgr_[0] = 3.0e-18 * sqrt(T) * nH_ * zdg_;
+	kgr_[0] = 3.0e-17 * nH_ * zdg_;
 	//	 (1) H+ + *e + gr -> *H + gr
   //	 (2) C+ + *e + gr -> *C + gr
   //   (3) He+ + *e + gr -> *He + gr
