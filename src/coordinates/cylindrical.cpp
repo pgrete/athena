@@ -21,12 +21,11 @@
 #include <math.h>   // pow function
 
 // Athena++ headers
-#include "../athena.hpp"
-#include "../athena_arrays.hpp"
-#include "../parameter_input.hpp"
-#include "../mesh.hpp"
-#include "../hydro/hydro.hpp"
-#include "../hydro/eos/eos.hpp"   // SoundSpeed()
+#include "../athena.hpp"           // macros, Real
+#include "../athena_arrays.hpp"    // AthenaArray
+#include "../parameter_input.hpp"  // ParameterInput
+#include "../mesh/mesh.hpp"        // MeshBlock
+#include "../eos/eos.hpp"          // GetIsoSoundSpeed()
 
 // this class header
 #include "coordinates.hpp"
@@ -297,7 +296,7 @@ Real Coordinates::GetCellVolume(const int k, const int j, const int i)
 void Coordinates::CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
   const AthenaArray<Real> &prim, const AthenaArray<Real> &bcc, AthenaArray<Real> &u)
 {
-  Real iso_cs = pmy_block->phydro->peos->GetIsoSoundSpeed();
+  Real iso_cs = pmy_block->peos->GetIsoSoundSpeed();
 
   for (int k=pmy_block->ks; k<=pmy_block->ke; ++k) {
 #pragma omp parallel for schedule(static)
@@ -319,8 +318,8 @@ void Coordinates::CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
         // src_2 = -< M_{phi r} ><1/r>
         Real& x_i   = x1f(i);
         Real& x_ip1 = x1f(i+1);
-        u(IM2,k,j,i) -= dt*coord_src2_i_(i)*(x_i*flux[x1face](IM2,k,j,i)
-                                           + x_ip1*flux[x1face](IM2,k,j,i+1));
+        u(IM2,k,j,i) -= dt*coord_src2_i_(i)*(x_i*flux[X1DIR](IM2,k,j,i)
+                                           + x_ip1*flux[X1DIR](IM2,k,j,i+1));
       }
     }
   }
@@ -506,7 +505,7 @@ void Coordinates::VisSrcTermsX1(const int k, const int j, const Real dt,
   const AthenaArray<Real> &flx,
   const AthenaArray<Real> &prim, AthenaArray<Real> &u)
 {
-  Real iso_cs = pmy_block->phydro->peos->GetIsoSoundSpeed();
+  Real iso_cs = pmy_block->peos->GetIsoSoundSpeed();
 
 #pragma simd
   for (int i=(pmy_block->is); i<=(pmy_block->ie); ++i) {

@@ -23,25 +23,25 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../bvals/bvals.hpp"
 #include "../parameter_input.hpp"
-#include "../mesh.hpp"
-#include "../hydro/hydro.hpp"
-#include "../field/field.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../bvals/bvals.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../eos/eos.hpp"
+#include "../field/field.hpp"
+#include "../hydro/hydro.hpp"
+#include "../mesh/mesh.hpp"
 
 #if MAGNETIC_FIELDS_ENABLED
 #error "This problem generator does not support magnetic fields"
 #endif
 
 // BCs on outer edges of grid in each dimension
-void Noh3DOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke);
-void Noh3DOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke);
-void Noh3DOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke);
+void Noh3DOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+void Noh3DOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+void Noh3DOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 
 // made global to share with BC functions
 static Real gmma, gmma1;
@@ -71,7 +71,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
-  gmma  = phydro->peos->GetGamma();
+  gmma  = peos->GetGamma();
   gmma1 = gmma - 1.0;
 
 // Initialize the grid: d=1, v=-1.0 in radial direction, p=10^-6
@@ -101,8 +101,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 //
 // Quantities at this boundary are held fixed at the time-dependent upstream state
 
-void Noh3DOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke)
+void Noh3DOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, 
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   for (int k=ks; k<=ke; ++k) {
   for (int j=js; j<=je; ++j) {
@@ -118,15 +118,15 @@ void Noh3DOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFi
       }
       Real d0 = 1.0*f_t;
    
-      a(IDN,k,j,ie+i)  = d0;
-      a(IVX,k,j,ie+i) = -pco->x1v(ie+i)/rad;
-      a(IVY,k,j,ie+i) = -pco->x2v(j   )/rad;
+      prim(IDN,k,j,ie+i)  = d0;
+      prim(IVX,k,j,ie+i) = -pco->x1v(ie+i)/rad;
+      prim(IVY,k,j,ie+i) = -pco->x2v(j   )/rad;
       if (pmb->block_size.nx3 > 1) {
-        a(IVZ,k,j,ie+i) = -pco->x3v(k)/rad;
-        a(IEN,k,j,ie+i) = 1.0e-6*pow(f_t,(1.0+gmma));
+        prim(IVZ,k,j,ie+i) = -pco->x3v(k)/rad;
+        prim(IPR,k,j,ie+i) = 1.0e-6*pow(f_t,(1.0+gmma));
       } else {
-        a(IVZ,k,j,ie+i) = 0.0;
-        a(IEN,k,j,ie+i)= 1.0e-6;
+        prim(IVZ,k,j,ie+i) = 0.0;
+        prim(IPR,k,j,ie+i)= 1.0e-6;
       }
     }
   }}
@@ -138,8 +138,8 @@ void Noh3DOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFi
 //
 // Quantities at this boundary are held fixed at the time-dependent upstream state
 
-void Noh3DOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke)
+void Noh3DOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   for (int k=ks; k<=ke; ++k) {
   for (int j=1; j<=(NGHOST); ++j) {
@@ -155,15 +155,15 @@ void Noh3DOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFi
       }
       Real d0 = 1.0*f_t;
 
-      a(IDN,k,je+j,i)  = d0;
-      a(IVX,k,je+j,i) = -pco->x1v(i)/rad;
-      a(IVY,k,je+j,i) = -pco->x2v(je+j)/rad;
+      prim(IDN,k,je+j,i)  = d0;
+      prim(IVX,k,je+j,i) = -pco->x1v(i)/rad;
+      prim(IVY,k,je+j,i) = -pco->x2v(je+j)/rad;
       if (pmb->block_size.nx3 > 1) {
-        a(IVZ,k,je+j,i) = -pco->x3v(k)/rad;
-        a(IEN,k,je+j,i) = 1.0e-6*pow(f_t,(1.0+gmma));
+        prim(IVZ,k,je+j,i) = -pco->x3v(k)/rad;
+        prim(IPR,k,je+j,i) = 1.0e-6*pow(f_t,(1.0+gmma));
       } else {
-        a(IVZ,k,je+j,i) = 0.0;
-        a(IEN,k,je+j,i)= 1.0e-6;
+        prim(IVZ,k,je+j,i) = 0.0;
+        prim(IPR,k,je+j,i)= 1.0e-6;
       }
     }
   }}
@@ -175,8 +175,8 @@ void Noh3DOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFi
 //
 // Quantities at this boundary are held fixed at the time-dependent upstream state
 
-void Noh3DOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke)
+void Noh3DOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, 
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   for (int k=1; k<=(NGHOST); ++k) {
   for (int j=js; j<=je; ++j) {
@@ -186,11 +186,11 @@ void Noh3DOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFi
       Real f_t = SQR(1.0 + pmb->pmy_mesh->time/rad);
       Real d0 = 1.0*f_t;
 
-      a(IDN,ke+k,j,i)  = d0;
-      a(IVX,ke+k,j,i) = -pco->x1v(i)/rad;
-      a(IVY,ke+k,j,i) = -pco->x2v(j)/rad;
-      a(IVZ,ke+k,j,i) = -pco->x3v(ke+k)/rad;
-      a(IEN,ke+k,j,i) = 1.0e-6*pow(f_t,(1.0+gmma));
+      prim(IDN,ke+k,j,i)  = d0;
+      prim(IVX,ke+k,j,i) = -pco->x1v(i)/rad;
+      prim(IVY,ke+k,j,i) = -pco->x2v(j)/rad;
+      prim(IVZ,ke+k,j,i) = -pco->x3v(ke+k)/rad;
+      prim(IPR,ke+k,j,i) = 1.0e-6*pow(f_t,(1.0+gmma));
     }
   }}
 }

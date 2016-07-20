@@ -1,19 +1,19 @@
 // Spherical blast wave generator for GRMHD in flat spacetime
 
 // Primary header
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 // C++ headers
 #include <algorithm>  // min()
 
 // Athena headers
-#include "../athena.hpp"                   // macros, enums, Real
+#include "../athena.hpp"                   // macros, enums
 #include "../athena_arrays.hpp"            // AthenaArray
 #include "../parameter_input.hpp"          // ParameterInput
 #include "../coordinates/coordinates.hpp"  // Coordinates
+#include "../eos/eos.hpp"                  // EquationOfState
 #include "../field/field.hpp"              // Field
 #include "../hydro/hydro.hpp"              // Hydro
-#include "../hydro/eos/eos.hpp"            // HydroEqnOfState
 
 //--------------------------------------------------------------------------------------
 
@@ -41,7 +41,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   }
 
   // Get ratio of specific heats
-  Real gamma_adi = phydro->peos->GetGamma();
+  Real gamma_adi = peos->GetGamma();
   Real gamma_adi_red = gamma_adi / (gamma_adi - 1.0);
 
   // Read problem parameters
@@ -123,7 +123,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         Real u0, u1, u2, u3;
         pcoord->TransformVectorCell(ut, ux, uy, uz, k, j, i, &u0, &u1, &u2, &u3);
         phydro->w(IDN,k,j,i) = phydro->w1(IDN,k,j,i) = rho;
-        phydro->w(IEN,k,j,i) = phydro->w1(IEN,k,j,i) = pgas;
+        phydro->w(IPR,k,j,i) = phydro->w1(IPR,k,j,i) = pgas;
         phydro->w(IVX,k,j,i) = phydro->w1(IVX,k,j,i) = u1 - gi(I01,i)/gi(I00,i) * u0;
         phydro->w(IVY,k,j,i) = phydro->w1(IVY,k,j,i) = u2 - gi(I02,i)/gi(I00,i) * u0;
         phydro->w(IVZ,k,j,i) = phydro->w1(IVZ,k,j,i) = u3 - gi(I03,i)/gi(I00,i) * u0;
@@ -142,8 +142,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       }
     }
   }
-  phydro->peos->PrimitiveToConserved(phydro->w, b, phydro->u, pcoord, il, iu,
-      jl, ju, kl, ku);
+  peos->PrimitiveToConserved(phydro->w, b, phydro->u, pcoord, il, iu, jl, ju, kl, ku);
 
   // Delete auxiliary array
   b.DeleteAthenaArray();

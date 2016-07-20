@@ -1,7 +1,7 @@
 // General relativistic problem generator for dust falling onto black hole
 
 // Primary header
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 #if MAGNETIC_FIELDS_ENABLED
 #error "This problem generator does not support magnetic fields"
@@ -12,18 +12,18 @@
 #include <cmath>    // pow(), sin(), sqrt()
 
 // Athena headers
-#include "../athena.hpp"                   // enums, Real
+#include "../athena.hpp"                   // enums, Real, FaceField
 #include "../athena_arrays.hpp"            // AthenaArray
 #include "../parameter_input.hpp"          // ParameterInput
-#include "../bvals/bvals.hpp"              // BoundaryValues, FaceField
+#include "../bvals/bvals.hpp"              // BoundaryValues
 #include "../coordinates/coordinates.hpp"  // Coordinates
+#include "../eos/eos.hpp"                  // EquationOfState
 #include "../field/field.hpp"              // Field
 #include "../hydro/hydro.hpp"              // Hydro
-#include "../hydro/eos/eos.hpp"            // HydroEqnOfState
 
 // Declarations
 void FixedBoundary(MeshBlock *pmb, Coordinates *pcoord, AthenaArray<Real> &prim,
-    FaceField &bb, int is, int ie, int js, int je, int ks, int ke);
+    FaceField &bb, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 
 //--------------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   Real a2 = SQR(a);
 
   // Get ratio of specific heats
-  Real gamma_adi = phydro->peos->GetGamma();
+  Real gamma_adi = peos->GetGamma();
 
   // Read other properties
   Real e = pin->GetReal("problem", "energy");
@@ -108,7 +108,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       for (int k = kl; k <= ku; k++)
       {
         phydro->w(IDN,k,j,i) = phydro->w1(IDN,k,j,i) = rho;
-        phydro->w(IEN,k,j,i) = phydro->w1(IEN,k,j,i) = pgas;
+        phydro->w(IPR,k,j,i) = phydro->w1(IPR,k,j,i) = pgas;
         phydro->w(IVX,k,j,i) = phydro->w1(IM1,k,j,i) = uu1;
         phydro->w(IVY,k,j,i) = phydro->w1(IM2,k,j,i) = uu2;
         phydro->w(IVZ,k,j,i) = phydro->w1(IM3,k,j,i) = uu3;
@@ -119,8 +119,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   // Initialize conserved values
   AthenaArray<Real> bb;
   bb.NewAthenaArray(3, ku+1, ju+1, iu+1);
-  phydro->peos->PrimitiveToConserved(phydro->w, bb, phydro->u, pcoord, il, iu, jl, ju,
-      kl, ku);
+  peos->PrimitiveToConserved(phydro->w, bb, phydro->u, pcoord, il, iu, jl, ju, kl, ku);
   bb.DeleteAthenaArray();
   return;
 }
@@ -138,7 +137,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 // Notes:
 //   does nothing
 void FixedBoundary(MeshBlock *pmb, Coordinates *pcoord, AthenaArray<Real> &prim,
-    FaceField &bb, int is, int ie, int js, int je, int ks, int ke)
+    FaceField &bb, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   return;
 }

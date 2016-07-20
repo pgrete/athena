@@ -1,24 +1,24 @@
 // General relativistic black hole accretion generator, spherically symmetric flows
 
 // Primary header
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 // C++ headers
 #include <cmath>  // abs(), NAN, pow(), sqrt()
 
 // Athena headers
-#include "../athena.hpp"                   // macros, enums, Real
+#include "../athena.hpp"                   // macros, enums, FaceField
 #include "../athena_arrays.hpp"            // AthenaArray
 #include "../parameter_input.hpp"          // ParameterInput
-#include "../bvals/bvals.hpp"              // BoundaryValues, FaceField
+#include "../bvals/bvals.hpp"              // BoundaryValues
 #include "../coordinates/coordinates.hpp"  // Coordinates
+#include "../eos/eos.hpp"                  // EquationOfState
 #include "../field/field.hpp"              // Field
 #include "../hydro/hydro.hpp"              // Hydro
-#include "../hydro/eos/eos.hpp"            // HydroEqnOfState
 
 // Declarations
 void FixedBoundary(MeshBlock *pmb, Coordinates *pcoord, AthenaArray<Real> &prim,
-    FaceField &bb, int is, int ie, int js, int je, int ks, int ke);
+    FaceField &bb, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 static void CalculatePrimitives(Real r, Real temp_min, Real temp_max, Real *prho,
     Real *ppgas, Real *put, Real *pur);
 static Real TemperatureMin(Real r, Real t_min, Real t_max);
@@ -83,7 +83,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   m = pcoord->GetMass();
 
   // Get ratio of specific heats
-  Real gamma_adi = phydro->peos->GetGamma();
+  Real gamma_adi = peos->GetGamma();
   n_adi = 1.0/(gamma_adi-1.0);
 
   // Read problem parameters
@@ -123,7 +123,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         Real uu2 = u2 - gi(I02,i)/gi(I00,i) * u0;
         Real uu3 = u3 - gi(I03,i)/gi(I00,i) * u0;
         phydro->w(IDN,k,j,i) = phydro->w1(IDN,k,j,i) = rho;
-        phydro->w(IEN,k,j,i) = phydro->w1(IEN,k,j,i) = pgas;
+        phydro->w(IPR,k,j,i) = phydro->w1(IPR,k,j,i) = pgas;
         phydro->w(IM1,k,j,i) = phydro->w1(IM1,k,j,i) = uu1;
         phydro->w(IM2,k,j,i) = phydro->w1(IM2,k,j,i) = uu2;
         phydro->w(IM3,k,j,i) = phydro->w1(IM3,k,j,i) = uu3;
@@ -233,8 +233,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
        }
 
   // Initialize conserved variables
-  phydro->peos->PrimitiveToConserved(phydro->w, bb, phydro->u, pcoord,
-                                          il, iu, jl, ju, kl, ku);
+  peos->PrimitiveToConserved(phydro->w, bb, phydro->u, pcoord, il, iu, jl, ju, kl, ku);
 
   // Free scratch arrays
   g.DeleteAthenaArray();
@@ -257,7 +256,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 // Notes:
 //   does nothing
 void FixedBoundary(MeshBlock *pmb, Coordinates *pcoord, AthenaArray<Real> &prim,
-    FaceField &bb, int is, int ie, int js, int je, int ks, int ke)
+    FaceField &bb, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   return;
 }

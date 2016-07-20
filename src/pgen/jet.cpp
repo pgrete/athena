@@ -20,17 +20,17 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../bvals/bvals.hpp"
 #include "../parameter_input.hpp"
-#include "../mesh.hpp"
-#include "../hydro/hydro.hpp"
-#include "../field/field.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../bvals/bvals.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../eos/eos.hpp"
+#include "../field/field.hpp"
+#include "../hydro/hydro.hpp"
+#include "../mesh/mesh.hpp"
 
 // BCs on L-x1 (left edge) of grid with jet inflow conditions
-void JetInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-                   int is, int ie, int js, int je, int ks, int ke);
+void JetInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+                Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 
 // Make radius of jet and jet variables global so they can be accessed by BC functions
 static Real r_amb,d_amb,p_amb,vx_amb,vy_amb,vz_amb,bx_amb,by_amb,bz_amb;
@@ -83,7 +83,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 //  \brief Problem Generator for the Jet problem
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
-  gm1 = phydro->peos->GetGamma() - 1.0;
+  gm1 = peos->GetGamma() - 1.0;
 
 // initialize conserved variables
    
@@ -134,8 +134,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 //! \fn void JetInnerX1()
 //  \brief Sets boundary condition on left X boundary (iib) for jet problem
 
-void JetInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-                   int is, int ie, int js, int je, int ks, int ke)
+void JetInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+                Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // set primitive variables in inlet ghost zones
   for(int k=ks; k<=ke; ++k){
@@ -143,17 +143,17 @@ void JetInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFiel
     for(int i=1; i<=(NGHOST); ++i){
       Real rad = sqrt(SQR(pco->x2v(j)-x2_0) + SQR(pco->x3v(k)-x3_0));
       if(rad <= r_jet){
-        a(IDN,k,j,is-i) = d_jet;
-        a(IVX,k,j,is-i) = vx_jet;
-        a(IVY,k,j,is-i) = vy_jet;
-        a(IVZ,k,j,is-i) = vz_jet;
-        a(IEN,k,j,is-i) = p_jet;
+        prim(IDN,k,j,is-i) = d_jet;
+        prim(IVX,k,j,is-i) = vx_jet;
+        prim(IVY,k,j,is-i) = vy_jet;
+        prim(IVZ,k,j,is-i) = vz_jet;
+        prim(IPR,k,j,is-i) = p_jet;
       } else{
-        a(IDN,k,j,is-i) = a(IDN,k,j,is);
-        a(IVX,k,j,is-i) = a(IVX,k,j,is);
-        a(IVY,k,j,is-i) = a(IVY,k,j,is);
-        a(IVZ,k,j,is-i) = a(IVZ,k,j,is);
-        a(IEN,k,j,is-i) = a(IEN,k,j,is);
+        prim(IDN,k,j,is-i) = prim(IDN,k,j,is);
+        prim(IVX,k,j,is-i) = prim(IVX,k,j,is);
+        prim(IVY,k,j,is-i) = prim(IVY,k,j,is);
+        prim(IVZ,k,j,is-i) = prim(IVZ,k,j,is);
+        prim(IPR,k,j,is-i) = prim(IPR,k,j,is);
       }
     }
   }}

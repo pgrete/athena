@@ -13,7 +13,7 @@
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include <iostream>
 
 // forward declarations
@@ -377,7 +377,7 @@ inline void Coordinates::AllocateAndSetBasicCoordinates(void)
 
   // X1-DIRECTION: initialize sizes and positions of cell FACES (dx1f,x1f)
   nrootmesh=mesh_size.nx1*(1L<<(ll-pm->root_level));
-  if(pm->user_meshgen_[x1dir]==false) { // uniform
+  if(pm->user_meshgen_[X1DIR]==false) { // uniform
     Real dx=(block_size.x1max-block_size.x1min)/(ie-is+1);
     for(int i=is-ng; i<=ie+ng; ++i)
       dx1f(i)=dx;
@@ -392,7 +392,7 @@ inline void Coordinates::AllocateAndSetBasicCoordinates(void)
       // if there are too many levels, this won't work or be precise enough
       noffset=((i-is)<<cflag)+(long long)lx1*block_size.nx1;
       Real rx=(Real)noffset/(Real)nrootmesh;
-      x1f(i)=pm->MeshGenerator_[x1dir](rx,mesh_size);
+      x1f(i)=pm->MeshGenerator_[X1DIR](rx,mesh_size);
     }
     x1f(is) = block_size.x1min;
     x1f(ie+1) = block_size.x1max;
@@ -417,7 +417,7 @@ inline void Coordinates::AllocateAndSetBasicCoordinates(void)
   // X2-DIRECTION: initialize spacing and positions of cell FACES (dx2f,x2f)
   if(ncells2 > 1) {
     nrootmesh=mesh_size.nx2*(1L<<(ll-pm->root_level));
-    if(pm->user_meshgen_[x2dir]==false) { // uniform
+    if(pm->user_meshgen_[X2DIR]==false) { // uniform
       Real dx=(block_size.x2max-block_size.x2min)/(je-js+1);
       for(int j=js-ng; j<=je+ng; ++j)
         dx2f(j)=dx;
@@ -432,7 +432,7 @@ inline void Coordinates::AllocateAndSetBasicCoordinates(void)
         // if there are too many levels, this won't work or be precise enough
         noffset=((j-js)<<cflag)+(long long)lx2*block_size.nx2;
         Real rx=(Real)noffset/(Real)nrootmesh;
-        x2f(j)=pm->MeshGenerator_[x2dir](rx,mesh_size);
+        x2f(j)=pm->MeshGenerator_[X2DIR](rx,mesh_size);
       }
       x2f(js) = block_size.x2min;
       x2f(je+1) = block_size.x2max;
@@ -464,7 +464,7 @@ inline void Coordinates::AllocateAndSetBasicCoordinates(void)
   // X3-DIRECTION: initialize spacing and positions of cell FACES (dx3f,x3f)
   if(ncells3 > 1) {
     nrootmesh=mesh_size.nx3*(1L<<(ll-pm->root_level));
-    if(pm->user_meshgen_[x3dir]==false) { // uniform
+    if(pm->user_meshgen_[X3DIR]==false) { // uniform
       Real dx=(block_size.x3max-block_size.x3min)/(ke-ks+1);
       for(int k=ks-ng; k<=ke+ng; ++k)
         dx3f(k)=dx;
@@ -479,7 +479,7 @@ inline void Coordinates::AllocateAndSetBasicCoordinates(void)
         // if there are too many levels, this won't work or be precise enough
         noffset=((k-ks)<<cflag)+(long long)lx3*block_size.nx3;
         Real rx=(Real)noffset/(Real)nrootmesh;
-        x3f(k)=pm->MeshGenerator_[x3dir](rx,mesh_size);
+        x3f(k)=pm->MeshGenerator_[X3DIR](rx,mesh_size);
       }
       x3f(ks) = block_size.x3min;
       x3f(ke+1) = block_size.x3max;
@@ -541,8 +541,8 @@ inline void Coordinates::CheckMeshSpacing(void)
 {
   Real rmax=1.0, rmin=1.0;
   for(int i=pmy_block->is; i<=pmy_block->ie; i++) {
-    rmax=std::max(dx1v(i+1)/dx1v(i),rmax);
-    rmin=std::min(dx1v(i+1)/dx1v(i),rmin);
+    rmax=std::max(dx1f(i+1)/dx1f(i),rmax);
+    rmin=std::min(dx1f(i+1)/dx1f(i),rmin);
   }
   if(rmax > 1.1 || rmin  < 1.0/1.1) {
      std::cout << "### Warning in Coordinates::CheckMeshSpacing" << std::endl
@@ -552,8 +552,8 @@ inline void Coordinates::CheckMeshSpacing(void)
   if(pmy_block->je!=pmy_block->js) {
     rmax=1.0, rmin=1.0;
     for(int j=pmy_block->js; j<=pmy_block->je; j++) {
-      rmax=std::max(dx2v(j+1)/dx2v(j),rmax);
-      rmin=std::min(dx2v(j+1)/dx2v(j),rmin);
+      rmax=std::max(dx2f(j+1)/dx2f(j),rmax);
+      rmin=std::min(dx2f(j+1)/dx2f(j),rmin);
     }
     if(rmax > 1.1 || rmin  < 1.0/1.1) {
        std::cout << "### Warning in Coordinates::CheckMeshSpacing" << std::endl
@@ -564,8 +564,8 @@ inline void Coordinates::CheckMeshSpacing(void)
   if(pmy_block->ke!=pmy_block->ks) {
     rmax=1.0, rmin=1.0;
     for(int k=pmy_block->ks; k<=pmy_block->ke; k++) {
-      rmax=std::max(dx3v(k+1)/dx3v(k),rmax);
-      rmin=std::min(dx3v(k+1)/dx3v(k),rmin);
+      rmax=std::max(dx3f(k+1)/dx3f(k),rmax);
+      rmin=std::min(dx3f(k+1)/dx3f(k),rmin);
     }
     if(rmax > 1.1 || rmin  < 1.0/1.1) {
        std::cout << "### Warning in Coordinates::CheckMeshSpacing" << std::endl

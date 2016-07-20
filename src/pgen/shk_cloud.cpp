@@ -37,21 +37,21 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../bvals/bvals.hpp"
 #include "../parameter_input.hpp"
-#include "../mesh.hpp"
-#include "../hydro/hydro.hpp"
-#include "../field/field.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../bvals/bvals.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../eos/eos.hpp"
+#include "../field/field.hpp"
+#include "../hydro/hydro.hpp"
+#include "../mesh/mesh.hpp"
 
 // postshock flow variables are shared with IIB function
 static Real gmma1,dl,pl,ul;
 static Real bxl,byl,bzl;
 
 // fixes BCs on L-x1 (left edge) of grid to postshock flow.
-void ShockCloudInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                       FaceField &b, int is, int ie, int js, int je, int ks, int ke);
+void ShockCloudInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 
 //======================================================================================
 //! \fn void Mesh::InitUserMeshData(ParameterInput *pin)
@@ -74,7 +74,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
-  Real gmma  = phydro->peos->GetGamma();
+  Real gmma  = peos->GetGamma();
   gmma1 = gmma - 1.0;
 
 // Read input parameters
@@ -89,7 +89,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 // Set paramters in ambient medium ("R-state" for shock)
 
   Real dr = 1.0;
-  Real pr = 1.0/(phydro->peos->GetGamma());
+  Real pr = 1.0/(peos->GetGamma());
   Real ur = 0.0;
 
 // Uses Rankine Hugoniot relations for adiabatic gas to initialize problem
@@ -194,17 +194,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 //  \brief Sets boundary condition on left X boundary (iib) 
 // Note quantities at this boundary are held fixed at the downstream state
 
-void ShockCloudInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                       FaceField &b, int is, int ie, int js, int je, int ks, int ke)
+void ShockCloudInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   for (int k=ks; k<=ke; ++k) {
   for (int j=js; j<=je; ++j) {
     for (int i=1; i<=(NGHOST); ++i) {
-      a(IDN,k,j,is-i) = dl;
-      a(IVX,k,j,is-i) = ul;
-      a(IVY,k,j,is-i) = 0.0;
-      a(IVZ,k,j,is-i) = 0.0;
-      a(IEN,k,j,is-i) = pl;
+      prim(IDN,k,j,is-i) = dl;
+      prim(IVX,k,j,is-i) = ul;
+      prim(IVY,k,j,is-i) = 0.0;
+      prim(IVZ,k,j,is-i) = 0.0;
+      prim(IPR,k,j,is-i) = pl;
     }
   }}
 }

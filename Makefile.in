@@ -29,18 +29,17 @@ EXECUTABLE := $(EXE_DIR)athena
 SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/bvals/*.cpp) \
 	     src/coordinates/$(COORDINATES_FILE) \
+	     src/eos/$(EOS_FILE) \
 	     $(wildcard src/field/*.cpp) \
-	     $(wildcard src/field/integrators/*.cpp) \
 	     $(wildcard src/hydro/*.cpp) \
 	     $(wildcard src/hydro/srcterms/*.cpp) \
 			 $(wildcard $(CHEMISTRY_FILE)) \
        $(CHEMNET_FILE) \
-	     src/hydro/eos/$(EOS_FILE) \
-	     $(wildcard src/hydro/integrators/*.cpp) \
-	     $(wildcard src/hydro/integrators/reconstruct/*.cpp) \
-	     src/hydro/integrators/rsolvers/$(RSOLVER_DIR)$(RSOLVER_FILE) \
-	     $(wildcard src/mesh_refinement/*.cpp) \
+	     src/hydro/rsolvers/$(RSOLVER_DIR)$(RSOLVER_FILE) \
+	     $(wildcard src/mesh/*.cpp) \
 	     $(wildcard src/outputs/*.cpp) \
+	     $(wildcard src/reconstruct/*.cpp) \
+	     $(wildcard src/task_list/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
        $(wildcard src/radiation/$(RADIATION_FILE)) \
        $(wildcard src/radiation/integrators/*.cpp) \

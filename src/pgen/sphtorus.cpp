@@ -14,28 +14,32 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../parameter_input.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
 #include "../bvals/bvals.hpp"
-#include "../hydro/eos/eos.hpp"
 #include "../coordinates/coordinates.hpp"
 
 using namespace std;
-// #ifdef ISOTHERMAL
-// #error "Isothermal EOS cannot be used."
-// #endif
+
+#ifdef ISOTHERMAL
+#error "Isothermal EOS cannot be used."
+#endif
 
 /*----------------------------------------------------------------------------*/
 /* function prototypes and global variables*/
-void stbv_iib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-              int is, int ie, int js, int je, int ks, int ke); //sets BCs on inner-x1 (left edge) of grid.
-void stbv_ijb(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-              int is, int ie, int js, int je, int ks, int ke); //sets BCs on inner-x2 (bottom edge) of grid.
-void stbv_oib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-              int is, int ie, int js, int je, int ks, int ke); //sets BCs on outer-x1 (right edge) of grid.
-void stbv_ojb(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-              int is, int ie, int js, int je, int ks, int ke); //sets BCs on outer-x2 (top edge) of grid.
+ //sets BCs on inner-x1 (left edge) of grid.
+void stbv_iib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+              Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+//sets BCs on inner-x2 (bottom edge) of grid.
+void stbv_ijb(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+              Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+//sets BCs on outer-x1 (right edge) of grid.
+void stbv_oib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+              Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+//sets BCs on outer-x2 (top edge) of grid.
+void stbv_ojb(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+              Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 
 Real A1(  Real x1,   Real x2,   Real x3);
 Real A2(  Real x1,   Real x2,   Real x3);
@@ -43,7 +47,7 @@ Real A3(  Real x1,   Real x2,   Real x3);
 Real magr(MeshBlock *pmb,   int i,   int j,   int k);
 Real magt(MeshBlock *pmb,   int i,   int j,   int k);
 Real magp(MeshBlock *pmb,   int i,   int j,   int k);
-Real en, cprime, w0, rg, dist, acons, d0, amp,beta;
+Real en, cprime, w0, rg, dist, acons, d0, denv, amp, beta;
 static Real gm,gmgas;
 
 inline Real CUBE(Real x){
@@ -74,7 +78,7 @@ Real A3(Real x1, Real x2,Real x3)
   //cout << "eq29: "<<eq29 << endl;
   if (eq29 > 0.0) {
     dens  = pow(eq29/acons,en);
-    if (dens > 100.0*d0)
+    if (dens > 100.0*denv)
 	//cout<< "Inside torus dens: "<<dens<<endl;
       a = SQR(dens)/(beta);
   }
@@ -132,9 +136,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   rg = pin->GetReal("problem","rg");
   d0= pin->GetReal("problem","d0");
   amp= pin->GetReal("problem","amp");
+  denv = pin->GetReal("problem","denv");
   if (MAGNETIC_FIELDS_ENABLED)
     beta = pin->GetReal("problem","beta");
-  
   w0 = 1.0;
   cprime = 0.5/dist;
   en = 1.0/(gmgas-1.0);
@@ -169,11 +173,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=is; i<=ie; i++) {
-        phydro->u(IDN,k,j,i)  = d0;
+        phydro->u(IDN,k,j,i)  = denv;
         phydro->u(IM1,k,j,i) = 0.0;
         phydro->u(IM2,k,j,i) = 0.0;
         phydro->u(IM3,k,j,i) = 0.0;
-        pr(k,j,i)=d0/pcoord->x1v(i);
+        pr(k,j,i)=denv/pcoord->x1v(i);
       }
     }
   }
@@ -200,16 +204,16 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
             if (eq29 > 0.0) {
               dens = pow(eq29/acons,en);
               pp=dens*eq29;
-              if (pp > d0/rv) {
+              if (pp > denv/rv) {
                 ftorus=1;
                 ld+=dens*lv;
                 lm+=dens*lv*sqrt(gm*w0)/wt;
               }
               else
-                ld+=d0*lv;
+                ld+=denv*lv;
             }
             else
-              ld+=d0*lv;
+              ld+=denv*lv;
           }
         }
         vv= 1.0/3.0*(CUBE(pcoord->x1f(i+1))-CUBE(pcoord->x1f(i)))*(cos(pcoord->x2f(j))-cos(pcoord->x2f(j+1)));
@@ -217,7 +221,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         if(ftorus==1) {
           phydro->u(IDN,k,j,i) = ld;
           phydro->u(IM3,k,j,i) = lm;
-          pr(k,j,i)=MAX(acons*pow(ld,gmgas),d0/pcoord->x1v(i))*(1+amp*((double)rand()/(double)RAND_MAX-0.5));
+          pr(k,j,i)=MAX(acons*pow(ld,gmgas),denv/pcoord->x1v(i))*(1+amp*((double)rand()/(double)RAND_MAX-0.5));
         }
       }
     }
@@ -269,30 +273,18 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 }
 
 
-//======================================================================================
-//! \fn void MeshBlock::UserWorkInLoop(void)
-//  \brief User-defined work function for every time step
-//======================================================================================
-
-void MeshBlock::UserWorkInLoop(void)
-{
-  // nothing to do
-  return;
-}
-
-
 /*  Boundary Condtions, outflowing, ix1, ox1, ix2, ox2  */
-void stbv_iib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-              int is, int ie, int js, int je, int ks, int ke)
+void stbv_iib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+              Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=1; i<=(NGHOST); i++) {
-        a(IDN,k,j,is-i) = a(IDN,k,j,is);
-        a(IM1,k,j,is-i) = 0.0;
-        a(IM2,k,j,is-i) = a(IM2,k,j,is); //corotating ghost region
-        a(IM3,k,j,is-i) = a(IM3,k,j,is);
-        a(IEN,k,j,is-i)=a(IEN,k,j,is-i+1)-gm/SQR(pco->x1f(is-i+1))*a(IDN,k,j,is-i+1)*pco->dx1v(is-i);
+        prim(IDN,k,j,is-i) = prim(IDN,k,j,is);
+        prim(IM1,k,j,is-i) = 0.0;
+        prim(IM2,k,j,is-i) = prim(IM2,k,j,is); //corotating ghost region
+        prim(IM3,k,j,is-i) = prim(IM3,k,j,is);
+        prim(IPR,k,j,is-i)=prim(IPR,k,j,is-i+1)-gm/SQR(pco->x1f(is-i+1))*prim(IDN,k,j,is-i+1)*pco->dx1v(is-i);
       }
     }
   }
@@ -325,19 +317,19 @@ void stbv_iib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField 
 }
 
 
-void stbv_oib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-              int is, int ie, int js, int je, int ks, int ke)
+void stbv_oib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+              Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
       for (int i=1; i<=(NGHOST); i++) {
-        a(IDN,k,j,ie+i) = a(IDN,k,j,ie);
-        a(IM1,k,j,ie+i) = a(IM1,k,j,ie);
-        a(IM2,k,j,ie+i) = a(IM2,k,j,ie);
-        a(IM3,k,j,ie+i) = a(IM3,k,j,ie);
-        a(IEN,k,j,ie+i) = a(IEN,k,j,ie);
-        if(a(IM1,k,j,ie+i) < 0.0)
-          a(IM1,k,j,ie+i) = 0.0;
+        prim(IDN,k,j,ie+i) = prim(IDN,k,j,ie);
+        prim(IM1,k,j,ie+i) = prim(IM1,k,j,ie);
+        prim(IM2,k,j,ie+i) = prim(IM2,k,j,ie);
+        prim(IM3,k,j,ie+i) = prim(IM3,k,j,ie);
+        prim(IPR,k,j,ie+i) = prim(IPR,k,j,ie);
+        if(prim(IM1,k,j,ie+i) < 0.0)
+          prim(IM1,k,j,ie+i) = 0.0;
       }
     }
   }
@@ -370,19 +362,19 @@ void stbv_oib(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField 
 }
 
 
-void stbv_ijb(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-              int is, int ie, int js, int je, int ks, int ke)
+void stbv_ijb(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+              Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   for (int k=ks; k<=ke; k++) {
     for (int j=1; j<=(NGHOST); j++) {
       for (int i=is; i<=ie; i++) {
-        a(IDN,k,js-j,i) = a(IDN,k,js,i);
-        a(IM1,k,js-j,i) = a(IM1,k,js,i);
-        a(IM2,k,js-j,i) = a(IM2,k,js,i);
-        a(IM3,k,js-j,i) = a(IM3,k,js,i);
-        a(IEN,k,js-j,i) = a(IEN,k,js,i);
-        if(a(IM2,k,js-j,i) > 0.0)
-          a(IM2,k,js-j,i) = 0.0;
+        prim(IDN,k,js-j,i) = prim(IDN,k,js,i);
+        prim(IM1,k,js-j,i) = prim(IM1,k,js,i);
+        prim(IM2,k,js-j,i) = prim(IM2,k,js,i);
+        prim(IM3,k,js-j,i) = prim(IM3,k,js,i);
+        prim(IPR,k,js-j,i) = prim(IPR,k,js,i);
+        if(prim(IM2,k,js-j,i) > 0.0)
+          prim(IM2,k,js-j,i) = 0.0;
       }
     }
   }
@@ -415,19 +407,19 @@ void stbv_ijb(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField 
 }
 
 
-void stbv_ojb(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-              int is, int ie, int js, int je, int ks, int ke)
+void stbv_ojb(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim, FaceField &b,
+              Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   for (int k=ks; k<=ke; k++) {
     for (int j=1; j<=(NGHOST); j++) {
       for (int i=is; i<=ie; i++) {
-        a(IDN,k,je+j,i) = a(IDN,k,je,i);
-        a(IM1,k,je+j,i) = a(IM1,k,je,i);
-        a(IM2,k,je+j,i) = a(IM2,k,je,i);
-        a(IM3,k,je+j,i) = a(IM3,k,je,i);
-        a(IEN,k,je+j,i) = a(IEN,k,je,i);
-        if(a(IM2,k,je+j,i) < 0.0)
-          a(IM2,k,je+j,i) = 0.0;
+        prim(IDN,k,je+j,i) = prim(IDN,k,je,i);
+        prim(IM1,k,je+j,i) = prim(IM1,k,je,i);
+        prim(IM2,k,je+j,i) = prim(IM2,k,je,i);
+        prim(IM3,k,je+j,i) = prim(IM3,k,je,i);
+        prim(IPR,k,je+j,i) = prim(IPR,k,je,i);
+        if(prim(IM2,k,je+j,i) < 0.0)
+          prim(IM2,k,je+j,i) = 0.0;
       }
     }
   }

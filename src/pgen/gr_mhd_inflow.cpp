@@ -1,7 +1,7 @@
 // Magnetized equatorial inflow around Kerr black hole
 
 // Primary header
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 // C++ headers
 #include <cmath>      // cos, sin, sqrt
@@ -16,13 +16,13 @@
 #include "../athena_arrays.hpp"            // AthenaArray
 #include "../parameter_input.hpp"          // ParameterInput
 #include "../coordinates/coordinates.hpp"  // Coordinates
+#include "../eos/eos.hpp"                  // EquationOfState
 #include "../field/field.hpp"              // Field
 #include "../hydro/hydro.hpp"              // Hydro
-#include "../hydro/eos/eos.hpp"            // HydroEqnOfState
 
 // Declarations
 void FixedBoundary(MeshBlock *pmb, Coordinates *pcoord, AthenaArray<Real> &prim,
-    FaceField &bb, int is, int ie, int js, int je, int ks, int ke);
+    FaceField &bb, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 static void CalculateFromTable(Real r, Real theta, Real *prho, Real *put, Real *pur,
     Real *puphi, Real *pbt, Real *pbr, Real *pbphi);
 
@@ -190,7 +190,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         Real uu2 = u2 - gi(I02,i)/gi(I00,i) * u0;
         Real uu3 = u3 - gi(I03,i)/gi(I00,i) * u0;
         phydro->w(IDN,k,j,i) = phydro->w1(IDN,k,j,i) = rho;
-        phydro->w(IEN,k,j,i) = phydro->w1(IEN,k,j,i) = pgas;
+        phydro->w(IPR,k,j,i) = phydro->w1(IPR,k,j,i) = pgas;
         phydro->w(IVX,k,j,i) = phydro->w1(IVX,k,j,i) = uu1;
         phydro->w(IVY,k,j,i) = phydro->w1(IVY,k,j,i) = uu2;
         phydro->w(IVZ,k,j,i) = phydro->w1(IVZ,k,j,i) = uu3;
@@ -200,8 +200,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   gi.DeleteAthenaArray();
 
   // Initialize conserved values
-  phydro->peos->PrimitiveToConserved(phydro->w, bb, phydro->u, pcoord, is-NGHOST,
-      ie+NGHOST, js, je, ks, ke);
+  peos->PrimitiveToConserved(phydro->w, bb, phydro->u, pcoord, is-NGHOST, ie+NGHOST, js,
+      je, ks, ke);
   bb.DeleteAthenaArray();
   return;
 }
@@ -219,7 +219,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 // Notes:
 //   does nothing
 void FixedBoundary(MeshBlock *pmb, Coordinates *pcoord, AthenaArray<Real> &prim,
-    FaceField &bb, int is, int ie, int js, int je, int ks, int ke)
+    FaceField &bb, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   return;
 }
