@@ -26,7 +26,7 @@
 // Athena++ headers
 #include "../athena.hpp"                // array access, macros, Real
 #include "../athena_arrays.hpp"         // AthenaArray
-#include "../mesh.hpp"                  // MeshBlock, Mesh
+#include "../mesh/mesh.hpp"                  // MeshBlock, Mesh
 #include "../parameter_input.hpp"       //ParameterInput
 #include "network/network.hpp"          //ChemNetwork
 

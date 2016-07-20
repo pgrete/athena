@@ -20,7 +20,7 @@
 // Athena++ headers
 #include "radiation.hpp"
 #include "integrators/rad_integrators.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
 {

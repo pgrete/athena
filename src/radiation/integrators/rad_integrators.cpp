@@ -24,10 +24,10 @@
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
 #include "../../parameter_input.hpp"
-#include "../../mesh.hpp"
+#include "../../mesh/mesh.hpp"
 #include "../../utils/cgk_utils.hpp"
 #include "../../hydro/hydro.hpp"
-#include "../../hydro/eos/eos.hpp"
+#include "../../eos/eos.hpp"
 #include "../radiation.hpp"
 #include "rad_integrators.hpp"
 #ifdef INCLUDE_CHEMISTRY

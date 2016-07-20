@@ -42,7 +42,7 @@
 #include "meshblock_tree.hpp"
 #include "../utils/buffer_utils.hpp"
 #include "../reconstruct/reconstruction.hpp"
-#include "radiation/radiation.hpp"
+#include "../radiation/radiation.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "chemistry/species.hpp" 
 #endif

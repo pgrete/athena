@@ -31,10 +31,10 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../parameter_input.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../eos/eos.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
 #include "../utils/cgk_utils.hpp"
@@ -81,7 +81,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   std::stringstream msg; //error message
   std::string vtkfile; //corresponding vtk file for this meshblock
 	//gamma-1 for hydro eos
-	const Real gm1 = phydro->peos->GetGamma() - 1.0;
+	const Real gm1 = peos->GetGamma() - 1.0;
 
   //parse input parameters
   std::string vtkfile0 = pin->GetString("problem", "vtkfile");//id0 file
@@ -196,7 +196,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 	}
 
   //change primative variables to conservative variables.
-  phydro->peos->PrimitiveToConserved(phydro->w, b, phydro->u, pcoord,
+  peos->PrimitiveToConserved(phydro->w, b, phydro->u, pcoord,
                                      is, ie, js, je, ks, ke);
 
   //----initial temperature output---

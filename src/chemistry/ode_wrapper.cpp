@@ -27,7 +27,7 @@
 // Athena++ classes headers
 #include "../parameter_input.hpp"
 #include "network/network.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 //TODO: lib directory
 #include <cvode/cvode.h> // CV_SUCCESS

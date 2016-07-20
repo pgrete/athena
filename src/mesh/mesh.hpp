@@ -123,12 +123,6 @@ public:
 
   // mesh-related objects
   Coordinates *pcoord;
-//TODO: do we need these in task list?
-#ifdef INCLUDE_CHEMISTRY
-  ChemSpecies *pspec;
-#endif
-  Field *pfield;
-  Radiation *prad;
   BoundaryValues *pbval;
   Reconstruction *precon;
   MeshRefinement *pmr;
@@ -137,6 +131,13 @@ public:
   Hydro *phydro;
   Field *pfield;
   EquationOfState *peos;
+
+  // new physics
+//TODO: do we need these in task list?
+#ifdef INCLUDE_CHEMISTRY
+  ChemSpecies *pspec;
+#endif
+  Radiation *prad;
 
   MeshBlock *prev, *next;
 
