@@ -25,7 +25,7 @@
 #include "network.hpp"
 #include "../species.hpp"
 #include "../../parameter_input.hpp"       //ParameterInput
-#include "../../mesh.hpp"
+#include "../../mesh/mesh.hpp"
 #include "../../hydro/hydro.hpp"
 #include "../../radiation/radiation.hpp"
 #include "../../utils/cgk_utils.hpp"
@@ -315,6 +315,8 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
   } else {
     temperature_ = 0.;
   }
+  //H2 rovibrational cooling
+  is_H2_rovib_cooling_ = pin->GetOrAddInteger("chemistry", "isH2RVcooling", 1);
 	//temperature above or below which heating and cooling is turned off
 	Real inf = std::numeric_limits<Real>::infinity();
 	temp_max_heat_ = pin->GetOrAddReal("chemistry", "temp_max_heat", inf);
@@ -322,9 +324,9 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	//minimum temperature for reaction rates
 	temp_min_rates_ = pin->GetOrAddReal("chemistry", "temp_min_rates", 1.);
   //maximum temperature above which is set to be constant, used in cgk
-	//default:-1, not set
+	//default:inf, not set
 	//Note: over-ride const_T_flag
-	temp_hot_cgk_ = pin->GetOrAddReal("chemistry", "temp_hot_cgk", -1);
+	temp_hot_cgk_ = pin->GetOrAddReal("chemistry", "temp_hot_cgk", inf);
 	//CO cooling parameters
 	//default: not use LVG approximation
 	isNCOeff_LVG_ = pin->GetOrAddInteger("chemistry", "isNCOeff_LVG", 0);
@@ -335,6 +337,7 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	gradnH_ = 0.;
 	NCO_ = 0.;
 	bCO_ = 0.;
+  s_lower_bound_ = -1.;
 	
   //atomic abundance
   xC_ = zdg_ * xC_std_;
@@ -391,7 +394,8 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
     } else {
       yprev0[i] = yprev[i];
     }
-    if (isnan(yprev[i]) || isinf(yprev[i]) ) {
+    //throw error if nan, or inf, or large negative value occurs
+    if (isnan(yprev[i]) || isinf(yprev[i]) || yprev[i] < s_lower_bound_ ) {
       printf("RHS: ");
       for (int j=0; j<NSPECIES+ngs_; j++) {
         printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
@@ -403,7 +407,8 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
         printf("%.2e  ", rad_[ifreq]);
       }
       printf("\n");
-      throw std::runtime_error("ChemNetwork (gow16): RHS: nan or inf species\n");
+      throw std::runtime_error(
+             "ChemNetwork (gow16): RHS: nan, inf or too low species\n");
     }
   }
 
@@ -417,6 +422,7 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
       ydotg[outcr_[i]] += rate;
     }
 
+    //2body reactions
     for (int i=0; i<n_2body_; i++) {
       rate =  k2body_[i] * yprev0[in2body1_[i]] * yprev0[in2body2_[i]];
       ydotg[in2body1_[i]] -= rate;
@@ -555,7 +561,7 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
   //note: requires temperature to be stored in ifov(0, k, j, i)
   is_const_abundance_ = false;
   is_const_temp_ = false;
-  if (temp_hot_cgk_ > 0) {
+  if ( !isinf(temp_hot_cgk_) ) {
     if (NIFOV < 0) {
       throw std::runtime_error("ChemNetwork::InitializeNextStep():  NIFOV < 0\n");
     }
@@ -617,106 +623,6 @@ void ChemNetwork::GetGhostSpecies(const Real *y, Real yghost[NSPECIES+ngs_]) {
 	return;
 }
 
-void ChemNetwork::RestrictAbundance(Real *y) {
-  if (y[iCplus_] > xC_) {
-    y[iCplus_] = xC_;
-  }
-  if (y[iSiplus_] > xSi_) {
-    y[iSiplus_] = xSi_;
-  }
-  if (y[iHeplus_] > xHe_) {
-    y[iHeplus_] = xHe_;
-  }
-  if (y[iHplus_] > 1.) {
-    y[iHplus_] = 1;
-  }
-}
-
-void ChemNetwork::Finalize(Real *y) {
-  Real yall[NSPECIES + ngs_];
-  GetGhostSpecies(y, yall);
-  //in hot gas, set abundance
-  Real T = yall[iE_] / Thermo::CvCold(yall[iH2_], xHe_, yall[ige_]);
-  if (T > temp_hot_cgk_) {
-    y[iHeplus_] = xHe_;
-    y[iOHx_] = 0;
-    y[iCHx_] = 0;
-    y[iCO_] = 0;
-    y[iCplus_] = xC_;
-    y[iHCOplus_] = 0;
-    y[iH2_] = 0;
-    y[iHplus_] = 1;
-    y[iH3plus_] = 0;
-    y[iH2plus_] = 0;
-    y[iSiplus_] = xSi_;
-    return;
-  }
-  //set negative abundance to zero
-  //for (int i=0; i<NSPECIES+ngs_; i++) {
-  //  if (yall[i] < 0) {
-  //    yall[i] = 0;
-  //  }
-  //}
-  //restrict ion abundances
-  //RestrictAbundance(y);
-
-  //normalize to atomic abundance when abundances are off
-  //------ C --------
-  //const int nC = 5;
-  //const int iC_arr[nC] = {igC_, iHCOplus_, iCHx_, iCO_, iCplus_};
-  //NormalizeAtom(nC, iC_arr, xC_, yall);
-  ////------ He --------
-  //const int nHe = 2;
-  //const int iHe_arr[nHe] = {igHe_, iHeplus_};
-  //NormalizeAtom(nHe, iHe_arr, xHe_, yall);
-  ////------ Si --------
-  //const int nSi = 2;
-  //const int iSi_arr[nSi] = {igSi_, iSiplus_};
-  //NormalizeAtom(nSi, iSi_arr, xSi_, yall);
-  ////------ O --------, CO already normalized in C
-  ////const int nO = 4;
-  ////const int iO_arr[nO] = {igO_, iHCOplus_, iOHx_, iCO_};
-  ////NormalizeAtom(nO, iO_arr, xO_, yall);
-  ////------ H ---------, ignore OHx, CHx, HCO+,
-  //const int nH = 5;
-  //const int iH_arr[nH] = {igH_, iH3plus_, iH2plus_, iHplus_, iH2_};
-  //const Real iH_weights[nH] = {1, 3, 2, 1, 2};
-  //NormalizeAtom(nH, iH_arr, 1., yall, iH_weights);
-  //copy back to y
-  for (int i=0; i<NSPECIES; i++) {
-    y[i] = yall[i];
-  }
-  return;
-}
-
-void ChemNetwork::NormalizeAtom(const int nA, const int *iA_arr, const Real xA,
-    Real yall[NSPECIES+ngs_]) {
-  Real f_A;
-  Real yAtot = 0.;
-  for (int i=0; i<nA; i++) {
-    yAtot += yall[iA_arr[i]];
-  }
-  f_A = xA/yAtot;
-  for (int i=0; i<nA; i++) {
-    yall[iA_arr[i]] *= f_A;
-  }
-  return;
-}
-
-void ChemNetwork::NormalizeAtom(const int nA, const int *iA_arr, const Real xA,
-    Real yall[NSPECIES+ngs_], const Real *iA_weights) {
-  Real f_A;
-  Real yAtot = 0.;
-  for (int i=0; i<nA; i++) {
-    yAtot += yall[iA_arr[i]] * iA_weights[i];
-  }
-  f_A = xA/yAtot;
-  for (int i=0; i<nA; i++) {
-    yall[iA_arr[i]] *= f_A;
-  }
-  return;
-}
-
 Real ChemNetwork::CII_rec_rate_(const Real temp) {
   Real A, B, T0, T1, C, T2, BN, term1, term2, alpharr, alphadr;
   A = 2.995e-9;
@@ -745,8 +651,8 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
 	//cap T above some minimum temperature
 	if (T < temp_min_rates_) {
 		T = temp_min_rates_;
-	}
-	const Real logT = log10(T);
+	} 
+  const Real logT = log10(T);
 	const Real logT4 = log10(T/1.0e4);
 	const Real lnTe = log(T * 8.6173e-5);
   Real ncr, n2ncr;
@@ -927,57 +833,57 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
   //NOTE: because these depends on rates, make sure ChemInit is called before.
   //NOTE: the kcr_[i] assume the order of equastions are not changed
 	//cut-off heating at high temperature
-	Real LCR, LPE, LH2gr, dot_xH2_photo, LH2pump, LH2diss;
+	Real GCR, GPE, GH2gr, dot_xH2_photo, GH2pump, GH2diss;
 	if (T > temp_max_heat_) {
-		LCR = 0.;
-		LPE = 0;
-		LH2gr = 0;
-		LH2pump = 0.;
-		LH2diss = 0.;
+		GCR = 0.;
+		GPE = 0;
+		GH2gr = 0;
+		GH2pump = 0.;
+		GH2diss = 0.;
 	} else {
-		LCR = Thermo::HeatingCr(y[ige_],  nH_,
+		GCR = Thermo::HeatingCr(y[ige_],  nH_,
 				y[igH_],  y[igHe_],  y[iH2_],
 				kcr_[icr_H_],  kcr_[icr_He_],  kcr_[icr_H2_]);
 		//photo electric effect on dust
-		LPE = Thermo::HeatingPE(rad_[index_gpe_], zdg_, T, nH_*y[ige_]);
+		GPE = Thermo::HeatingPE(rad_[index_gpe_], zdg_, T, nH_*y[ige_]);
 		//H2 formation on dust grains
-		LH2gr = Thermo::HeatingH2gr(y[igH_],  y[iH2_],  nH_,
+		GH2gr = Thermo::HeatingH2gr(y[igH_],  y[iH2_],  nH_,
 				T,  kgr_[igr_H_]);
 		//H2 UV pumping
 		dot_xH2_photo = kph_[iph_H2_] * y[iH2_];
-		LH2pump = Thermo::HeatingH2pump(y[igH_],  y[iH2_],  nH_,
+		GH2pump = Thermo::HeatingH2pump(y[igH_],  y[iH2_],  nH_,
 				T,  dot_xH2_photo);
 		//H2 photo dissiociation.
-		LH2diss = Thermo::HeatingH2diss(dot_xH2_photo);
+		GH2diss = Thermo::HeatingH2diss(dot_xH2_photo);
 	}
   //--------------------------cooling-----------------------------
 	//cut-off cooling at low temperature
-	Real GCII, GCI, GOI, GHotGas, GCOR, GH2, GDust, GRec, GH2diss, GHIion;
+	Real LCII, LCI, LOI, LHotGas, LCOR, LH2, LDust, LRec, LH2diss, LHIion;
 	Real vth, nCO, grad_small_;
   Real NCOeff, Leff_n, Leff_v, Leff;
 	if (T < temp_min_cool_) {
-		GCII = 0.;
-		GCI = 0;
-		GOI = 0.;
-		GHotGas = 0;
-		GCOR = 0;
-		GH2 = 0;
-		GDust = 0;
-		GRec = 0;
-		GH2diss = 0;
-		GHIion = 0;
+		LCII = 0.;
+		LCI = 0;
+		LOI = 0.;
+		LHotGas = 0;
+		LCOR = 0;
+		LH2 = 0;
+		LDust = 0;
+		LRec = 0;
+		LH2diss = 0;
+		LHIion = 0;
 	} else {
 		// C+ fine structure line 
-		GCII = Thermo::CoolingCII(y[iCplus_],  nH_*y[igH_],  nH_*y[iH2_],
+		LCII = Thermo::CoolingCII(y[iCplus_],  nH_*y[igH_],  nH_*y[iH2_],
 				nH_*y[ige_],  T);
 		// CI fine structure line 
-		GCI = Thermo:: CoolingCI(y[igC_],  nH_*y[igH_],  nH_*y[iH2_],
+		LCI = Thermo:: CoolingCI(y[igC_],  nH_*y[igH_],  nH_*y[iH2_],
 				nH_*y[ige_],  T);
 		// OI fine structure line 
-		GOI = Thermo:: CoolingOI(y[igO_],  nH_*y[igH_],  nH_*y[iH2_],
+		LOI = Thermo:: CoolingOI(y[igO_],  nH_*y[igH_],  nH_*y[iH2_],
 				nH_*y[ige_],  T);
 		// cooling of hot gas: radiative cooling, free-free.
-		GHotGas = Thermo::CoolingHotGas(nH_,  T, zdg_);
+		LHotGas = Thermo::CoolingHotGas(nH_,  T, zdg_);
 		// CO rotational lines 
 		// Calculate effective CO column density
 		vth = sqrt(2. * Thermo::kb_ * T / CGKUtility::mCO);
@@ -1000,33 +906,37 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
 		} else {
 			NCOeff = NCO_ / sqrt(bCO_*bCO_ + vth*vth);
 		}
-		GCOR = Thermo::CoolingCOR(y[iCO_], nH_*y[igH_],  nH_*y[iH2_],
+		LCOR = Thermo::CoolingCOR(y[iCO_], nH_*y[igH_],  nH_*y[iH2_],
 				nH_*y[ige_],  T,  NCOeff);
 		// H2 vibration and rotation lines 
-		GH2 = Thermo::CoolingH2(y[iH2_], nH_*y[igH_],  nH_*y[iH2_],
-				nH_*y[igHe_],  nH_*y[iHplus_], nH_*y[ige_],
-				T);
+    if (is_H2_rovib_cooling_) {
+      LH2 = Thermo::CoolingH2(y[iH2_], nH_*y[igH_],  nH_*y[iH2_],
+          nH_*y[igHe_],  nH_*y[iHplus_], nH_*y[ige_],
+          T);
+    } else {
+      LH2 = 0.;
+    }
 		// dust thermo emission 
-		GDust = Thermo::CoolingDust(zdg_,  nH_, T, rad_[index_gisrf_]);
+		LDust = Thermo::CoolingDustTd(zdg_,  nH_, T, 10.);
 		// reconbination of e on PAHs 
-		GRec = Thermo::CoolingRec(zdg_,  T,  nH_*y[ige_], rad_[index_gpe_]);
+		LRec = Thermo::CoolingRec(zdg_,  T,  nH_*y[ige_], rad_[index_gpe_]);
 		// collisional dissociation of H2 
-		GH2diss = Thermo::CoolingH2diss(y[igH_],  y[iH2_], k2body_[i2body_H2_H],
+		LH2diss = Thermo::CoolingH2diss(y[igH_],  y[iH2_], k2body_[i2body_H2_H],
 				k2body_[i2body_H2_H2]);
 		// collisional ionization of HI 
-		GHIion = Thermo::CoolingHIion(y[igH_],  y[ige_],
+		LHIion = Thermo::CoolingHIion(y[igH_],  y[ige_],
 				k2body_[i2body_H_e]);
 	}
-  dEdt = (LCR + LPE + LH2gr + LH2pump + LH2diss)
-            - (GCII + GCI + GOI + GHotGas + GCOR 
-                + GH2 + GDust + GRec + GH2diss + GHIion);
+  dEdt = (GCR + GPE + GH2gr + GH2pump + GH2diss)
+            - (LCII + LCI + LOI + LHotGas + LCOR 
+                + LH2 + LDust + LRec + LH2diss + LHIion);
 	if ( isnan(dEdt) || isinf(dEdt) ) {
-		printf("LCR=%.2e, LPE=%.2e, LH2gr=%.2e, LH2pump=%.2e LH2diss=%.2e\n",
-				LCR , LPE , LH2gr , LH2pump , LH2diss);
-		printf("GCII=%.2e, GCI=%.2e, GOI=%.2e, GHotGas=%.2e, GCOR=%.2e\n",
-				GCII , GCI , GOI , GHotGas , GCOR);
-		printf("GH2=%.2e, GDust=%.2e, GRec=%.2e, GH2diss=%.2e, GHIio=%.2e\n",
-				GH2 , GDust , GRec , GH2diss , GHIion);
+		printf("GCR=%.2e, GPE=%.2e, GH2gr=%.2e, GH2pump=%.2e GH2diss=%.2e\n",
+				GCR , GPE , GH2gr , GH2pump , GH2diss);
+		printf("LCII=%.2e, LCI=%.2e, LOI=%.2e, LHotGas=%.2e, LCOR=%.2e\n",
+				LCII , LCI , LOI , LHotGas , LCOR);
+		printf("LH2=%.2e, LDust=%.2e, LRec=%.2e, LH2diss=%.2e, LHIion=%.2e\n",
+				LH2 , LDust , LRec , LH2diss , LHIion);
 		printf("T=%.2e, dEdt=%.2e, y[iE_]=%.2e, Cv=%.2e, nH=%.2e\n", T, dEdt, y[iE_],
 				Thermo::CvCold(y[iH2_], xHe_, y[ige_]), nH_);
 		for (int i=0; i<NSPECIES+ngs_; i++) {

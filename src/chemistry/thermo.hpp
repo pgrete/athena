@@ -156,7 +156,17 @@ class Thermo {
     // Return:
     // Cooling rate for dust in erg H^-1 s^-1 
     static Real CoolingDust(const Real Zd, const Real nH, const Real Tg,
-                              const Real GISRF);
+                            const Real GISRF);
+    // Cooling by dust thermo emission, assume a constant dust temperature
+    // Auguments:
+    // Zd: dust metalicity compared to solar neighbourhood.
+    // nH: hydrogen number density. Here implicitly assume all in H2, which
+    // determines alpha_gd in despotic (see eq B8 in despotic paper).
+    // Tg: gas temperature
+    // Td: dust temperature
+    // Cooling rate for dust in erg H^-1 s^-1 
+    static Real CoolingDustTd(const Real Zd, const Real nH, const Real Tg,
+                              const Real Td);
     // Cooling by reconbination of e on PAHs.
     // From WD2001 Eq(45).
     // Arguments:

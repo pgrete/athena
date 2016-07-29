@@ -51,7 +51,6 @@ void RadIntegrator::UpdateRadJeans() {
   const Real Tfloor = 1.; //temperature floor in Kelvin
   const Real bH2 = 3.0e5; //H2 velocity dispersion
   const Real sigmaPE = Thermo::sigmaPE_;
-  const Real sigmaISRF = Thermo::sigmaISRF_;
   MeshBlock *pb = pmy_rad->pmy_block;
   const Real Zd = pb->pspec->pchemnet->zdg_;
   const int iH2 = pb->pspec->pchemnet->iH2_;
@@ -59,9 +58,8 @@ void RadIntegrator::UpdateRadJeans() {
   const int iph_H2 = ChemNetwork::iph_H2_;
   const int iph_CO = ChemNetwork::iph_CO_;
   const int iPE = pb->pspec->pchemnet->index_gpe_;
-  const int iISRF = pb->pspec->pchemnet->index_gisrf_;
   Real press, dens, dens_cgs, temp, cs, cs_sq;
-  Real gm = pb->phydro->peos->GetGamma();
+  Real gm = pb->peos->GetGamma();
   Real Lshield; //in cm
   Real NH, NH2, NCO, AV, yH2, ye;
   Real xHe = pb->pspec->pchemnet->xHe_;
@@ -134,11 +132,9 @@ void RadIntegrator::UpdateRadJeans() {
         }
 #endif
 
-        //GPE and GISRF
+        //GPE 
         pmy_rad->ir(k, j, i, iPE * pmy_rad->nang) = rad_G0_
           *  exp(-NH * sigmaPE * Zd);
-        pmy_rad->ir(k, j, i, iISRF * pmy_rad->nang) = rad_G0_
-          *  exp(-NH * sigmaISRF * Zd);
 
         //copy to other angles
         for (int ifreq=0; ifreq < pmy_rad->nfreq; ++ifreq) {

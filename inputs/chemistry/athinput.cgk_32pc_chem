@@ -61,13 +61,12 @@ scalers    = density, pressure #scaler fields to be read in, separated by comma
 vectors    = velocity          #vector fields to be read in, separated by comma, assume 3 components
 #assume float format, and lookup_table default
 G0         = 1   #radiation field strength
-s_init      = 1.0e-6 #initial abundances
 
 <chemistry>
 #chemistry network parameters
 Zdg        = 1. #metallicity, dust and gas metallicity are the same. default = 1.
 CR         = 2e-16  #Cosmic-ray ionization rate per H
-#temperature of hot gas, above which T is constant
+#temperature of hot gas, above which T and abundance is constant
 temp_hot_cgk = 2.0e4
 temp_max_heat = 1.0e5 #temperature above which heating is turned off.
 #chemistry solver parameters
@@ -86,8 +85,9 @@ h_init      = 1e12    #first step of first zone. Default 0/CVODE algorithm.
 #code units
 unit_density_in_nH = 1.
 unit_radiation_in_draine1987 = 1
+isH2RVcooling = 1
 
 <radiation>
 six_ray_flag = 0 #1 for using 6-ray
-n_frequency  = 8 
+n_frequency  = 7 
 jeans_shielding_flag = 0

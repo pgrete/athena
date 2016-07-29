@@ -185,18 +185,18 @@ void ODEWrapper::Integrate() {
           SetInitStep(pmy_spec_->h(k, j, i));
         }
         //step 3: integration. update array abundance over time dt
+
         flag = CVode(cvode_mem_, tfinal, y_, &treturn, CV_NORMAL);
         CheckFlag(&flag, "CVode", 3);
+
         //update next step size
         if (ncycle == 0) {
           //h_init_ = GetLastStep();
         } else {
           pmy_spec_->h(k, j, i) = GetNextStep();
         }
-        //step 4: finalize before output: eg. renormalize, set abundance in hot
-        //gas
-        pmy_spec_->pchemnet->Finalize(NV_DATA_S(y_));
       }
+
       //copy s1 back to s
       for (int ispec=0; ispec<NSPECIES; ispec++) {
         for (int i=is; i<=ie; ++i) {

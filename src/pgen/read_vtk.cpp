@@ -214,12 +214,24 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   //intialize chemical species
 #ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
-    Real s_init = pin->GetReal("problem", "s_init");
     for (int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
         for (int i=is; i<=ie; ++i) {
+          //start with H, He, C+, OI, Si+ at T < temp_hot_cgk_
+          //start with H+, He+, C+, OI, Si+ at T > temp_hot_cgk_
           for (int ispec=0; ispec < NSPECIES; ++ispec) {
-            pspec->s(ispec, k, j, i) = s_init;
+            pspec->s(ispec, k, j, i) = 1e-10;
+          }
+          if (NIFOV > 0) {
+            if (phydro->ifov(0, k, j, i) > pspec->pchemnet->temp_hot_cgk_) {
+              pspec->s(pspec->pchemnet->iHplus_, k, j, i) = 1.;
+              pspec->s(pspec->pchemnet->iHeplus_, k, j, i) = pspec->pchemnet->xHe_;
+              pspec->s(pspec->pchemnet->iCplus_, k, j, i) = pspec->pchemnet->xC_;
+              pspec->s(pspec->pchemnet->iSiplus_, k, j, i) = pspec->pchemnet->xSi_;
+            } 
+          }else {
+            pspec->s(pspec->pchemnet->iCplus_, k, j, i) = pspec->pchemnet->xC_;
+            pspec->s(pspec->pchemnet->iSiplus_, k, j, i) = pspec->pchemnet->xSi_;
           }
 					pspec->s(pspec->pchemnet->iE_, k, j, i) = 
 						phydro->w(IEN, k, j, i) * CGKUtility::unitE / 

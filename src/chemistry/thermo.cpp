@@ -557,6 +557,12 @@ Real Thermo::CoolingDust(const Real Zd, const Real nH, const Real Tg,
   }
 }
 
+Real Thermo::CoolingDustTd(const Real Zd, const Real nH, const Real Tg,
+                           const Real Td) {
+  const Real L1 = alpha_GD_ * nH * sqrt(Tg) * (Tg - Td);
+  return L1;
+}
+
 Real Thermo::CoolingRec(const Real Zd, const Real T, const Real ne, 
                           const Real G) {
   const Real x = 1.7 * G * sqrt(T)/ne + 50.;

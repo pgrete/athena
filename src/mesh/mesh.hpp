@@ -133,7 +133,6 @@ public:
   EquationOfState *peos;
 
   // new physics
-//TODO: do we need these in task list?
 #ifdef INCLUDE_CHEMISTRY
   ChemSpecies *pspec;
 #endif

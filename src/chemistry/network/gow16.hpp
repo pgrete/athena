@@ -35,8 +35,6 @@ public:
   void InitializeNextStep(const int k, const int j, const int i);
   //output properties of network. Can be used in eg. ProblemGenerator.
   void OutputProperties(FILE *pf) const;
-	void Finalize(Real *y);//y[NSPECIES] 
-  void RestrictAbundance(Real *y);
 
   //RHS: right-hand-side of ODE. dy/dt = ydot(t, y). Here y are the abundance
   //of species. details see CVODE package documentation.
@@ -59,9 +57,8 @@ private:
 	static const int n_ph_ = 6;
 	static const int n_gr_ = 5;
 	static const int nE_ = 15;
-	static const int n_freq_ = n_ph_ + 2;
+	static const int n_freq_ = n_ph_ + 1;
 	static const int index_gpe_ = n_ph_;
-	static const int index_gisrf_ = n_ph_ + 1; //TODO: in dust cooling
 	//other variables
 	static const std::string ghost_species_names_[ngs_];
 	std::string species_names_all_[NSPECIES+ngs_];//all species
@@ -69,11 +66,13 @@ private:
 	//units of density and radiation
 	Real unit_density_in_nH_;
 	Real unit_radiation_in_draine1987_;
+  Real s_lower_bound_;//abundance below which throw runtime error
 	Real temperature_;
 	Real temp_max_heat_; 
 	Real temp_min_cool_; 
 	Real temp_min_rates_; 
 	Real temp_hot_cgk_; 
+  int is_H2_rovib_cooling_;//whether to include H2 rovibrational cooling
 	//maximum temperature above which heating and cooling is turned off 
 	int is_const_temp_; //flag for constant temperature
 	bool is_const_abundance_; //flag for constant abundance
@@ -192,10 +191,6 @@ private:
 	//functions
 	void UpdateRates(const Real y[NSPECIES+ngs_]);
 	void GetGhostSpecies(const Real *y, Real yall[NSPECIES+ngs_]); 
-	void NormalizeAtom(const int nA, const int *iA_arr, const Real xA,
-					  				 Real yall[NSPECIES+ngs_]);//abundances all positive
-	void NormalizeAtom(const int nA, const int *iA_arr, const Real xA,
-					  				 Real yall[NSPECIES+ngs_], const Real *iA_weights);//abundances all positive
 	Real CII_rec_rate_(const Real temp);
 	Real dEdt_(const Real y[NSPECIES+ngs_]);
 	void OutputRates(FILE *pf) const;

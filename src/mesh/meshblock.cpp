@@ -44,7 +44,7 @@
 #include "../reconstruct/reconstruction.hpp"
 #include "../radiation/radiation.hpp"
 #ifdef INCLUDE_CHEMISTRY
-#include "chemistry/species.hpp" 
+#include "../chemistry/species.hpp" 
 #endif
 
 // this class header
@@ -370,11 +370,11 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
   // please add the size counter here when new physics is introduced
 #ifdef INCLUDE_CHEMISTRY
   if (CHEMISTRY_ENABLED) {
-    size+=sizeof(Real)*pspec->s.GetSize();
+    size+=pspec->s.GetSizeInBytes();
   }
 #endif
   if (RADIATION_ENABLED){
-    size+=sizeof(Real)*prad->ir.GetSize();
+    size+=prad->ir.GetSizeInBytes();
   }
 
 
