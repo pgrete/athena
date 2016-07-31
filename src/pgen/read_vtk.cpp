@@ -307,7 +307,7 @@ static void readvtk(MeshBlock *mb, std::string filename, std::string field,
 
   if ( (fp = fopen(filename.c_str(),"r")) == NULL ) {
     msg << "### FATAL ERROR in Problem Generator [read_vtk]" << std::endl
-      << "Unable to open file" << filename << std::endl;
+      << "Unable to open file: " << filename << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
 
