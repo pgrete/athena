@@ -21,6 +21,11 @@ file_type  = vtk       # vtk data dump
 variable   = ifov      # variables to be output
 dt         = 3.154e15      # time increment between outputs
 
+<output4>
+file_type  = hdf5       # vtk data dump
+variable   = prim      # variables to be output
+dt         = 3.154e15      # time increment between outputs
+
 <time>
 cfl_number = 0.3       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = 100        # cycle limit

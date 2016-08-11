@@ -46,6 +46,9 @@
 #include "../coordinates/coordinates.hpp"  // Coordinates
 #include "../field/field.hpp"              // Field
 #include "../hydro/hydro.hpp"              // Hydro
+#ifdef INCLUDE_CHEMISTRY
+#include "../chemistry/species.hpp"
+#endif
 
 //--------------------------------------------------------------------------------------
 
@@ -88,8 +91,13 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     num_datasets = 1;
     if (MAGNETIC_FIELDS_ENABLED)
       num_datasets += 1;
+#ifdef INCLUDE_CHEMISTRY
+    num_datasets += 1;
+#endif
+/*
     if (RADIATION_ENABLED)
       num_datasets += 3;
+*/
     num_variables = new int[num_datasets];
     int n_dataset = 0;
     num_variables[n_dataset++] = NHYDRO;
@@ -99,6 +107,11 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
       num_variables[n_dataset++] = 3;
       num_total_variables += 3;
     }
+#ifdef INCLUDE_CHEMISTRY
+    num_variables[n_dataset++] = NSPECIES;
+    num_total_variables += NSPECIES;
+#endif
+/*
     if (RADIATION_ENABLED)
     {
       num_variables[n_dataset++] = 10;
@@ -106,6 +119,7 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
       num_variables[n_dataset++] = 2;
       num_total_variables += 10 + 4 + 2;
     }
+*/
     dataset_names = new char[num_datasets][max_name_length+1];
     variable_names = new char[num_total_variables][max_name_length+1];
     n_dataset = 0;
@@ -163,6 +177,15 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
       std::strncpy(variable_names[n_variable++], "B2", max_name_length+1);
       std::strncpy(variable_names[n_variable++], "B3", max_name_length+1);
     }
+#ifdef INCLUDE_CHEMISTRY
+    std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
+		for (int ispec=0; ispec < NSPECIES; ispec++) {
+      std::strncpy(variable_names[n_variable++],
+                   pblock->pspec->pchemnet->species_names[ispec].c_str(),
+                   max_name_length+1);
+    }
+#endif
+/*
     if (RADIATION_ENABLED)  // Lab-frame moments, comoving moments, and opacities
     {
       std::strncpy(dataset_names[n_dataset++], "rad", max_name_length+1);
@@ -185,6 +208,7 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
       std::strncpy(variable_names[n_variable++], "Sigma_s", max_name_length+1);
       std::strncpy(variable_names[n_variable++], "Sigma_a", max_name_length+1);
     }
+ */
   }
 
   // Set up individual primitive variable outputs
@@ -275,8 +299,24 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     std::strncpy(variable_names[1], "B2", max_name_length+1);
     std::strncpy(variable_names[2], "B3", max_name_length+1);
   }
-
+#ifdef INCLUDE_CHEMISTRY
+  else if (variable.compare("species") == 0) {
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = NSPECIES;
+    num_total_variables = NSPECIES;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "species", max_name_length+1);
+		for (int ispec=0; ispec < NSPECIES; ispec++) {
+      std::strncpy(variable_names[ispec],
+                   pblock->pspec->pchemnet->species_names[ispec].c_str(),
+                   max_name_length+1);
+    }
+  }
+#endif
   // Set up individual radiation outputs
+/*
   else if (RADIATION_ENABLED and variable.compare("Er") == 0)
   {
     num_datasets = 1;
@@ -363,6 +403,7 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     std::strncpy(variable_names[4], "Pr13", max_name_length+1);
     std::strncpy(variable_names[5], "Pr23", max_name_length+1);
   }
+*/
 
   // Set up internal fluid outputs
   else if (variable.compare("ifov") == 0)
@@ -399,6 +440,7 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
   }
 
   // Set up internal radiation outputs
+/*
   else if (RADIATION_ENABLED and variable.compare("rad_fov") == 0)
   {
     if (NRADFOV <= 0)
@@ -431,6 +473,7 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     for (int n = 0; n < NRADFOV; ++n)
       std::sprintf(variable_names[n], "rfov%d", n);
   }
+*/
 
   // Requested output not supported
   else
@@ -821,6 +864,10 @@ void ATHDF5Output::LoadOutputData(OutputData *pout_data, MeshBlock *pblock)
       if (MAGNETIC_FIELDS_ENABLED)
         data_arrays[n_dataset++]
             .InitWithShallowSlice(pblock_current->pfield->bcc, 4, 0, 3);
+#ifdef INCLUDE_CHEMISTRY
+      data_arrays[n_dataset++]
+        .InitWithShallowSlice(pblock_current->pspec->s, 4, 0, NSPECIES);
+#endif
       // TODO: uncomment when merged with radiation
       /*
       if (RADIATION_ENABLED)
