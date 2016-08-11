@@ -38,10 +38,13 @@
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
 #include "../utils/cgk_utils.hpp"
+#include "../globals.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../chemistry/species.hpp"
 #endif
-
+#ifdef MPI_PARALLEL
+#include <mpi.h>
+#endif
 
 //function to split a string into a vector
 static std::vector<std::string> split(std::string str, char delimiter);
@@ -49,7 +52,7 @@ static std::vector<std::string> split(std::string str, char delimiter);
 static void trim(std::string &s);
 //function to read data field from vtk file
 static void readvtk(MeshBlock *mb, std::string filename, std::string field,
-                    int component, AthenaArray<float> &data);
+                    int component, AthenaArray<float> &data, int isjoinedvtk);
 //swap bytes
 static void ath_bswap(void *vdat, int len, int cnt);
 
@@ -74,10 +77,22 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   const int Nx = ie - is + 1;
   const int Ny = je - js + 1;
   const int Nz = ke - ks + 1;
+  //dimensions of mesh
+  const int Nx_mesh = pmy_mesh->mesh_size.nx1;
+  const int Ny_mesh = pmy_mesh->mesh_size.nx2;
+  const int Nz_mesh = pmy_mesh->mesh_size.nx3;
+  int ierr;
+  //read joined or unjoined vtk files
+  int isjoinedvtk = pin->GetOrAddInteger("problem", "is_joined_vtk", 0);
   AthenaArray<float> data; //temporary array to store data;
-  data.NewAthenaArray(Nz, Ny, Nx);
   AthenaArray<Real> b; //needed for PrimitiveToConserved()
-  b.NewAthenaArray(Nz, Ny, Nx);
+  if (isjoinedvtk) {
+    data.NewAthenaArray(Nz_mesh, Ny_mesh, Nx_mesh);
+    b.NewAthenaArray(Nz_mesh, Ny_mesh, Nx_mesh);
+  } else {
+    data.NewAthenaArray(Nz, Ny, Nx);
+    b.NewAthenaArray(Nz, Ny, Nx);
+  }
   std::stringstream msg; //error message
   std::string vtkfile; //corresponding vtk file for this meshblock
 	//gamma-1 for hydro eos
@@ -90,92 +105,198 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   std::vector<std::string> scaler_fields = split(str_scalers, ',');
   std::vector<std::string> vector_fields = split(str_vectors, ',');
   
-  //find coresponding filename.
-  if (loc.lx1 == 0 && loc.lx2 == 0 && loc.lx3 == 0) {
+  if (isjoinedvtk) {
+    //for joined vtk file, read with processor 0, and broadcast
+    int gis = loc.lx1 * Nx;
+    int gjs = loc.lx2 * Ny;
+    int gks = loc.lx3 * Nz;
     vtkfile = vtkfile0;
-  } else {
-    //find the corespoinding athena4.2 global id
-    long int id_old = loc.lx1 + loc.lx2 * pmy_mesh->nrbx1 
-                        + loc.lx3 * pmy_mesh->nrbx1 * pmy_mesh->nrbx2;
-    //get vtk file name .../id#/problem-id#.????.vtk
-    std::stringstream id_str_stream;
-    id_str_stream << "id" << id_old;// id#
-    std::string id_str = id_str_stream.str();
-    std::size_t pos1 = vtkfile0.find_last_of('/');//last /
-    std::size_t pos2 = vtkfile0.find_last_of('/', pos1-1);//second last /
-    std::string base_dir = vtkfile0.substr(0, pos2+1);// "base_directory/"
-    std::string vtk_name0 = vtkfile0.substr(pos1);// "/bala.????.vtk"
-    std::size_t pos3 = vtk_name0.find_first_of('.');
-    std::string vtk_name = vtk_name0.substr(0, pos3) + "-" + id_str
-                            + vtk_name0.substr(pos3);
-    std::cout << id_str << ", " << base_dir << ", " << vtk_name << std::endl;
-    vtkfile = base_dir + id_str + vtk_name;
-  }
-
-  //dagnostic printing of filename
-  printf("meshblock gid=%d, lx1=%ld, lx2=%ld, lx3=%ld, level=%d, vtk file = %s\n",
-         gid, loc.lx1, loc.lx2, loc.lx3, loc.level, vtkfile.c_str());
-  
-  //read scalers
-  for(int i = 0; i < scaler_fields.size(); ++i) {
-    if (scaler_fields[i] == "density") {
-      readvtk(this, vtkfile, "density", 0, data);
-      for (int k=ks; k<=ke; ++k) {
-        for (int j=js; j<=je; ++j) {
-          for (int i=is; i<=ie; ++i) {
-            phydro->w(IDN, k, j, i) = data(k-ks, j-js, i-is);
-          }
-        }
-      }
-    } else if (scaler_fields[i] == "pressure") {
-      readvtk(this, vtkfile, "pressure", 0, data);
-      for (int k=ks; k<=ke; ++k) {
-        for (int j=js; j<=je; ++j) {
-          for (int i=is; i<=ie; ++i) {
-            phydro->w(IEN, k, j, i) = data(k-ks, j-js, i-is);
-          }
-        }
-      }
-    } else {
-      msg << "### FATAL ERROR in Problem Generator [ProblemGenerator]" << std::endl
-        << "Scaler field not recognized: " << scaler_fields[i] << std::endl;
-      throw std::runtime_error(msg.str().c_str());
+    //dagnostic printing of filename
+    if (Globals::my_rank == 0) {
+      printf("meshblock gid=%d, lx1=%ld, lx2=%ld, lx3=%ld, level=%d, vtk file = %s\n",
+              gid, loc.lx1, loc.lx2, loc.lx3, loc.level, vtkfile.c_str());
     }
-  }
-  //read vectors
-  for(int i = 0; i < vector_fields.size(); ++i) {
-    if (vector_fields[i] == "velocity") {
-      //vx
-      readvtk(this, vtkfile, "velocity", 0, data);
-      for (int k=ks; k<=ke; ++k) {
-        for (int j=js; j<=je; ++j) {
-          for (int i=is; i<=ie; ++i) {
-            phydro->w(IVX, k, j, i) = data(k-ks, j-js, i-is);
+    //scalers
+    for(int i = 0; i < scaler_fields.size(); ++i) {
+      if (scaler_fields[i] == "density") {
+        if (Globals::my_rank == 0) {
+          readvtk(this, vtkfile, "density", 0, data, isjoinedvtk);
+        }
+#ifdef MPI_PARALLEL
+        ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#endif
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IDN, k, j, i) = data(k-ks+gks, j-js+gjs, i-is+gis);
+            }
           }
         }
-      }
-      //vy
-      readvtk(this, vtkfile, "velocity", 1, data);
-      for (int k=ks; k<=ke; ++k) {
-        for (int j=js; j<=je; ++j) {
-          for (int i=is; i<=ie; ++i) {
-            phydro->w(IVY, k, j, i) = data(k-ks, j-js, i-is);
+      } else if (scaler_fields[i] == "pressure") {
+        if (Globals::my_rank == 0) {
+          readvtk(this, vtkfile, "pressure", 0, data, isjoinedvtk);
+        }
+#ifdef MPI_PARALLEL
+        ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#endif
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IEN, k, j, i) = data(k-ks+gks, j-js+gjs, i-is+gis);
+            }
           }
         }
+      } else {
+        msg << "### FATAL ERROR in Problem Generator [ProblemGenerator]" << std::endl
+          << "Scaler field not recognized: " << scaler_fields[i] << std::endl;
+        throw std::runtime_error(msg.str().c_str());
       }
-      //vz
-      readvtk(this, vtkfile, "velocity", 2, data);
-      for (int k=ks; k<=ke; ++k) {
-        for (int j=js; j<=je; ++j) {
-          for (int i=is; i<=ie; ++i) {
-            phydro->w(IVZ, k, j, i) = data(k-ks, j-js, i-is);
+    }
+    //vectors
+    for(int i = 0; i < vector_fields.size(); ++i) {
+      if (vector_fields[i] == "velocity") {
+        //vx
+        if (Globals::my_rank == 0) {
+          readvtk(this, vtkfile, "velocity", 0, data,isjoinedvtk);
+        }
+#ifdef MPI_PARALLEL
+        ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#endif
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IVX, k, j, i) = data(k-ks+gks, j-js+gjs, i-is+gis);
+            }
           }
         }
+        //vy
+        if (Globals::my_rank == 0) {
+          readvtk(this, vtkfile, "velocity", 1, data,isjoinedvtk);
+        }
+#ifdef MPI_PARALLEL
+        ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#endif
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IVY, k, j, i) = data(k-ks+gks, j-js+gjs, i-is+gis);
+            }
+          }
+        }
+        //vz
+        if (Globals::my_rank == 0) {
+          readvtk(this, vtkfile, "velocity", 2, data,isjoinedvtk);
+        }
+#ifdef MPI_PARALLEL
+        ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#endif
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IVZ, k, j, i) = data(k-ks+gks, j-js+gjs, i-is+gis);
+            }
+          }
+        }
+      } else {
+        msg << "### FATAL ERROR in Problem Generator [ProblemGenerator]" << std::endl
+          << "Scaler field not recognized: " << scaler_fields[i] << std::endl;
+        throw std::runtime_error(msg.str().c_str());
       }
+    }
+
+  } else {
+    //find coresponding filename.
+    if (loc.lx1 == 0 && loc.lx2 == 0 && loc.lx3 == 0) {
+      vtkfile = vtkfile0;
     } else {
-      msg << "### FATAL ERROR in Problem Generator [ProblemGenerator]" << std::endl
-        << "Scaler field not recognized: " << scaler_fields[i] << std::endl;
-      throw std::runtime_error(msg.str().c_str());
+      //find the corespoinding athena4.2 global id
+      long int id_old = loc.lx1 + loc.lx2 * pmy_mesh->nrbx1 
+        + loc.lx3 * pmy_mesh->nrbx1 * pmy_mesh->nrbx2;
+      //get vtk file name .../id#/problem-id#.????.vtk
+      std::stringstream id_str_stream;
+      id_str_stream << "id" << id_old;// id#
+      std::string id_str = id_str_stream.str();
+      std::size_t pos1 = vtkfile0.find_last_of('/');//last /
+      std::size_t pos2 = vtkfile0.find_last_of('/', pos1-1);//second last /
+      std::string base_dir = vtkfile0.substr(0, pos2+1);// "base_directory/"
+      std::string vtk_name0 = vtkfile0.substr(pos1);// "/bala.????.vtk"
+      std::size_t pos3 = vtk_name0.find_first_of('.');
+      std::string vtk_name = vtk_name0.substr(0, pos3) + "-" + id_str
+        + vtk_name0.substr(pos3);
+      std::cout << id_str << ", " << base_dir << ", " << vtk_name << std::endl;
+      vtkfile = base_dir + id_str + vtk_name;
+    }
+
+    //dagnostic printing of filename
+    printf("meshblock gid=%d, lx1=%ld, lx2=%ld, lx3=%ld, level=%d, vtk file = %s\n",
+        gid, loc.lx1, loc.lx2, loc.lx3, loc.level, vtkfile.c_str());
+
+    //read scalers
+    for(int i = 0; i < scaler_fields.size(); ++i) {
+      if (scaler_fields[i] == "density") {
+        readvtk(this, vtkfile, "density", 0, data,isjoinedvtk);
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IDN, k, j, i) = data(k-ks, j-js, i-is);
+            }
+          }
+        }
+      } else if (scaler_fields[i] == "pressure") {
+        readvtk(this, vtkfile, "pressure", 0, data,isjoinedvtk);
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IEN, k, j, i) = data(k-ks, j-js, i-is);
+            }
+          }
+        }
+      } else {
+        msg << "### FATAL ERROR in Problem Generator [ProblemGenerator]" << std::endl
+          << "Scaler field not recognized: " << scaler_fields[i] << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
+    }
+    //read vectors
+    for(int i = 0; i < vector_fields.size(); ++i) {
+      if (vector_fields[i] == "velocity") {
+        //vx
+        readvtk(this, vtkfile, "velocity", 0, data,isjoinedvtk);
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IVX, k, j, i) = data(k-ks, j-js, i-is);
+            }
+          }
+        }
+        //vy
+        readvtk(this, vtkfile, "velocity", 1, data,isjoinedvtk);
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IVY, k, j, i) = data(k-ks, j-js, i-is);
+            }
+          }
+        }
+        //vz
+        readvtk(this, vtkfile, "velocity", 2, data,isjoinedvtk);
+        for (int k=ks; k<=ke; ++k) {
+          for (int j=js; j<=je; ++j) {
+            for (int i=is; i<=ie; ++i) {
+              phydro->w(IVZ, k, j, i) = data(k-ks, j-js, i-is);
+            }
+          }
+        }
+      } else {
+        msg << "### FATAL ERROR in Problem Generator [ProblemGenerator]" << std::endl
+          << "Scaler field not recognized: " << scaler_fields[i] << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
     }
   }
 
@@ -285,18 +406,26 @@ static void trim(std::string &s)
 
 //TODO: put comments here and declaration at top.
 static void readvtk(MeshBlock *mb, std::string filename, std::string field,
-                    int component, AthenaArray<float> &data) {
+                    int component, AthenaArray<float> &data, int isjoinedvtk) {
   std::stringstream msg;
   FILE *fp = NULL;
   char cline[256], type[256], variable[256], format[256], t_type[256], t_format[256];
   std::string line;
   const std::string athena_header = "# vtk DataFile Version 2.0"; //athena4.2 header
+  const std::string athena_header3 = "# vtk DataFile Version 3.0"; //athena4.2 header
   bool SHOW_OUTPUT = false;
   int Nx_vtk, Ny_vtk, Nz_vtk; //dimensions of vtk files
   //dimensions of meshblock
-  const int Nx_mb = mb->ie - mb->is + 1;
-  const int Ny_mb = mb->je - mb->js + 1;
-  const int Nz_mb = mb->ke - mb->ks + 1;
+  int Nx_mb, Ny_mb, Nz_mb;
+  if (isjoinedvtk) {
+    Nx_mb = mb->pmy_mesh->mesh_size.nx1;
+    Ny_mb = mb->pmy_mesh->mesh_size.nx2;
+    Nz_mb = mb->pmy_mesh->mesh_size.nx3;
+  } else {
+    Nx_mb = mb->ie - mb->is + 1;
+    Ny_mb = mb->je - mb->js + 1;
+    Nz_mb = mb->ke - mb->ks + 1;
+  }
   double ox_vtk, oy_vtk, oz_vtk; //origins of vtk file
   double dx_vtk, dy_vtk, dz_vtk; //spacings of vtk file
   int cell_dat_vtk; //total number of cells in vtk file
@@ -318,7 +447,7 @@ static void readvtk(MeshBlock *mb, std::string filename, std::string field,
   if (SHOW_OUTPUT) {
     std::cout << line << std::endl;
   }
-  if (line != athena_header) {
+  if (line != athena_header && line != athena_header3) {
     fclose(fp);
     msg << "### FATAL ERROR in Problem Generator [read_vtk]" << std::endl
       << "Assuming Athena4.2 header " << athena_header << ", get header " 

@@ -60,3 +60,4 @@ vtkfile    = /Users/munangong/chemistry_Athena/athena/ChangGoo_data/MHD_32pc/id0
 scalers    = density, pressure #scaler fields to be read in, separated by comma
 vectors    = velocity          #vector fields to be read in, separated by comma, assume 3 components
 #assume float format, and lookup_table default
+is_joined_vtk = 0
