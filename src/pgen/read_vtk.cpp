@@ -86,7 +86,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   int isjoinedvtk = pin->GetOrAddInteger("problem", "is_joined_vtk", 0);
   AthenaArray<float> data; //temporary array to store data;
   AthenaArray<Real> b; //needed for PrimitiveToConserved()
-  if (isjoinedvtk) {
+  if (isjoinedvtk != 0) {
     data.NewAthenaArray(Nz_mesh, Ny_mesh, Nx_mesh);
     b.NewAthenaArray(Nz_mesh, Ny_mesh, Nx_mesh);
   } else {
@@ -105,7 +105,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   std::vector<std::string> scaler_fields = split(str_scalers, ',');
   std::vector<std::string> vector_fields = split(str_vectors, ',');
   
-  if (isjoinedvtk) {
+  if (isjoinedvtk != 0) {
     //for joined vtk file, read with processor 0, and broadcast
     int gis = loc.lx1 * Nx;
     int gjs = loc.lx2 * Ny;
@@ -417,7 +417,7 @@ static void readvtk(MeshBlock *mb, std::string filename, std::string field,
   int Nx_vtk, Ny_vtk, Nz_vtk; //dimensions of vtk files
   //dimensions of meshblock
   int Nx_mb, Ny_mb, Nz_mb;
-  if (isjoinedvtk) {
+  if (isjoinedvtk != 0) {
     Nx_mb = mb->pmy_mesh->mesh_size.nx1;
     Ny_mb = mb->pmy_mesh->mesh_size.nx2;
     Nz_mb = mb->pmy_mesh->mesh_size.nx3;

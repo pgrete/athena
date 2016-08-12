@@ -310,7 +310,7 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
                                 "chemistry", "unit_radiation_in_draine1987");
   //constant temperature
   is_const_temp_ = pin->GetOrAddInteger("chemistry", "const_T_flag", 0);
-  if (is_const_temp_) {
+  if (is_const_temp_ != 0) {
     temperature_ = pin->GetReal("chemistry", "temperature");
   } else {
     temperature_ = 0.;
@@ -447,7 +447,7 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
   }
 
   //energy equation
-  if (!is_const_temp_) {
+  if (is_const_temp_ == 0) {
     ydotg[iE_] = dEdt_(yprev0);
   }
 	//set ydot to return
@@ -560,14 +560,14 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
   //Set high temperature hot gas to be constant temperature
   //note: requires temperature to be stored in ifov(0, k, j, i)
   is_const_abundance_ = false;
-  is_const_temp_ = false;
+  is_const_temp_ = 0;
   if ( !isinf(temp_hot_cgk_) ) {
     if (NIFOV < 0) {
       throw std::runtime_error("ChemNetwork::InitializeNextStep():  NIFOV < 0\n");
     }
     temp = pmy_mb_->phydro->ifov(0, k, j, i);
     if (temp > temp_hot_cgk_) {
-      is_const_temp_ = true;
+      is_const_temp_ = 1;
       is_const_abundance_ = true;
       temperature_ = temp;
     }
@@ -643,7 +643,7 @@ Real ChemNetwork::CII_rec_rate_(const Real temp) {
 void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
   Real T;
   //constant or evolve temperature
-  if (is_const_temp_) {
+  if (is_const_temp_ != 0) {
     T = temperature_;
   } else {
     T = y[iE_] / Thermo::CvCold(y[iH2_], xHe_, y[ige_]);
@@ -822,7 +822,7 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
 
 Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
   Real T = 0.;
-  if (is_const_temp_) {
+  if (is_const_temp_ != 0) {
     return 0.;
   } else {
     T = y[iE_] / Thermo::CvCold(y[iH2_], xHe_, y[ige_]);
@@ -889,7 +889,7 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
 		vth = sqrt(2. * Thermo::kb_ * T / CGKUtility::mCO);
 		nCO = nH_ * y[iCO_];
 		grad_small_ = 1e-100;
-		if (isNCOeff_LVG_) {
+		if (isNCOeff_LVG_ != 0) {
 			if (gradv_ > vth / dx_cell_) {
 				NCOeff = nCO / gradv_;
 			} else {
@@ -909,7 +909,7 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
 		LCOR = Thermo::CoolingCOR(y[iCO_], nH_*y[igH_],  nH_*y[iH2_],
 				nH_*y[ige_],  T,  NCOeff);
 		// H2 vibration and rotation lines 
-    if (is_H2_rovib_cooling_) {
+    if (is_H2_rovib_cooling_ != 0) {
       LH2 = Thermo::CoolingH2(y[iH2_], nH_*y[igH_],  nH_*y[iH2_],
           nH_*y[igHe_],  nH_*y[iHplus_], nH_*y[ige_],
           T);
