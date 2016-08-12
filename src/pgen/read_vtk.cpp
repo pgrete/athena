@@ -341,7 +341,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           //start with H, He, C+, OI, Si+ at T < temp_hot_cgk_
           //start with H+, He+, C+, OI, Si+ at T > temp_hot_cgk_
           for (int ispec=0; ispec < NSPECIES; ++ispec) {
-            pspec->s(ispec, k, j, i) = 1e-10;
+            pspec->s(ispec, k, j, i) = 1e-8;
           }
           if (NIFOV > 0) {
             if (phydro->ifov(0, k, j, i) > pspec->pchemnet->temp_hot_cgk_) {
