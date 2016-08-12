@@ -14,7 +14,9 @@ def prepare():
   athena.configure('radiation', 'pp', 
       prob='read_vtk',
       chemistry='gow16', 
-      cvode_path='/usr/local',
+      #cvode_path='/usr/local',
+      cvode_path='/home/munan/install',
+      cxx="icc",
       ifov='1')
   athena.make()
 
@@ -49,4 +51,5 @@ def analyze():
   if err_max < err_control:
     return True
   else:
+    print "err_max=", err_max
     return False
