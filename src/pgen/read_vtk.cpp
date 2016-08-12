@@ -97,6 +97,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   std::string vtkfile; //corresponding vtk file for this meshblock
 	//gamma-1 for hydro eos
 	const Real gm1 = peos->GetGamma() - 1.0;
+  //initial abundance
+  const Real s_init = pin->GetOrAddReal("problem", "s_init", 1e-10);
 
   //parse input parameters
   std::string vtkfile0 = pin->GetString("problem", "vtkfile");//id0 file
@@ -341,7 +343,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           //start with H, He, C+, OI, Si+ at T < temp_hot_cgk_
           //start with H+, He+, C+, OI, Si+ at T > temp_hot_cgk_
           for (int ispec=0; ispec < NSPECIES; ++ispec) {
-            pspec->s(ispec, k, j, i) = 1e-8;
+            pspec->s(ispec, k, j, i) = s_init;
           }
           if (NIFOV > 0) {
             if (phydro->ifov(0, k, j, i) > pspec->pchemnet->temp_hot_cgk_) {
