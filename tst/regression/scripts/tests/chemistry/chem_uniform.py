@@ -14,9 +14,10 @@ def prepare():
   athena.configure('radiation', 'pp', 
       prob='uniform_chem',
       chemistry='gow16', 
-      #cvode_path='/usr/local'
-      cvode_path='/home/munan/install',
-      cxx="icc"
+      cvode_path='/usr/local',
+      cxx = 'g++'
+#      cvode_path='/home/munan/install',
+#      cxx="icc"
       )
   athena.make()
 

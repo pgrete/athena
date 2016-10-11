@@ -344,9 +344,6 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
   xO_ = zdg_ * xO_std_;
   xSi_ = zdg_ * xSi_std_;
 
-  //set species abundance to constant if true, default false
-  is_const_abundance_ = false;
-
   //initialize rates to zero
   for (int i=0; i<n_cr_; i++) {
     kcr_[i] = 0;
@@ -412,38 +409,36 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
     }
   }
 
-  if (!is_const_abundance_) {
-    UpdateRates(yprev0);
+  UpdateRates(yprev0);
 
-    //cosmic ray reactions
-    for (int i=0; i<n_cr_; i++) {
-      rate = kcr_[i] * yprev[incr_[i]];
-      ydotg[incr_[i]] -= rate;
-      ydotg[outcr_[i]] += rate;
-    }
+  //cosmic ray reactions
+  for (int i=0; i<n_cr_; i++) {
+    rate = kcr_[i] * yprev[incr_[i]];
+    ydotg[incr_[i]] -= rate;
+    ydotg[outcr_[i]] += rate;
+  }
 
-    //2body reactions
-    for (int i=0; i<n_2body_; i++) {
-      rate =  k2body_[i] * yprev0[in2body1_[i]] * yprev0[in2body2_[i]];
-      ydotg[in2body1_[i]] -= rate;
-      ydotg[in2body2_[i]] -= rate;
-      ydotg[out2body1_[i]] += rate;
-      ydotg[out2body2_[i]] += rate;
-    }
+  //2body reactions
+  for (int i=0; i<n_2body_; i++) {
+    rate =  k2body_[i] * yprev0[in2body1_[i]] * yprev0[in2body2_[i]];
+    ydotg[in2body1_[i]] -= rate;
+    ydotg[in2body2_[i]] -= rate;
+    ydotg[out2body1_[i]] += rate;
+    ydotg[out2body2_[i]] += rate;
+  }
 
-    //photo reactions
-    for (int i=0; i<n_ph_; i++) {
-      rate = kph_[i] * yprev[inph_[i]];
-      ydotg[inph_[i]] -= rate;
-      ydotg[outph1_[i]] += rate;
-    }
+  //photo reactions
+  for (int i=0; i<n_ph_; i++) {
+    rate = kph_[i] * yprev[inph_[i]];
+    ydotg[inph_[i]] -= rate;
+    ydotg[outph1_[i]] += rate;
+  }
 
-    //grain assisted reactions
-    for (int i=0; i<n_gr_; i++) {
-      rate = kgr_[i] * yprev[ingr_[i]];
-      ydotg[ingr_[i]] -= rate;
-      ydotg[outgr_[i]] += rate;
-    }
+  //grain assisted reactions
+  for (int i=0; i<n_gr_; i++) {
+    rate = kgr_[i] * yprev[ingr_[i]];
+    ydotg[ingr_[i]] -= rate;
+    ydotg[outgr_[i]] += rate;
   }
 
   //energy equation
@@ -476,53 +471,51 @@ void ChemNetwork::Jacobian(const Real t,
 		}
 	}
 
-  if (!is_const_abundance_) {
-    // copy y to yprev and set ghost species
-    GetGhostSpecies(y, yprev);
-    // TODO: We can might skip this, which was caluclated in RHS
-    //UpdateRates(yprev);
-    // 2 body reactions: a+b -> c+d
-    for (int i=0; i<n_2body_; i++) {
-      ia = in2body1_[i];
-      ib = in2body2_[i];
-      ic = out2body1_[i];
-      id = out2body2_[i];
-      rate_pa = k2body_[i] * yprev[ib];
-      rate_pb = k2body_[i] * yprev[ia];
-      jac_[ia][ia] -= rate_pa;
-      jac_[ib][ia] -= rate_pa;
-      jac_[ic][ia] += rate_pa;
-      jac_[id][ia] += rate_pa;
-      jac_[ia][ib] -= rate_pb;
-      jac_[ib][ib] -= rate_pb;
-      jac_[ic][ib] += rate_pb;
-      jac_[id][ib] += rate_pb;
-    }
-    // photo reactions a + photon -> c+d
-    for (int i=0; i<n_ph_; i++) {
-      ia = inph_[i];
-      ic = outph1_[i];
-      rate_pa = kph_[i];
-      jac_[ia][ia] -= rate_pa;
-      jac_[ic][ia] += rate_pa;
-    }
-    //Cosmic ray reactions a + cr -> c
-    for (int i=0; i<n_cr_; i++) {
-      ia = incr_[i];
-      ic = outcr_[i];
-      rate_pa = kcr_[i];
-      jac_[ia][ia] -= rate_pa;
-      jac_[ic][ia] += rate_pa;
-    }
+  // copy y to yprev and set ghost species
+  GetGhostSpecies(y, yprev);
+  // TODO: We can might skip this, which was caluclated in RHS
+  //UpdateRates(yprev);
+  // 2 body reactions: a+b -> c+d
+  for (int i=0; i<n_2body_; i++) {
+    ia = in2body1_[i];
+    ib = in2body2_[i];
+    ic = out2body1_[i];
+    id = out2body2_[i];
+    rate_pa = k2body_[i] * yprev[ib];
+    rate_pb = k2body_[i] * yprev[ia];
+    jac_[ia][ia] -= rate_pa;
+    jac_[ib][ia] -= rate_pa;
+    jac_[ic][ia] += rate_pa;
+    jac_[id][ia] += rate_pa;
+    jac_[ia][ib] -= rate_pb;
+    jac_[ib][ib] -= rate_pb;
+    jac_[ic][ib] += rate_pb;
+    jac_[id][ib] += rate_pb;
+  }
+  // photo reactions a + photon -> c+d
+  for (int i=0; i<n_ph_; i++) {
+    ia = inph_[i];
+    ic = outph1_[i];
+    rate_pa = kph_[i];
+    jac_[ia][ia] -= rate_pa;
+    jac_[ic][ia] += rate_pa;
+  }
+  //Cosmic ray reactions a + cr -> c
+  for (int i=0; i<n_cr_; i++) {
+    ia = incr_[i];
+    ic = outcr_[i];
+    rate_pa = kcr_[i];
+    jac_[ia][ia] -= rate_pa;
+    jac_[ic][ia] += rate_pa;
+  }
 
-    //grain reactions a + gr -> c
-    for (int i=0; i<n_gr_; i++) {
-      ia = ingr_[i];
-      ic = outgr_[i];
-      rate_pa = kgr_[i];
-      jac_[ia][ia] -= rate_pa;
-      jac_[ic][ia] += rate_pa;
-    }
+  //grain reactions a + gr -> c
+  for (int i=0; i<n_gr_; i++) {
+    ia = ingr_[i];
+    ic = outgr_[i];
+    rate_pa = kgr_[i];
+    jac_[ia][ia] -= rate_pa;
+    jac_[ic][ia] += rate_pa;
   }
 
 	//copy J to return
@@ -557,21 +550,6 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
   //CO cooling paramters
   NCO_ = colCO_(k, j, i);
   bCO_ = 3.0e5; //3km/s, TODO: need to get from calculation
-  //Set high temperature hot gas to be constant temperature
-  //note: requires temperature to be stored in ifov(0, k, j, i)
-  is_const_abundance_ = false;
-  is_const_temp_ = 0;
-  if ( !isinf(temp_hot_cgk_) ) {
-    if (NIFOV < 0) {
-      throw std::runtime_error("ChemNetwork::InitializeNextStep():  NIFOV < 0\n");
-    }
-    temp = pmy_mb_->phydro->ifov(0, k, j, i);
-    if (temp > temp_hot_cgk_) {
-      is_const_temp_ = 1;
-      is_const_abundance_ = true;
-      temperature_ = temp;
-    }
-  }
 	return;
 }
 

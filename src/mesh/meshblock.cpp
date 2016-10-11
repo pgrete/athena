@@ -37,9 +37,6 @@
 #include "../bvals/bvals.hpp"
 #include "../eos/eos.hpp"
 #include "../parameter_input.hpp"
-#include "../outputs/wrapper.hpp"
-#include "mesh_refinement.hpp"
-#include "meshblock_tree.hpp"
 #include "../utils/buffer_utils.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../radiation/radiation.hpp"
@@ -48,6 +45,8 @@
 #endif
 
 // this class header
+#include "mesh_refinement.hpp"
+#include "meshblock_tree.hpp"
 #include "mesh.hpp"
 
 //--------------------------------------------------------------------------------------
@@ -69,6 +68,14 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   lid=ilid;
   loc=iloc;
   cost=1.0;
+
+  // allocate user output variables array
+  nuser_out_var=pin->GetOrAddInteger("mesh","nuser_out_var",0);
+  int ncells1 = block_size.nx1 + 2*(NGHOST);
+  int ncells2 = 1, ncells3 = 1;
+  if (block_size.nx2 > 1) ncells2 = block_size.nx2 + 2*(NGHOST);
+  if (block_size.nx3 > 1) ncells3 = block_size.nx3 + 2*(NGHOST);
+  user_out_var.NewAthenaArray(nuser_out_var,ncells3,ncells2,ncells1);
 
   nreal_user_meshblock_data_ = 0, nint_user_meshblock_data_ = 0; 
 
@@ -163,6 +170,14 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   cost=icost;
   block_size = input_block;
   for(int i=0; i<6; i++) block_bcs[i] = input_bcs[i];
+
+  // allocate user output variables array
+  nuser_out_var=pin->GetOrAddInteger("mesh","nuser_out_var",0);
+  int ncells1 = block_size.nx1 + 2*(NGHOST);
+  int ncells2 = 1, ncells3 = 1;
+  if (block_size.nx2 > 1) ncells2 = block_size.nx2 + 2*(NGHOST);
+  if (block_size.nx3 > 1) ncells3 = block_size.nx3 + 2*(NGHOST);
+  user_out_var.NewAthenaArray(nuser_out_var,ncells3,ncells2,ncells1);
 
   nreal_user_meshblock_data_ = 0, nint_user_meshblock_data_ = 0; 
 
@@ -264,17 +279,18 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     os += prad->ir.GetSize();
   }
 
+  // NEW_PHYSICS: add load of new physics from restart file here
 
   // load user MeshBlock data
   for(int n=0; n<nint_user_meshblock_data_; n++) {
-    memcpy(iusermeshblockdata[n].data(), &(mbdata[os]),
-           iusermeshblockdata[n].GetSizeInBytes());
-    os+=iusermeshblockdata[n].GetSizeInBytes();
+    memcpy(iuser_meshblock_data[n].data(), &(mbdata[os]),
+           iuser_meshblock_data[n].GetSizeInBytes());
+    os+=iuser_meshblock_data[n].GetSizeInBytes();
   }
   for(int n=0; n<nreal_user_meshblock_data_; n++) {
-    memcpy(rusermeshblockdata[n].data(), &(mbdata[os]),
-           rusermeshblockdata[n].GetSizeInBytes());
-    os+=rusermeshblockdata[n].GetSizeInBytes();
+    memcpy(ruser_meshblock_data[n].data(), &(mbdata[os]),
+           ruser_meshblock_data[n].GetSizeInBytes());
+    os+=ruser_meshblock_data[n].GetSizeInBytes();
   }
 
   return;
@@ -308,13 +324,15 @@ MeshBlock::~MeshBlock()
     delete prad;
   }
 
+  // delete user output variables array
+  user_out_var.DeleteAthenaArray();
   // delete user MeshBlock data
   for(int n=0; n<nreal_user_meshblock_data_; n++)
-    rusermeshblockdata[n].DeleteAthenaArray();
-  if(nreal_user_meshblock_data_>0) delete [] rusermeshblockdata;
+    ruser_meshblock_data[n].DeleteAthenaArray();
+  if(nreal_user_meshblock_data_>0) delete [] ruser_meshblock_data;
   for(int n=0; n<nint_user_meshblock_data_; n++)
-    iusermeshblockdata[n].DeleteAthenaArray();
-  if(nint_user_meshblock_data_>0) delete [] iusermeshblockdata;
+    iuser_meshblock_data[n].DeleteAthenaArray();
+  if(nint_user_meshblock_data_>0) delete [] iuser_meshblock_data;
 }
 
 //--------------------------------------------------------------------------------------
@@ -330,7 +348,7 @@ void MeshBlock::AllocateRealUserMeshBlockDataField(int n)
     throw std::runtime_error(msg.str().c_str());
   }
   nreal_user_meshblock_data_=n;
-  rusermeshblockdata = new AthenaArray<Real>[n];
+  ruser_meshblock_data = new AthenaArray<Real>[n];
   return;
 }
 
@@ -347,7 +365,7 @@ void MeshBlock::AllocateIntUserMeshBlockDataField(int n)
     throw std::runtime_error(msg.str().c_str());
   }
   nint_user_meshblock_data_=n;
-  iusermeshblockdata = new AthenaArray<int>[n];
+  iuser_meshblock_data = new AthenaArray<int>[n];
   return;
 }
 
@@ -377,12 +395,13 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
     size+=prad->ir.GetSizeInBytes();
   }
 
+  // NEW_PHYSICS: modify the size counter here when new physics is introduced
 
   // calculate user MeshBlock data size
   for(int n=0; n<nint_user_meshblock_data_; n++)
-    size+=iusermeshblockdata[n].GetSizeInBytes();
+    size+=iuser_meshblock_data[n].GetSizeInBytes();
   for(int n=0; n<nreal_user_meshblock_data_; n++)
-    size+=rusermeshblockdata[n].GetSizeInBytes();
+    size+=ruser_meshblock_data[n].GetSizeInBytes();
 
   return size;
 }

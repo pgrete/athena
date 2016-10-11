@@ -75,7 +75,6 @@ private:
   int is_H2_rovib_cooling_;//whether to include H2 rovibrational cooling
 	//maximum temperature above which heating and cooling is turned off 
 	int is_const_temp_; //flag for constant temperature
-	bool is_const_abundance_; //flag for constant abundance
 	//parameters of the netowork
 	Real zdg_;
 	Real xHe_;

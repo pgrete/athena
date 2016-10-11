@@ -39,13 +39,11 @@
 #include "../bvals/bvals.hpp"
 #include "../eos/eos.hpp"
 #include "../parameter_input.hpp"
-#include "../outputs/wrapper.hpp"
-#include "mesh_refinement.hpp"
-#include "meshblock_tree.hpp"
+#include "../outputs/io_wrapper.hpp"
 #include "../utils/buffer_utils.hpp"
 #include "../reconstruct/reconstruction.hpp"
-
-// this class header
+#include "mesh_refinement.hpp"
+#include "meshblock_tree.hpp"
 #include "mesh.hpp"
 
 // MPI/OpenMP header
@@ -78,6 +76,7 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test)
   cfl_number = pin->GetReal("time","cfl_number");
   time = start_time;
   dt   = (FLT_MAX*0.4);
+  nbnew=0; nbdel=0;
 
   nlim = pin->GetOrAddInteger("time","nlim",-1);
   ncycle = 0;
@@ -518,6 +517,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test)
   cfl_number = pin->GetReal("time","cfl_number");
   nlim = pin->GetOrAddInteger("time","nlim",-1);
   nint_user_mesh_data_=0, nreal_user_mesh_data_=0;
+  nbnew=0; nbdel=0;
 
   // read number of OpenMP threads for mesh
   num_mesh_threads_ = pin->GetOrAddInteger("mesh","num_threads",1);
@@ -653,9 +653,9 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test)
   // read user Mesh data
   IOWrapperSize_t udsize = 0;
   for(int n=0; n<nint_user_mesh_data_; n++)
-    udsize+=iusermeshdata[n].GetSizeInBytes();
+    udsize+=iuser_mesh_data[n].GetSizeInBytes();
   for(int n=0; n<nreal_user_mesh_data_; n++)
-    udsize+=rusermeshdata[n].GetSizeInBytes();
+    udsize+=ruser_mesh_data[n].GetSizeInBytes();
   if(udsize!=0) {
     char *userdata = new char[udsize];
     if(Globals::my_rank==0) { // only the master process reads the ID list
@@ -672,14 +672,14 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test)
 
     IOWrapperSize_t udoffset=0;
     for(int n=0; n<nint_user_mesh_data_; n++) {
-      memcpy(iusermeshdata[n].data(), &(userdata[udoffset]),
-             iusermeshdata[n].GetSizeInBytes());
-      udoffset+=iusermeshdata[n].GetSizeInBytes();
+      memcpy(iuser_mesh_data[n].data(), &(userdata[udoffset]),
+             iuser_mesh_data[n].GetSizeInBytes());
+      udoffset+=iuser_mesh_data[n].GetSizeInBytes();
     }
     for(int n=0; n<nreal_user_mesh_data_; n++) {
-      memcpy(rusermeshdata[n].data(), &(userdata[udoffset]),
-             rusermeshdata[n].GetSizeInBytes());
-      udoffset+=rusermeshdata[n].GetSizeInBytes();
+      memcpy(ruser_mesh_data[n].data(), &(userdata[udoffset]),
+             ruser_mesh_data[n].GetSizeInBytes());
+      udoffset+=ruser_mesh_data[n].GetSizeInBytes();
     }
     delete [] userdata;
   }
@@ -837,11 +837,11 @@ Mesh::~Mesh()
   }
   // delete user Mesh data
   for(int n=0; n<nreal_user_mesh_data_; n++)
-    rusermeshdata[n].DeleteAthenaArray();
-  if(nreal_user_mesh_data_>0) delete [] rusermeshdata;
+    ruser_mesh_data[n].DeleteAthenaArray();
+  if(nreal_user_mesh_data_>0) delete [] ruser_mesh_data;
   for(int n=0; n<nint_user_mesh_data_; n++)
-    iusermeshdata[n].DeleteAthenaArray();
-  if(nint_user_mesh_data_>0) delete [] iusermeshdata;
+    iuser_mesh_data[n].DeleteAthenaArray();
+  if(nint_user_mesh_data_>0) delete [] iuser_mesh_data;
 }
 
 //--------------------------------------------------------------------------------------
@@ -1066,7 +1066,7 @@ void Mesh::AllocateRealUserMeshDataField(int n)
     throw std::runtime_error(msg.str().c_str());
   }
   nreal_user_mesh_data_=n;
-  rusermeshdata = new AthenaArray<Real>[n];
+  ruser_mesh_data = new AthenaArray<Real>[n];
   return;
 }
 
@@ -1083,7 +1083,7 @@ void Mesh::AllocateIntUserMeshDataField(int n)
     throw std::runtime_error(msg.str().c_str());
   }
   nint_user_mesh_data_=n;
-  iusermeshdata = new AthenaArray<int>[n];
+  iuser_mesh_data = new AthenaArray<int>[n];
   return;
 }
 
@@ -1111,10 +1111,11 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       }
     }
 
+    // prepare to receive conserved variables
     pmb = pblock;
     while (pmb != NULL)  {
       pmb->pbval->Initialize();
-      pmb->pbval->StartReceivingForInit();
+      pmb->pbval->StartReceivingForInit(true);
       pmb=pmb->next;
     }
 
@@ -1138,14 +1139,23 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pbval->ReceiveHydroBoundaryBuffersWithWait(phydro->u, true);
       if (MAGNETIC_FIELDS_ENABLED)
         pbval->ReceiveFieldBoundaryBuffersWithWait(pfield->b);
-      pmb->pbval->ClearBoundaryForInit();
+      pmb->pbval->ClearBoundaryForInit(true);
       pmb=pmb->next;
     }
 
     // With AMR/SMR GR send primitives to enable cons->prim before prolongation
     if (GENERAL_RELATIVITY && multilevel) {
+
+      // prepare to receive primitives
       pmb = pblock;
-      while (pmb != NULL)  {
+      while (pmb != NULL) {
+        pmb->pbval->StartReceivingForInit(false);
+        pmb=pmb->next;
+      }
+
+      // send primitives
+      pmb = pblock;
+      while (pmb != NULL) {
         phydro=pmb->phydro;
         pmb->pbval->SendHydroBoundaryBuffers(phydro->w, false);
         pmb=pmb->next;
@@ -1153,12 +1163,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
 
       // wait to receive AMR/SMR GR primitives
       pmb = pblock;
-      while (pmb != NULL)  {
+      while (pmb != NULL) {
         phydro=pmb->phydro;
         pfield=pmb->pfield;
         pbval=pmb->pbval;
         pbval->ReceiveHydroBoundaryBuffersWithWait(phydro->w, false);
-        pmb->pbval->ClearBoundaryForInit();
+        pmb->pbval->ClearBoundaryForInit(false);
         pmb=pmb->next;
       }
     }
@@ -1528,6 +1538,7 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   if(nnew==0 && ndel==0)
     return; // nothing to do
   // Tree manipulation completed
+  nbnew+=nnew; nbdel+=ndel;
 
   // Block exchange
   // Step 1. construct new lists
@@ -1536,8 +1547,10 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   Real *newcost = new Real[ntot];
   int *newtoold = new int[ntot];
   int *oldtonew = new int[nbtotal];
+  int nbtold=nbtotal;
   tree.GetMeshBlockList(newloc,newtoold,nbtotal);
   // create a list mapping the previous gid to the current one
+
   oldtonew[0]=0;
   int k=1;
   for(int n=1; n<ntot; n++) {
@@ -1550,6 +1563,9 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
       oldtonew[k++]=n;
     }
   }
+  // fill the last block 
+  for(;k<nbtold; k++)
+    oldtonew[k]=ntot-1;
 
 #ifdef MPI_PARALLEL
   // share the cost list
@@ -1818,11 +1834,11 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
           int ks=pmb->ks+(loclist[on+ll].lx3&1L)*pmb->block_size.nx3/2;
           AthenaArray<Real> &src=pmr->coarse_cons_;
           AthenaArray<Real> &dst=pmb->phydro->u;
-          for(int nn=0; nn<NHYDRO; nn++) {
+          for(int nv=0; nv<NHYDRO; nv++) {
             for(int k=ks, fk=pob->cks; fk<=pob->cke; k++, fk++) {
               for(int j=js, fj=pob->cjs; fj<=pob->cje; j++, fj++) {
                 for(int i=is, fi=pob->cis; fi<=pob->cie; i++, fi++)
-                  dst(nn, k, j, i)=src(nn, fk, fj, fi);
+                  dst(nv, k, j, i)=src(nv, fk, fj, fi);
           }}}
           if(MAGNETIC_FIELDS_ENABLED) {
             pmr->RestrictFieldX1(pob->pfield->b.x1f, pmr->coarse_b_.x1f,
@@ -1876,11 +1892,11 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
         AthenaArray<Real> &src=pob->phydro->u;
         AthenaArray<Real> &dst=pmr->coarse_cons_;
         // fill the coarse buffer
-        for(int nn=0; nn<NHYDRO; nn++) {
+        for(int nv=0; nv<NHYDRO; nv++) {
           for(int k=ks, ck=cks; k<=ke; k++, ck++) {
             for(int j=js, cj=cjs; j<=je; j++, cj++) {
               for(int i=is, ci=cis; i<=ie; i++, ci++)
-                dst(nn, k, j, i)=src(nn, ck, cj, ci);
+                dst(nv, k, j, i)=src(nv, ck, cj, ci);
         }}}
         pmr->ProlongateCellCenteredValues(dst, pmb->phydro->u, 0, NHYDRO-1,
                                           is, ie, js, je, ks, ke);
