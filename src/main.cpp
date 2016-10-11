@@ -376,8 +376,9 @@ int main(int argc, char *argv[])
     if(pmesh->adaptive==true)
       pmesh->AdaptiveMeshRefinement(pinput);
 
-    //pmesh->NewTimeStep();
-
+    //TODO: for now, there is a post-processing flag to calculte the new
+    //timestep. May just remove this for post-processing in the future
+    pmesh->NewTimeStep();
 
     try {
       pouts->MakeOutputs(pmesh,pinput);

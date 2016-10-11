@@ -134,7 +134,6 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
   //new physics
-  pspec = NULL;
 #ifdef INCLUDE_CHEMISTRY
   pspec = new ChemSpecies(this, pin);
 #endif
