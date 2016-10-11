@@ -46,6 +46,8 @@ struct Task {
 
 class TaskList {
 friend class TimeIntegratorTaskList;
+friend class ChemistryIntegratorTaskList;
+friend class RadiationIntegratorTaskList;
 public:
   TaskList(Mesh *pm);
   ~TaskList();
@@ -111,6 +113,34 @@ public:
 };
 
 //--------------------------------------------------------------------------------------
+//! \class ChemistryIntegratorTaskList
+//  \brief data and function definitions for ChemistryIntegratorTaskList derived class
+//
+class ChemistryIntegratorTaskList : public TaskList {
+public:
+  ChemistryIntegratorTaskList(ParameterInput *pin, Mesh *pm);
+  ~ChemistryIntegratorTaskList() {};
+  void AddChemistryIntegratorTask(uint64_t id, uint64_t dep);
+  enum TaskStatus IntegrateSourceTerm(MeshBlock *pmb, int step);
+  //add advection term here. 
+};
+
+//--------------------------------------------------------------------------------------
+//! \class RadiationIntegratorTaskList
+//  \brief data and function definitions for RadiationIntegratorTaskList derived class
+//
+class RadiationIntegratorTaskList : public TaskList {
+public:
+  RadiationIntegratorTaskList(ParameterInput *pin, Mesh *pm);
+  ~RadiationIntegratorTaskList() {};
+  std::string integrator;
+  void AddRadiationIntegratorTask(uint64_t id, uint64_t dep);
+  enum TaskStatus LocalIntegratorJeans(MeshBlock *pmb, int step);
+  enum TaskStatus ConstRadiation(MeshBlock *pmb, int step);
+  //add six ray here
+};
+
+//--------------------------------------------------------------------------------------
 // 64-bit integers with "1" in different bit positions used to ID  each hydro task.
 
 namespace HydroIntegratorTaskNames {
@@ -167,4 +197,16 @@ namespace HydroIntegratorTaskNames {
   const uint64_t AMR_FLAG=1LL<<40;
 };
 
+namespace ChemistryIntegratorTaskNames {
+  const uint64_t NONE=0;
+  const uint64_t INT_CHEM_SRC=1LL<<0; //chemistry source term
+  //add advection term here
+};
+
+namespace RadiationIntegratorTaskNames {
+  const uint64_t NONE=0;
+  const uint64_t INT_CONST=1LL<<0; //constant radiation, do nothing
+  const uint64_t INT_LOC_JEANS=1LL<<1; //local jeans shielding
+  //add six ray here
+};
 #endif // TASK_LIST_HPP

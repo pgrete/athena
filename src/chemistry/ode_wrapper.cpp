@@ -190,9 +190,7 @@ void ODEWrapper::Integrate() {
         CheckFlag(&flag, "CVode", 3);
 
         //update next step size
-        if (ncycle == 0) {
-          //h_init_ = GetLastStep();
-        } else {
+        if (ncycle != 0) {
           pmy_spec_->h(k, j, i) = GetNextStep();
         }
       }

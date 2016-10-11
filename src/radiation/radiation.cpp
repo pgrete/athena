@@ -17,6 +17,12 @@
 //  \brief implementation of functions in class Radiation
 //======================================================================================
 
+//C++ headers
+#include <string>
+#include <iostream>   // endl
+#include <sstream>    // sstream
+#include <stdexcept>  // runtime_error
+
 // Athena++ headers
 #include "radiation.hpp"
 #include "integrators/rad_integrators.hpp"
@@ -25,18 +31,22 @@
 Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
 {
   // read in the parameters
-  int six_ray_flag = pin->GetOrAddInteger("radiation","six_ray_flag",0);
+  integrator = pin->GetString("radiation","integrator");
 	nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
-  //flag for jean's shielding
-	jeans_shielding_flag = pin->GetOrAddInteger("radiation", "jeans_shielding_flag", 0);
   
   pmy_block = pmb;
   
-	if (six_ray_flag) {
+	if (integrator == "six_ray") {
 		nang = 6;
-	} else {
+	} else if (integrator == "jeans" or integrator == "const") {
 		nang = 1;
-	}
+	} else {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in Radiation constructor" << std::endl
+        << "integrator=" << integrator << " not valid radiation integrator, " << std::endl
+        << "choose from {jeans, six_ray, const}" << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
   
   n_fre_ang = nang * nfreq;
   

@@ -92,7 +92,6 @@ stldet     = 0       #stability limit detection. Default 0/false.
 
 
 <radiation>
-six_ray_flag = 0 #1 for using 6-ray
+integrator = const
 n_frequency  = 7
-jeans_shielding_flag = 0
 

@@ -44,12 +44,7 @@
 #include "outputs/outputs.hpp"
 #include "outputs/io_wrapper.hpp"
 #include "utils/utils.hpp"
-//chemistry headers
-#ifdef INCLUDE_CHEMISTRY
-#include "chemistry/species.hpp" 
-#include "chemistry/network/network.hpp" 
-#include "radiation/integrators/rad_integrators.hpp"
-#endif
+#include "task_list/task_list.hpp"
 
 // MPI/OpenMP headers
 #ifdef MPI_PARALLEL
@@ -273,8 +268,16 @@ int main(int argc, char *argv[])
 /////////////////////////
 
   TaskList *ptlist;
+  TaskList *pchemlist = NULL;
+  TaskList *pradlist = NULL;
   try {
     ptlist = new TimeIntegratorTaskList(pinput, pmesh);
+#ifdef INCLUDE_CHEMISTRY
+    pchemlist = new ChemistryIntegratorTaskList(pinput, pmesh);
+#endif
+    if (RADIATION_ENABLED) {
+      pradlist = new RadiationIntegratorTaskList(pinput, pmesh);
+    }
   }
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl << "memory allocation failed "
@@ -359,24 +362,12 @@ int main(int argc, char *argv[])
     }
 
     //ptlist->DoTaskList(pmesh);
-    //TODO: needs to put chemistry in a tasklist
-    //someting like operater split
-#ifdef INCLUDE_CHEMISTRY
-    MeshBlock *pmb = pmesh->pblock;
-    while (pmb != NULL)  {
-      pmb->pspec->podew->Integrate();
-      pmb=pmb->next;
-    }
-    //TODO: need to integrate with Yanfei's radiation
     if (RADIATION_ENABLED) {
-      MeshBlock *pmb = pmesh->pblock;
-      if (pmb->prad->jeans_shielding_flag) {
-        while (pmb != NULL)  {
-          pmb->prad->pradintegrator->UpdateRadJeans();
-          pmb=pmb->next;
-        }
-      }
+      pradlist->DoTaskList(pmesh);
     }
+
+#ifdef INCLUDE_CHEMISTRY
+    pchemlist->DoTaskList(pmesh);
 #endif
 
     pmesh->ncycle++;
@@ -494,6 +485,8 @@ int main(int argc, char *argv[])
   delete pinput;
   delete pmesh;
   delete ptlist;
+  delete pchemlist;
+  delete pradlist;
   delete pouts;
 
 #ifdef MPI_PARALLEL
