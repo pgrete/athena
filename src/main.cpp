@@ -362,12 +362,10 @@ int main(int argc, char *argv[])
     //TODO: needs to put chemistry in a tasklist
     //someting like operater split
 #ifdef INCLUDE_CHEMISTRY
-    if (CHEMISTRY_ENABLED) {
-      MeshBlock *pmb = pmesh->pblock;
-      while (pmb != NULL)  {
-        pmb->pspec->podew->Integrate();
-        pmb=pmb->next;
-      }
+    MeshBlock *pmb = pmesh->pblock;
+    while (pmb != NULL)  {
+      pmb->pspec->podew->Integrate();
+      pmb=pmb->next;
     }
     //TODO: need to integrate with Yanfei's radiation
     if (RADIATION_ENABLED) {

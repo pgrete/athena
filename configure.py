@@ -340,9 +340,7 @@ if args['cvode_path'] != '':
   makefile_options['PREPROCESSOR_FLAGS'] += '-I%s/include' % args['cvode_path']
   makefile_options['LINKER_FLAGS'] += '-L%s/lib' % args['cvode_path']
 # -chemistry argument
-#TODO: CHEMISTRY_ENABLED and CHEMISTRY_OPTION repeated.
 if args['chemistry'] == "gow16":
-  definitions['CHEMISTRY_ENABLED'] = '1'
   definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
   definitions['NUM_SPECIES'] = '13'
   #ChemNetwork class header file included in species.hpp
@@ -352,7 +350,6 @@ if args['chemistry'] == "gow16":
   makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
 elif args['chemistry'] == "gow16_ng":
-  definitions['CHEMISTRY_ENABLED'] = '1'
   definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
   definitions['NUM_SPECIES'] = '19'
   definitions['CHEMNETWORK_HEADER'] = 'network/gow16_ng.hpp'
@@ -362,7 +359,6 @@ elif args['chemistry'] == "gow16_ng":
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
 else:
   definitions['CHEMISTRY_OPTION'] = 'NOT_INCLUDE_CHEMISTRY'
-  definitions['CHEMISTRY_ENABLED'] = '0'
   definitions['NUM_SPECIES'] = '0'
   makefile_options['CHEMNET_FILE'] = ''
   makefile_options['CHEMISTRY_FILE'] = ''

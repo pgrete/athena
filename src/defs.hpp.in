@@ -26,9 +26,6 @@
 // include magnetic fields? default=0 (false)
 #define MAGNETIC_FIELDS_ENABLED @MAGNETIC_FIELDS_ENABLED@
 
-// include chemistry?  default=0 (false).
-#define CHEMISTRY_ENABLED @CHEMISTRY_ENABLED@
-
 // include post-processing?  default=0 (false).
 #define POST_PROCESSING_ENABLED @POST_PROCESSING_ENABLED@
 

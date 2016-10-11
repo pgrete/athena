@@ -134,12 +134,9 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
   //new physics
+  pspec = NULL;
 #ifdef INCLUDE_CHEMISTRY
-  if (CHEMISTRY_ENABLED) {
-    pspec = new ChemSpecies(this, pin);
-  } else {
-    pspec = NULL;
-  }
+  pspec = new ChemSpecies(this, pin);
 #endif
   if (RADIATION_ENABLED) {
     prad = new Radiation(this, pin);
@@ -231,9 +228,7 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   peos = new EquationOfState(this, pin);
   //new physics
 #ifdef INCLUDE_CHEMISTRY
-  if (CHEMISTRY_ENABLED) {
-    pspec = new ChemSpecies(this, pin);
-  }
+  pspec = new ChemSpecies(this, pin);
 #endif
   if (RADIATION_ENABLED) {
     prad = new Radiation(this, pin);
@@ -266,11 +261,9 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   }
   // please add new physics here
 #ifdef INCLUDE_CHEMISTRY
-  if (CHEMISTRY_ENABLED) {
-    memcpy(pspec->s.data(), &(mbdata[os]),
-           pspec->s.GetSize()*sizeof(Real));
-    os += pspec->s.GetSize();
-  }
+  memcpy(pspec->s.data(), &(mbdata[os]),
+         pspec->s.GetSize()*sizeof(Real));
+  os += pspec->s.GetSize();
 #endif
   //TODO: note the order
   if (RADIATION_ENABLED) {
@@ -316,9 +309,7 @@ MeshBlock::~MeshBlock()
   delete peos;
   //new physics
 #ifdef INCLUDE_CHEMISTRY
-  if (CHEMISTRY_ENABLED) {
-    delete pspec;
-  }
+  delete pspec;
 #endif
   if (RADIATION_ENABLED) {
     delete prad;
@@ -387,9 +378,7 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
           +pfield->b.x3f.GetSizeInBytes());
   // please add the size counter here when new physics is introduced
 #ifdef INCLUDE_CHEMISTRY
-  if (CHEMISTRY_ENABLED) {
-    size+=pspec->s.GetSizeInBytes();
-  }
+  size+=pspec->s.GetSizeInBytes();
 #endif
   if (RADIATION_ENABLED){
     size+=prad->ir.GetSizeInBytes();

@@ -95,20 +95,18 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 
 	//intialize chemical species
 #ifdef INCLUDE_CHEMISTRY
-	if (CHEMISTRY_ENABLED) {
-      for (int k=ks; k<=ke; ++k) {
-        for (int j=js; j<=je; ++j) {
-          for (int i=is; i<=ie; ++i) {
-						for (int ispec=0; ispec < NSPECIES; ++ispec) {
-							pspec->s(ispec, k, j, i) = s_init;
-						}
-						//temperature
-							pspec->s(pspec->pchemnet->iE_, k, j, i) = 20. *
-								Thermo::CvCold(0., 0.1, 0.);
-          }
+  for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+      for (int i=is; i<=ie; ++i) {
+        for (int ispec=0; ispec < NSPECIES; ++ispec) {
+          pspec->s(ispec, k, j, i) = s_init;
         }
+        //temperature
+        pspec->s(pspec->pchemnet->iE_, k, j, i) = 20. *
+          Thermo::CvCold(0., 0.1, 0.);
       }
-	}
+    }
+  }
 #endif
 
   return;
