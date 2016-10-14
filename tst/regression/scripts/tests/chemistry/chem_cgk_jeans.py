@@ -14,10 +14,11 @@ def prepare():
   athena.configure('radiation', 'pp', 
       prob='read_vtk',
       chemistry='gow16', 
-      #cvode_path='/usr/local',
-      cvode_path='/home/munan/install',
-      cxx="icc",
-      ifov='1')
+      cvode_path='/usr/local',
+      cxx="g++"
+      #cvode_path='/home/munan/install',
+      #cxx="icc"
+      )
   athena.make()
 
 def run():
@@ -25,7 +26,7 @@ def run():
           'problem/G0=0.38',
           'time/tlim=3e14',
           'time/nlim=3',
-          'radiation/jeans_shielding_flag=1',
+          'radiation/integrator=jeans',
           'chemistry/isH2RVcooling=0',
           'problem/vtkfile=../data/chem_cgk_input.vtk',
           'mesh/nx1=16',

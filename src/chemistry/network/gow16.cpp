@@ -323,10 +323,9 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	temp_min_cool_ = pin->GetOrAddReal("chemistry", "temp_min_cool", 1.);
 	//minimum temperature for reaction rates
 	temp_min_rates_ = pin->GetOrAddReal("chemistry", "temp_min_rates", 1.);
-  //maximum temperature above which is set to be constant, used in cgk
-	//default:inf, not set
-	//Note: over-ride const_T_flag
-	temp_hot_cgk_ = pin->GetOrAddReal("chemistry", "temp_hot_cgk", inf);
+  //cap temperature when calculating rates 
+  //except for collisional dissociation reactions
+	temp_max_rates_ = pin->GetOrAddReal("chemistry", "temp_max_rates", inf);
 	//CO cooling parameters
 	//default: not use LVG approximation
 	isNCOeff_LVG_ = pin->GetOrAddInteger("chemistry", "isNCOeff_LVG", 0);
@@ -337,7 +336,7 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	gradnH_ = 0.;
 	NCO_ = 0.;
 	bCO_ = 0.;
-  s_lower_bound_ = -1.;
+  s_lower_bound_ = -100.;
 	
   //atomic abundance
   xC_ = zdg_ * xC_std_;
@@ -420,7 +419,10 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 
   //2body reactions
   for (int i=0; i<n_2body_; i++) {
-    rate =  k2body_[i] * yprev0[in2body1_[i]] * yprev0[in2body2_[i]];
+    rate =  k2body_[i] * yprev[in2body1_[i]] * yprev[in2body2_[i]];
+    if (yprev[in2body1_[i]] < 0 && yprev[in2body2_[i]] < 0) {
+      rate *= -1.;
+    }
     ydotg[in2body1_[i]] -= rate;
     ydotg[in2body2_[i]] -= rate;
     ydotg[out2body1_[i]] += rate;
@@ -619,20 +621,24 @@ Real ChemNetwork::CII_rec_rate_(const Real temp) {
 }
 
 void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
-  Real T;
+  Real T, Tcoll;
   //constant or evolve temperature
   if (is_const_temp_ != 0) {
     T = temperature_;
   } else {
     T = y[iE_] / Thermo::CvCold(y[iH2_], xHe_, y[ige_]);
   }
+  Tcoll = T;
 	//cap T above some minimum temperature
 	if (T < temp_min_rates_) {
 		T = temp_min_rates_;
-	} 
+    Tcoll = T;
+	} else if (T > temp_max_rates_) {
+    T = temp_max_rates_;
+  }
   const Real logT = log10(T);
-	const Real logT4 = log10(T/1.0e4);
-	const Real lnTe = log(T * 8.6173e-5);
+	const Real logT4coll = log10(Tcoll/1.0e4);
+	const Real lnTecoll = log(Tcoll * 8.6173e-5);
   Real ncr, n2ncr;
 	Real psi; //H+ grain recombination parameter
   Real kcr_H_fac;//ratio of total rate to primary rate
@@ -708,17 +714,17 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
 
   //Collisional dissociation, k>~1.0e-30 at T>~5e2.
   Real k9l, k9h, k10l, k10h, ncrH, ncrH2, div_ncr;
-  if (T > temp_coll_) {
+  if (Tcoll > temp_coll_) {
     //(15) H2 + *H -> 3 *H   
     //(16) H2 + H2 -> H2 + 2 *H
     // --(9) Density dependent. See Glover+MacLow2007
-  	k9l = 6.67e-12 * sqrt(T) * exp(-(1. + 63590./T)); 
-    k9h = 3.52e-9 * exp(-43900.0 / T);
-    k10l = 5.996e-30 * pow(T, 4.1881) / pow((1.0 + 6.761e-6 * T), 5.6881)  
-            * exp(-54657.4 / T);
-    k10h = 1.3e-9 * exp(-53300.0 / T); 
-    ncrH = pow(10, (3.0 - 0.416 * logT4 - 0.327 * logT4*logT4));
-    ncrH2 = pow(10, (4.845 - 1.3 * logT4 + 1.62 * logT4*logT4));
+  	k9l = 6.67e-12 * sqrt(Tcoll) * exp(-(1. + 63590./Tcoll)); 
+    k9h = 3.52e-9 * exp(-43900.0 / Tcoll);
+    k10l = 5.996e-30 * pow(Tcoll, 4.1881) / pow((1.0 + 6.761e-6 * Tcoll), 5.6881)  
+            * exp(-54657.4 / Tcoll);
+    k10h = 1.3e-9 * exp(-53300.0 / Tcoll); 
+    ncrH = pow(10, (3.0 - 0.416 * logT4coll - 0.327 * logT4coll*logT4coll));
+    ncrH2 = pow(10, (4.845 - 1.3 * logT4coll + 1.62 * logT4coll*logT4coll));
 		div_ncr = y[igH_]/ncrH + y[iH2_]/ncrH2;
 		if (div_ncr < small_) {
 			ncr = 1./ small_;
@@ -735,8 +741,8 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
                       (1.35365560e1 + (- 5.73932875 + (1.56315498 
                     + (- 2.877056e-1 + (3.48255977e-2 + (- 2.63197617e-3
                     + (1.11954395e-4 + (-2.03914985e-6)
-        *lnTe)*lnTe)*lnTe)*lnTe)*lnTe)*lnTe)*lnTe)*lnTe
-                     );
+        *lnTecoll)*lnTecoll)*lnTecoll)*lnTecoll)*lnTecoll)*lnTecoll)*lnTecoll)
+                      *lnTecoll);
   } else {
     k2body_[15] = 0.;
     k2body_[16] = 0.;

@@ -71,7 +71,7 @@ private:
 	Real temp_max_heat_; 
 	Real temp_min_cool_; 
 	Real temp_min_rates_; 
-	Real temp_hot_cgk_; 
+	Real temp_max_rates_; 
   int is_H2_rovib_cooling_;//whether to include H2 rovibrational cooling
 	//maximum temperature above which heating and cooling is turned off 
 	int is_const_temp_; //flag for constant temperature

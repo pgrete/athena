@@ -11,16 +11,6 @@ file_type  = vtk       # vtk data dump
 variable   = prim      # variables to be output
 dt         = 3.154e15      # time increment between outputs
 
-<output2>
-file_type  = rst       # restart data dump
-variable   = prim      # variables to be output
-dt         = 3.154e15      # time increment between outputs
-
-<output3>
-file_type  = vtk       # vtk data dump
-variable   = ifov      # variables to be output
-dt         = 3.154e15      # time increment between outputs
-
 <time>
 cfl_number = 0.3       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = 100        # cycle limit
@@ -66,9 +56,7 @@ G0         = 1   #radiation field strength
 #chemistry network parameters
 Zdg        = 1. #metallicity, dust and gas metallicity are the same. default = 1.
 CR         = 2e-16  #Cosmic-ray ionization rate per H
-#temperature of hot gas, above which T and abundance is constant
-temp_hot_cgk = 2.0e4
-temp_max_heat = 1.0e5 #temperature above which heating is turned off.
+temp_max_rates = 1.0e5 #cap temperature when calculating rates (except for collisional dissociation reactions) 
 #chemistry solver parameters
 reltol     = 1.0e-2  #relative tolerance, default 1.0e-2
 abstol     = 1.0e-15 #absolute tolerance, default 1.0e-12
@@ -88,6 +76,5 @@ unit_radiation_in_draine1987 = 1
 isH2RVcooling = 1
 
 <radiation>
-six_ray_flag = 0 #1 for using 6-ray
+integrator = const
 n_frequency  = 7 
-jeans_shielding_flag = 0
