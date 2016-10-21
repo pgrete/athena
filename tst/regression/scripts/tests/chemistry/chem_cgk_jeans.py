@@ -23,7 +23,7 @@ def prepare():
 
 def run():
   arguments = [ 
-          'problem/G0=0.38',
+          'problem/G0=1.0',
           'time/tlim=3e14',
           'time/nlim=3',
           'radiation/integrator=jeans',
@@ -47,7 +47,7 @@ def analyze():
     s = species[i]
     xs_ref = data_ref[s]
     xs_new = data_new[s]
-    err_all[i] = (abs(xs_ref - xs_new) / abs(xs_ref) ).max()
+    err_all[i] = (abs(xs_ref - xs_new) / (abs(xs_ref) + 1e-20) ).max()
   err_max = err_all.max()
   if err_max < err_control:
     return True
