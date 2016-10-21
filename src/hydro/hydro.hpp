@@ -32,7 +32,6 @@ public:
   AthenaArray<Real> u,w;      // conserved and primitive variables
   AthenaArray<Real> u1,w1;    // conserved and primitive variables at intermediate step
   AthenaArray<Real> flux[3];  // conserved and primitive variables
-  AthenaArray<Real> g, g_inv; // metric and its inverse
 
   HydroSourceTerms *psrc;
 
@@ -61,5 +60,7 @@ private:
   AthenaArray<Real> lambdas_m_r_;  // most negative wavespeeds in right state
   AthenaArray<Real> g_, gi_;       // metric and inverse, for some GR Riemann solvers
   AthenaArray<Real> cons_;         // conserved state, for some GR Riemann solvers
+
+  TimeStepFunc_t UserTimeStep_;
 };
 #endif // HYDRO_HPP
