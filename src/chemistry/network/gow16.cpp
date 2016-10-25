@@ -336,7 +336,6 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	gradnH_ = 0.;
 	NCO_ = 0.;
 	bCO_ = 0.;
-  s_lower_bound_ = -100.;
 	
   //atomic abundance
   xC_ = zdg_ * xC_std_;
@@ -391,7 +390,7 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
       yprev0[i] = yprev[i];
     }
     //throw error if nan, or inf, or large negative value occurs
-    if (isnan(yprev[i]) || isinf(yprev[i]) || yprev[i] < s_lower_bound_ ) {
+    if ( isnan(yprev[i]) || isinf(yprev[i]) ) {
       printf("RHS: ");
       for (int j=0; j<NSPECIES+ngs_; j++) {
         printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);

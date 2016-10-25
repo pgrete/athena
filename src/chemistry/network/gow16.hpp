@@ -66,7 +66,6 @@ private:
 	//units of density and radiation
 	Real unit_density_in_nH_;
 	Real unit_radiation_in_draine1987_;
-  Real s_lower_bound_;//abundance below which throw runtime error
 	Real temperature_;
 	Real temp_max_heat_; 
 	Real temp_min_cool_; 
