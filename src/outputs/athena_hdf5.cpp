@@ -108,6 +108,9 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
     num_datasets = 1;
     if (MAGNETIC_FIELDS_ENABLED)
       num_datasets += 1;
+#ifdef INCLUDE_CHEMISTRY
+    num_datasets += 1;
+#endif
     num_variables = new int[num_datasets];
     int n_dataset = 0;
     num_variables[n_dataset++] = NHYDRO;
@@ -118,6 +121,9 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
       if(output_params.cartesian_vector)
         num_variables[n_dataset-1] += 3;
     }
+#ifdef INCLUDE_CHEMISTRY
+    num_variables[n_dataset++] = NSPECIES;
+#endif 
   }
   else {
     num_datasets = 1;
@@ -136,6 +142,9 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
       std::strncpy(dataset_names[n_dataset++], "cons", max_name_length+1);
     if (MAGNETIC_FIELDS_ENABLED)
       std::strncpy(dataset_names[n_dataset++], "B", max_name_length+1);
+#ifdef INCLUDE_CHEMISTRY
+    std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
+#endif
   }
   else { // single data
     if(variable.compare(0,1,"B") == 0 && MAGNETIC_FIELDS_ENABLED)
