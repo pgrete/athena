@@ -565,16 +565,16 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
 
 #ifdef INCLUDE_CHEMISTRY
   //go over each species, and output as scaler fields
-  for (int ispec=0; ispec < NSPECIES; ispec++) {
-    if (output_params.variable.compare("s") == 0 || 
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
+  if (output_params.variable.compare("s") == 0 || 
+      output_params.variable.compare("prim") == 0 ||
+      output_params.variable.compare("cons") == 0) {
+    for (int ispec=0; ispec < NSPECIES; ispec++) {
       pod = new OutputData;
       pod->type = "SCALARS";
       pod->name = pspec->pchemnet->species_names[ispec];
       pod->data.InitWithShallowSlice(pspec->s,4,ispec,1);
       AppendOutputDataNode(pod);
-      num_vars_+=3;
+      num_vars_++;
     }
   }
 #endif
