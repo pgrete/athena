@@ -153,7 +153,7 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
     if(variable.compare(0,1,"B") == 0 && MAGNETIC_FIELDS_ENABLED)
       std::strncpy(dataset_names[n_dataset++], "B", max_name_length+1);
 #ifdef INCLUDE_CHEMISTRY
-    else if (variable.compare("s") == 0)
+    else if (variable.compare("s") == 0) 
       std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
 #endif
     else if(variable.compare(0,1,"uov") == 0
@@ -322,7 +322,7 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
             ndv=0;
           }
 #ifdef INCLUDE_CHEMISTRY
-          if (pod->name == pmb->pspec->pchemnet->species_names[0])
+          if(pod->name == pmb->pspec->pchemnet->species_names[0]) {
             n_dataset++;
             ndv=0;
           }
