@@ -33,6 +33,9 @@
 #include "../field/field.hpp"
 #include "../hydro/hydro.hpp"
 #include "outputs.hpp"
+#ifdef INCLUDE_CHEMISTRY
+#include "../chemistry/species.hpp"
+#endif
 
 // Only proceed if HDF5 output enabled
 #ifdef HDF5OUTPUT
@@ -149,6 +152,10 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
   else { // single data
     if(variable.compare(0,1,"B") == 0 && MAGNETIC_FIELDS_ENABLED)
       std::strncpy(dataset_names[n_dataset++], "B", max_name_length+1);
+#ifdef INCLUDE_CHEMISTRY
+    else if (variable.compare("s") == 0)
+      std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
+#endif
     else if(variable.compare(0,1,"uov") == 0
          || variable.compare(0,1,"user_out_var") == 0)
       std::strncpy(dataset_names[n_dataset++], "user_out_var", max_name_length+1);
@@ -314,6 +321,12 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
             n_dataset++;
             ndv=0;
           }
+#ifdef INCLUDE_CHEMISTRY
+          if (pod->name == pmb->pspec->pchemnet->species_names[0])
+            n_dataset++;
+            ndv=0;
+          }
+#endif
           int nv=1;
           if(pod->type=="VECTORS") nv=3;
           for (int v=0; v < nv; v++, ndv++) {
