@@ -1,29 +1,20 @@
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
+/////////////////////////////////// Athena++ Main Program \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+//! \file main.cpp
+//  \brief Athena++ main program
 //
-// This program is free software: you can redistribute and/or modify it under the terms
-// of the GNU General Public License (GPL) as published by the Free Software Foundation,
-// either version 3 of the License, or (at your option) any later version.
+// Based on the Athena MHD code (Cambridge version), originally written in 2002-2005 by
+// Jim Stone, Tom Gardiner, and Peter Teuben, with many important contributions by many
+// other developers after that, i.e. 2005-2014.
 //
-// This program is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-// PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-//
-// You should have received a copy of GNU GPL in the file LICENSE included in the code
-// distribution.  If not see <http://www.gnu.org/licenses/>.
-//======================================================================================
-/////////////////////////////////// Athena++ Main Program \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-//!   \file main.cpp
-//    \brief Athena++ main program file.
-//
-// Based on the Athena MHD code in C.  History:
-//   - 2003-2013: development of v1.0-v4.2 of Athena code in C
-//   - jan2014: start of Athena++ code project
-//   - apr-jul2014: hydro implemented during KITP workshop
-//   - oct2014: first Athena++ developer's meeting
-//   - sep2015: first paper published using Athena++ (hydro)
-//======================================================================================
+// Athena++ was started in Jan 2014.  The core design was finished during 4-7/2014 at the
+// KITP by Jim Stone.  GR was implemented by Chris White and AMR by Kengo Tomida during
+// 2014-2016.  Contributions from many others have continued to the present.
+//========================================================================================
 
 // C/C++ headers
 #include <stdint.h>   // int64_t
@@ -35,6 +26,7 @@
 #include <iostream>   // cout, endl
 #include <new>        // bad_alloc
 #include <string>     // string
+#include <csignal>
 
 // Athena++ headers
 #include "athena.hpp"
@@ -55,13 +47,13 @@
 #include <omp.h>
 #endif
 
-//--------------------------------------------------------------------------------------
-//!   \fn int main(int argc, char *argv[]) 
-//    \brief Athena++ main program
+//----------------------------------------------------------------------------------------
+//! \fn int main(int argc, char *argv[]) 
+//  \brief Athena++ main program
 
 int main(int argc, char *argv[])
 {
-  std::string athena_version = "version 0.1 - February 2014";
+  std::string athena_version = "version 1.0 - October 2016";
   char *input_filename=NULL, *restart_filename=NULL;
   char *prundir = NULL;
   int res_flag=0;   // set to 1 if -r        argument is on cmdline
@@ -72,7 +64,7 @@ int main(int argc, char *argv[])
   Real wtlim;
   int ncstart=0;
 
-//--- Step 1. --------------------------------------------------------------------------
+//--- Step 1. ----------------------------------------------------------------------------
 // Initialize MPI environment, if necessary
 
 #ifdef MPI_PARALLEL
@@ -100,7 +92,7 @@ int main(int argc, char *argv[])
   Globals::nranks  = 1;
 #endif /* MPI_PARALLEL */
 
-//--- Step 2. --------------------------------------------------------------------------
+//--- Step 2. ----------------------------------------------------------------------------
 // Check for command line options and respond.
 
   for (int i=1; i<argc; i++) {
@@ -175,7 +167,7 @@ int main(int argc, char *argv[])
   }
 
 // Note steps 3-6 are protected by a simple error handler
-//--- Step 3. --------------------------------------------------------------------------
+//--- Step 3. ----------------------------------------------------------------------------
 // Construct object to store input parameters, then parse input file and command line.
 // With MPI, the input is read by every process in parallel using MPI-IO.
 
@@ -225,7 +217,7 @@ int main(int argc, char *argv[])
     return(0);
   }
 
-//--- Step 4. --------------------------------------------------------------------------
+//--- Step 4. ----------------------------------------------------------------------------
 // Construct and initialize Mesh
 
   Mesh *pmesh;
@@ -265,7 +257,8 @@ int main(int argc, char *argv[])
     return(0);
   }
 
-/////////////////////////
+//--- Step 5. ----------------------------------------------------------------------------
+// Construct and initialize TaskList
 
   TaskList *ptlist;
   TaskList *pchemlist = NULL;
@@ -287,9 +280,8 @@ int main(int argc, char *argv[])
 #endif
     return(0);
   }
-////////////////////////
 
-//--- Step 5. --------------------------------------------------------------------------
+//--- Step 6. ----------------------------------------------------------------------------
 // Set initial conditions by calling problem generator, or reading restart file
 
   try {
@@ -311,11 +303,12 @@ int main(int argc, char *argv[])
     return(0);
   }
 
-//--- Step 6. --------------------------------------------------------------------------
+//--- Step 7. ----------------------------------------------------------------------------
 // Change to run directory, initialize outputs object, and make output of ICs
 
   Outputs *pouts;
   try {
+    SignalHandler::SignalHandlerInit();  // signal handler implemented in /utils
     ChangeRunDir(prundir);
     pouts = new Outputs(pmesh, pinput);
     if(res_flag==0) pouts->MakeOutputs(pmesh,pinput);
@@ -337,9 +330,8 @@ int main(int argc, char *argv[])
     return(0);
   }
 
-//--- Step 9. === START OF MAIN INTEGRATION LOOP =======================================
+//=== Step 9. === START OF MAIN INTEGRATION LOOP =========================================
 // For performance, there is no error handler protecting this step (except outputs)
-
 
   if(walltime_flag==1)
     WallTimeLimit::InitWTLimit();
@@ -417,7 +409,12 @@ int main(int argc, char *argv[])
       }
     }
 
-  } // END OF MAIN INTEGRATION LOOP ====================================================
+    // check for signals
+    if (SignalHandler::GetSignalFlag(SIGTERM) != 0) break;
+    if (SignalHandler::GetSignalFlag(SIGINT) != 0) break;
+
+  } // END OF MAIN INTEGRATION LOOP ======================================================
+// Make final outputs, print diagnostics, clean up and terminate
 
   pmesh->UserWorkAfterLoop(pinput);
 
@@ -448,7 +445,14 @@ int main(int argc, char *argv[])
   if(Globals::my_rank==0) {
     std::cout << "cycle=" << pmesh->ncycle << " time=" << pmesh->time
               << " dt=" << pmesh->dt << std::endl;
-    if (pmesh->ncycle == pmesh->nlim) {
+
+    if (SignalHandler::GetSignalFlag(SIGTERM) != 0) {
+      std::cout << std::endl << "Terminating on SIGTERM signal" << std::endl;
+
+    } else if (SignalHandler::GetSignalFlag(SIGINT) != 0) {
+      std::cout << std::endl << "Terminating on Interrupt signal" << std::endl;
+
+    } else if (pmesh->ncycle == pmesh->nlim) {
       if(walltime_flag==2)
         std::cout << std::endl << "Terminating on wall-time limit" << std::endl;
       else 
@@ -456,6 +460,7 @@ int main(int argc, char *argv[])
     } else {
       std::cout << std::endl << "Terminating on time limit" << std::endl;
     }
+
     std::cout << "time=" << pmesh->time << " cycle=" << pmesh->ncycle << std::endl;
     std::cout << "tlim=" << pmesh->tlim << " nlim=" << pmesh->nlim << std::endl;
 

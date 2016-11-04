@@ -1,30 +1,20 @@
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-//
-// This program is free software: you can redistribute and/or modify it under the terms
-// of the GNU General Public License (GPL) as published by the Free Software Foundation,
-// either version 3 of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-// PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-//
-// You should have received a copy of GNU GPL in the file LICENSE included in the code
-// distribution.  If not see <http://www.gnu.org/licenses/>.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 //! \file outputs.cpp
 //  \brief implements functions for Athena++ outputs
 //
 // The number and types of outputs are all controlled by the number and values of
-// parameters specified in <outputN> blocks in the input file.  Each output block must
-// be labelled by a unique integer "N".  Following the convention of the parser
-// implemented in the ParameterInput class, a second output block with the same integer
-// "N" of an earlier block will silently overwrite the values read by the first block.
-// The numbering of the output blocks does not need to be consecutive, and blocks may
-// appear in any order in the input file.  Moreover, unlike the C version of Athena, the
-// total number of <outputN> blocks does not need to be specified -- in Athena++ a new
-// output type will be created for each and every <outputN> block in the input file.
+// parameters specified in <outputN> blocks in the input file.  Each output block must be
+// labelled by a unique integer "N".  Following the convention of the parser implemented
+// in the ParameterInput class, a second output block with the same integer "N" of an
+// earlier block will silently overwrite the values read by the first block. The numbering
+// of the output blocks does not need to be consecutive, and blocks may appear in any
+// order in the input file.  Moreover, unlike the C version of Athena, the total number of
+// <outputN> blocks does not need to be specified -- in Athena++ a new output type will be
+// created for each and every <outputN> block in the input file.
 //
 // Required parameters that must be specified in an <outputN> block are:
 //   - variable     = cons,prim,D,d,E,e,m,v
@@ -55,7 +45,7 @@
 // To implement a new output type, write a new derived OutputType class, and construct
 // an object of this class in the Outputs constructor at the location indicated by the
 // text 'ADD NEW OUTPUT TYPES HERE'.
-//======================================================================================
+//========================================================================================
 
 // C/C++ headers
 #include <sstream>
@@ -81,7 +71,7 @@
 // this class header
 #include "outputs.hpp"
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // OutputType constructor
 
 OutputType::OutputType(OutputParameters oparams)
@@ -100,7 +90,7 @@ OutputType::~OutputType()
 {
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // Outputs constructor
 
 Outputs::Outputs(Mesh *pm, ParameterInput *pin)
@@ -309,7 +299,7 @@ Outputs::~Outputs()
   }
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void OutputType::LoadOutputData(MeshBlock *pmb)
 //  \brief Create linked list of OutputData's containing requested variables
 
@@ -591,7 +581,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
   return;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void OutputData::AppendOutputDataNode(OutputData *pod)
 //  \brief
 
@@ -606,7 +596,7 @@ void OutputType::AppendOutputDataNode(OutputData *pnew_data)
   plast_data_ = pnew_data;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void OutputData::ReplaceOutputDataNode()
 //  \brief
 
@@ -633,7 +623,7 @@ void OutputType::ReplaceOutputDataNode(OutputData *pold, OutputData *pnew)
   delete pold;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void OutputData::ClearOutputData()
 //  \brief
 
@@ -649,7 +639,7 @@ void OutputType::ClearOutputData()
   plast_data_  = NULL;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
 //  \brief scans through linked list of OutputTypes and makes any outputs needed.
 
@@ -671,7 +661,7 @@ void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
 
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void OutputType::TransformOutputData(MeshBlock *pmb)
 //  \brief Calls sum and slice functions on each direction in turn, in order to allow
 //  mulitple operations performed on the same data set
@@ -703,7 +693,7 @@ bool OutputType::TransformOutputData(MeshBlock *pmb)
   return flag;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn bool OutputType::SliceOutputData(MeshBlock *pmb, int dim)
 //  \brief perform data slicing and update the data list
 
@@ -812,7 +802,7 @@ bool OutputType::SliceOutputData(MeshBlock *pmb, int dim)
   return true;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void OutputType::SumOutputData(OutputData* pod, int dim)
 //  \brief perform data summation and update the data list
 
@@ -885,7 +875,7 @@ void OutputType::SumOutputData(MeshBlock* pmb, int dim)
 }
 
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void OutputType::CalculateCartesianVector(AthenaArray<Real> &src,
 //                                AthenaArray<Real> &dst, Coordinates *pco)
 //  \brief Convert vectors in curvilinear coordinates into Cartesian
@@ -948,4 +938,3 @@ void OutputType::CalculateCartesianVector(AthenaArray<Real> &src, AthenaArray<Re
   }
   return;
 }
-

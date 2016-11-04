@@ -1,18 +1,18 @@
 #ifndef MESH_HPP
 #define MESH_HPP
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-// See LICENSE file for full public license information.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 //! \file mesh.hpp
 //  \brief defines Mesh and MeshBlock classes, and various structs used in them
 //  The Mesh is the overall grid structure, and MeshBlocks are local patches of data
 //  (potentially on different levels) that tile the entire domain.
-//======================================================================================
 
 // C/C++ headers
 #include <stdint.h>  // int64_t
+#include <string>
 
 // Athena++ classes headers
 #include "../athena.hpp"
@@ -42,7 +42,7 @@ class Radiation;
 class ChemSpecies;
 #endif
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \struct NeighborBlock
 //  \brief neighbor rank, level, and ids
 
@@ -61,7 +61,7 @@ typedef struct NeighborBlock {
                    bool ipolar, int ifi1, int ifi2);
 } NeighborBlock;
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \struct PolarNeighborBlock
 //  \brief Struct for describing neighbors around pole at same radius and polar angle
 
@@ -72,7 +72,7 @@ typedef struct PolarNeighborBlock {
   bool north;  // flag that is true for North pole and false for South pole
 } PolarNeighborBlock;
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \struct RegionSize
 //  \brief physical size and number of cells in a Mesh
 
@@ -83,7 +83,7 @@ typedef struct RegionSize {
   int nx1, nx2, nx3;        // number of active cells (not including ghost zones)
 } RegionSize;
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \class MeshBlock
 //  \brief data/functions associated with a single block
 
@@ -165,15 +165,17 @@ private:
   // functions
   void AllocateRealUserMeshBlockDataField(int n);
   void AllocateIntUserMeshBlockDataField(int n);
+  void AllocateUserOutputVariables(int n);
   void ProblemGenerator(ParameterInput *pin); // in ../pgen
 };
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \class Mesh
 //  \brief data/functions associated with the overall mesh
 
 class Mesh {
   friend class RestartOutput;
+  friend class HistoryOutput;
   friend class MeshBlock;
   friend class BoundaryValues;
   friend class Coordinates;
@@ -234,12 +236,16 @@ private:
   bool user_meshgen_[3];
   int nreal_user_mesh_data_, nint_user_mesh_data_;
 
+  int nuser_history_output_;
+  std::string *user_history_output_names_;
+
   // functions
   MeshGenFunc_t MeshGenerator_[3];
   SrcTermFunc_t UserSourceTerm_;
   BValFunc_t BoundaryFunction_[6];
   AMRFlagFunc_t AMRFlag_;
   TimeStepFunc_t UserTimeStep_;
+  HistoryOutputFunc_t *user_history_func_;
   void AllocateRealUserMeshDataField(int n);
   void AllocateIntUserMeshDataField(int n);
   void OutputMeshStructure(int dim);
@@ -252,9 +258,11 @@ private:
   void EnrollUserMeshGenerator(enum CoordinateDirection dir, MeshGenFunc_t my_mg);
   void EnrollUserExplicitSourceFunction(SrcTermFunc_t my_func);
   void EnrollUserTimeStepFunction(TimeStepFunc_t my_func);
+  void AllocateUserHistoryOutput(int n);
+  void EnrollUserHistoryOutput(int i, HistoryOutputFunc_t my_func, char *name);
 };
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // \!fn Real DefaultMeshGeneratorX1(Real x, RegionSize rs)
 // \brief x1 mesh generator function, x is the logical location; x=i/nx1
 
@@ -272,7 +280,7 @@ inline Real DefaultMeshGeneratorX1(Real x, RegionSize rs)
   return rs.x1min*lw+rs.x1max*rw;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // \!fn Real DefaultMeshGeneratorX2(Real x, RegionSize rs)
 // \brief x2 mesh generator function, x is the logical location; x=j/nx2
 
@@ -290,7 +298,7 @@ inline Real DefaultMeshGeneratorX2(Real x, RegionSize rs)
   return rs.x2min*lw+rs.x2max*rw;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // \!fn Real DefaultMeshGeneratorX3(Real x, RegionSize rs)
 // \brief x3 mesh generator function, x is the logical location; x=k/nx3
 

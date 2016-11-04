@@ -1,18 +1,8 @@
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-//
-// This program is free software: you can redistribute and/or modify it under the terms
-// of the GNU General Public License (GPL) as published by the Free Software Foundation,
-// either version 3 of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-// PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-//
-// You should have received a copy of GNU GPL in the file LICENSE included in the code
-// distribution.  If not see <http://www.gnu.org/licenses/>.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 
 // C++ headers
 #include <cstdio>     // sprintf()
@@ -46,7 +36,7 @@
 #include <mpi.h>   // MPI_COMM_WORLD, MPI_INFO_NULL
 #endif
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // ATHDF5Output constructor
 // destructor - not needed for this derived class
 
@@ -55,7 +45,7 @@ ATHDF5Output::ATHDF5Output(OutputParameters oparams)
 {
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void ATHDF5Output:::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
 //  \brief Cycles over all MeshBlocks and writes OutputData in the Athena++ HDF5 format,
 //         one file per output using parallel IO.
@@ -104,6 +94,14 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
     active_flags[i]=true;
 
   // shooting a blank just for getting the variable names
+  out_is=pmb->is; out_ie=pmb->ie;
+  out_js=pmb->js; out_je=pmb->je;
+  out_ks=pmb->ks; out_ke=pmb->ke;
+  if (output_params.include_ghost_zones) {
+    out_is -= NGHOST; out_ie += NGHOST;
+    if (out_js != out_je) {out_js -= NGHOST; out_je += NGHOST;}
+    if (out_ks != out_ke) {out_ks -= NGHOST; out_ke += NGHOST;}
+  }
   LoadOutputData(pmb);
   // set num_datasets and num_variables
   // this must be expanded when new variables are introduced
@@ -697,7 +695,7 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
   pin->SetReal(output_params.block_name, "next_time", output_params.next_time);
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 
 // Function for writing auxiliary XDMF metadata file
 // Inputs: (none)
