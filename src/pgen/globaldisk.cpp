@@ -131,10 +131,10 @@ void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
 void MeshBlock::UserWorkInLoop(void)
 {
   if(RADIATION_ENABLED){
-  
+
     if(prad->set_source_flag > 0)
        prad->set_source_flag--;
-    
+
     int il=is, iu=ie, jl=js, ju=je, kl=ks, ku=ke;
     il -= NGHOST;
     iu += NGHOST;
@@ -147,46 +147,109 @@ void MeshBlock::UserWorkInLoop(void)
       ku += NGHOST;
     }
     Real gm1 = phydro->peos->GetGamma() - 1.0;
+
+    Real wi[(NWAVE)];
+    Real cfmax;
     
-     for (int k=kl; k<=ku; ++k){
+    
+    for (int k=kl; k<=ku; ++k){
       for (int j=jl; j<=ju; ++j){
        for (int i=il; i<=iu; ++i){
-         
+
           Real& vx=phydro->w(IVX,k,j,i);
           Real& vy=phydro->w(IVY,k,j,i);
           Real& vz=phydro->w(IVZ,k,j,i);
-         
-          Real& rho=phydro->w(IDN,k,j,i);
-         
-          Real vel = sqrt(vx*vx+vy*vy+vz*vz);
 
+          Real& rho=phydro->w(IDN,k,j,i);
+
+          Real vel = sqrt(vx*vx+vy*vy+vz*vz);
+          Real ke = 0.5 * rho * vel * vel;
+          int flag=0;
+
+          Real pb=0.0;
+
+          // case 1, check superlum velocity
           if(vel > prad->vmax * prad->crat){
             Real ratio = prad->vmax * prad->crat / vel;
             vx *= ratio;
             vy *= ratio;
             vz *= ratio;
-            
+
             phydro->u(IM1,k,j,i) = rho*vx;
             phydro->u(IM2,k,j,i) = rho*vy;
             phydro->u(IM3,k,j,i) = rho*vz;
 
-            Real ke = 0.5 * rho * (vx*vx+vy*vy+vz*vz);
+            ke = 0.5 * rho * (vx*vx+vy*vy+vz*vz);
+           
+            flag=1;
+          }
+         
+          // case 2, check fast speed too large
+          if(MAGNETIC_FIELDS_ENABLED){
+            wi[IDN]=rho;
+            wi[IVX]=vx;
+            wi[IVY]=vy;
+            wi[IVZ]=vz;
+
+            Real bx = pfield->bcc(IB1,k,j,i) +
+                      fabs(pfield->b.x1f(k,j,i)-pfield->bcc(IB1,k,j,i));
             
-            Real pb=0.0;
-            if(MAGNETIC_FIELDS_ENABLED){
-               pb = 0.5*(SQR(pfield->bcc(IB1,k,j,i))+SQR(pfield->bcc(IB2,k,j,i))
-                     +SQR(pfield->bcc(IB3,k,j,i)));
+            wi[IBY] = pfield->bcc(IB2,k,j,i);
+            wi[IBZ] = pfield->bcc(IB3,k,j,i);
+            Real cf = phydro->peos->FastMagnetosonicSpeed(wi,bx);
+            cfmax = (fabs(wi[IVX]) + cf);
+
+            bx = pfield->bcc(IB2,k,j,i) +
+                      fabs(pfield->b.x2f(k,j,i)-pfield->bcc(IB2,k,j,i));
+
+            wi[IBY] = pfield->bcc(IB3,k,j,i);
+            wi[IBZ] = pfield->bcc(IB1,k,j,i);
+            cf = phydro->peos->FastMagnetosonicSpeed(wi,bx);
+            cf = (fabs(wi[IVY]) + cf);
+
+            if(cf> cfmax) cfmax = cf;
+
+            bx = pfield->bcc(IB3,k,j,i) +
+                fabs(pfield->b.x3f(k,j,i)-pfield->bcc(IB3,k,j,i));
+
+            wi[IBY] = pfield->bcc(IB1,k,j,i);
+            wi[IBZ] = pfield->bcc(IB2,k,j,i);
+            cf = phydro->peos->FastMagnetosonicSpeed(wi,bx);
+            cf = (fabs(wi[IVZ]) + cf);
+               
+            if(cf> cfmax) cfmax = cf;
+            
+            Real ratio = cfmax/(prad->vmax * prad->crat);
+/*            if(ratio > 1.0){
+               ratio = ratio * ratio;
+               phydro->w(IDN,k,j,i) *= ratio;
+               phydro->u(IDN,k,j,i) *= ratio;
+
+               phydro->u(IM1,k,j,i) *= ratio;
+               phydro->u(IM2,k,j,i) *= ratio;
+               phydro->u(IM3,k,j,i) *= ratio;
+
+               ke *= ratio;
+              
+               flag=1;
+
             }
-            
-            Real  eint = phydro->w(IEN,k,j,i)/gm1;
-            
-            phydro->u(IEN,k,j,i) = eint + ke + pb;
+ */
+            pb = 0.5*(SQR(pfield->bcc(IB1,k,j,i))+SQR(pfield->bcc(IB2,k,j,i))
+                 +SQR(pfield->bcc(IB3,k,j,i)));
+          }
+
+          if(flag > 0){
+             // Only do this for bad cells
+             Real  eint = phydro->w(IEN,k,j,i)/gm1;
+             phydro->u(IEN,k,j,i) = eint + ke + pb;
 
           }
-  
+
       }}}
     }
   return;
+
 }
 
 
@@ -639,7 +702,7 @@ void Inflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
     for(int j=js; j<=je+1; ++j){
 #pragma simd
       for(int i=1; i<=NGHOST; ++i){
-        b.x2f(k,j,is-i) = b.x2f(k,j,is);
+        b.x2f(k,j,is-i) = 0.0*b.x2f(k,j,is);
       }
     }}
 
@@ -647,7 +710,7 @@ void Inflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
     for(int j=js; j<=je; ++j){
 #pragma simd
       for(int i=1; i<=NGHOST; ++i){
-        b.x3f(k,j,is-i) = b.x3f(k,j,is);
+        b.x3f(k,j,is-i) = 0.0*b.x3f(k,j,is);
       }
     }}
     

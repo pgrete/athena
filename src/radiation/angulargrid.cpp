@@ -174,13 +174,13 @@ void Radiation::AngularGrid(int angle_flag, int nmu)
       Gauleg(2*nmu, -1.0, 1.0, mutmp1d, wtmp1d);
       for(int i=nmu; i<2*nmu; ++i){
         wmu(i-nmu) = 0.5 * wtmp1d(i);
-        wmu(nmu) = 0.5 * wtmp1d(i);
+        wmu(i) = 0.5 * wtmp1d(i);
       }
       
       for(int n1=0; n1<n1z; ++n1){
         for(int i=nmu; i<2*nmu; ++i){
           mu(0,0,0,n1,i-nmu) = mutmp1d(i);
-          mu(0,0,0,n1,nmu) = -mutmp1d(i);
+          mu(0,0,0,n1,i) = -mutmp1d(i);
           
         }
       }

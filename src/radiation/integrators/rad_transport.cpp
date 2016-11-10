@@ -50,7 +50,7 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &w,
   
   int nang=pmy_rad->nang;
   int nfreq=pmy_rad->nfreq;
-  int invcrat=1.0/pmy_rad->crat;
+  Real invcrat=1.0/pmy_rad->crat;
   
   Real tau_fact;
   

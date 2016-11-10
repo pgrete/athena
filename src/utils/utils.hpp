@@ -35,7 +35,10 @@ void Tcompton(Real temperature, Real coef1, Real coef2, Real coef3, Real coef4,
 
 void Laguer(Real *coef, int m, Real &root);
 
+void wtime(double *t);
+
 int ExactPolynomial(const Real coef4, const Real coef, const Real tconst, Real &root);
+int FouthPolyRoot(const Real coef4, const Real tconst, Real &root);
 
 namespace WallTimeLimit {
   void InitWTLimit(void);

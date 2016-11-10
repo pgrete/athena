@@ -74,12 +74,12 @@ public:
   void AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
         AthenaArray<Real> &w, AthenaArray<Real> &ir, const int step);
 
-  void Absorption(const AthenaArray<Real> &wmu_cm,
-          const AthenaArray<Real> &tran_coef, Real *sigma_a,
-          Real *sigma_ae, Real dt, Real rho, Real &tgas,
+  void AbsorptionScattering(const AthenaArray<Real> &wmu_cm,
+          const AthenaArray<Real> &tran_coef, Real *sigma_a, Real *sigma_p,
+          Real *sigma_ae, Real *sigma_s, Real dt, Real rho, Real &tgas,
           AthenaArray<Real> &ir_cm);
   
-  void Scattering(const AthenaArray<Real> &wmu_cm,
+  void Compton(const AthenaArray<Real> &wmu_cm,
           const AthenaArray<Real> &tran_coef, Real *sigma_s,
           Real dt, Real rho, Real &tgas, AthenaArray<Real> &ir_cm);
   
@@ -114,6 +114,7 @@ private:
                                     // temporary 1D array with size of nang
   Real taufact_;
   int compton_flag_; // flag to add simple Compton scattering
+  int planck_flag_; // flag to add additional Planck absorption opacity
   AthenaArray<Real> x1face_area_, x2face_area_, x3face_area_;
   AthenaArray<Real> x2face_area_p1_, x3face_area_p1_;
   AthenaArray<Real> cell_volume_;

@@ -28,6 +28,64 @@ matplotlib.rc('font', family='serif', serif='cm10')
 matplotlib.rc('text', usetex=True)
 matplotlib.rcParams['text.latex.preamble'] = [r'\boldmath']
 
+
+# prepare function for polar map
+
+def setup_axes(fig, rect, theta, radius):
+ 
+    # PolarAxes.PolarTransform takes radian. However, we want our coordinate
+    # system in degree
+    tr = Affine2D() + PolarAxes.PolarTransform()
+ 
+    # Find grid values appropriate for the coordinate (degree).
+    # The argument is an approximate number of grids.
+    grid_locator1 = angle_helper.LocatorD(2)
+ 
+    # And also use an appropriate formatter:
+    tick_formatter1 = angle_helper.FormatterDMS()
+ 
+    # set up number of ticks for the r-axis
+    grid_locator2 = MaxNLocator(4)
+ 
+    # the extremes are passed to the function
+    grid_helper = floating_axes.GridHelperCurveLinear(tr,
+                                extremes=(theta[0], theta[1], radius[0], radius[1]),
+                                grid_locator1=grid_locator1,
+                                grid_locator2=grid_locator2,
+                                tick_formatter1=tick_formatter1,
+                                tick_formatter2=None,
+                                )
+ 
+    ax1 = floating_axes.FloatingSubplot(fig, rect, grid_helper=grid_helper)
+    fig.add_subplot(ax1)
+ 
+    # adjust axis
+    # the axis artist lets you call axis with
+    # "bottom", "top", "left", "right"
+    ax1.axis["left"].set_axis_direction("bottom")
+    ax1.axis["right"].set_axis_direction("top")
+ 
+    ax1.axis["bottom"].set_visible(False)
+    ax1.axis["top"].set_axis_direction("bottom")
+    ax1.axis["top"].toggle(ticklabels=True, label=True)
+    ax1.axis["top"].major_ticklabels.set_axis_direction("top")
+    ax1.axis["top"].label.set_axis_direction("top")
+ 
+    ax1.axis["left"].label.set_text("R")
+    ax1.axis["top"].label.set_text(ur"$\theta$")
+ 
+    # create a parasite axes
+    aux_ax = ax1.get_aux_axes(tr)
+ 
+    aux_ax.patch = ax1.patch # for aux_ax to have a clip path as in ax
+    ax1.patch.zorder=0.9 # but this has a side effect that the patch is
+                         # drawn twice, and possibly over some other
+                         # artists. So, we decrease the zorder a bit to
+                         # prevent this.
+ 
+    return ax1, aux_ax
+
+
 #Function to make line plot
 
 def PloTwoLines(xpos1, xpos2,var1, var2, xmin,xmax,xname,ymin, ymax, yname, outname, logflag):
@@ -89,56 +147,10 @@ vol = lambda x1m,x1p,x2m,x2p,x3m,x3p: 1.0/3.0 * (x1p**3-x1m**3) * abs(np.cos(x2m
 
 
 
-filename='disk.out1.00155.athdf'
+filename='disk.out1.00160.athdf'
 
+data=yt.load(filename)
 
-# first use python hdf5 reader to get basic information
-df=h5py.File(filename,'r')
-time=df.attrs[u'Time']
-maxlevel=df.attrs[u'MaxLevel']
-
-df.close()
-
-data=athdf(filename,quantities=['rho'],level=maxlevel,vol_func=vol)
-
-x1f=data['x1f']
-x2f=data['x2f']
-x3f=data['x3f']
-
-rho=data['rho']
-
-n1=x1f.size-1
-n2=x2f.size-1
-n3=x3f.size-1
-
-
-x1v=np.zeros(n1)
-x2v=np.zeros(n2)
-x3v=np.zeros(n3)
-
-# calculate cell centered coordinate in spherical polar
-for i in range(0,n1):
-  x1v[i] = 0.75*(np.power(x1f[i+1],4.0) - np.power(x1f[i],4.0))/(np.power(x1f[i+1],3.0) - np.power(x1f[i],3.0))
-
-for i in range(0,n2):
-  x2v[i] = 0.5*(x2f[i+1] + x2f[i])
-
-for i in range(0,n3):
-  x3v[i] = 0.5*(x3f[i+1] + x3f[i])
-
-logr=np.log10(x1v)
-#take slice
-
-rhoslice=rho[n3/2,:,:]
-
-rhomax=np.max(rhoslice)
-rhomin=np.min(rhoslice)
-
-xmin=np.min(logr)
-xmax=np.max(logr)
-
-ymin=np.min(x2v)
-ymax=np.max(x2v)
 
 filename='rhoslice.png'
 labelname='$\\rho/\\rho_0$'

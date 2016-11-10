@@ -26,7 +26,8 @@
 #include "../radiation.hpp"
 #include "../../coordinates/coordinates.hpp" //
 #include "../../hydro/hydro.hpp"
-
+#include "../../field/field.hpp"
+#include "../../hydro/eos/eos.hpp"
 
 // class header
 #include "rad_integrators.hpp"
@@ -51,10 +52,12 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
   
   Real& prat = prad->prat;
   Real invcrat = 1.0/prad->crat;
+  Real invredc = 1.0/prad->reduced_c;
+  Real invredfactor = invredc/invcrat;
   
   AthenaArray<Real> wmu_cm, tran_coef, ir_cm, cm_to_lab;
   
-  Real *sigma_at, *sigma_aer, *sigma_s;
+  Real *sigma_at, *sigma_aer, *sigma_s, *sigma_p;
   Real *lab_ir;
   
   int& nang =prad->nang;
@@ -131,6 +134,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
          sigma_at=&(prad->sigma_a(k,j,i,0));
          sigma_aer=&(prad->sigma_ae(k,j,i,0));
          sigma_s=&(prad->sigma_s(k,j,i,0));
+         sigma_p=&(prad->sigma_planck(k,j,i,0));
 
          // Prepare the transformation coefficients
          Real numsum = 0.0;
@@ -162,16 +166,16 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
            }
          }// End frequency
         
-         // Add absorption opacity source
-         Absorption(wmu_cm,tran_coef, sigma_at,sigma_aer, dt, rho, tgas, ir_cm);
+         // Add absorption and scattering opacity source
+         AbsorptionScattering(wmu_cm,tran_coef, sigma_at, sigma_p, sigma_aer,
+                              sigma_s, dt, rho, tgas, ir_cm);
         
-         // Add scattering opacity source
-         Scattering(wmu_cm,tran_coef, sigma_s, dt, rho, tgas, ir_cm);
-        
+         // Add compton scattering
+         if(compton_flag_ > 0)
+           Compton(wmu_cm,tran_coef, sigma_s, dt, rho, tgas, ir_cm);
        
         //After all the source terms are applied
         // Calculate energy and momentum source terms
-
         
         // first, calculate Er and Fr in lab frame before the step
         Real er0 = 0.0;
@@ -231,10 +235,10 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
         
         // Now apply the radiation source terms to gas with energy and
         // momentum conservation
-        u(IM1,k,j,i) += (-prat*(frx- frx0) * invcrat);
-        u(IM2,k,j,i) += (-prat*(fry- fry0) * invcrat);
-        u(IM3,k,j,i) += (-prat*(frz- frz0) * invcrat);
-        u(IEN,k,j,i) += (-prat*(er - er0 ));
+        u(IM1,k,j,i) += (-prat*(frx- frx0) * invredc);
+        u(IM2,k,j,i) += (-prat*(fry- fry0) * invredc);
+        u(IM3,k,j,i) += (-prat*(frz- frz0) * invredc);
+        u(IEN,k,j,i) += (-prat*(er - er0 ) * invredfactor);
         
         //limit the velocity by speed of light
         vx = u(IM1,k,j,i)/u(IDN,k,j,i);
@@ -250,6 +254,31 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
           u(IM3,k,j,i) *= factor;
         
         }
+        
+        // check internal energy
+        Real ekin=0.5 * (u(IM1,k,j,i) * u(IM1,k,j,i)
+                       + u(IM2,k,j,i) * u(IM2,k,j,i)
+                       + u(IM3,k,j,i) * u(IM3,k,j,i))/u(IDN,k,j,i);
+        Real pb=0.0;
+        if(MAGNETIC_FIELDS_ENABLED){
+          if(step==1){
+            const Real& bcc1 = pmb->pfield->bcc1(IB1,k,j,i);
+            const Real& bcc2 = pmb->pfield->bcc1(IB2,k,j,i);
+            const Real& bcc3 = pmb->pfield->bcc1(IB3,k,j,i);
+            pb=0.5*(SQR(bcc1) + SQR(bcc2) + SQR(bcc3));
+          }else{
+            const Real& bcc1 = pmb->pfield->bcc(IB1,k,j,i);
+            const Real& bcc2 = pmb->pfield->bcc(IB2,k,j,i);
+            const Real& bcc3 = pmb->pfield->bcc(IB3,k,j,i);
+            pb=0.5*(SQR(bcc1) + SQR(bcc2) + SQR(bcc3));
+          }
+        }
+        Real eint=u(IEN,k,j,i) - pb - ekin;
+//        if(eint < 0.0){
+//          Real gm1 = pmb->phydro->peos->GetGamma() - 1.0;
+//          eint = u(IDN,k,j,i) * tgas /gm1;
+//          u(IEN,k,j,i) = eint  + pb + ekin;
+//        }
         
        }//source flag
         

@@ -123,6 +123,7 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   sigma_s.NewAthenaArray(n3z,n2z,n1z,nfreq);
   sigma_a.NewAthenaArray(n3z,n2z,n1z,nfreq);
   sigma_ae.NewAthenaArray(n3z,n2z,n1z,nfreq);
+  sigma_planck.NewAthenaArray(n3z,n2z,n1z,nfreq);
   
   grey_sigma.NewAthenaArray(2,n3z,n2z,n1z);
   
@@ -169,6 +170,7 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
     fprintf(pfile,"Vmax          %4.2e \n",vmax);
     fprintf(pfile,"Tunit         %4.2e \n",tunit);
     fprintf(pfile,"Compt         %d  \n",pradintegrator->compton_flag_);
+    fprintf(pfile,"Planck        %d  \n",pradintegrator->planck_flag_);
     fprintf(pfile,"Tfloor        %4.2e \n",t_floor_);
     fprintf(pfile,"rotate_theta  %d  \n",rotate_theta);
     fprintf(pfile,"rotate_phi    %d  \n",rotate_phi);
@@ -198,6 +200,7 @@ Radiation::~Radiation()
   sigma_s.DeleteAthenaArray();
   sigma_a.DeleteAthenaArray();
   sigma_ae.DeleteAthenaArray();
+  sigma_planck.DeleteAthenaArray();
   grey_sigma.DeleteAthenaArray();
   
   if(NRADFOV > 0)

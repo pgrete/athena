@@ -43,9 +43,9 @@
 static Real kappaes = 5.04655e5;
 static Real kappaffp = 1.18573e4;
 static Real kappaffr = 320.469;
-static Real rho0 = 10.0; // Density normalization of torus
+static Real rho0 = 50.0; // Density normalization of torus
 static Real inib0 = 1.0; // initial magnetic field strength
-static Real r0 = 25.0; // Center of initial torus
+static Real r0 = 40.0; // Center of initial torus
 static Real tfloor; // temperature floor
 static Real rhofloor; // density floor
 static int bconf = 0; // bconf=1: pure B_phi
@@ -699,38 +699,44 @@ void DiskOpacity(MeshBlock *pmb, AthenaArray<Real> &prim)
     Real kappa;
     Real kappas = 0.2 * (1.0 + 0.6);
     
+
+    Real kappa_t1_rho1=opacitytable(nt1,nrhot1);
+    Real kappa_t1_rho2=opacitytable(nt1,nrhot2);
+    Real kappa_t2_rho1=opacitytable(nt2,nrhot1);
+    Real kappa_t2_rho2=opacitytable(nt2,nrhot2);
+
+    Real rho_1 = logrhottable(nrhot1);
+    Real rho_2 = logrhottable(nrhot2);
+    Real t_1 = logttable(nt1);
+    Real t_2 = logttable(nt2);
+
+    
     if(nrhot1 == nrhot2){
       if(nt1 == nt2){
-        kappa = opacitytable(nt1,nrhot1);
+        kappa = kappa_t1_rho1;
       }else{
-        kappa = opacitytable(nt1,nrhot1) + (opacitytable(nt2,nrhot1)
-              - opacitytable(nt1,nrhot1)) * (logt - logttable(nt1))/(logttable(nt2)
-              - logttable(nt1));
+        kappa = kappa_t1_rho1 + (kappa_t2_rho1 - kappa_t1_rho1) *
+                                (logt - t_1)/(t_2 - t_1);
       }/* end same T*/
     }else{
       if(nt1 == nt2){
-        kappa = opacitytable(nt1,nrhot1) + (opacitytable(nt1,nrhot2)
-              - opacitytable(nt1,nrhot1)) * (logrhot
-              - logrhottable(nrhot1))/(logrhottable(nrhot2) - logrhottable(nrhot1));
+        kappa = kappa_t1_rho1 + (kappa_t1_rho2 - kappa_t1_rho1) *
+                                (logrhot - rho_1)/(rho_2 - rho_1);
       }else{
-        kappa = opacitytable(nt1,nrhot1) * (logttable(nt2) - logt) *
-                  (logrhottable(nrhot2)
-                - logrhot)/((logttable(nt2) - logttable(nt1)) * (logrhottable(nrhot2)
-                - logrhottable(nrhot1))) + opacitytable(nt2,nrhot1) * (logt
-                - logttable(nt1)) * (logrhottable(nrhot2) - logrhot)/((logttable(nt2)
-                - logttable(nt1)) * (logrhottable(nrhot2) - logrhottable(nrhot1)))
-                + opacitytable(nt1,nrhot2) * (logttable(nt2) - logt) * (logrhot
-                - logrhottable(nrhot1))/((logttable(nt2) - logttable(nt1))
-                * (logrhottable(nrhot2) - logrhottable(nrhot1)))
-                + opacitytable(nt2,nrhot2) * (logt - logttable(nt1)) * (logrhot
-                - logrhottable(nrhot1))/((logttable(nt2)
-                - logttable(nt1)) * (logrhottable(nrhot2) - logrhottable(nrhot1)));
+        kappa = kappa_t1_rho1 * (t_2 - logt) * (rho_2 - logrhot)/
+                                ((t_2 - t_1) * (rho_2 - rho_1))
+              + kappa_t2_rho1 * (logt - t_1) * (rho_2 - logrhot)/
+                                ((t_2 - t_1) * (rho_2 - rho_1))
+              + kappa_t1_rho2 * (t_2 - logt) * (logrhot - rho_1)/
+                                ((t_2 - t_1) * (rho_2 - rho_1))
+              + kappa_t2_rho2 * (logt - t_1) * (logrhot - rho_1)/
+                                ((t_2 - t_1) * (rho_2 - rho_1));
       }
     }/* end same rhoT */
   
     if(kappa < kappas){
-      kappas = kappa;
-      kappa = 0.0;
+      kappas = 0.0;
+//      kappa = 0.0;
     }else{
       kappa -= kappas;
     }
@@ -778,7 +784,7 @@ void Inflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
     for(int j=js; j<=je+1; ++j){
 #pragma simd
       for(int i=1; i<=NGHOST; ++i){
-        b.x2f(k,j,is-i) = b.x2f(k,j,is);
+        b.x2f(k,j,is-i) = 0.0 * b.x2f(k,j,is);
       }
     }}
 
@@ -786,7 +792,7 @@ void Inflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
     for(int j=js; j<=je; ++j){
 #pragma simd
       for(int i=1; i<=NGHOST; ++i){
-        b.x3f(k,j,is-i) = b.x3f(k,j,is);
+        b.x3f(k,j,is-i) = 0.0 * b.x3f(k,j,is);
       }
     }}
     

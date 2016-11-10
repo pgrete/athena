@@ -36,6 +36,7 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
       // factor to separate the diffusion and advection part
   taufact_ = pin->GetOrAddInteger("radiation","taucell",5);
   compton_flag_=pin->GetOrAddInteger("radiation","Compton",0);
+  planck_flag_=pin->GetOrAddInteger("radiation","Planck",0);
 
 
   int nthreads = prad->pmy_block->pmy_mesh->GetNumMeshThreads();

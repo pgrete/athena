@@ -323,7 +323,9 @@ int main(int argc, char *argv[])
     std::cout<<std::endl<<"Setup complete, entering main loop..."<<std::endl<<std::endl;
   }
 
-  clock_t tstart = clock();
+//  clock_t tstart = clock();
+  double tstart;
+  wtime(&tstart);
 #ifdef OPENMP_PARALLEL
   double omp_start_time = omp_get_wtime();
 #endif
@@ -368,7 +370,9 @@ int main(int argc, char *argv[])
     // check the wall time limit
     if(walltime_flag==1) {
       if(Globals::my_rank==0) {
-        clock_t tnow = clock();
+//        clock_t tnow = clock();
+        double tnow;
+        wtime(&tnow);
         Real wtnow = (Real)(tnow-tstart)/(Real)CLOCKS_PER_SEC;
         if(wtnow > wtlim && (pmesh->nlim-pmesh->ncycle>2 || pmesh->nlim<0)
                          && (pmesh->tlim-pmesh->time>3.0*pmesh->dt)) {
@@ -429,7 +433,9 @@ int main(int argc, char *argv[])
 #ifdef OPENMP_PARALLEL
     double omp_time = omp_get_wtime() - omp_start_time;;
 #endif
-    clock_t tstop = clock();
+//    clock_t tstop = clock();
+    double tstop;
+    wtime(&tstop);
     float cpu_time = (tstop>tstart ? (float)(tstop-tstart) : 1.0)/(float)CLOCKS_PER_SEC;
     int64_t zones = pmesh->GetTotalCells();
     float zc_cpus = (float)(zones*(pmesh->ncycle-ncstart))/cpu_time;
