@@ -94,16 +94,14 @@ void HistoryOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
     }}
     for(int n=0; n<pm->nuser_history_output_; n++) { // user-defined history outputs
       if(pm->user_history_func_[n]!=NULL)
-        data_sum[NHISTORY_VARS+n] += pm->user_history_func_[n](pmb);
+        data_sum[NHISTORY_VARS+n] += pm->user_history_func_[n](pmb, n);
     }
     pmb=pmb->next;
   }  // end loop over MeshBlocks
 
-  #ifdef MPI_PARALLEL
+#ifdef MPI_PARALLEL
   // sum over all ranks
   if (Globals::my_rank == 0) {
-    for (int n=0; n<nhistory_output; ++n)
-      std::cout << n << " " << data_sum[n] << std::endl;;
     MPI_Reduce(MPI_IN_PLACE, data_sum, nhistory_output, MPI_ATHENA_REAL, MPI_SUM, 0,
                MPI_COMM_WORLD);
   } else {
