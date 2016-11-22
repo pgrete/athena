@@ -41,8 +41,8 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/reconstruct/*.cpp) \
 	     $(wildcard src/task_list/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
-       $(wildcard src/radiation/$(RADIATION_FILE)) \
-       $(wildcard src/radiation/integrators/*.cpp) \
+       $(wildcard src/radiation/*.cpp) \
+       $(wildcard src/radiation/integrators/$(RADIATION_FILE)) \
 	     src/pgen/$(PROBLEM_FILE) \
 	     src/pgen/default_pgen.cpp
 OBJ_DIR := obj/

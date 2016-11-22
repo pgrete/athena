@@ -11,9 +11,10 @@ sys.path.insert(0, '../../vis/python')         # insert path to Python read scri
 import athena_read                             # utilities for reading Athena++ data
 
 def prepare():
-  athena.configure('radiation', 'pp', 
+  athena.configure('pp', 
       prob='uniform_chem',
       chemistry='gow16', 
+      radiation='const',
       cvode_path='/usr/local',
       cxx = 'g++'
 #      cvode_path='/home/munan/install',

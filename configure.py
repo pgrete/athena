@@ -28,7 +28,7 @@
 #   -omp              enable parallelization with OpenMP
 #   -hdf5             enable HDF5 output (requires the HDF5 library)
 #   --hdf5_path=path  path to HDF5 libraries (requires the HDF5 library)
-#   -radiation        enable radiative transfer
+#   --radiation=choice  enable radiative transfer, use choice for integrator
 #---------------------------------------------------------------------------------------
 
 # Modules
@@ -117,6 +117,12 @@ parser.add_argument('--chemistry',
     choices=["gow16", "gow16_ng"],
     help='select chemical network')
 
+# -radiation argument
+parser.add_argument('--radiation',
+    default=None,
+    choices=["const", "loc_jeans"],
+    help='enable and select radiation radiative transfer method')
+
 # --cvode_path argument
 parser.add_argument('--cvode_path',
     type=str,
@@ -170,12 +176,6 @@ parser.add_argument('--hdf5_path',
     type=str,
     default='',
     help='path to HDF5 libraries')
-
-# -radiation argument
-parser.add_argument('-radiation',
-    action='store_true',
-    default=False,
-    help='enable radiative transfer')
 
 # Parse command-line inputs
 args = vars(parser.parse_args())
@@ -292,14 +292,6 @@ if args['pp']:
 else:
   definitions['POST_PROCESSING_ENABLED'] = '0'
 
-# -radiation argument
-if args['radiation']:
-  definitions['RADIATION_ENABLED'] = '1'
-  makefile_options['RADIATION_FILE'] = '*.cpp'
-else:
-  definitions['RADIATION_ENABLED'] = '0'
-  makefile_options['RADIATION_FILE'] = '*.cpp'
-
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
   definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'g++'
@@ -363,6 +355,17 @@ else:
   makefile_options['CHEMNET_FILE'] = ''
   makefile_options['CHEMISTRY_FILE'] = ''
   definitions['CHEMNETWORK_HEADER'] = 'network/network.hpp'
+
+# -radiation argument
+if args['radiation'] != None:
+  definitions['RADIATION_ENABLED'] = '1'
+  makefile_options['RADIATION_FILE'] = args['radiation']+'.cpp'
+  definitions['RADIATION_INTEGRATOR'] = args['radiation']
+else:
+  definitions['RADIATION_ENABLED'] = '0'
+  makefile_options['RADIATION_FILE'] = 'const.cpp'
+  definitions['RADIATION_INTEGRATOR'] = 'none'
+
 
 # -debug argument
 if args['debug']:
@@ -476,6 +479,8 @@ print('  Special relativity:      ' + ('ON' if args['s'] else 'OFF'))
 print('  General relativity:      ' + ('ON' if args['g'] else 'OFF'))
 print('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF'))
 print('  Chemistry:               ' + (args['chemistry'] if  args['chemistry'] \
+        !=  None else 'OFF'))
+print('  Radiation:               ' + (args['radiation'] if  args['radiation'] \
         !=  None else 'OFF'))
 print('  Post processing:         ' + ('ON' if args['pp'] else 'OFF'))
 print('  Compiler and flags:      ' + makefile_options['COMPILER_CHOICE'] + ' ' \

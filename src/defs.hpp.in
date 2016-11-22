@@ -67,6 +67,9 @@
 // ChemNetwork class header file included in species.hpp
 #define CHEMNETWORK_HEADER "@CHEMNETWORK_HEADER@"
 
+// Radiation integrator method, used in constructing radiation tasklist
+#define RADIATION_INTEGRATOR "@RADIATION_INTEGRATOR@"
+
 // number of species
 #define NSPECIES  @NUM_SPECIES@
 

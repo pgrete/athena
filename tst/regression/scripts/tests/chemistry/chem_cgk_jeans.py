@@ -11,9 +11,10 @@ sys.path.insert(0, '../../vis/python')         # insert path to Python read scri
 import athena_read                             # utilities for reading Athena++ data
 
 def prepare():
-  athena.configure('radiation', 'pp', 
+  athena.configure('pp', 
       prob='read_vtk',
       chemistry='gow16', 
+      radiation='loc_jeans',
       cvode_path='/usr/local',
       cxx="g++"
       #cvode_path='/home/munan/install',
@@ -26,7 +27,6 @@ def run():
           'problem/G0=1.0',
           'time/tlim=3e14',
           'time/nlim=3',
-          'radiation/integrator=jeans',
           'chemistry/isH2RVcooling=0',
           'problem/vtkfile=../data/chem_cgk_input.vtk',
           'mesh/nx1=16',

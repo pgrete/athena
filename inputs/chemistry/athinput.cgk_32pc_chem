@@ -76,5 +76,4 @@ unit_radiation_in_draine1987 = 1
 isH2RVcooling = 1
 
 <radiation>
-integrator = const
 n_frequency  = 7 

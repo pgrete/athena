@@ -92,6 +92,5 @@ stldet     = 0       #stability limit detection. Default 0/false.
 
 
 <radiation>
-integrator = const
 n_frequency  = 7
 

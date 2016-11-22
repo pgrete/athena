@@ -10,6 +10,7 @@
 //======================================================================================
 
 // Athena++ classes headers
+#include "../defs.hpp"
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../parameter_input.hpp"

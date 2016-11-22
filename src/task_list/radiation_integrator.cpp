@@ -26,7 +26,9 @@
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../mesh/mesh.hpp"
+#include "../defs.hpp"
 #include "../radiation/integrators/rad_integrators.hpp"
+
 
 // this class header
 #include "task_list.hpp"
@@ -37,17 +39,16 @@ RadiationIntegratorTaskList::RadiationIntegratorTaskList(ParameterInput *pin, Me
   : TaskList(pm)
 {
   nsub_steps = 1;
-  integrator = pin->GetString("radiation","integrator");
+  integrator = RADIATION_INTEGRATOR;
   // Now assemble list of tasks for each step of chemistry integrator
   {using namespace RadiationIntegratorTaskNames;
-    if (integrator == "jeans") {
+    if (integrator == "loc_jeans") {
       AddRadiationIntegratorTask(INT_LOC_JEANS,NONE);
     } else if (integrator == "six_ray") {
       //add six ray
     } else if (integrator == "const") {
       //do nothing, radiation field constant, remain initial value
       AddRadiationIntegratorTask(INT_CONST,NONE);
-    } else if (integrator == "six_ray") {
     } else {
       std::stringstream msg;
       msg << "### FATAL ERROR in Radiation task list" << std::endl
@@ -95,7 +96,7 @@ enum TaskStatus RadiationIntegratorTaskList::LocalIntegratorJeans(MeshBlock *pmb
                                                                  int step)
 {
 #ifdef INCLUDE_CHEMISTRY
-  pmb->prad->pradintegrator->UpdateRadJeans();
+  pmb->prad->pradintegrator->UpdateRadiation();
 #endif
   return TASK_SUCCESS;
 }

@@ -13,8 +13,8 @@
 // You should have received a copy of GNU GPL in the file LICENSE included in the code
 // distribution.  If not see <http://www.gnu.org/licenses/>.
 //======================================================================================
-//! \file rad_integrators.cpp
-//  \brief implementation of radiation integrators
+//! \file loc_jeans.cpp
+//  \brief implementation of radiation integrators: local jeans shielding
 //======================================================================================
 
 //c++ headers
@@ -29,12 +29,19 @@
 #include "../../hydro/hydro.hpp"
 #include "../../eos/eos.hpp"
 #include "../radiation.hpp"
-#include "rad_integrators.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../../chemistry/species.hpp"
 #include "../../chemistry/shielding.hpp"
 #include "../../chemistry/thermo.hpp"
 #endif
+
+// Class header
+#include "rad_integrators.hpp"
+
+static Real GetLJ(Real cs, Real dens) {
+  const Real G = 6.67259e-8;//gravitational constant in cgs
+  return cs * sqrt( PI / (G * dens)  );
+}
 
 RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 {
@@ -46,7 +53,7 @@ RadIntegrator::~RadIntegrator() {}
 
 
 #ifdef INCLUDE_CHEMISTRY
-void RadIntegrator::UpdateRadJeans() {
+void RadIntegrator::UpdateRadiation() {
   const Real Tceiling = 40.; //temperature ceiling in Kelvin
   const Real Tfloor = 1.; //temperature floor in Kelvin
   const Real bH2 = 3.0e5; //H2 velocity dispersion
@@ -150,7 +157,3 @@ void RadIntegrator::UpdateRadJeans() {
 }
 #endif
 
-Real RadIntegrator::GetLJ(Real cs, Real dens) {
-  const Real G = 6.67259e-8;//gravitational constant in cgs
-  return cs * sqrt( PI / (G * dens)  );
-}

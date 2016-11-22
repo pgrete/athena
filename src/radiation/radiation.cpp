@@ -25,20 +25,20 @@
 
 // Athena++ headers
 #include "radiation.hpp"
-#include "integrators/rad_integrators.hpp"
 #include "../mesh/mesh.hpp"
+#include "integrators/rad_integrators.hpp"
 
 Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
 {
   // read in the parameters
-  integrator = pin->GetString("radiation","integrator");
+  integrator = RADIATION_INTEGRATOR;
 	nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
   
   pmy_block = pmb;
   
 	if (integrator == "six_ray") {
 		nang = 6;
-	} else if (integrator == "jeans" or integrator == "const") {
+	} else if (integrator == "loc_jeans" or integrator == "const") {
 		nang = 1;
 	} else {
     std::stringstream msg;
