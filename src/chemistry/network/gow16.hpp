@@ -105,6 +105,11 @@ private:
 	static const int igHe_;
 	static const int ige_;
 	static const int igH_;
+  //species needed for calculating shielding
+  static const int n_cols_ = 3;
+  static const int iAV_ = 0;
+  static const int iNH2_ = 1;
+  static const int iNCO_ = 2;
 	//-------------------chemical network---------------------
 	//number of different reactions
 	//cosmic ray reactions
@@ -173,7 +178,6 @@ private:
 	Real GH2diss_;
 	Real GHIion_;
 	//parameters related to CO cooling
-  AthenaArray<Real> colCO_;  //CO column density.
 	int isNCOeff_LVG_; 
 	//these are needed for LVG approximation
 	Real gradv_; //abosolute value of velocity gradient in cgs, >0

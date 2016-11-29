@@ -23,7 +23,7 @@ public:
   ~Radiation();
 
   MeshBlock* pmy_block;    // ptr to MeshBlock containing this Fluid
-  RadIntegrator *pradintegrator; //ptr to radiation integrator
+  RadIntegrator* pradintegrator; //ptr to radiation integrator
   std::string integrator;
 
   AthenaArray<Real> ir; // radiation specific intensity

@@ -13,6 +13,9 @@
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
 #include "../radiation.hpp" // radiation
+#ifdef INCLUDE_CHEMISTRY
+#include "../../chemistry/species.hpp"
+#endif
 
 class MeshBlock;
 class ParameterInput;
@@ -31,7 +34,13 @@ public:
   Radiation *pmy_rad;
 
 #ifdef INCLUDE_CHEMISTRY
-  //update radiation assuming Jean's shielding
+  AthenaArray<Real> col_tot;
+  AthenaArray<Real> col_mb;
+  int n_cols_ang; 
+  ChemNetwork* pmy_chemnet;
+  //calcuate column within each meshblock
+  void GetColMB();
+  //calcuate total column and update radiation
   void UpdateRadiation();
 #endif
 private:

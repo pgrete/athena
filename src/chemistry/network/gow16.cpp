@@ -28,6 +28,7 @@
 #include "../../mesh/mesh.hpp"
 #include "../../hydro/hydro.hpp"
 #include "../../radiation/radiation.hpp"
+#include "../../radiation/integrators/rad_integrators.hpp"
 #include "../../utils/cgk_utils.hpp"
 #include "../thermo.hpp"
 
@@ -288,12 +289,6 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
       << " not equal to that in chemistry: " << n_freq_  << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
-	//array for storying CO column for CO cooling
-  int ncells1 = pmy_mb_->block_size.nx1 + 2*(NGHOST);
-  int ncells2 = 1, ncells3 = 1;
-  if (pmy_mb_->block_size.nx2 > 1) ncells2 = pmy_mb_->block_size.nx2 + 2*(NGHOST);
-  if (pmy_mb_->block_size.nx3 > 1) ncells3 = pmy_mb_->block_size.nx3 + 2*(NGHOST);
-  colCO_.NewAthenaArray(ncells3, ncells2, ncells1);
 
 	//set the parameters from input file
 	zdg_ = pin->GetOrAddReal("chemistry", "Zdg", 1.);//dust and gas metallicity
@@ -365,9 +360,7 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 
 }
 
-ChemNetwork::~ChemNetwork() {
-  colCO_.DeleteAthenaArray();
-}
+ChemNetwork::~ChemNetwork() {}
 
 void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES]) {
 	Real rate;
@@ -529,7 +522,7 @@ void ChemNetwork::Jacobian(const Real t,
 }
 
 void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
-  Real rad_sum, temp;
+  Real rad_sum, temp, NCO_sum;
   int nang = pmy_mb_->prad->nang;
   //density
   nH_ = pmy_mb_->phydro->u(IDN, k, j, i) / unit_density_in_nH_;
@@ -549,7 +542,11 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
 #endif
   }
   //CO cooling paramters
-  NCO_ = colCO_(k, j, i);
+  NCO_sum = 0;
+  for (int iang=0; iang < nang; ++iang) {
+      NCO_sum += pmy_mb_->prad->pradintegrator->col_tot(k, j, i, iNCO_*nang + iang);
+  }
+  NCO_ = NCO_sum/float(nang);
   bCO_ = 3.0e5; //3km/s, TODO: need to get from calculation
 	return;
 }
