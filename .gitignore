@@ -39,3 +39,9 @@ meshtest.dat
 #vim backup files
 *.swp
 *.swo
+=======
+# Mac OS metadata
+.DS_Store
+
+# editor temp files
+*~
