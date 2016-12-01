@@ -32,16 +32,17 @@ public:
   ~RadIntegrator();
   
   Radiation *pmy_rad;
+  MeshBlock *pmy_mb;
 
 #ifdef INCLUDE_CHEMISTRY
   AthenaArray<Real> col_tot;
-  AthenaArray<Real> col_mb;
+  AthenaArray<Real> col_xp, col_xm, col_yp, col_ym, col_zp, col_zm;
   int n_cols_ang; 
   ChemNetwork* pmy_chemnet;
   //calcuate column within each meshblock
-  void GetColMB();
+  void GetColMB(int direction);
   //calcuate total column and update radiation
-  void UpdateRadiation();
+  void UpdateRadiation(int direction);
 #endif
 private:
   Real rad_G0_; //unshielded radiation field strengh, uniform.

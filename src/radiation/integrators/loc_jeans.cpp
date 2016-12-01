@@ -45,17 +45,17 @@ static Real GetLJ(Real cs, Real dens) {
 
 RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 {
-  MeshBlock* pmy_block = prad->pmy_block;
+  pmy_mb = prad->pmy_block;
   pmy_rad = prad;
   rad_G0_ = pin->GetReal("problem", "G0");
 #ifdef INCLUDE_CHEMISTRY
-  pmy_chemnet = pmy_block->pspec->pchemnet;
-  n_cols_ang = pmy_rad->nfreq * pmy_chemnet->n_cols_;
+  pmy_chemnet = pmy_mb->pspec->pchemnet;
+  n_cols_ang = pmy_rad->nang * pmy_chemnet->n_cols_;
   //allocate array for column density
-  int ncells1 = pmy_block->block_size.nx1 + 2*(NGHOST);
+  int ncells1 = pmy_mb->block_size.nx1 + 2*(NGHOST);
   int ncells2 = 1, ncells3 = 1;
-  if (pmy_block->block_size.nx2 > 1) ncells2 = pmy_block->block_size.nx2 + 2*(NGHOST);
-  if (pmy_block->block_size.nx3 > 1) ncells3 = pmy_block->block_size.nx3 + 2*(NGHOST);
+  if (pmy_mb->block_size.nx2 > 1) ncells2 = pmy_mb->block_size.nx2 + 2*(NGHOST);
+  if (pmy_mb->block_size.nx3 > 1) ncells3 = pmy_mb->block_size.nx3 + 2*(NGHOST);
   col_tot.NewAthenaArray(ncells3, ncells2, ncells1, n_cols_ang);
 #endif 
 }
@@ -68,14 +68,13 @@ RadIntegrator::~RadIntegrator() {
 
 
 #ifdef INCLUDE_CHEMISTRY
-void RadIntegrator::GetColMB() {}
+void RadIntegrator::GetColMB(int direction) {}
 
-void RadIntegrator::UpdateRadiation() {
+void RadIntegrator::UpdateRadiation(int direction) {
   const Real Tceiling = 40.; //temperature ceiling in Kelvin
   const Real Tfloor = 1.; //temperature floor in Kelvin
   const Real bH2 = 3.0e5; //H2 velocity dispersion
   const Real sigmaPE = Thermo::sigmaPE_;
-  MeshBlock *pb = pmy_rad->pmy_block;
   const Real Zd = pmy_chemnet->zdg_;
   const int iH2 = pmy_chemnet->iH2_;
   const int iCO = pmy_chemnet->iCO_;
@@ -83,7 +82,7 @@ void RadIntegrator::UpdateRadiation() {
   const int iph_CO = ChemNetwork::iph_CO_;
   const int iPE = pmy_chemnet->index_gpe_;
   Real press, dens, dens_cgs, temp, cs, cs_sq;
-  Real gm = pb->peos->GetGamma();
+  Real gm = pmy_mb->peos->GetGamma();
   Real Lshield; //in cm
   Real NH, NH2, NCO, AV, yH2, ye;
   Real xHe = pmy_chemnet->xHe_;
@@ -92,16 +91,16 @@ void RadIntegrator::UpdateRadiation() {
 
 
   //loop over each cell
-  for (int k=pb->ks; k<=pb->ke; ++k) {
-    for (int j=pb->js; j<=pb->je; ++j) {
-      for (int i=pb->is; i<=pb->ie; ++i) {
+  for (int k=pmy_mb->ks; k<=pmy_mb->ke; ++k) {
+    for (int j=pmy_mb->js; j<=pmy_mb->je; ++j) {
+      for (int i=pmy_mb->is; i<=pmy_mb->ie; ++i) {
         //calculate the shielding length
-        press = pb->phydro->w(IEN, k, j, i);
-        dens = pb->phydro->w(IDN, k, j, i);
+        press = pmy_mb->phydro->w(IEN, k, j, i);
+        dens = pmy_mb->phydro->w(IDN, k, j, i);
         dens_cgs = dens *  CGKUtility::unitD;
-        yH2 = pb->pspec->s(pmy_chemnet->iH2_, k, j, i);
+        yH2 = pmy_mb->pspec->s(pmy_chemnet->iH2_, k, j, i);
         ye = 0.;
-        temp = pb->pspec->s(pmy_chemnet->iE_, k, j, i) / 
+        temp = pmy_mb->pspec->s(pmy_chemnet->iE_, k, j, i) / 
           Thermo::CvCold(yH2, xHe, ye);
         //set T ceilling and floor
         if (temp > Tceiling) {
@@ -125,17 +124,17 @@ void RadIntegrator::UpdateRadiation() {
           NH = dens * Lshield;
         }
         AV = NH * Zd / 1.87e21;
-        NH2 = pb->pspec->s(iH2, k, j, i) * NH;
-        NCO = pb->pspec->s(iCO, k, j, i) * NH;
+        NH2 = pmy_mb->pspec->s(iH2, k, j, i) * NH;
+        NCO = pmy_mb->pspec->s(iCO, k, j, i) * NH;
         //set CO column for calculating CO cooling
         for (int iang=0; iang < pmy_rad->nang; ++iang) {
           col_tot(k, j, i, pmy_chemnet->iNCO_*pmy_rad->nang + iang) = NCO;
           col_tot(k, j, i, pmy_chemnet->iNH2_*pmy_rad->nang + iang) = NH2;
-          col_tot(k, j, i, pmy_chemnet->iAV_*pmy_rad->nang + iang) = AV;
+          col_tot(k, j, i, pmy_chemnet->iNHtot_*pmy_rad->nang + iang) = NH;
         }
         //dust shielding
         //photo-reactions
-        for (int ifreq=0; ifreq < pmy_rad->nfreq-2; ++ifreq) {
+        for (int ifreq=0; ifreq < pmy_rad->nfreq-1; ++ifreq) {
           pmy_rad->ir(k, j, i, ifreq * pmy_rad->nang) = rad_G0_
             * exp( -ChemNetwork::kph_avfac_[ifreq] * AV );
         }
@@ -156,7 +155,7 @@ void RadIntegrator::UpdateRadiation() {
         if (isnan(fs_CO) ) {
           printf("RadIntegrator::UpdateRadJeans(): fs_CO=nan, Lshield=%.2e\n", Lshield);
           printf("press=%.2e, dens=%.2e, temp=%.2e, cs=%.2e, CO=%.2e, NCO=%.2e, NH2=%.2e\n",
-                  press, dens, temp, cs, pb->pspec->s(iCO, k, j, i), NCO, NH2);
+                  press, dens, temp, cs, pmy_mb->pspec->s(iCO, k, j, i), NCO, NH2);
         }
 #endif
 

@@ -107,7 +107,7 @@ private:
 	static const int igH_;
   //species needed for calculating shielding
   static const int n_cols_ = 3;
-  static const int iAV_ = 0;
+  static const int iNHtot_ = 0;
   static const int iNH2_ = 1;
   static const int iNCO_ = 2;
 	//-------------------chemical network---------------------
@@ -138,7 +138,7 @@ private:
 	//photo reactions
 	//radiation related variables, used in RadIntegrator
 	//radiation field in unit of Draine 1987 field (G0), updated at InitializeNextStep 
-	//vector: [Gph, GPE, GISRF]
+	//vector: [Gph, GPE]
 	Real rad_[n_freq_];
 	Real kph_[n_ph_]; //rates for photo- reactions.
 	static const int iph_C_;

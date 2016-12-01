@@ -96,7 +96,7 @@ enum TaskStatus RadiationIntegratorTaskList::LocalIntegratorJeans(MeshBlock *pmb
                                                                  int step)
 {
 #ifdef INCLUDE_CHEMISTRY
-  pmb->prad->pradintegrator->UpdateRadiation();
+  pmb->prad->pradintegrator->UpdateRadiation(0);
 #endif
   return TASK_SUCCESS;
 }

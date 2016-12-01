@@ -33,7 +33,7 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 #ifdef INCLUDE_CHEMISTRY
   MeshBlock* pmy_block = prad->pmy_block;
   pmy_chemnet = pmy_block->pspec->pchemnet;
-  n_cols_ang = pmy_rad->nfreq * pmy_chemnet->n_cols_;
+  n_cols_ang = pmy_rad->nang * pmy_chemnet->n_cols_;
   //allocate array for column density
   int ncells1 = pmy_block->block_size.nx1 + 2*(NGHOST);
   int ncells2 = 1, ncells3 = 1;
@@ -50,7 +50,7 @@ RadIntegrator::~RadIntegrator() {
 }
 
 #ifdef INCLUDE_CHEMISTRY
-void RadIntegrator::GetColMB() {}
-void RadIntegrator::UpdateRadiation() {}
+void RadIntegrator::GetColMB(int direction) {}
+void RadIntegrator::UpdateRadiation(int direction) {}
 #endif
 
