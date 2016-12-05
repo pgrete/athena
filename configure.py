@@ -120,7 +120,7 @@ parser.add_argument('--chemistry',
 # -radiation argument
 parser.add_argument('--radiation',
     default=None,
-    choices=["const", "loc_jeans"],
+    choices=["const", "loc_jeans", "six_ray"],
     help='enable and select radiation radiative transfer method')
 
 # --cvode_path argument
