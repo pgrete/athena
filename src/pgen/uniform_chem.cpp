@@ -13,8 +13,8 @@
 // You should have received a copy of GNU GPL in the file LICENSE included in the code
 // distribution.  If not see <http://www.gnu.org/licenses/>.
 //======================================================================================
-//! \file read_vtk.c
-//  \brief problem generator, initalize mesh by read in vtk files.
+//! \file uniform_chem.cpp
+//  \brief problem generator, uniform mesh with chemistry
 //======================================================================================
 
 // C++ headers
