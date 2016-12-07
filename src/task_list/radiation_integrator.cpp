@@ -45,6 +45,7 @@ RadiationIntegratorTaskList::RadiationIntegratorTaskList(ParameterInput *pin, Me
     if (integrator == "loc_jeans") {
       AddRadiationIntegratorTask(INT_LOC_JEANS,NONE);
     } else if (integrator == "six_ray") {
+      AddRadiationIntegratorTask(GET_COL_MB,NONE);
       //add six ray
     } else if (integrator == "const") {
       //do nothing, radiation field constant, remain initial value
@@ -80,6 +81,11 @@ void RadiationIntegratorTaskList::AddRadiationIntegratorTask(uint64_t id, uint64
         (&RadiationIntegratorTaskList::ConstRadiation);
       break;
     //add six ray here
+    case (GET_COL_MB):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&RadiationIntegratorTaskList::SixRayCol);
+      break;
     default:
       std::stringstream msg;
       msg << "### FATAL ERROR in Add Radiation Task" << std::endl
@@ -105,4 +111,15 @@ enum TaskStatus RadiationIntegratorTaskList::ConstRadiation(MeshBlock *pmb, int 
 {
   return TASK_SUCCESS;
 }
+
 //add six ray here
+enum TaskStatus RadiationIntegratorTaskList::SixRayCol(MeshBlock *pmb, int step)
+{
+#ifdef INCLUDE_CHEMISTRY
+  for (int i=0; i<6; i++) {
+    pmb->prad->pradintegrator->GetColMB(i);
+  }
+#endif
+  return TASK_SUCCESS;
+}
+

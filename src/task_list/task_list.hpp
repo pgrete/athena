@@ -137,6 +137,7 @@ public:
   enum TaskStatus LocalIntegratorJeans(MeshBlock *pmb, int step);
   enum TaskStatus ConstRadiation(MeshBlock *pmb, int step);
   //add six ray here
+  enum TaskStatus SixRayCol(MeshBlock *pmb, int step);
 };
 
 //--------------------------------------------------------------------------------------
@@ -207,5 +208,6 @@ namespace RadiationIntegratorTaskNames {
   const uint64_t INT_CONST=1LL<<0; //constant radiation, do nothing
   const uint64_t INT_LOC_JEANS=1LL<<1; //local jeans shielding
   //add six ray here
+  const uint64_t GET_COL_MB=1LL<<2; //local jeans shielding
 };
 #endif // TASK_LIST_HPP

@@ -64,6 +64,8 @@
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp" // Coordinates
+#include "../radiation/radiation.hpp"
+#include "../radiation/integrators/rad_integrators.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../chemistry/species.hpp"
 #endif
@@ -310,6 +312,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
 #ifdef INCLUDE_CHEMISTRY
 	ChemSpecies *pspec = pmb->pspec;
 #endif
+  Radiation *prad = pmb->prad;
   std::stringstream str;
   num_vars_ = 0;
   OutputData *pod;
@@ -568,6 +571,49 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
     }
   }
 #endif
+
+  if (RADIATION_ENABLED) {
+    if (output_params.variable.compare("r") == 0 || 
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "col_Htot_p";
+        pod->data.InitWithShallowSlice(prad->pradintegrator->col_Htot,4,0,3);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "col_H2_p";
+        pod->data.InitWithShallowSlice(prad->pradintegrator->col_H2,4,0,3);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "col_CO_p";
+        pod->data.InitWithShallowSlice(prad->pradintegrator->col_CO,4,0,3);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "col_Htot_m";
+        pod->data.InitWithShallowSlice(prad->pradintegrator->col_Htot,4,3,3);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "col_H2_m";
+        pod->data.InitWithShallowSlice(prad->pradintegrator->col_H2,4,3,3);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "col_CO_m";
+        pod->data.InitWithShallowSlice(prad->pradintegrator->col_CO,4,3,3);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+    }
+  }
 
   // throw an error if output variable name not recognized
   if (num_vars_==0) {

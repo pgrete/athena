@@ -544,7 +544,7 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
   //CO cooling paramters
   NCO_sum = 0;
   for (int iang=0; iang < nang; ++iang) {
-      NCO_sum += pmy_mb_->prad->pradintegrator->col_tot(k, j, i, iNCO_*nang + iang);
+      NCO_sum += pmy_mb_->prad->pradintegrator->col(iang, k, j, i, iNCO_);
   }
   NCO_ = NCO_sum/float(nang);
   bCO_ = 3.0e5; //3km/s, TODO: need to get from calculation

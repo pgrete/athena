@@ -35,9 +35,8 @@ public:
   MeshBlock *pmy_mb;
 
 #ifdef INCLUDE_CHEMISTRY
-  AthenaArray<Real> col_tot;
-  AthenaArray<Real> col_xp, col_xm, col_yp, col_ym, col_zp, col_zm;
-  int n_cols_ang; 
+  AthenaArray<Real> col;
+  AthenaArray<Real> col_Htot, col_CO, col_H2;//TODO:for output
   ChemNetwork* pmy_chemnet;
   //calcuate column within each meshblock
   void GetColMB(int direction);
@@ -46,6 +45,13 @@ public:
 #endif
 private:
   Real rad_G0_; //unshielded radiation field strengh, uniform.
+  //index for direction of rays in six-ray
+  static const int IXP = 0; //+x
+  static const int IYP = 1; //+y
+  static const int IZP = 2; //+z
+  static const int IXM = 3; //-x
+  static const int IYM = 4; //-y
+  static const int IZM = 5; //-z
 };
 
 #endif // RADINTEGRATORS_HPP
