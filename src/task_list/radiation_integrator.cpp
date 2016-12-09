@@ -118,7 +118,9 @@ enum TaskStatus RadiationIntegratorTaskList::SixRayCol(MeshBlock *pmb, int step)
 #ifdef INCLUDE_CHEMISTRY
   for (int i=0; i<6; i++) {
     pmb->prad->pradintegrator->GetColMB(i);
+    pmb->prad->pradintegrator->UpdateRadiation(i);
   }
+  pmb->prad->pradintegrator->CopyToOutput();
 #endif
   return TASK_SUCCESS;
 }

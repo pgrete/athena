@@ -55,12 +55,14 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
   }
 #ifdef INCLUDE_CHEMISTRY
   pmy_chemnet = pmy_mb->pspec->pchemnet;
+  ncol = pmy_chemnet->n_cols_;
   //allocate array for column density
   int ncells1 = pmy_mb->block_size.nx1 + 2*(NGHOST);
   int ncells2 = 1, ncells3 = 1;
   if (pmy_mb->block_size.nx2 > 1) ncells2 = pmy_mb->block_size.nx2 + 2*(NGHOST);
   if (pmy_mb->block_size.nx3 > 1) ncells3 = pmy_mb->block_size.nx3 + 2*(NGHOST);
-  col.NewAthenaArray(6, ncells3, ncells2, ncells1, pmy_chemnet->n_cols_);
+  col.NewAthenaArray(6, ncells3, ncells2, ncells1, ncol);
+  col_avg.NewAthenaArray(ncol, ncells3, ncells2, ncells1);
   //TODO:for output
   col_Htot.NewAthenaArray(6, ncells3, ncells2, ncells1);
   col_H2.NewAthenaArray(6, ncells3, ncells2, ncells1);
@@ -71,6 +73,7 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 RadIntegrator::~RadIntegrator() {
 #ifdef INCLUDE_CHEMISTRY
   col.DeleteAthenaArray();
+  col_avg.DeleteAthenaArray();
   //TODO:for output
   col_Htot.DeleteAthenaArray();
   col_H2.DeleteAthenaArray();
@@ -271,18 +274,6 @@ void RadIntegrator::GetColMB(int direction) {
       << "direction {0,1,2,3,4,5}:" << direction << " unknown." << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
-  //TODO: copy to output
-  for (int k=ks; k<=ke; ++k) {
-    for (int j=js; j<=je; ++j) {
-      for (int i=is; i<=ie; ++i) {
-        for (int iang=0; iang < 6; iang++) {
-          col_Htot(iang, k, j, i) = col(iang, k, j, i, pmy_chemnet->iNHtot_); 
-          col_H2(iang, k, j, i) = col(iang, k, j, i, pmy_chemnet->iNH2_); 
-          col_CO(iang, k, j, i) = col(iang, k, j, i, pmy_chemnet->iNCO_); 
-        }
-      }
-    }
-  }
   return;
 }
 
@@ -321,5 +312,41 @@ void RadIntegrator::UpdateRadiation(int direction) {
     }
   }
   return;
+}
+
+void RadIntegrator::CopyToOutput() {
+  int is = pmy_mb->is;
+  int js = pmy_mb->js;
+  int ks = pmy_mb->ks;
+  int ie = pmy_mb->ie;
+  int je = pmy_mb->je;
+  int ke = pmy_mb->ke;
+  for (int k=ks; k<=ke; ++k) {
+    for (int j=js; j<=je; ++j) {
+      for (int i=is; i<=ie; ++i) {
+        for (int iang=0; iang < 6; iang++) {
+          //column densities
+          col_Htot(iang, k, j, i) = col(iang, k, j, i, pmy_chemnet->iNHtot_); 
+          col_H2(iang, k, j, i) = col(iang, k, j, i, pmy_chemnet->iNH2_); 
+          col_CO(iang, k, j, i) = col(iang, k, j, i, pmy_chemnet->iNCO_); 
+          //angel averaged column densities
+          for (int icol=0; icol<ncol; icol++) {
+            if (iang == 0) {
+              col_avg(icol, k, j, i) = 0;
+            }
+            col_avg(icol, k, j, i) += col(iang, k, j, i, icol)/6.;
+          }
+          //radiation
+          for (int ifreq=0; ifreq < pmy_rad->nfreq; ++ifreq) {
+            if (iang == 0) {
+              pmy_rad->ir_avg(ifreq, k, j, i) = 0;
+            }
+            pmy_rad->ir_avg(ifreq, k, j, i) += 
+              pmy_rad->ir(k, j, i, ifreq * pmy_rad->nang+iang)/6.;
+          }
+        }
+      }
+    }
+  }
 }
 #endif

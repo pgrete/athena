@@ -70,18 +70,14 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 	const Real s_init = pin->GetReal("problem", "s_init");
 	const Real xH2_init = pin->GetReal("problem", "xH2_init");
 	const Real xCO_init = pin->GetReal("problem", "xCO_init");
-	const int ipx = pin->GetInteger("problem", "ipx");
-	const int ipy = pin->GetInteger("problem", "ipy");
-	const int ipz = pin->GetInteger("problem", "ipz");
 	//set density
 	for (int k=ks; k<=ke; ++k) {
 		for (int j=js; j<=je; ++j) {
 			for (int i=is; i<=ie; ++i) {
-				phydro->u(IDN, k, j, i) = 0;//nH;
+				phydro->u(IDN, k, j, i) = nH;
 			}
 		}
 	}
-  phydro->u(IDN, ks+ipz, js+ipy, is+ipx) = nH;//nH;
 
 	//intialize radiation field
 	if (RADIATION_ENABLED) {

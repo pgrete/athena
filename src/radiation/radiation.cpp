@@ -58,6 +58,7 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   if (pmy_block->block_size.nx3 > 1) ncells3 = pmy_block->block_size.nx3 + 2*(NGHOST);
   // store frequency and angles as [nfre][ang]
   ir.NewAthenaArray(ncells3, ncells2, ncells1, n_fre_ang);
+  ir_avg.NewAthenaArray(nfreq, ncells3, ncells2, ncells1);
 
   //radiation integrator
   pradintegrator = new RadIntegrator(this, pin);
@@ -68,4 +69,5 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
 Radiation::~Radiation()
 {
   ir.DeleteAthenaArray();
+  ir_avg.DeleteAthenaArray();
 }

@@ -27,6 +27,8 @@ public:
   std::string integrator;
 
   AthenaArray<Real> ir; // radiation specific intensity
+  // average radiation intensity over all angles, for output
+  AthenaArray<Real> ir_avg; 
 
   int nang, nfreq, n_fre_ang; // n_fre_ang=nang*nfreq
 };

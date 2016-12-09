@@ -35,13 +35,15 @@ public:
   MeshBlock *pmy_mb;
 
 #ifdef INCLUDE_CHEMISTRY
-  AthenaArray<Real> col;
+  int ncol;
+  AthenaArray<Real> col, col_avg;
   AthenaArray<Real> col_Htot, col_CO, col_H2;//TODO:for output
   ChemNetwork* pmy_chemnet;
   //calcuate column within each meshblock
   void GetColMB(int direction);
   //calcuate total column and update radiation
   void UpdateRadiation(int direction);
+  void CopyToOutput();
 #endif
 private:
   Real rad_G0_; //unshielded radiation field strengh, uniform.
@@ -52,6 +54,7 @@ private:
   static const int IXM = 3; //-x
   static const int IYM = 4; //-y
   static const int IZM = 5; //-z
+  //copy column density and average radiation field to output
 };
 
 #endif // RADINTEGRATORS_HPP
