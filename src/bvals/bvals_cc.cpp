@@ -510,12 +510,10 @@ int BoundaryValues::LoadSpeciesBoundaryBufferSameLevel(AthenaArray<Real> &src,
 }
 
 //----------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::SendSpeciesBoundaryBuffers(AthenaArray<Real> &src,
-//                                                    bool conserved_values)
+//! \fn void BoundaryValues::SendSpeciesBoundaryBuffers(AthenaArray<Real> &src)
 //  \brief Send boundary buffers
 
-void BoundaryValues::SendSpeciesBoundaryBuffers(AthenaArray<Real> &src,
-                                              bool conserved_values)
+void BoundaryValues::SendSpeciesBoundaryBuffers(AthenaArray<Real> &src)
 {
   std::stringstream msg;
   MeshBlock *pmb=pmy_block_;
@@ -636,12 +634,10 @@ bool BoundaryValues::ReceiveSpeciesBoundaryBuffers(AthenaArray<Real> &dst)
 }
 
 //----------------------------------------------------------------------------------------
-//! \fn void BoundaryValues::ReceiveSpeciesBoundaryBuffersWithWait(AthenaArray<Real> &dst,
-//                                                               bool conserved_values)
+//! \fn void BoundaryValues::ReceiveSpeciesBoundaryBuffersWithWait(AthenaArray<Real> &dst)
 //  \brief receive the boundary data for initialization
 
-void BoundaryValues::ReceiveSpeciesBoundaryBuffersWithWait(AthenaArray<Real> &dst,
-                                                         bool conserved_values)
+void BoundaryValues::ReceiveSpeciesBoundaryBuffersWithWait(AthenaArray<Real> &dst)
 {
   std::stringstream msg;
   MeshBlock *pmb=pmy_block_;
@@ -673,4 +669,44 @@ void BoundaryValues::ReceiveSpeciesBoundaryBuffersWithWait(AthenaArray<Real> &ds
   return;
 }
 
+//----------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::StartReceivingSpecies(void)
+//  \brief initiate MPI_Irecv for species
+
+void BoundaryValues::StartReceivingSpecies(void)
+{
+  firsttime_=true;
+#ifdef MPI_PARALLEL
+  MeshBlock *pmb=pmy_block_;
+  int mylevel=pmb->loc.level;
+  for(int n=0;n<pmb->nneighbor;n++) {
+    NeighborBlock& nb = pmb->neighbor[n];
+    if(nb.rank!=Globals::my_rank) { 
+      MPI_Start(&req_species_recv_[nb.bufid]);
+    }
+  }
+#endif
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::ClearBoundarySpecies(void)
+//  \brief clean up the boundary flags after each loop for species
+
+void BoundaryValues::ClearBoundarySpecies(void)
+{
+  MeshBlock *pmb=pmy_block_;
+
+  // Clear non-polar boundary communications
+  for(int n=0;n<pmb->nneighbor;n++) {
+    NeighborBlock& nb = pmb->neighbor[n];
+    species_flag_[nb.bufid] = BNDRY_WAITING;
+#ifdef MPI_PARALLEL
+    if(nb.rank!=Globals::my_rank) {
+      MPI_Wait(&req_species_send_[nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+    }
+#endif
+  }
+  return;
+}
 #endif //INCLUDE_CHEMISTRY

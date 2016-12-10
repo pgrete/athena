@@ -42,7 +42,13 @@ ChemistryIntegratorTaskList::ChemistryIntegratorTaskList(ParameterInput *pin, Me
   nsub_steps = 1;
   // Now assemble list of tasks for each step of chemistry integrator
   {using namespace ChemistryIntegratorTaskNames;
+    AddChemistryIntegratorTask(START_SPEC_RECV, NONE);
     AddChemistryIntegratorTask(INT_CHEM_SRC,NONE);
+    //MPI boundary
+    AddChemistryIntegratorTask(SEND_SPEC, INT_CHEM_SRC);
+    AddChemistryIntegratorTask(RECV_SPEC, START_SPEC_RECV);
+    AddChemistryIntegratorTask(CLEAR_SPEC_RECV, RECV_SPEC);
+
     //add advection term here
   } // end of using namespace block
 }
@@ -61,6 +67,26 @@ void ChemistryIntegratorTaskList::AddChemistryIntegratorTask(uint64_t id, uint64
       task_list_[ntasks].TaskFunc=
         static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
         (&ChemistryIntegratorTaskList::IntegrateSourceTerm);
+      break;
+    case (START_SPEC_RECV):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&ChemistryIntegratorTaskList::StartSpeciesReceive);
+      break;
+    case (CLEAR_SPEC_RECV):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&ChemistryIntegratorTaskList::ClearSpeciesReceive);
+      break;
+    case (SEND_SPEC):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&ChemistryIntegratorTaskList::SpeciesSend);
+      break;
+    case (RECV_SPEC):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&ChemistryIntegratorTaskList::SpeciesReceive);
       break;
     //add advection here
     default:
@@ -82,6 +108,46 @@ enum TaskStatus ChemistryIntegratorTaskList::IntegrateSourceTerm(MeshBlock *pmb,
   pmb->pspec->podew->Integrate();
 #endif
   return TASK_SUCCESS;
+}
+
+//MPI boundary
+enum TaskStatus ChemistryIntegratorTaskList::StartSpeciesReceive(MeshBlock *pmb,
+                                                                 int step)
+{
+#ifdef INCLUDE_CHEMISTRY
+  pmb->pbval->StartReceivingSpecies();
+#endif
+  return TASK_SUCCESS;
+}
+
+enum TaskStatus ChemistryIntegratorTaskList::ClearSpeciesReceive(MeshBlock *pmb,
+                                                                 int step)
+{
+#ifdef INCLUDE_CHEMISTRY
+  pmb->pbval->ClearBoundarySpecies();
+#endif
+  return TASK_SUCCESS;
+}
+
+enum TaskStatus ChemistryIntegratorTaskList::SpeciesSend(MeshBlock *pmb, int step)
+{
+#ifdef INCLUDE_CHEMISTRY
+  pmb->pbval->SendSpeciesBoundaryBuffers(pmb->pspec->s);
+#endif
+  return TASK_SUCCESS;
+}
+
+enum TaskStatus ChemistryIntegratorTaskList::SpeciesReceive(MeshBlock *pmb, int step)
+{
+  bool ret=true;
+#ifdef INCLUDE_CHEMISTRY
+  ret = pmb->pbval->ReceiveSpeciesBoundaryBuffers(pmb->pspec->s);
+#endif
+  if(ret==true) {
+    return TASK_SUCCESS;
+  } else {
+    return TASK_FAIL;
+  }
 }
 
 //add advection here

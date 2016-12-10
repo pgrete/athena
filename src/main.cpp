@@ -358,7 +358,7 @@ int main(int argc, char *argv[])
     }
 
 #ifdef INCLUDE_CHEMISTRY
-    //pchemlist->DoTaskList(pmesh);
+    pchemlist->DoTaskList(pmesh);
 #endif
 
     pmesh->ncycle++;

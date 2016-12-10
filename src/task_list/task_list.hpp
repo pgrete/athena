@@ -121,6 +121,10 @@ public:
   ~ChemistryIntegratorTaskList() {};
   void AddChemistryIntegratorTask(uint64_t id, uint64_t dep);
   enum TaskStatus IntegrateSourceTerm(MeshBlock *pmb, int step);
+  enum TaskStatus StartSpeciesReceive(MeshBlock *pmb, int step);
+  enum TaskStatus ClearSpeciesReceive(MeshBlock *pmb, int step);
+  enum TaskStatus SpeciesSend(MeshBlock *pmb, int step);
+  enum TaskStatus SpeciesReceive(MeshBlock *pmb, int step);
   //add advection term here. 
 };
 
@@ -200,6 +204,10 @@ namespace HydroIntegratorTaskNames {
 namespace ChemistryIntegratorTaskNames {
   const uint64_t NONE=0;
   const uint64_t INT_CHEM_SRC=1LL<<0; //chemistry source term
+  const uint64_t START_SPEC_RECV=1LL<<1; 
+  const uint64_t CLEAR_SPEC_RECV=1LL<<2; 
+  const uint64_t SEND_SPEC=1LL<<3; 
+  const uint64_t RECV_SPEC=1LL<<4; 
   //add advection term here
 };
 

@@ -1169,7 +1169,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pfield=pmb->pfield;
       pmb->pbval->SendHydroBoundaryBuffers(phydro->u, true);
 #ifdef INCLUDE_CHEMISTRY
-      pmb->pbval->SendSpeciesBoundaryBuffers(pmb->pspec->s, true);
+      pmb->pbval->SendSpeciesBoundaryBuffers(pmb->pspec->s);
 #endif
       if (MAGNETIC_FIELDS_ENABLED)
         pmb->pbval->SendFieldBoundaryBuffers(pfield->b);
@@ -1184,7 +1184,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pbval=pmb->pbval;
       pbval->ReceiveHydroBoundaryBuffersWithWait(phydro->u, true);
 #ifdef INCLUDE_CHEMISTRY
-      pbval->ReceiveSpeciesBoundaryBuffersWithWait(pmb->pspec->s, true);
+      pbval->ReceiveSpeciesBoundaryBuffersWithWait(pmb->pspec->s);
 #endif
       if (MAGNETIC_FIELDS_ENABLED)
         pbval->ReceiveFieldBoundaryBuffersWithWait(pfield->b);

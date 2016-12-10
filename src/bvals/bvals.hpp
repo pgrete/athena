@@ -138,13 +138,15 @@ public:
   void ReceiveHydroBoundaryBuffersWithWait(AthenaArray<Real> &dst, bool cons);
   void PolarSingleHydro(AthenaArray<Real> &dst);
 #ifdef INCLUDE_CHEMISTRY
+  void StartReceivingSpecies(void);
+  void ClearBoundarySpecies(void);
   int LoadSpeciesBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
                                          const NeighborBlock& nb);
-  void SendSpeciesBoundaryBuffers(AthenaArray<Real> &src, bool cons);
+  void SendSpeciesBoundaryBuffers(AthenaArray<Real> &src);
   void SetSpeciesBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
                                    const NeighborBlock& nb);
   bool ReceiveSpeciesBoundaryBuffers(AthenaArray<Real> &dst);
-  void ReceiveSpeciesBoundaryBuffersWithWait(AthenaArray<Real> &dst, bool cons);
+  void ReceiveSpeciesBoundaryBuffersWithWait(AthenaArray<Real> &dst);
 #endif //INCLUDE_CHEMISTRY
 
   int LoadFieldBoundaryBufferSameLevel(FaceField &src, Real *buf,
