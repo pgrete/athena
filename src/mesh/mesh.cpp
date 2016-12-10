@@ -34,6 +34,9 @@
 #include "mesh_refinement.hpp"
 #include "meshblock_tree.hpp"
 #include "mesh.hpp"
+#ifdef INCLUDE_CHEMISTRY
+#include "../chemistry/species.hpp"
+#endif
 
 // MPI/OpenMP header
 #ifdef MPI_PARALLEL
@@ -1165,6 +1168,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       phydro=pmb->phydro;
       pfield=pmb->pfield;
       pmb->pbval->SendHydroBoundaryBuffers(phydro->u, true);
+#ifdef INCLUDE_CHEMISTRY
+      pmb->pbval->SendSpeciesBoundaryBuffers(pmb->pspec->s, true);
+#endif
       if (MAGNETIC_FIELDS_ENABLED)
         pmb->pbval->SendFieldBoundaryBuffers(pfield->b);
       pmb=pmb->next;
@@ -1177,6 +1183,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pfield=pmb->pfield;
       pbval=pmb->pbval;
       pbval->ReceiveHydroBoundaryBuffersWithWait(phydro->u, true);
+#ifdef INCLUDE_CHEMISTRY
+      pbval->ReceiveSpeciesBoundaryBuffersWithWait(pmb->pspec->s, true);
+#endif
       if (MAGNETIC_FIELDS_ENABLED)
         pbval->ReceiveFieldBoundaryBuffersWithWait(pfield->b);
       pmb->pbval->ClearBoundaryForInit(true);

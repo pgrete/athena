@@ -29,6 +29,9 @@
 #include "../coordinates/coordinates.hpp"
 #include "../parameter_input.hpp"
 #include "../utils/buffer_utils.hpp"
+#ifdef INCLUDE_CHEMISTRY
+#include "../chemistry/species.hpp"
+#endif
 
 // MPI header
 #ifdef MPI_PARALLEL
@@ -236,9 +239,18 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
     hydro_recv_[i]=NULL;
     field_send_[i]=NULL;
     field_recv_[i]=NULL;
+#ifdef INCLUDE_CHEMISTRY
+    species_flag_[i]=BNDRY_WAITING;
+    species_send_[i]=NULL;
+    species_recv_[i]=NULL;
+#endif
 #ifdef MPI_PARALLEL
     req_hydro_send_[i]=MPI_REQUEST_NULL;
     req_hydro_recv_[i]=MPI_REQUEST_NULL;
+#ifdef INCLUDE_CHEMISTRY
+    req_species_send_[i]=MPI_REQUEST_NULL;
+    req_species_recv_[i]=MPI_REQUEST_NULL;
+#endif
 #endif
   }
   for(int i=0;i<48;i++){
@@ -320,6 +332,10 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
     size*=NHYDRO;
     hydro_send_[n]=new Real[size];
     hydro_recv_[n]=new Real[size];
+#ifdef INCLUDE_CHEMISTRY
+    species_send_[n]=new Real[size*NSPECIES/NHYDRO];
+    species_recv_[n]=new Real[size*NSPECIES/NHYDRO];
+#endif
   }
   if (MAGNETIC_FIELDS_ENABLED) {
     for(int n=0;n<pmb->pmy_mesh->maxneighbor_;n++) {
@@ -468,6 +484,10 @@ BoundaryValues::~BoundaryValues()
   for(int i=0;i<pmb->pmy_mesh->maxneighbor_;i++) {
     delete [] hydro_send_[i];
     delete [] hydro_recv_[i];
+#ifdef INCLUDE_CHEMISTRY
+    delete [] species_send_[i];
+    delete [] species_recv_[i];
+#endif
   }
   if (MAGNETIC_FIELDS_ENABLED) {
     for(int i=0;i<pmb->pmy_mesh->maxneighbor_;i++) { 
@@ -651,6 +671,14 @@ void BoundaryValues::Initialize(void)
       tag=CreateBvalsMPITag(pmb->lid, TAG_HYDRO, nb.bufid);
       MPI_Recv_init(hydro_recv_[nb.bufid],rsize,MPI_ATHENA_REAL,
                     nb.rank,tag,MPI_COMM_WORLD,&req_hydro_recv_[nb.bufid]);
+#ifdef INCLUDE_CHEMISTRY
+      tag=CreateBvalsMPITag(nb.lid, TAG_CHEM, nb.targetid);
+      MPI_Send_init(species_send_[nb.bufid],ssize*NSPECIES/NHYDRO,MPI_ATHENA_REAL,
+                    nb.rank,tag,MPI_COMM_WORLD,&req_species_send_[nb.bufid]);
+      tag=CreateBvalsMPITag(pmb->lid, TAG_CHEM, nb.bufid);
+      MPI_Recv_init(species_recv_[nb.bufid],rsize*NSPECIES/NHYDRO,MPI_ATHENA_REAL,
+                    nb.rank,tag,MPI_COMM_WORLD,&req_species_recv_[nb.bufid]);
+#endif
 
       // flux correction
       if(pmb->pmy_mesh->multilevel==true && nb.type==NEIGHBOR_FACE) {
@@ -875,11 +903,17 @@ void BoundaryValues::StartReceivingForInit(bool cons_and_field)
     if(nb.rank!=Globals::my_rank) { 
       if (cons_and_field) {  // normal case
         MPI_Start(&req_hydro_recv_[nb.bufid]);
+#ifdef INCLUDE_CHEMISTRY
+        MPI_Start(&req_species_recv_[nb.bufid]);
+#endif
         if (MAGNETIC_FIELDS_ENABLED)
           MPI_Start(&req_field_recv_[nb.bufid]);
       }
       else {  // must be primitive initialization
         MPI_Start(&req_hydro_recv_[nb.bufid]);
+#ifdef INCLUDE_CHEMISTRY
+        MPI_Start(&req_species_recv_[nb.bufid]);
+#endif
       }
     }
   }
@@ -901,6 +935,9 @@ void BoundaryValues::StartReceivingAll(void)
     NeighborBlock& nb = pmb->neighbor[n];
     if(nb.rank!=Globals::my_rank) { 
       MPI_Start(&req_hydro_recv_[nb.bufid]);
+#ifdef INCLUDE_CHEMISTRY
+      MPI_Start(&req_species_recv_[nb.bufid]);
+#endif
       if(nb.type==NEIGHBOR_FACE && nb.level>mylevel)
         MPI_Start(&req_flcor_recv_[nb.fid][nb.fi2][nb.fi1]);
       if (MAGNETIC_FIELDS_ENABLED) {
@@ -944,6 +981,9 @@ void BoundaryValues::ClearBoundaryForInit(bool cons_and_field)
   for(int n=0;n<pmb->nneighbor;n++) {
     NeighborBlock& nb = pmb->neighbor[n];
     hydro_flag_[nb.bufid] = BNDRY_WAITING;
+#ifdef INCLUDE_CHEMISTRY
+    species_flag_[nb.bufid] = BNDRY_WAITING;
+#endif
     if (MAGNETIC_FIELDS_ENABLED)
       field_flag_[nb.bufid] = BNDRY_WAITING;
     if (GENERAL_RELATIVITY and pmb->pmy_mesh->multilevel)
@@ -952,6 +992,9 @@ void BoundaryValues::ClearBoundaryForInit(bool cons_and_field)
     if(nb.rank!=Globals::my_rank) {
       if (cons_and_field) {  // normal case
         MPI_Wait(&req_hydro_send_[nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+#ifdef INCLUDE_CHEMISTRY
+        MPI_Wait(&req_species_send_[nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+#endif
         if (MAGNETIC_FIELDS_ENABLED)
           MPI_Wait(&req_field_send_[nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
       }
@@ -978,6 +1021,9 @@ void BoundaryValues::ClearBoundaryAll(void)
   for(int n=0;n<pmb->nneighbor;n++) {
     NeighborBlock& nb = pmb->neighbor[n];
     hydro_flag_[nb.bufid] = BNDRY_WAITING;
+#ifdef INCLUDE_CHEMISTRY
+    species_flag_[nb.bufid] = BNDRY_WAITING;
+#endif
     if(nb.type==NEIGHBOR_FACE)
       flcor_flag_[nb.fid][nb.fi2][nb.fi1] = BNDRY_WAITING;
     if (MAGNETIC_FIELDS_ENABLED) {
@@ -988,6 +1034,9 @@ void BoundaryValues::ClearBoundaryAll(void)
 #ifdef MPI_PARALLEL
     if(nb.rank!=Globals::my_rank) {
       MPI_Wait(&req_hydro_send_[nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+#ifdef INCLUDE_CHEMISTRY
+      MPI_Wait(&req_species_send_[nb.bufid],MPI_STATUS_IGNORE); // Wait for Isend
+#endif
       if(nb.type==NEIGHBOR_FACE && nb.level<pmb->loc.level)
         MPI_Wait(&req_flcor_send_[nb.fid],MPI_STATUS_IGNORE); // Wait for Isend
       if (MAGNETIC_FIELDS_ENABLED) {
