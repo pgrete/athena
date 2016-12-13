@@ -20,6 +20,7 @@
 class MeshBlock;
 class ParameterInput;
 class Radiation;
+class NeighborBlock;
 
 //! \class RadIntegrator
 //  \brief integrate algorithm for radiative transfer
@@ -43,7 +44,9 @@ public:
   void GetColMB(int direction);
   //calcuate total column and update radiation
   void UpdateRadiation(int direction);
+  //copy column density and average radiation field to output
   void CopyToOutput();
+  void SetSixRayNeighbors();
 #endif
 private:
   Real rad_G0_; //unshielded radiation field strengh, uniform.
@@ -55,7 +58,7 @@ private:
   static const int IXM = 3; //-x
   static const int IYM = 4; //-y
   static const int IZM = 5; //-z
-  //copy column density and average radiation field to output
+  NeighborBlock* pneighbors_[6]; //TODO:uniform mesh for now
 };
 
 #endif // RADINTEGRATORS_HPP

@@ -97,6 +97,7 @@ class MeshBlock {
 #endif
   friend class TaskList;
   friend class Radiation;
+  friend class RadIntegrator;
 #ifdef HDF5OUTPUT
   friend class ATHDF5Output;
 #endif

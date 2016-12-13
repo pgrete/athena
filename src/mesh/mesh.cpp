@@ -34,6 +34,8 @@
 #include "mesh_refinement.hpp"
 #include "meshblock_tree.hpp"
 #include "mesh.hpp"
+#include "../radiation/radiation.hpp"
+#include "../radiation/integrators/rad_integrators.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../chemistry/species.hpp"
 #endif
@@ -486,6 +488,9 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test)
     }
 
     pblock->SearchAndSetNeighbors(tree, ranklist, nslist);
+    if (pblock->prad->integrator == "six_ray") {
+      pblock->prad->pradintegrator->SetSixRayNeighbors();
+    }
   }
   pblock=pfirst;
 
@@ -794,6 +799,9 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test)
       pblock = pblock->next;
     }
     pblock->SearchAndSetNeighbors(tree, ranklist, nslist);
+    if (pblock->prad->integrator == "six_ray") {
+      pblock->prad->pradintegrator->SetSixRayNeighbors();
+    }
   }
   pblock=pfirst;
   delete [] mbdata;
@@ -2127,6 +2135,9 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   pmb=pblock;
   while(pmb!=NULL) {
     pmb->SearchAndSetNeighbors(tree, ranklist, nslist);
+    if (pblock->prad->integrator == "six_ray") {
+      pmb->prad->pradintegrator->SetSixRayNeighbors();
+    }
     pmb=pmb->next;
   }
   Initialize(2, pin);

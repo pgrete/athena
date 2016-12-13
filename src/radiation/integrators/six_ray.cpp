@@ -54,6 +54,9 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
       << "Six-ray scheme with nang != 6." << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
+  for (int i=0; i<6; i++) {
+    pneighbors_[i] = NULL;
+  }
 #ifdef INCLUDE_CHEMISTRY
   pmy_chemnet = pmy_mb->pspec->pchemnet;
   ncol = pmy_chemnet->n_cols_;
@@ -355,5 +358,33 @@ void RadIntegrator::CopyToOutput() {
       }
     }
   }
+}
+
+void RadIntegrator::SetSixRayNeighbors() {
+  //assign neighbors for six-ray
+  NeighborBlock* nb;
+  for(int n=0; n<pmy_mb->nneighbor; n++) {
+    nb = &pmy_mb->neighbor[n];
+    if (nb->fid == INNER_X1) {
+      pneighbors_[0] = nb;
+      std::cout << "INNER_X1" << std::endl;
+    } else if (nb->fid == INNER_X2) {
+      pneighbors_[1] = nb;
+      std::cout << "INNER_X2" << std::endl;
+    } else if (nb->fid == INNER_X3) {
+      pneighbors_[2] = nb;
+      std::cout << "INNER_X3" << std::endl;
+    } else if (nb->fid == OUTER_X1) {
+      pneighbors_[3] = nb;
+      std::cout << "OUTER_X1" << std::endl;
+    } else if (nb->fid == OUTER_X2) {
+      pneighbors_[4] = nb;
+      std::cout << "OUTER_X2" << std::endl;
+    } else if (nb->fid == OUTER_X3) {
+      pneighbors_[5] = nb;
+      std::cout << "OUTER_X3" << std::endl;
+    }
+  }
+  return;
 }
 #endif
