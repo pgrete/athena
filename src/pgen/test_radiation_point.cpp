@@ -87,14 +87,21 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 	const int ipy = pin->GetInteger("problem", "ipy");
 	const int ipz = pin->GetInteger("problem", "ipz");
 	//set density
+  int gis = loc.lx1 * Nx;
+  int gjs = loc.lx2 * Ny;
+  int gks = loc.lx3 * Nz;
+  
 	for (int k=ks; k<=ke; ++k) {
 		for (int j=js; j<=je; ++j) {
 			for (int i=is; i<=ie; ++i) {
-				phydro->u(IDN, k, j, i) = 0;//nH;
+        if (i-is+gis == ipx and j-js+gjs == ipy and k-ks+gks == ipz) {
+          phydro->u(IDN, k, j, i) = nH;//nH;
+        } else {
+          phydro->u(IDN, k, j, i) = 0;//nH;
+        }
 			}
 		}
 	}
-  phydro->u(IDN, ks+ipz, js+ipy, is+ipx) = nH;//nH;
 
 	//intialize radiation field
 	if (RADIATION_ENABLED) {
