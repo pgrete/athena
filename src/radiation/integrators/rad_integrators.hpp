@@ -52,13 +52,7 @@ private:
   Real rad_G0_; //unshielded radiation field strengh, uniform.
   Real unit_length_in_cm_;
   //index for direction of rays in six-ray
-  static const int IXP = 0; //+x
-  static const int IYP = 1; //+y
-  static const int IZP = 2; //+z
-  static const int IXM = 3; //-x
-  static const int IYM = 4; //-y
-  static const int IZM = 5; //-z
-  NeighborBlock* pneighbors_[6]; //TODO:uniform mesh for now
+  NeighborBlock* pfacenb_[6]; //TODO:uniform mesh for now
 };
 
 #endif // RADINTEGRATORS_HPP
