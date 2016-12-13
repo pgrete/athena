@@ -47,6 +47,7 @@ public:
 #endif
 private:
   Real rad_G0_; //unshielded radiation field strengh, uniform.
+  Real unit_length_in_cm_;
   //index for direction of rays in six-ray
   static const int IXP = 0; //+x
   static const int IYP = 1; //+y
