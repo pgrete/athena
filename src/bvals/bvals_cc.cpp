@@ -28,6 +28,8 @@
 #include "../coordinates/coordinates.hpp"
 #include "../parameter_input.hpp"
 #include "../utils/buffer_utils.hpp"
+#include "../radiation/radiation.hpp"
+#include "../radiation/integrators/rad_integrators.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../chemistry/species.hpp"
 #endif
@@ -36,6 +38,32 @@
 #ifdef MPI_PARALLEL
 #include <mpi.h>
 #endif
+
+//get opposite direction for face neighbour
+static int GetOppositeDirection(const int direction) {
+  std::stringstream msg;
+
+  int opp_direction;
+  if (direction == INNER_X1) {
+    opp_direction = OUTER_X1;
+  } else if (direction == OUTER_X1) {
+    opp_direction = INNER_X1;
+  } else if (direction == INNER_X2) {
+    opp_direction = OUTER_X2;
+  } else if (direction == OUTER_X2) {
+    opp_direction = INNER_X2;
+  } else if (direction == INNER_X3) {
+    opp_direction = OUTER_X3;
+  } else if (direction == OUTER_X3) {
+    opp_direction = INNER_X3;
+  } else {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in BoundaryValues::SendSixrayBoundaryBuffers" << std::endl
+      << "direction " << direction  << "is undefined." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+  return opp_direction;
+}
 
 //----------------------------------------------------------------------------------------
 //! \fn int BoundaryValues::LoadHydroBoundaryBufferSameLevel(AthenaArray<Real> &src,
@@ -708,5 +736,201 @@ void BoundaryValues::ClearBoundarySpecies(void)
 #endif
   }
   return;
+}
+
+//six-ray
+//----------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::StartReceivingSixray(void)
+//  \brief initiate MPI_Irecv for six-ray column
+
+void BoundaryValues::StartReceivingSixray(void)
+{
+  firsttime_=true;
+#ifdef MPI_PARALLEL
+  MeshBlock *pmb=pmy_block_;
+  int mylevel=pmb->loc.level;
+  for(int n=0;n<6;n++) {
+    NeighborBlock *nb = pmb->prad->pradintegrator->pfacenb_[n];
+    if(nb != NULL && nb->rank!=Globals::my_rank) { 
+      MPI_Start(&req_sixray_recv_[n]);
+    }
+  }
+#endif
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::ClearBoundarySixray(void)
+//  \brief clean up the boundary flags after each loop for sixray
+
+void BoundaryValues::ClearBoundarySixray(void)
+{
+  MeshBlock *pmb=pmy_block_;
+
+  // Clear non-polar boundary communications
+  for(int n=0;n<6;n++) {
+    NeighborBlock *nb = pmb->prad->pradintegrator->pfacenb_[n];
+    sixray_flag_[n] = BNDRY_WAITING;
+#ifdef MPI_PARALLEL
+    if(nb != NULL && nb->rank!=Globals::my_rank) {
+      MPI_Wait(&req_sixray_send_[n],MPI_STATUS_IGNORE); // Wait for Isend
+    }
+#endif
+  }
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn int BoundaryValues::LoadSixrayBoundaryBufferSameLevel(AthenaArray<Real> &src,
+//                                                 Real *buf, const NeighborBlock& nb)
+//  \brief Set six-ray boundary buffers for sending to a block on the same level
+
+int BoundaryValues::LoadSixrayBoundaryBufferSameLevel(AthenaArray<Real> &src,
+    Real *buf, const NeighborBlock& nb)
+{
+  MeshBlock *pmb=pmy_block_;
+  int si, sj, sk, ei, ej, ek;
+
+  si=(nb.ox1>0)?(pmb->ie-NGHOST+1):pmb->is;
+  ei=(nb.ox1<0)?(pmb->is+NGHOST-1):pmb->ie;
+  sj=(nb.ox2>0)?(pmb->je-NGHOST+1):pmb->js;
+  ej=(nb.ox2<0)?(pmb->js+NGHOST-1):pmb->je;
+  sk=(nb.ox3>0)?(pmb->ke-NGHOST+1):pmb->ks;
+  ek=(nb.ox3<0)?(pmb->ks+NGHOST-1):pmb->ke;
+  int p=0;
+  BufferUtility::Pack4DData(src, buf, 0, NSPECIES-1, si, ei, sj, ej, sk, ek, p);
+  return p;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::SetSixrayBoundarySameLevel(AthenaArray<Real> &dst,
+//                                           Real *buf, const NeighborBlock& nb)
+//  \brief Set six-ray boundary received from a block on the same level
+
+void BoundaryValues::SetSixrayBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
+                                               const NeighborBlock& nb)
+{
+  std::stringstream msg;
+  MeshBlock *pmb=pmy_block_;
+  int si, sj, sk, ei, ej, ek;
+
+  if(nb.ox1==0)     si=pmb->is,        ei=pmb->ie;
+  else if(nb.ox1>0) si=pmb->ie+1,      ei=pmb->ie+NGHOST;
+  else              si=pmb->is-NGHOST, ei=pmb->is-1;
+  if(nb.ox2==0)     sj=pmb->js,        ej=pmb->je;
+  else if(nb.ox2>0) sj=pmb->je+1,      ej=pmb->je+NGHOST;
+  else              sj=pmb->js-NGHOST, ej=pmb->js-1;
+  if(nb.ox3==0)     sk=pmb->ks,        ek=pmb->ke;
+  else if(nb.ox3>0) sk=pmb->ke+1,      ek=pmb->ke+NGHOST;
+  else              sk=pmb->ks-NGHOST, ek=pmb->ks-1;
+
+  int p=0;
+  if (nb.polar) {
+      //need to add polar cooridnates here
+      msg << "### FATAL ERROR in SetSixrayBoundarySameLevel()" << std::endl
+          << "Chemistry BC not yet working with polar coordinates yet." << std::endl;
+      throw std::runtime_error(msg.str().c_str());
+  }
+  else {
+    BufferUtility::Unpack4DData(buf, dst, 0, NSPECIES-1, si, ei, sj, ej, sk, ek, p);
+  }
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void BoundaryValues::SendSixrayBoundaryBuffers(AthenaArray<Real> &src,
+//const int direction)
+//  \brief Send boundary buffers
+
+void BoundaryValues::SendSixrayBoundaryBuffers(AthenaArray<Real> &src, 
+                                               const int direction)
+{
+  std::stringstream msg;
+  MeshBlock *pmb=pmy_block_;
+  int mylevel=pmb->loc.level;
+
+  NeighborBlock *nb = pmb->prad->pradintegrator->pfacenb_[direction];
+
+  int recv_direction = GetOppositeDirection(direction);
+
+  int ssize;
+  if(nb->level==mylevel) {
+    ssize=LoadSixrayBoundaryBufferSameLevel(src, col_sixray_send_[direction],*nb);
+  } else {
+    //need to add AMR here
+    msg << "### FATAL ERROR in SendSixrayBoundaryBuffers()" << std::endl
+      << "Chemistry BC not yet working with AMR yet." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+
+  if(nb->rank == Globals::my_rank) { // on the same process
+    MeshBlock *pbl=pmb->pmy_mesh->FindMeshBlock(nb->gid);
+    std::memcpy(pbl->pbval->col_sixray_recv_[recv_direction],
+        col_sixray_send_[direction], ssize*sizeof(Real));
+    pbl->pbval->sixray_flag_[recv_direction]=BNDRY_ARRIVED;
+  }
+#ifdef MPI_PARALLEL
+  else // MPI
+    MPI_Start(&req_sixray_send_[direction]);
+#endif
+
+  return;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn bool BoundaryValues::ReceiveSixrayBoundaryBuffers(AthenaArray<Real> &dst,
+//const int direction)
+//  \brief receive the boundary data
+//  return true if boundary already completed, or just received and completed. 
+//  Return fasle if boundary has not arrived yet, or is at the same processor.
+
+bool BoundaryValues::ReceiveSixrayBoundaryBuffers(AthenaArray<Real> &dst,
+                                                  const int direction)
+{
+  std::stringstream msg;
+  MeshBlock *pmb=pmy_block_;
+  bool flag=true;
+
+  NeighborBlock *nb = pmb->prad->pradintegrator->pfacenb_[direction];
+  if(sixray_flag_[direction]==BNDRY_COMPLETED) {
+    flag = true;  
+  } else if (sixray_flag_[direction]==BNDRY_WAITING) {
+    if(nb->rank==Globals::my_rank) {// on the same process
+      flag=false;
+    }
+#ifdef MPI_PARALLEL
+    else { // MPI boundary
+      int test;
+      MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&test,MPI_STATUS_IGNORE);
+      MPI_Test(&req_sixray_recv_[direction],&test,MPI_STATUS_IGNORE);
+      if(test==false) {
+        flag=false;
+      } else {
+        sixray_flag_[direction] = BNDRY_ARRIVED;
+      }
+    }
+#endif
+  } 
+
+  if (sixray_flag_[direction] == BNDRY_ARRIVED) {
+    if(nb->level==pmb->loc.level) {
+      SetSixrayBoundarySameLevel(dst, col_sixray_recv_[direction], *nb);
+    } else {
+      //need to add AMR here
+      msg << "### FATAL ERROR in ReceiveSixrayBoundaryBuffers()" << std::endl
+        << "Chemistry BC not yet working with AMR yet." << std::endl;
+      throw std::runtime_error(msg.str().c_str());
+    }
+    sixray_flag_[direction] = BNDRY_COMPLETED; // completed
+  }
+
+  if(flag&& (pmb->block_bcs[INNER_X2]==POLAR_BNDRY
+         ||  pmb->block_bcs[OUTER_X2]==POLAR_BNDRY)) {
+      //need to add polar cooridnates here
+      msg << "### FATAL ERROR in ReceiveSixrayBoundaryBuffers()" << std::endl
+          << "Chemistry BC not yet working with polar coordinates yet." << std::endl;
+      throw std::runtime_error(msg.str().c_str());
+  }
+  return flag;
 }
 #endif //INCLUDE_CHEMISTRY

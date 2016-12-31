@@ -22,6 +22,7 @@
 class ChemNetwork : public NetworkWrapper {
 	friend class RadIntegrator;
 	friend class MeshBlock;
+  friend class BoundaryValues;
 public:
   ChemNetwork(ChemSpecies *pspec, ParameterInput *pin);
   ~ChemNetwork();

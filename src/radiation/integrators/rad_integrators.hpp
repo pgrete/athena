@@ -28,6 +28,7 @@ class NeighborBlock;
 
 class RadIntegrator {
   friend class Radiation;
+  friend class BoundaryValues;
 public:
   RadIntegrator(Radiation *prad, ParameterInput *pin);
   ~RadIntegrator();

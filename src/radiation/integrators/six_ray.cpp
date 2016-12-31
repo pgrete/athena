@@ -363,6 +363,7 @@ void RadIntegrator::CopyToOutput() {
 
 void RadIntegrator::SetSixRayNeighbors() {
   //assign neighbors for six-ray
+  //TODO: delete output for testing.
   NeighborBlock* nb;
   for(int n=0; n<pmy_mb->nneighbor; n++) {
     nb = &pmy_mb->neighbor[n];

@@ -29,6 +29,8 @@
 #include "../coordinates/coordinates.hpp"
 #include "../parameter_input.hpp"
 #include "../utils/buffer_utils.hpp"
+#include "../radiation/radiation.hpp"
+#include "../radiation/integrators/rad_integrators.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../chemistry/species.hpp"
 #endif
@@ -250,9 +252,19 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
 #ifdef INCLUDE_CHEMISTRY
     req_species_send_[i]=MPI_REQUEST_NULL;
     req_species_recv_[i]=MPI_REQUEST_NULL;
+    req_sixray_send_[i]=MPI_REQUEST_NULL;
+    req_sixray_recv_[i]=MPI_REQUEST_NULL;
 #endif
 #endif
   }
+#ifdef INCLUDE_CHEMISTRY
+  //six-ray
+  for (int i=0; i<6; i++) {
+    sixray_flag_[i]=BNDRY_WAITING;
+    col_sixray_send_[i]=NULL;
+    col_sixray_recv_[i]=NULL;
+  }
+#endif
   for(int i=0;i<48;i++){
     emfcor_send_[i]=NULL;
     emfcor_recv_[i]=NULL;
@@ -337,6 +349,29 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, ParameterInput *pin)
     species_recv_[n]=new Real[size*NSPECIES/NHYDRO];
 #endif
   }
+#ifdef INCLUDE_CHEMISTRY
+  //six ray
+  if (RADIATION_ENABLED) {
+    for (int n=0; n<6; n++) {
+      int size = 0;
+      if (n == INNER_X1 || n == OUTER_X1) {
+        size = pmb->block_size.nx2 * pmb->block_size.nx3;
+      } else if (n == INNER_X2 || n == OUTER_X2) {
+        size = pmb->block_size.nx1 * pmb->block_size.nx3;
+      } else if (n == INNER_X3 || n == OUTER_X3) {
+        size = pmb->block_size.nx1 * pmb->block_size.nx2;
+      } else {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in BoundaryValues::BoundaryValues" << std::endl
+          << "six-ray direction: " << n << " is undefined. "<< std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
+      size *= pmb->pspec->pchemnet->n_cols_;
+      col_sixray_send_[n] = new Real[size];
+      col_sixray_recv_[n] = new Real[size];
+    }
+  }
+#endif
   if (MAGNETIC_FIELDS_ENABLED) {
     for(int n=0;n<pmb->pmy_mesh->maxneighbor_;n++) {
       int size1=((BoundaryValues::ni[n].ox1==0)?(pmb->block_size.nx1+1):NGHOST)
@@ -489,6 +524,14 @@ BoundaryValues::~BoundaryValues()
     delete [] species_recv_[i];
 #endif
   }
+#ifdef INCLUDE_CHEMISTRY
+  if (RADIATION_ENABLED) {
+    for (int i=0; i<6; i++) {
+      delete [] col_sixray_send_[i];
+      delete [] col_sixray_recv_[i];
+    }
+  }
+#endif
   if (MAGNETIC_FIELDS_ENABLED) {
     for(int i=0;i<pmb->pmy_mesh->maxneighbor_;i++) { 
       delete [] field_send_[i];
@@ -840,6 +883,31 @@ void BoundaryValues::Initialize(void)
       }
     }
   }
+#ifdef INCLUDE_CHEMISTRY
+  //six ray
+  if (RADIATION_ENABLED) {
+    for (int n=0; n<6; n++) {
+      NeighborBlock *nb = pmb->prad->pradintegrator->pfacenb_[n];
+      if (nb != NULL && nb->rank!=Globals::my_rank) {
+        if (nb->fid == INNER_X1 || nb->fid == OUTER_X1) {
+          ssize = rsize = pmb->block_size.nx2 * pmb->block_size.nx3;
+        } else if (nb->fid == INNER_X2 || nb->fid == OUTER_X2) {
+          ssize = rsize = pmb->block_size.nx1 * pmb->block_size.nx3;
+        } else {
+          ssize = rsize = pmb->block_size.nx1 * pmb->block_size.nx2;
+        }
+        ssize *= pmb->pspec->pchemnet->n_cols_;
+        rsize *= pmb->pspec->pchemnet->n_cols_;
+        tag=CreateBvalsMPITag(nb->lid, TAG_SIXRAY, nb->targetid);
+        MPI_Send_init(col_sixray_send_[n], ssize, MPI_ATHENA_REAL,
+                      nb->rank,tag,MPI_COMM_WORLD,&req_sixray_send_[n]);
+        tag=CreateBvalsMPITag(pmb->lid, TAG_SIXRAY, nb->bufid);
+        MPI_Recv_init(col_sixray_recv_[n], rsize, MPI_ATHENA_REAL,
+                      nb->rank,tag,MPI_COMM_WORLD,&req_sixray_recv_[n]);
+      }
+    }
+  }
+#endif //INCLUDE_CHEMISTRY
 
   // Initialize polar neighbor communications to other ranks
   if (MAGNETIC_FIELDS_ENABLED) {
@@ -917,7 +985,7 @@ void BoundaryValues::StartReceivingForInit(bool cons_and_field)
       }
     }
   }
-#endif
+#endif //MPI_PARALLEL
   return;
 }
 

@@ -147,6 +147,16 @@ public:
                                    const NeighborBlock& nb);
   bool ReceiveSpeciesBoundaryBuffers(AthenaArray<Real> &dst);
   void ReceiveSpeciesBoundaryBuffersWithWait(AthenaArray<Real> &dst);
+  //six-ray
+  void StartReceivingSixray(void);
+  void ClearBoundarySixray(void);
+  int LoadSixrayBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
+                                         const NeighborBlock& nb);
+  void SetSixrayBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
+                                   const NeighborBlock& nb);
+  void SendSixrayBoundaryBuffers(AthenaArray<Real> &src, const int direction);
+  bool ReceiveSixrayBoundaryBuffers(AthenaArray<Real> &dst, const int direction);
+
 #endif //INCLUDE_CHEMISTRY
 
   int LoadFieldBoundaryBufferSameLevel(FaceField &src, Real *buf,
@@ -189,6 +199,7 @@ private:
   enum BoundaryStatus hydro_flag_[56], field_flag_[56];
 #ifdef INCLUDE_CHEMISTRY
   enum BoundaryStatus species_flag_[56];
+  enum BoundaryStatus sixray_flag_[6];
 #endif
   enum BoundaryStatus flcor_flag_[6][2][2];
   enum BoundaryStatus emfcor_flag_[48];
@@ -197,6 +208,7 @@ private:
   Real *hydro_send_[56],  *hydro_recv_[56];
 #ifdef INCLUDE_CHEMISTRY
   Real *species_send_[56],  *species_recv_[56];
+  Real *col_sixray_send_[6],  *col_sixray_recv_[6];
 #endif
   Real *field_send_[56],  *field_recv_[56];
   Real *flcor_send_[6],   *flcor_recv_[6][2][2];
@@ -211,6 +223,7 @@ private:
   MPI_Request req_hydro_send_[56],  req_hydro_recv_[56];
 #ifdef INCLUDE_CHEMISTRY
   MPI_Request req_species_send_[56],  req_species_recv_[56];
+  MPI_Request req_sixray_send_[6],  req_sixray_recv_[6];
 #endif
   MPI_Request req_field_send_[56],  req_field_recv_[56];
   MPI_Request req_flcor_send_[6],   req_flcor_recv_[6][2][2];
