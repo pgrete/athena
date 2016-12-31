@@ -13,6 +13,12 @@
 
 namespace BufferUtility
 {
+void Pack5DData(AthenaArray<Real> &src, Real *buf, int sn, int en, 
+               int sm, int em,
+               int si, int ei, int sj, int ej, int sk, int ek, int &offset);
+void Unpack5DData(Real *buf, AthenaArray<Real> &dst, int sn, int en,
+                  int sm, int em,
+                  int si, int ei, int sj, int ej, int sk, int ek, int &offset);
 void Pack4DData(AthenaArray<Real> &src, Real *buf, int sn, int en,
                int si, int ei, int sj, int ej, int sk, int ek, int &offset);
 void Unpack4DData(Real *buf, AthenaArray<Real> &dst, int sn, int en,

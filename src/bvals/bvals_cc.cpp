@@ -782,11 +782,12 @@ void BoundaryValues::ClearBoundarySixray(void)
 
 //----------------------------------------------------------------------------------------
 //! \fn int BoundaryValues::LoadSixrayBoundaryBufferSameLevel(AthenaArray<Real> &src,
-//                                                 Real *buf, const NeighborBlock& nb)
+//                                                 Real *buf, const NeighborBlock& nb,
+//                                                 const int direction)
 //  \brief Set six-ray boundary buffers for sending to a block on the same level
 
 int BoundaryValues::LoadSixrayBoundaryBufferSameLevel(AthenaArray<Real> &src,
-    Real *buf, const NeighborBlock& nb)
+    Real *buf, const NeighborBlock& nb, const int direction)
 {
   MeshBlock *pmb=pmy_block_;
   int si, sj, sk, ei, ej, ek;
@@ -798,17 +799,20 @@ int BoundaryValues::LoadSixrayBoundaryBufferSameLevel(AthenaArray<Real> &src,
   sk=(nb.ox3>0)?(pmb->ke-NGHOST+1):pmb->ks;
   ek=(nb.ox3<0)?(pmb->ks+NGHOST-1):pmb->ke;
   int p=0;
-  BufferUtility::Pack4DData(src, buf, 0, NSPECIES-1, si, ei, sj, ej, sk, ek, p);
+  BufferUtility::Pack5DData(src, buf, direction, direction, 0, pmb->pspec->pchemnet->n_cols_-1,
+                            si, ei, sj, ej, sk, ek, p);
   return p;
 }
 
 //----------------------------------------------------------------------------------------
 //! \fn void BoundaryValues::SetSixrayBoundarySameLevel(AthenaArray<Real> &dst,
-//                                           Real *buf, const NeighborBlock& nb)
+//                                           Real *buf, const NeighborBlock& nb,
+//                                           const int direction)
 //  \brief Set six-ray boundary received from a block on the same level
 
 void BoundaryValues::SetSixrayBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
-                                               const NeighborBlock& nb)
+                                               const NeighborBlock& nb,
+                                               const int direction)
 {
   std::stringstream msg;
   MeshBlock *pmb=pmy_block_;
@@ -832,7 +836,8 @@ void BoundaryValues::SetSixrayBoundarySameLevel(AthenaArray<Real> &dst, Real *bu
       throw std::runtime_error(msg.str().c_str());
   }
   else {
-    BufferUtility::Unpack4DData(buf, dst, 0, NSPECIES-1, si, ei, sj, ej, sk, ek, p);
+    BufferUtility::Unpack5DData(buf, dst, direction, direction, 0, pmb->pspec->pchemnet->n_cols_-1, 
+                                si, ei, sj, ej, sk, ek, p);
   }
   return;
 }
@@ -855,7 +860,8 @@ void BoundaryValues::SendSixrayBoundaryBuffers(AthenaArray<Real> &src,
 
   int ssize;
   if(nb->level==mylevel) {
-    ssize=LoadSixrayBoundaryBufferSameLevel(src, col_sixray_send_[direction],*nb);
+    ssize=LoadSixrayBoundaryBufferSameLevel(src, col_sixray_send_[direction],*nb,
+                                            direction);
   } else {
     //need to add AMR here
     msg << "### FATAL ERROR in SendSixrayBoundaryBuffers()" << std::endl
@@ -914,7 +920,7 @@ bool BoundaryValues::ReceiveSixrayBoundaryBuffers(AthenaArray<Real> &dst,
 
   if (sixray_flag_[direction] == BNDRY_ARRIVED) {
     if(nb->level==pmb->loc.level) {
-      SetSixrayBoundarySameLevel(dst, col_sixray_recv_[direction], *nb);
+      SetSixrayBoundarySameLevel(dst, col_sixray_recv_[direction], *nb, direction);
     } else {
       //need to add AMR here
       msg << "### FATAL ERROR in ReceiveSixrayBoundaryBuffers()" << std::endl

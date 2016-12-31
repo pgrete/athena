@@ -151,9 +151,10 @@ public:
   void StartReceivingSixray(void);
   void ClearBoundarySixray(void);
   int LoadSixrayBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
-                                         const NeighborBlock& nb);
+                                        const NeighborBlock& nb,
+                                        const int direction);
   void SetSixrayBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
-                                   const NeighborBlock& nb);
+                                  const NeighborBlock& nb, const int direction);
   void SendSixrayBoundaryBuffers(AthenaArray<Real> &src, const int direction);
   bool ReceiveSixrayBoundaryBuffers(AthenaArray<Real> &dst, const int direction);
 
