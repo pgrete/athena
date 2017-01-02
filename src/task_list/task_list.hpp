@@ -141,7 +141,24 @@ public:
   enum TaskStatus LocalIntegratorJeans(MeshBlock *pmb, int step);
   enum TaskStatus ConstRadiation(MeshBlock *pmb, int step);
   //add six ray here
-  enum TaskStatus SixRayCol(MeshBlock *pmb, int step);
+  enum TaskStatus StartSixrayReceive(MeshBlock *pmb, int step);
+  enum TaskStatus GetColMB0(MeshBlock *pmb, int step);
+  enum TaskStatus GetColMB1(MeshBlock *pmb, int step);
+  enum TaskStatus GetColMB2(MeshBlock *pmb, int step);
+  enum TaskStatus GetColMB3(MeshBlock *pmb, int step);
+  enum TaskStatus GetColMB4(MeshBlock *pmb, int step);
+  enum TaskStatus GetColMB5(MeshBlock *pmb, int step);
+  enum TaskStatus RecvAndSend0(MeshBlock *pmb, int step);
+  enum TaskStatus RecvAndSend1(MeshBlock *pmb, int step);
+  enum TaskStatus RecvAndSend2(MeshBlock *pmb, int step);
+  enum TaskStatus RecvAndSend3(MeshBlock *pmb, int step);
+  enum TaskStatus RecvAndSend4(MeshBlock *pmb, int step);
+  enum TaskStatus RecvAndSend5(MeshBlock *pmb, int step);
+  enum TaskStatus UpdateRadiation(MeshBlock *pmb, int step);
+private:
+  enum TaskStatus RecvAndSend_direction(MeshBlock *pmb, int step, int direction);
+
+  
 };
 
 //--------------------------------------------------------------------------------------
@@ -229,12 +246,6 @@ namespace RadiationIntegratorTaskNames {
   const uint64_t RECV_SEND_COL3=1LL<<12;
   const uint64_t RECV_SEND_COL4=1LL<<13;
   const uint64_t RECV_SEND_COL5=1LL<<14;
-  const uint64_t UPDATE_RAD0=1LL<<15;
-  const uint64_t UPDATE_RAD1=1LL<<16;
-  const uint64_t UPDATE_RAD2=1LL<<17;
-  const uint64_t UPDATE_RAD3=1LL<<18;
-  const uint64_t UPDATE_RAD4=1LL<<19;
-  const uint64_t UPDATE_RAD5=1LL<<20;
-  const uint64_t COPY_OUTPUT=1LL<<21;
+  const uint64_t UPDATE_RAD=1LL<<15;
 };
 #endif // TASK_LIST_HPP

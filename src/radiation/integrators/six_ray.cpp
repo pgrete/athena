@@ -287,6 +287,134 @@ void RadIntegrator::GetColMB(int direction) {
   return;
 }
 
+void RadIntegrator::UpdateCol(int direction) {
+  const int iH2 = pmy_chemnet->iH2_;
+  const int iCO = pmy_chemnet->iCO_;
+  int is = pmy_mb->is;
+  int js = pmy_mb->js;
+  int ks = pmy_mb->ks;
+  int ie = pmy_mb->ie;
+  int je = pmy_mb->je;
+  int ke = pmy_mb->ke;
+  std::stringstream msg; //error message
+  Real NH_ghostzone;
+  Real NH_boundary, NH2_boundary, NCO_boundary;
+  if (direction == INNER_X1) {
+    //+x
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+        NH_ghostzone =
+          pmy_mb->phydro->w(IDN, k, j, is-1) * pmy_mb->pcoord->dx1f(is-1) / 2.;
+        NH_boundary = col(direction, k, j, is-1, pmy_chemnet->iNHtot_) + NH_ghostzone; 
+        NH2_boundary = col(direction, k, j, is-1, pmy_chemnet->iNH2_)
+          + pmy_mb->pspec->s(iH2, k, j, is-1) * NH_ghostzone; 
+        NCO_boundary = col(direction, k, j, is-1, pmy_chemnet->iNCO_)
+          + pmy_mb->pspec->s(iCO, k, j, is-1) * NH_ghostzone;
+        for (int i=is; i<=ie; ++i) {
+          col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+        }
+      }
+    }
+  } else if (direction == OUTER_X1) {
+    //-x
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+        NH_ghostzone =
+          pmy_mb->phydro->w(IDN, k, j, ie+1) * pmy_mb->pcoord->dx1f(ie+1) / 2.;
+        NH_boundary = col(direction, k, j, ie+1, pmy_chemnet->iNHtot_) + NH_ghostzone; 
+        NH2_boundary = col(direction, k, j, ie+1, pmy_chemnet->iNH2_)
+          + pmy_mb->pspec->s(iH2, k, j, ie+1) * NH_ghostzone; 
+        NCO_boundary = col(direction, k, j, ie+1, pmy_chemnet->iNCO_)
+          + pmy_mb->pspec->s(iCO, k, j, ie+1) * NH_ghostzone;
+        for (int i=ie; i>=is; --i) {
+          col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+        }
+      }
+    }
+  } else if (direction == INNER_X2) {
+    //+y
+    for (int k=ks; k<=ke; ++k) {
+      for (int i=is; i<=ie; ++i) {
+        NH_ghostzone =
+          pmy_mb->phydro->w(IDN, k, js-1, i) * pmy_mb->pcoord->dx2f(js-1) / 2.;
+        NH_boundary = col(direction, k, js-1, i, pmy_chemnet->iNHtot_) + NH_ghostzone; 
+        NH2_boundary = col(direction, k, js-1, i, pmy_chemnet->iNH2_)
+          + pmy_mb->pspec->s(iH2, k, js-1, i) * NH_ghostzone; 
+        NCO_boundary = col(direction, k, js-1, i, pmy_chemnet->iNCO_)
+          + pmy_mb->pspec->s(iCO, k, js-1, i) * NH_ghostzone;
+        for (int j=js; j<=je; ++j) {
+          col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+        }
+      }
+    }
+  } else if (direction == OUTER_X2) {
+    //-y
+    for (int k=ks; k<=ke; ++k) {
+      for (int i=is; i<=ie; ++i) {
+        NH_ghostzone =
+          pmy_mb->phydro->w(IDN, k, je+1, i) * pmy_mb->pcoord->dx2f(je+1) / 2.;
+        NH_boundary = col(direction, k, je+1, i, pmy_chemnet->iNHtot_) + NH_ghostzone; 
+        NH2_boundary = col(direction, k, je+1, i, pmy_chemnet->iNH2_)
+          + pmy_mb->pspec->s(iH2, k, je+1, i) * NH_ghostzone; 
+        NCO_boundary = col(direction, k, je+1, i, pmy_chemnet->iNCO_)
+          + pmy_mb->pspec->s(iCO, k, je+1, i) * NH_ghostzone;
+        for (int j=je; j>=js; --j) {
+          col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+        }
+      }
+    }
+  } else if (direction == INNER_X3) {
+    //+z
+    for (int j=js; j<=je; ++j) {
+      for (int i=is; i<=ie; ++i) {
+        NH_ghostzone =
+          pmy_mb->phydro->w(IDN, ks-1, j, i) * pmy_mb->pcoord->dx3f(ks-1) / 2.;
+        NH_boundary = col(direction, ks-1, j, i, pmy_chemnet->iNHtot_) + NH_ghostzone; 
+        NH2_boundary = col(direction, ks-1, j, i, pmy_chemnet->iNH2_)
+          + pmy_mb->pspec->s(iH2, ks-1, j, i) * NH_ghostzone; 
+        NCO_boundary = col(direction, ks-1, j, i, pmy_chemnet->iNCO_)
+          + pmy_mb->pspec->s(iCO, ks-1, j, i) * NH_ghostzone;
+        for (int k=ks; k<=ke; ++k) {
+          col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+        }
+      }
+    }
+  } else if (direction == OUTER_X3) {
+    //-z
+    for (int j=js; j<=je; ++j) {
+      for (int i=is; i<=ie; ++i) {
+        NH_ghostzone =
+          pmy_mb->phydro->w(IDN, ke+1, j, i) * pmy_mb->pcoord->dx3f(ke+1) / 2.;
+        NH_boundary = col(direction, ke+1, j, i, pmy_chemnet->iNHtot_) + NH_ghostzone; 
+        NH2_boundary = col(direction, ke+1, j, i, pmy_chemnet->iNH2_)
+          + pmy_mb->pspec->s(iH2, ke+1, j, i) * NH_ghostzone; 
+        NCO_boundary = col(direction, ke+1, j, i, pmy_chemnet->iNCO_)
+          + pmy_mb->pspec->s(iCO, ke+1, j, i) * NH_ghostzone;
+        for (int k=ke; k>=ks; --k) {
+          col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+        }
+      }
+    }
+  } else {
+    msg << "### FATAL ERROR in RadIntegrator six_ray [UpdateCol]" << std::endl
+      << "direction {0,1,2,3,4,5}:" << direction << " unknown." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+  return;
+}
+
 void RadIntegrator::UpdateRadiation(int direction) {
   const int iang = direction;
   const Real Zd = pmy_chemnet->zdg_;

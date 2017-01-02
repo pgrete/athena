@@ -29,6 +29,7 @@ class NeighborBlock;
 class RadIntegrator {
   friend class Radiation;
   friend class BoundaryValues;
+  friend class RadiationIntegratorTaskList;
 public:
   RadIntegrator(Radiation *prad, ParameterInput *pin);
   ~RadIntegrator();
@@ -43,6 +44,8 @@ public:
   ChemNetwork* pmy_chemnet;
   //calcuate column within each meshblock
   void GetColMB(int direction);
+  //update column density after receive boundary.
+  void UpdateCol(int direction);
   //calcuate total column and update radiation
   void UpdateRadiation(int direction);
   //copy column density and average radiation field to output
