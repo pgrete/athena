@@ -262,7 +262,9 @@ enum TaskStatus RadiationIntegratorTaskList::RecvAndSend_direction(
   NeighborBlock *nb = pmb->prad->pradintegrator->pfacenb_[direction];
   NeighborBlock *nb_opp = pmb->prad->pradintegrator->pfacenb_[opp_direction];
   if (nb == NULL) {
-    pmb->pbval->SendSixrayBoundaryBuffers(pmb->prad->pradintegrator->col, direction);
+    if (nb_opp != NULL) {
+      pmb->pbval->SendSixrayBoundaryBuffers(pmb->prad->pradintegrator->col, direction);
+    }
   } else {
     ret = pmb->pbval->ReceiveSixrayBoundaryBuffers(pmb->prad->pradintegrator->col,
                                                   direction);
