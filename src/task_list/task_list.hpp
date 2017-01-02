@@ -216,6 +216,25 @@ namespace RadiationIntegratorTaskNames {
   const uint64_t INT_CONST=1LL<<0; //constant radiation, do nothing
   const uint64_t INT_LOC_JEANS=1LL<<1; //local jeans shielding
   //add six ray here
-  const uint64_t GET_COL_MB=1LL<<2; //local jeans shielding
+  const uint64_t START_SIXRAY_RECV=1LL<<2; 
+  const uint64_t GET_COL_MB0=1LL<<3; 
+  const uint64_t GET_COL_MB1=1LL<<4; 
+  const uint64_t GET_COL_MB2=1LL<<5;
+  const uint64_t GET_COL_MB3=1LL<<6;
+  const uint64_t GET_COL_MB4=1LL<<7;
+  const uint64_t GET_COL_MB5=1LL<<8;
+  const uint64_t RECV_SEND_COL0=1LL<<9; 
+  const uint64_t RECV_SEND_COL1=1LL<<10;
+  const uint64_t RECV_SEND_COL2=1LL<<11;
+  const uint64_t RECV_SEND_COL3=1LL<<12;
+  const uint64_t RECV_SEND_COL4=1LL<<13;
+  const uint64_t RECV_SEND_COL5=1LL<<14;
+  const uint64_t UPDATE_RAD0=1LL<<15;
+  const uint64_t UPDATE_RAD1=1LL<<16;
+  const uint64_t UPDATE_RAD2=1LL<<17;
+  const uint64_t UPDATE_RAD3=1LL<<18;
+  const uint64_t UPDATE_RAD4=1LL<<19;
+  const uint64_t UPDATE_RAD5=1LL<<20;
+  const uint64_t COPY_OUTPUT=1LL<<21;
 };
 #endif // TASK_LIST_HPP
