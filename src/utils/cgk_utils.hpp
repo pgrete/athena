@@ -39,5 +39,6 @@ namespace CGKUtility
 	//find index of string
   int FindStrIndex(const std::string *str_arr, const int len,
 		               const std::string name);
+  int GetOppositeDirection(const int direction);
 }
 #endif // CGK_UTILS_HPP

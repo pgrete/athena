@@ -28,6 +28,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "../parameter_input.hpp"
 #include "../utils/buffer_utils.hpp"
+#include "../utils/cgk_utils.hpp"
 #include "../radiation/radiation.hpp"
 #include "../radiation/integrators/rad_integrators.hpp"
 #ifdef INCLUDE_CHEMISTRY
@@ -39,31 +40,7 @@
 #include <mpi.h>
 #endif
 
-//get opposite direction for face neighbour
-static int GetOppositeDirection(const int direction) {
-  std::stringstream msg;
 
-  int opp_direction;
-  if (direction == INNER_X1) {
-    opp_direction = OUTER_X1;
-  } else if (direction == OUTER_X1) {
-    opp_direction = INNER_X1;
-  } else if (direction == INNER_X2) {
-    opp_direction = OUTER_X2;
-  } else if (direction == OUTER_X2) {
-    opp_direction = INNER_X2;
-  } else if (direction == INNER_X3) {
-    opp_direction = OUTER_X3;
-  } else if (direction == OUTER_X3) {
-    opp_direction = INNER_X3;
-  } else {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in BoundaryValues::SendSixrayBoundaryBuffers" << std::endl
-      << "direction " << direction  << "is undefined." << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-  }
-  return opp_direction;
-}
 
 //----------------------------------------------------------------------------------------
 //! \fn int BoundaryValues::LoadHydroBoundaryBufferSameLevel(AthenaArray<Real> &src,
@@ -792,12 +769,12 @@ int BoundaryValues::LoadSixrayBoundaryBufferSameLevel(AthenaArray<Real> &src,
   MeshBlock *pmb=pmy_block_;
   int si, sj, sk, ei, ej, ek;
 
-  si=(nb.ox1>0)?(pmb->ie-NGHOST+1):pmb->is;
-  ei=(nb.ox1<0)?(pmb->is+NGHOST-1):pmb->ie;
-  sj=(nb.ox2>0)?(pmb->je-NGHOST+1):pmb->js;
-  ej=(nb.ox2<0)?(pmb->js+NGHOST-1):pmb->je;
-  sk=(nb.ox3>0)?(pmb->ke-NGHOST+1):pmb->ks;
-  ek=(nb.ox3<0)?(pmb->ks+NGHOST-1):pmb->ke;
+  si=(nb.ox1>0)?(pmb->ie):pmb->is;
+  ei=(nb.ox1<0)?(pmb->is):pmb->ie;
+  sj=(nb.ox2>0)?(pmb->je):pmb->js;
+  ej=(nb.ox2<0)?(pmb->js):pmb->je;
+  sk=(nb.ox3>0)?(pmb->ke):pmb->ks;
+  ek=(nb.ox3<0)?(pmb->ks):pmb->ke;
   int p=0;
   BufferUtility::Pack5DData(src, buf, direction, direction, 0, pmb->pspec->pchemnet->n_cols_-1,
                             si, ei, sj, ej, sk, ek, p);
@@ -819,14 +796,14 @@ void BoundaryValues::SetSixrayBoundarySameLevel(AthenaArray<Real> &dst, Real *bu
   int si, sj, sk, ei, ej, ek;
 
   if(nb.ox1==0)     si=pmb->is,        ei=pmb->ie;
-  else if(nb.ox1>0) si=pmb->ie+1,      ei=pmb->ie+NGHOST;
-  else              si=pmb->is-NGHOST, ei=pmb->is-1;
+  else if(nb.ox1>0) si=pmb->ie+1,      ei=pmb->ie+1;
+  else              si=pmb->is-1,      ei=pmb->is-1;
   if(nb.ox2==0)     sj=pmb->js,        ej=pmb->je;
-  else if(nb.ox2>0) sj=pmb->je+1,      ej=pmb->je+NGHOST;
-  else              sj=pmb->js-NGHOST, ej=pmb->js-1;
+  else if(nb.ox2>0) sj=pmb->je+1,      ej=pmb->je+1;
+  else              sj=pmb->js-1,      ej=pmb->js-1;
   if(nb.ox3==0)     sk=pmb->ks,        ek=pmb->ke;
-  else if(nb.ox3>0) sk=pmb->ke+1,      ek=pmb->ke+NGHOST;
-  else              sk=pmb->ks-NGHOST, ek=pmb->ks-1;
+  else if(nb.ox3>0) sk=pmb->ke+1,      ek=pmb->ke+1;
+  else              sk=pmb->ks-1,      ek=pmb->ks-1;
 
   int p=0;
   if (nb.polar) {
@@ -856,7 +833,7 @@ void BoundaryValues::SendSixrayBoundaryBuffers(AthenaArray<Real> &src,
 
   NeighborBlock *nb = pmb->prad->pradintegrator->pfacenb_[direction];
 
-  int recv_direction = GetOppositeDirection(direction);
+  int recv_direction = CGKUtility::GetOppositeDirection(direction);
 
   int ssize;
   if(nb->level==mylevel) {

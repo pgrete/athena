@@ -640,3 +640,29 @@ static int get_Tidx(const Real temp){
     return (int)x2;
   }
 }
+
+//get opposite direction for face neighbour
+static int GetOppositeDirection(const int direction) {
+  std::stringstream msg;
+
+  int opp_direction;
+  if (direction == INNER_X1) {
+    opp_direction = OUTER_X1;
+  } else if (direction == OUTER_X1) {
+    opp_direction = INNER_X1;
+  } else if (direction == INNER_X2) {
+    opp_direction = OUTER_X2;
+  } else if (direction == OUTER_X2) {
+    opp_direction = INNER_X2;
+  } else if (direction == INNER_X3) {
+    opp_direction = OUTER_X3;
+  } else if (direction == OUTER_X3) {
+    opp_direction = INNER_X3;
+  } else {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in BoundaryValues::SendSixrayBoundaryBuffers" << std::endl
+      << "direction " << direction  << "is undefined." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+  return opp_direction;
+}
