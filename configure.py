@@ -325,9 +325,22 @@ if args['cxx'] == 'bgxl':
   makefile_options['LINKER_FLAGS'] = ''
   makefile_options['LIBRARY_FLAGS'] = ''
 
+# -debug argument
+if args['debug']:
+  definitions['DEBUG'] = 'DEBUG'
+  if args['cxx'] == 'g++' or args['cxx'] == 'icc':
+    makefile_options['COMPILER_FLAGS'] = '-O0 -g'
+  if args['cxx'] == 'cray':
+    makefile_options['COMPILER_FLAGS'] = '-O0'
+  if args['cxx'] == 'bgxl':
+    makefile_options['COMPILER_FLAGS'] = '-O0 -g -qlanglvl=extended'
+else:
+  definitions['DEBUG'] = 'NOT_DEBUG'
+
+
 # --std=[name] argument
-if args['std'] == 'c++11':
-  makefile_options['COMPILER_FLAGS'] = "-std=c++11 " + makefile_options['COMPILER_FLAGS']
+if args['std'] != None:
+  makefile_options['COMPILER_FLAGS'] = "-std=" + args['std'] + " " + makefile_options['COMPILER_FLAGS']
 
 # --cvode_path=[path] argument
 if args['cvode_path'] != '':
@@ -368,18 +381,6 @@ else:
   makefile_options['RADIATION_FILE'] = 'const.cpp'
   definitions['RADIATION_INTEGRATOR'] = 'none'
 
-
-# -debug argument
-if args['debug']:
-  definitions['DEBUG'] = 'DEBUG'
-  if args['cxx'] == 'g++' or args['cxx'] == 'icc':
-    makefile_options['COMPILER_FLAGS'] = '-O0 -g'
-  if args['cxx'] == 'cray':
-    makefile_options['COMPILER_FLAGS'] = '-O0'
-  if args['cxx'] == 'bgxl':
-    makefile_options['COMPILER_FLAGS'] = '-O0 -g -qlanglvl=extended'
-else:
-  definitions['DEBUG'] = 'NOT_DEBUG'
 
 # -mpi argument
 if args['mpi']:
