@@ -838,7 +838,7 @@ void BoundaryValues::SendSixrayBoundaryBuffers(AthenaArray<Real> &src,
   int ssize;
   if(nb->level==mylevel) {
     ssize=LoadSixrayBoundaryBufferSameLevel(src, col_sixray_send_[direction],*nb,
-                                            direction);
+                                            recv_direction);
   } else {
     //need to add AMR here
     msg << "### FATAL ERROR in SendSixrayBoundaryBuffers()" << std::endl
