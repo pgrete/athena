@@ -303,7 +303,7 @@ void RadIntegrator::UpdateCol(int direction) {
     //+x
     for (int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
-        NH_ghostzone =
+        NH_ghostzone = unit_length_in_cm_ * 
           pmy_mb->phydro->w(IDN, k, j, is-1) * pmy_mb->pcoord->dx1f(is-1) / 2.;
         NH_boundary = col(direction, k, j, is-1, pmy_chemnet->iNHtot_) + NH_ghostzone; 
         NH2_boundary = col(direction, k, j, is-1, pmy_chemnet->iNH2_)
@@ -321,7 +321,7 @@ void RadIntegrator::UpdateCol(int direction) {
     //-x
     for (int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
-        NH_ghostzone =
+        NH_ghostzone = unit_length_in_cm_ *
           pmy_mb->phydro->w(IDN, k, j, ie+1) * pmy_mb->pcoord->dx1f(ie+1) / 2.;
         NH_boundary = col(direction, k, j, ie+1, pmy_chemnet->iNHtot_) + NH_ghostzone; 
         NH2_boundary = col(direction, k, j, ie+1, pmy_chemnet->iNH2_)
@@ -339,7 +339,7 @@ void RadIntegrator::UpdateCol(int direction) {
     //+y
     for (int k=ks; k<=ke; ++k) {
       for (int i=is; i<=ie; ++i) {
-        NH_ghostzone =
+        NH_ghostzone = unit_length_in_cm_ *
           pmy_mb->phydro->w(IDN, k, js-1, i) * pmy_mb->pcoord->dx2f(js-1) / 2.;
         NH_boundary = col(direction, k, js-1, i, pmy_chemnet->iNHtot_) + NH_ghostzone; 
         NH2_boundary = col(direction, k, js-1, i, pmy_chemnet->iNH2_)
@@ -357,7 +357,7 @@ void RadIntegrator::UpdateCol(int direction) {
     //-y
     for (int k=ks; k<=ke; ++k) {
       for (int i=is; i<=ie; ++i) {
-        NH_ghostzone =
+        NH_ghostzone = unit_length_in_cm_ *
           pmy_mb->phydro->w(IDN, k, je+1, i) * pmy_mb->pcoord->dx2f(je+1) / 2.;
         NH_boundary = col(direction, k, je+1, i, pmy_chemnet->iNHtot_) + NH_ghostzone; 
         NH2_boundary = col(direction, k, je+1, i, pmy_chemnet->iNH2_)
@@ -375,7 +375,7 @@ void RadIntegrator::UpdateCol(int direction) {
     //+z
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-        NH_ghostzone =
+        NH_ghostzone = unit_length_in_cm_ *
           pmy_mb->phydro->w(IDN, ks-1, j, i) * pmy_mb->pcoord->dx3f(ks-1) / 2.;
         NH_boundary = col(direction, ks-1, j, i, pmy_chemnet->iNHtot_) + NH_ghostzone; 
         NH2_boundary = col(direction, ks-1, j, i, pmy_chemnet->iNH2_)
@@ -393,7 +393,7 @@ void RadIntegrator::UpdateCol(int direction) {
     //-z
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-        NH_ghostzone =
+        NH_ghostzone = unit_length_in_cm_ *
           pmy_mb->phydro->w(IDN, ke+1, j, i) * pmy_mb->pcoord->dx3f(ke+1) / 2.;
         NH_boundary = col(direction, ke+1, j, i, pmy_chemnet->iNHtot_) + NH_ghostzone; 
         NH2_boundary = col(direction, ke+1, j, i, pmy_chemnet->iNH2_)
@@ -460,9 +460,9 @@ void RadIntegrator::CopyToOutput() {
   int je = pmy_mb->je;
   int ke = pmy_mb->ke;
   int iang_arr[6] = {INNER_X1, INNER_X2, INNER_X3, OUTER_X1, OUTER_X2, OUTER_X3};
-  for (int k=ks; k<=ke; ++k) {
-    for (int j=js; j<=je; ++j) {
-      for (int i=is; i<=ie; ++i) {
+  for (int k=ks-NGHOST; k<=ke+NGHOST; ++k) {
+    for (int j=js-NGHOST; j<=je+NGHOST; ++j) {
+      for (int i=is-NGHOST; i<=ie+NGHOST; ++i) {
         for (int iang=0; iang < 6; iang++) {
           //column densities
           col_Htot(iang, k, j, i) = col(iang_arr[iang], k, j, i, pmy_chemnet->iNHtot_);
