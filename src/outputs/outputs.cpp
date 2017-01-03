@@ -577,17 +577,21 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
         output_params.variable.compare("prim") == 0 ||
         output_params.variable.compare("cons") == 0) {
         for (int i=0; i<prad->nfreq; i++) {
+          char vi[20];
           pod = new OutputData;
           pod->type = "SCALARS";
-          pod->name = "ir_avg"+std::to_string(i);
+          sprintf(vi, "ir_avg%d", i);
+          pod->name = vi;
           pod->data.InitWithShallowSlice(prad->ir_avg,4,i,1);
           AppendOutputDataNode(pod);
           num_vars_++;
         }
         for (int i=0; i<prad->pradintegrator->ncol; i++) {
+          char vi[20];
           pod = new OutputData;
           pod->type = "SCALARS";
-          pod->name = "col_avg"+std::to_string(i);
+          sprintf(vi, "col_avg%d", i);
+          pod->name = vi;
           pod->data.InitWithShallowSlice(prad->pradintegrator->col_avg,4,i,1);
           AppendOutputDataNode(pod);
           num_vars_++;
