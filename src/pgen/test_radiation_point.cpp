@@ -95,9 +95,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 		for (int j=js; j<=je; ++j) {
 			for (int i=is; i<=ie; ++i) {
         if (i-is+gis == ipx and j-js+gjs == ipy and k-ks+gks == ipz) {
-          phydro->u(IDN, k, j, i) = nH;//nH;
+          phydro->u(IDN, k, j, i) = nH;
         } else {
-          phydro->u(IDN, k, j, i) = 0;//nH;
+          phydro->u(IDN, k, j, i) = 0;
         }
 			}
 		}
