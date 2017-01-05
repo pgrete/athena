@@ -759,8 +759,15 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
   //   (3) He+ + *e + gr -> *He + gr
   //   (4) Si+ + *e + gr -> *Si + gr
   //   , rate dependent on e aboundance. 
-	if (y[ige_] > small_) {
-		psi_gr_fac_ = 1.7 * rad_[index_gpe_] * sqrt(T) / nH_; 
+	if (y[ige_] > small_ ) {
+    //set lower limit to radiation field in calculating kgr_ to avoid nan
+    //values.
+    Real GPE_limit = 1.0e-10;
+    Real GPE0 = rad_[index_gpe_];
+    if (GPE0 < GPE_limit) {
+      GPE0 = GPE_limit;
+    }
+		psi_gr_fac_ = 1.7 * GPE0 * sqrt(T) / nH_; 
 		psi = psi_gr_fac_ / y[ige_];
 		kgr_[1] = 1.0e-14 * cHp_[0] / 
 								 (

@@ -45,3 +45,6 @@ meshtest.dat
 
 # editor temp files
 *~
+
+#python import files
+*.pyc

@@ -572,30 +572,33 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
   }
 #endif
 
-  if (RADIATION_ENABLED) {
+  std::string rad_integrator = RADIATION_INTEGRATOR;
+  if (RADIATION_ENABLED && rad_integrator != "const") {
     if (output_params.variable.compare("r") == 0 || 
         output_params.variable.compare("prim") == 0 ||
         output_params.variable.compare("cons") == 0) {
-        for (int i=0; i<prad->nfreq; i++) {
-          char vi[20];
-          pod = new OutputData;
-          pod->type = "SCALARS";
-          sprintf(vi, "ir_avg%d", i);
-          pod->name = vi;
-          pod->data.InitWithShallowSlice(prad->ir_avg,4,i,1);
-          AppendOutputDataNode(pod);
-          num_vars_++;
-        }
-        for (int i=0; i<prad->pradintegrator->ncol; i++) {
-          char vi[20];
-          pod = new OutputData;
-          pod->type = "SCALARS";
-          sprintf(vi, "col_avg%d", i);
-          pod->name = vi;
-          pod->data.InitWithShallowSlice(prad->pradintegrator->col_avg,4,i,1);
-          AppendOutputDataNode(pod);
-          num_vars_++;
-        }
+      for (int i=0; i<prad->pradintegrator->ncol; i++) {
+        char vi[20];
+        pod = new OutputData;
+        pod->type = "SCALARS";
+        sprintf(vi, "col_avg%d", i);
+        pod->name = vi;
+        pod->data.InitWithShallowSlice(prad->pradintegrator->col_avg,4,i,1);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+      }
+      for (int i=0; i<prad->nfreq; i++) {
+        char vi[20];
+        pod = new OutputData;
+        pod->type = "SCALARS";
+        sprintf(vi, "ir_avg%d", i);
+        pod->name = vi;
+        pod->data.InitWithShallowSlice(prad->ir_avg,4,i,1);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+      }
+    }
+    if (output_params.variable.compare("r_test") == 0) {
         pod = new OutputData;
         pod->type = "VECTORS";
         pod->name = "col_Htot_p";

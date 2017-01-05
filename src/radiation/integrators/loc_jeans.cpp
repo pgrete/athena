@@ -49,26 +49,54 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
   pmy_rad = prad;
   rad_G0_ = pin->GetReal("problem", "G0");
 #ifdef INCLUDE_CHEMISTRY
-  pmy_chemnet = pmy_mb->pspec->pchemnet;
-  n_cols_ang = pmy_rad->nang * pmy_chemnet->n_cols_;
+  MeshBlock* pmy_block = prad->pmy_block;
+  pmy_chemnet = pmy_block->pspec->pchemnet;
+  ncol = pmy_chemnet->n_cols_;
   //allocate array for column density
   int ncells1 = pmy_mb->block_size.nx1 + 2*(NGHOST);
   int ncells2 = 1, ncells3 = 1;
   if (pmy_mb->block_size.nx2 > 1) ncells2 = pmy_mb->block_size.nx2 + 2*(NGHOST);
   if (pmy_mb->block_size.nx3 > 1) ncells3 = pmy_mb->block_size.nx3 + 2*(NGHOST);
-  col_tot.NewAthenaArray(ncells3, ncells2, ncells1, n_cols_ang);
+  col.NewAthenaArray(6, ncells3, ncells2, ncells1, ncol);
+  col_avg.NewAthenaArray(ncol, ncells3, ncells2, ncells1);
 #endif 
 }
 
 RadIntegrator::~RadIntegrator() {
 #ifdef INCLUDE_CHEMISTRY
-  col_tot.DeleteAthenaArray();
+  col.DeleteAthenaArray();
+  col_avg.DeleteAthenaArray();
 #endif 
 }
 
 
 #ifdef INCLUDE_CHEMISTRY
 void RadIntegrator::GetColMB(int direction) {}
+void RadIntegrator::UpdateCol(int direction) {}
+void RadIntegrator::SetSixRayNeighbors() {}
+
+void RadIntegrator::CopyToOutput() {
+  int is = pmy_mb->is;
+  int js = pmy_mb->js;
+  int ks = pmy_mb->ks;
+  int ie = pmy_mb->ie;
+  int je = pmy_mb->je;
+  int ke = pmy_mb->ke;
+  for (int k=ks-NGHOST; k<=ke+NGHOST; ++k) {
+    for (int j=js-NGHOST; j<=je+NGHOST; ++j) {
+      for (int i=is-NGHOST; i<=ie+NGHOST; ++i) {
+        for (int icol=0; icol<ncol; icol++) {
+          col_avg(icol, k, j, i) = col(0, k, j, i, icol);
+        }
+        for (int ifreq=0; ifreq < pmy_rad->nfreq; ++ifreq) {
+          pmy_rad->ir_avg(ifreq, k, j, i) = 
+            pmy_rad->ir(k, j, i, ifreq * pmy_rad->nang);
+        }
+      }
+    }
+  }
+  return;
+}
 
 void RadIntegrator::UpdateRadiation(int direction) {
   const Real Tceiling = 40.; //temperature ceiling in Kelvin
@@ -126,12 +154,10 @@ void RadIntegrator::UpdateRadiation(int direction) {
         AV = NH * Zd / 1.87e21;
         NH2 = pmy_mb->pspec->s(iH2, k, j, i) * NH;
         NCO = pmy_mb->pspec->s(iCO, k, j, i) * NH;
-        //set CO column for calculating CO cooling
-        for (int iang=0; iang < pmy_rad->nang; ++iang) {
-          col_tot(k, j, i, pmy_chemnet->iNCO_*pmy_rad->nang + iang) = NCO;
-          col_tot(k, j, i, pmy_chemnet->iNH2_*pmy_rad->nang + iang) = NH2;
-          col_tot(k, j, i, pmy_chemnet->iNHtot_*pmy_rad->nang + iang) = NH;
-        }
+        //set columns
+        col(0, k, j, i, pmy_chemnet->iNCO_) = NCO;
+        col(0, k, j, i, pmy_chemnet->iNH2_) = NH2;
+        col(0, k, j, i, pmy_chemnet->iNHtot_) = NH;
         //dust shielding
         //photo-reactions
         for (int ifreq=0; ifreq < pmy_rad->nfreq-1; ++ifreq) {
@@ -170,7 +196,11 @@ void RadIntegrator::UpdateRadiation(int direction) {
               pmy_rad->ir(k, j, i, ifreq * pmy_rad->nang);
           }
         }
-
+        for (int iang=1; iang < pmy_rad->nang; ++iang) {
+          for (int icol=0; icol<ncol; icol++) {
+            col(iang, k, j, i, icol) = col(0, k, j, i, icol);
+          }
+        }
       }
     }
   }
