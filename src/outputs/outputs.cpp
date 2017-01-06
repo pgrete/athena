@@ -598,6 +598,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
         num_vars_++;
       }
     }
+    //for testing six-ray. Not implemented in HDF5 output
     if (output_params.variable.compare("r_test") == 0) {
         pod = new OutputData;
         pod->type = "VECTORS";

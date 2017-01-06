@@ -46,6 +46,19 @@
 #include <mpi.h>
 #endif
 
+void SixRayBoundaryInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+void SixRayBoundaryOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+void SixRayBoundaryInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+void SixRayBoundaryOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+void SixRayBoundaryInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+void SixRayBoundaryOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+
 //function to split a string into a vector
 static std::vector<std::string> split(std::string str, char delimiter);
 //function to get rid of white space leading/trailing a string
@@ -663,4 +676,184 @@ static void ath_bswap(void *vdat, int len, int cnt)
       dat[len-1-k] = tmp;
     }
   }
+}
+
+void SixRayBoundaryInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+  // set species and column boundary to zero
+  for (int n=0; n<(NSPECIES); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma simd
+        for (int i=1; i<=(NGHOST); ++i) {
+          pmb->pspec->s(n,k,j,is-i) = 0;
+        }
+      }
+    }
+  }
+  //set hydro variables to zero
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma simd
+        for (int i=1; i<=(NGHOST); ++i) {
+          prim(n,k,j,is-i) = 0;
+        }
+      }
+    }
+  }
+  return;
+}
+
+void SixRayBoundaryInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+  // set species and column boundary to zero
+  for (int n=0; n<(NSPECIES); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+        for (int i=is; i<=ie; ++i) {
+          pmb->pspec->s(n,k,js-j,i) = 0;
+        }
+      }
+    }
+  }
+  //set hydro variables to zero
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+        for (int i=is; i<=ie; ++i) {
+          prim(n,k,js-j,i) = 0;
+        }
+      }
+    }
+  }
+  return;
+}
+
+void SixRayBoundaryInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+  // set species and column boundary to zero
+  for (int n=0; n<(NSPECIES); ++n) {
+    for (int k=1; k<=(NGHOST); ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma simd
+        for (int i=is; i<=ie; ++i) {
+          pmb->pspec->s(n,ks-k,j,i) = 0;
+        }
+      }
+    }
+  }
+  //set hydro variables to zero
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=1; k<=(NGHOST); ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma simd
+        for (int i=is; i<=ie; ++i) {
+          prim(n,ks-k,j,i) = 0;
+        }
+      }
+    }
+  }
+  return;
+}
+
+void SixRayBoundaryOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+  // set species and column boundary to zero
+  for (int n=0; n<(NSPECIES); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma simd
+        for (int i=1; i<=(NGHOST); ++i) {
+          pmb->pspec->s(n,k,j,ie+i) = 0;
+        }
+      }
+    }
+  }
+  //set hydro variables to zero
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma simd
+        for (int i=1; i<=(NGHOST); ++i) {
+          prim(n,k,j,ie+i) = 0;
+        }
+      }
+    }
+  }
+  return;
+}
+
+void SixRayBoundaryOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+  // set species and column boundary to zero
+  for (int n=0; n<(NSPECIES); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+        for (int i=is; i<=ie; ++i) {
+          pmb->pspec->s(n,k,je+j,i) = 0;
+        }
+      }
+    }
+  }
+  //set hydro variables to zero
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=ks; k<=ke; ++k) {
+      for (int j=1; j<=(NGHOST); ++j) {
+#pragma simd
+        for (int i=is; i<=ie; ++i) {
+          prim(n,k,je+j,i) = 0;
+        }
+      }
+    }
+  }
+  return;
+}
+
+void SixRayBoundaryOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+  // set species and column boundary to zero
+  for (int n=0; n<(NSPECIES); ++n) {
+    for (int k=1; k<=(NGHOST); ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma simd
+        for (int i=is; i<=ie; ++i) {
+          pmb->pspec->s(n,ke+k,j,i) = 0;
+        }
+      }
+    }
+  }
+  //set hydro variables to zero
+  for (int n=0; n<(NHYDRO); ++n) {
+    for (int k=1; k<=(NGHOST); ++k) {
+      for (int j=js; j<=je; ++j) {
+#pragma simd
+        for (int i=is; i<=ie; ++i) {
+          prim(n,ke+k,j,i) = 0;
+        }
+      }
+    }
+  }
+  return;
+}
+
+//========================================================================================
+//! \fn void Mesh::InitUserMeshData(ParameterInput *pin)
+//  \brief Function to initialize problem-specific data in mesh class.  Can also be used
+//  to initialize variables which are global to (and therefore can be passed to) other
+//  functions in this file.  Called in Mesh constructor.
+//========================================================================================
+
+void Mesh::InitUserMeshData(ParameterInput *pin)
+{
+  EnrollUserBoundaryFunction(INNER_X1, SixRayBoundaryInnerX1);
+  EnrollUserBoundaryFunction(OUTER_X1, SixRayBoundaryOuterX1);
+  EnrollUserBoundaryFunction(INNER_X2, SixRayBoundaryInnerX2);
+  EnrollUserBoundaryFunction(OUTER_X2, SixRayBoundaryOuterX2);
+  EnrollUserBoundaryFunction(INNER_X3, SixRayBoundaryInnerX3);
+  EnrollUserBoundaryFunction(OUTER_X3, SixRayBoundaryOuterX3);
+  return;
 }
