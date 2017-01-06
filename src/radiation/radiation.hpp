@@ -32,7 +32,7 @@ typedef void (*OutInternal_t)(MeshBlock *pmb);
 enum {IER=0, IFR1=1, IFR2=2, IFR3=3, IPR11=4, IPR22=5, IPR33=6, IPR12=7,
       IPR13=8, IPR23=9, IPR21=10, IPR31=11, IPR32=12};
 
-enum {OPAS=0, OPAA=1}; // scattering and absorption opacity
+enum {OPAS=0, OPAA=1, OPAP=2}; // scattering, absorption, Planck, opacity
 
 class Radiation {
   friend class RadIntegrator;

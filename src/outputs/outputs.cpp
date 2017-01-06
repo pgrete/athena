@@ -569,6 +569,17 @@ void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
       var_added += 1;
     }
     
+    if (output_params.variable.compare("Sigma_p") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pov = new OutputVariable;
+      pov->type = "SCALARS";
+      pov->name = "Sigma_p";
+      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma,4,2,1);
+      pod->AppendNode(pov); // absorption opacity
+      var_added += 1;
+    }
+    
     if (output_params.variable.compare("rad_fov") == 0){
       for (int n=0; n<(NRADFOV); ++n) {
       

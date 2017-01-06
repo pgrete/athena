@@ -1,0 +1,16 @@
+import scipy.interpolate
+rflat=scipy.array( r_coord.flat )
+tflat=scipy.array( theta_coord.flat )
+pflat=scipy.array( phi_coord.flat )
+coordpoints=scipy.concatenate( [ rflat[:, scipy.newaxis], tflat[:,scipy.newaxis], pflat[:,scipy.newaxis] ] , axis=1 )
+rtpinterpolator=scipy.interpolate.linearNDInterpolate( coordppoints, density.flat )    
+
+def xyz2rtp( x,y,z):
+     r=scipy.sqrt( x**2+y**2+z**2)
+     t=scipy.acos( z/r )
+     p=scipy.atan2( y, x )
+     return (r,t,p)
+
+# now you can get the interpolated value for any (x,y,z) coordinate you want.
+val=rtpinterpolator( xyz2rtp( x,y,z) )
+

@@ -233,16 +233,18 @@ void Radiation::CalculateComMoment()
         }// End frequency loop
         
         // Now calculate frequency inetgrated opacity
-        Real sum_sigma_s=0.0, sum_sigma_a = 0.0;
+        Real sum_sigma_s=0.0, sum_sigma_a = 0.0, sum_planck = 0.0;
         Real *sigmas=&(sigma_s(k,j,i,0));
         Real *sigmaa=&(sigma_a(k,j,i,0));
-#pragma simd
+        Real *sigmap=&(sigma_planck(k,j,i,0));
         for(int ifr=0; ifr<nfreq; ++ifr){
           sum_sigma_s += sigmas[ifr] * wfreq(ifr);
           sum_sigma_a += sigmaa[ifr] * wfreq(ifr);
+          sum_planck  += sigmap[ifr] * wfreq(ifr);
         }
         grey_sigma(OPAS,k,j,i) = sum_sigma_s;
         grey_sigma(OPAA,k,j,i) = sum_sigma_a;
+        grey_sigma(OPAP,k,j,i) = sum_planck;
 
       }
     }

@@ -110,8 +110,8 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     {
       num_variables[n_dataset++] = 10;
       num_variables[n_dataset++] = 4;
-      num_variables[n_dataset++] = 2;
-      num_total_variables += 10 + 4 + 2;
+      num_variables[n_dataset++] = 3;//Three Opacity
+      num_total_variables += 10 + 4 + 3;
     }
     dataset_names = new char[num_datasets][max_name_length+1];
     variable_names = new char[num_total_variables][max_name_length+1];
@@ -199,6 +199,7 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
       std::strncpy(dataset_names[n_dataset++], "opacity", max_name_length+1);
       std::strncpy(variable_names[n_variable++], "Sigma_s", max_name_length+1);
       std::strncpy(variable_names[n_variable++], "Sigma_a", max_name_length+1);
+      std::strncpy(variable_names[n_variable++], "Sigma_p", max_name_length+1);
     }
   }
 
@@ -333,6 +334,17 @@ void ATHDF5Output::Initialize(Mesh *pmesh, ParameterInput *pin,
     variable_names = new char[num_total_variables][max_name_length+1];
     std::strncpy(dataset_names[0], "Sigma_a", max_name_length+1);
     std::strncpy(variable_names[0], "Sigma_a", max_name_length+1);
+  }
+  else if (RADIATION_ENABLED and variable.compare("Sigma_p") == 0)
+  {
+    num_datasets = 1;
+    num_variables = new int[num_datasets];
+    num_variables[0] = 1;
+    num_total_variables = 1;
+    dataset_names = new char[num_datasets][max_name_length+1];
+    variable_names = new char[num_total_variables][max_name_length+1];
+    std::strncpy(dataset_names[0], "Sigma_p", max_name_length+1);
+    std::strncpy(variable_names[0], "Sigma_p", max_name_length+1);
   }
   else if (RADIATION_ENABLED and variable.compare("Fr") == 0)
   {
@@ -838,7 +850,8 @@ void ATHDF5Output::LoadOutputData(OutputData *pout_data, MeshBlock *pblock)
         data_arrays[n_dataset++]
             .InitWithShallowSlice(pblock_current->prad->rad_mom_cm, 4, 0, 4);
         data_arrays[n_dataset++]
-            .InitWithShallowSlice(pblock_current->prad->grey_sigma, 4, 0, 2);
+            .InitWithShallowSlice(pblock_current->prad->grey_sigma, 4, 0, 3);
+
       }
       
     }
@@ -870,6 +883,8 @@ void ATHDF5Output::LoadOutputData(OutputData *pout_data, MeshBlock *pblock)
       data_arrays[0].InitWithShallowSlice(pblock_current->prad->grey_sigma, 4, OPAS, 1);
     else if (variable.compare("Sigma_a") == 0)
       data_arrays[0].InitWithShallowSlice(pblock_current->prad->grey_sigma, 4, OPAA, 1);
+    else if (variable.compare("Sigma_p") == 0)
+      data_arrays[0].InitWithShallowSlice(pblock_current->prad->grey_sigma, 4, OPAP, 1);
     else if (variable.compare("ifov") == 0)
       data_arrays[0].InitWithShallowSlice(pblock_current->phydro->ifov, 4, 0, NIFOV);
     else if (variable.compare("rad_fov") == 0)

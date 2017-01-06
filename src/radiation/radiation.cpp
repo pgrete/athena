@@ -125,7 +125,7 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   sigma_ae.NewAthenaArray(n3z,n2z,n1z,nfreq);
   sigma_planck.NewAthenaArray(n3z,n2z,n1z,nfreq);
   
-  grey_sigma.NewAthenaArray(2,n3z,n2z,n1z);
+  grey_sigma.NewAthenaArray(3,n3z,n2z,n1z);
   
   if(NRADFOV > 0)
     rad_ifov.NewAthenaArray(NRADFOV,n3z,n2z,n1z);
