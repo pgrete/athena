@@ -64,6 +64,7 @@ RadiationIntegratorTaskList::RadiationIntegratorTaskList(ParameterInput *pin, Me
       AddRadiationIntegratorTask(UPDATE_RAD,
           RECV_SEND_COL0|RECV_SEND_COL1|RECV_SEND_COL2|
           RECV_SEND_COL3|RECV_SEND_COL4|RECV_SEND_COL5);
+      AddRadiationIntegratorTask(CLEAR_SIXRAY_RECV,UPDATE_RAD);
     } else if (integrator == "const") {
       //do nothing, radiation field constant, remain initial value
       AddRadiationIntegratorTask(INT_CONST,NONE);
@@ -167,6 +168,11 @@ void RadiationIntegratorTaskList::AddRadiationIntegratorTask(uint64_t id, uint64
       task_list_[ntasks].TaskFunc=
         static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
         (&RadiationIntegratorTaskList::UpdateRadiation);
+      break;
+    case (CLEAR_SIXRAY_RECV):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&RadiationIntegratorTaskList::ClearSixrayReceive);
       break;
     default:
       std::stringstream msg;
@@ -314,6 +320,15 @@ enum TaskStatus RadiationIntegratorTaskList::UpdateRadiation(MeshBlock *pmb, int
     pmb->prad->pradintegrator->UpdateRadiation(i);
   }
   pmb->prad->pradintegrator->CopyToOutput();
+#endif
+  return TASK_SUCCESS;
+}
+
+enum TaskStatus RadiationIntegratorTaskList::ClearSixrayReceive(MeshBlock *pmb,
+                                                                 int step)
+{
+#ifdef INCLUDE_CHEMISTRY
+  pmb->pbval->ClearBoundarySixray();
 #endif
   return TASK_SUCCESS;
 }

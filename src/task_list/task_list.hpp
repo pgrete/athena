@@ -155,6 +155,7 @@ public:
   enum TaskStatus RecvAndSend4(MeshBlock *pmb, int step);
   enum TaskStatus RecvAndSend5(MeshBlock *pmb, int step);
   enum TaskStatus UpdateRadiation(MeshBlock *pmb, int step);
+  enum TaskStatus ClearSixrayReceive(MeshBlock *pmb, int step);
 private:
   enum TaskStatus RecvAndSend_direction(MeshBlock *pmb, int step, int direction);
 
@@ -247,5 +248,6 @@ namespace RadiationIntegratorTaskNames {
   const uint64_t RECV_SEND_COL4=1LL<<13;
   const uint64_t RECV_SEND_COL5=1LL<<14;
   const uint64_t UPDATE_RAD=1LL<<15;
+  const uint64_t CLEAR_SIXRAY_RECV=1LL<<16; 
 };
 #endif // TASK_LIST_HPP

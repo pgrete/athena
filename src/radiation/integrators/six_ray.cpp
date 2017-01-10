@@ -152,7 +152,7 @@ void RadIntegrator::GetColMB(int direction) {
               + NHtot_cell_prev/2. * pmy_mb->pspec->s(iH2, k, j, i+1)
               + col(OUTER_X1, k, j, i+1, pmy_chemnet->iNH2_);
             col(OUTER_X1, k, j, i, pmy_chemnet->iNCO_) =
-              NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i+1)
+              NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i)
               + NHtot_cell_prev/2. * pmy_mb->pspec->s(iCO, k, j, i+1)
               + col(OUTER_X1, k, j, i+1, pmy_chemnet->iNCO_);
           }
