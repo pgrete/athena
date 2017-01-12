@@ -23,6 +23,8 @@
 #include "../field/field.hpp"
 #include "../hydro/hydro.hpp"
 #include "outputs.hpp"
+#include "../radiation/radiation.hpp"
+#include "../radiation/integrators/rad_integrators.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../chemistry/species.hpp"
 #endif
@@ -109,6 +111,9 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
     num_datasets = 1;
     if (MAGNETIC_FIELDS_ENABLED)
       num_datasets += 1;
+    if (RADIATION_ENABLED) {
+      num_datasets += 1;
+    }
 #ifdef INCLUDE_CHEMISTRY
     num_datasets += 1;
 #endif
@@ -121,6 +126,9 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
       num_variables[n_dataset++] = 3;
       if(output_params.cartesian_vector)
         num_variables[n_dataset-1] += 3;
+    }
+    if (RADIATION_ENABLED) {
+      num_variables[n_dataset++] = pmb->prad->pradintegrator->ncol + pmb->prad->nfreq;
     }
 #ifdef INCLUDE_CHEMISTRY
     num_variables[n_dataset++] = NSPECIES;
@@ -143,6 +151,9 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
       std::strncpy(dataset_names[n_dataset++], "cons", max_name_length+1);
     if (MAGNETIC_FIELDS_ENABLED)
       std::strncpy(dataset_names[n_dataset++], "B", max_name_length+1);
+    if (RADIATION_ENABLED) {
+      std::strncpy(dataset_names[n_dataset++], "rad", max_name_length+1);
+    }
 #ifdef INCLUDE_CHEMISTRY
     std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
 #endif
@@ -150,6 +161,9 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
   else { // single data
     if(variable.compare(0,1,"B") == 0 && MAGNETIC_FIELDS_ENABLED)
       std::strncpy(dataset_names[n_dataset++], "B", max_name_length+1);
+    else if (variable.compare("r") == 0 && RADIATION_ENABLED) {
+      std::strncpy(dataset_names[n_dataset++], "rad", max_name_length+1);
+    }
 #ifdef INCLUDE_CHEMISTRY
     else if (variable.compare("s") == 0) 
       std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
@@ -316,6 +330,10 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
         pod=pfirst_data_;
         while(pod!=NULL) {
           if(pod->name=="Bcc") {
+            n_dataset++;
+            ndv=0;
+          }
+          if(pod->name == "col_avg0") {
             n_dataset++;
             ndv=0;
           }
