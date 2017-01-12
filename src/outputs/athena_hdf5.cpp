@@ -333,7 +333,7 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
             n_dataset++;
             ndv=0;
           }
-          if(pod->name == "col_avg0") {
+          if(pod->name == "col_avg0" && RADIATION_ENABLED) {
             n_dataset++;
             ndv=0;
           }
