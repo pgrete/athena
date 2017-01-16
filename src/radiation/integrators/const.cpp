@@ -28,24 +28,26 @@
 
 RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 {
+  pmy_mb = prad->pmy_block;
   pmy_rad = prad;
   rad_G0_ = pin->GetReal("problem", "G0");
 #ifdef INCLUDE_CHEMISTRY
-  MeshBlock* pmy_block = prad->pmy_block;
-  pmy_chemnet = pmy_block->pspec->pchemnet;
+  pmy_chemnet = pmy_mb->pspec->pchemnet;
   ncol = pmy_chemnet->n_cols_;
   //allocate array for column density
-  int ncells1 = pmy_block->block_size.nx1 + 2*(NGHOST);
+  int ncells1 = pmy_mb->block_size.nx1 + 2*(NGHOST);
   int ncells2 = 1, ncells3 = 1;
-  if (pmy_block->block_size.nx2 > 1) ncells2 = pmy_block->block_size.nx2 + 2*(NGHOST);
-  if (pmy_block->block_size.nx3 > 1) ncells3 = pmy_block->block_size.nx3 + 2*(NGHOST);
+  if (pmy_mb->block_size.nx2 > 1) ncells2 = pmy_mb->block_size.nx2 + 2*(NGHOST);
+  if (pmy_mb->block_size.nx3 > 1) ncells3 = pmy_mb->block_size.nx3 + 2*(NGHOST);
   col.NewAthenaArray(6, ncells3, ncells2, ncells1, ncol);
+  col_avg.NewAthenaArray(ncol, ncells3, ncells2, ncells1);
 #endif
 }
 
 RadIntegrator::~RadIntegrator() {
 #ifdef INCLUDE_CHEMISTRY
   col.DeleteAthenaArray();
+  col_avg.DeleteAthenaArray();
 #endif 
 }
 
@@ -53,7 +55,25 @@ RadIntegrator::~RadIntegrator() {
 void RadIntegrator::GetColMB(int direction) {}
 void RadIntegrator::UpdateRadiation(int direction) {}
 void RadIntegrator::UpdateCol(int direction) {}
-void RadIntegrator::CopyToOutput() {}
 void RadIntegrator::SetSixRayNeighbors() {}
+void RadIntegrator::CopyToOutput() {
+  int is = pmy_mb->is;
+  int js = pmy_mb->js;
+  int ks = pmy_mb->ks;
+  int ie = pmy_mb->ie;
+  int je = pmy_mb->je;
+  int ke = pmy_mb->ke;
+  for (int k=ks-NGHOST; k<=ke+NGHOST; ++k) {
+    for (int j=js-NGHOST; j<=je+NGHOST; ++j) {
+      for (int i=is-NGHOST; i<=ie+NGHOST; ++i) {
+        for (int ifreq=0; ifreq < pmy_rad->nfreq; ++ifreq) {
+          pmy_rad->ir_avg(ifreq, k, j, i) = 
+            pmy_rad->ir(k, j, i, ifreq * pmy_rad->nang);
+        }
+      }
+    }
+  }
+  return;
+}
 #endif
 

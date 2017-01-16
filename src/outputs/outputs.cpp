@@ -556,22 +556,6 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
     }
   }
 
-#ifdef INCLUDE_CHEMISTRY
-  //go over each species, and output as scaler fields
-  if (output_params.variable.compare("s") == 0 || 
-      output_params.variable.compare("prim") == 0 ||
-      output_params.variable.compare("cons") == 0) {
-    for (int ispec=0; ispec < NSPECIES; ispec++) {
-      pod = new OutputData;
-      pod->type = "SCALARS";
-      pod->name = pspec->pchemnet->species_names[ispec];
-      pod->data.InitWithShallowSlice(pspec->s,4,ispec,1);
-      AppendOutputDataNode(pod);
-      num_vars_++;
-    }
-  }
-#endif
-
   if (RADIATION_ENABLED) {
     if (output_params.variable.compare("r") == 0 || 
         output_params.variable.compare("prim") == 0 ||
@@ -637,6 +621,22 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
         num_vars_++;
     }
   }
+
+#ifdef INCLUDE_CHEMISTRY
+  //go over each species, and output as scaler fields
+  if (output_params.variable.compare("s") == 0 || 
+      output_params.variable.compare("prim") == 0 ||
+      output_params.variable.compare("cons") == 0) {
+    for (int ispec=0; ispec < NSPECIES; ispec++) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = pspec->pchemnet->species_names[ispec];
+      pod->data.InitWithShallowSlice(pspec->s,4,ispec,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+  }
+#endif
 
   // throw an error if output variable name not recognized
   if (num_vars_==0) {
