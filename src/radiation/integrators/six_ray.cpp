@@ -496,22 +496,16 @@ void RadIntegrator::SetSixRayNeighbors() {
     nb = &pmy_mb->neighbor[n];
     if (nb->fid == INNER_X1) {
       pfacenb_[INNER_X1] = nb;
-      std::cout << "INNER_X1" << std::endl;
     } else if (nb->fid == INNER_X2) {
       pfacenb_[INNER_X2] = nb;
-      std::cout << "INNER_X2" << std::endl;
     } else if (nb->fid == INNER_X3) {
       pfacenb_[INNER_X3] = nb;
-      std::cout << "INNER_X3" << std::endl;
     } else if (nb->fid == OUTER_X1) {
       pfacenb_[OUTER_X1] = nb;
-      std::cout << "OUTER_X1" << std::endl;
     } else if (nb->fid == OUTER_X2) {
       pfacenb_[OUTER_X2] = nb;
-      std::cout << "OUTER_X2" << std::endl;
     } else if (nb->fid == OUTER_X3) {
       pfacenb_[OUTER_X3] = nb;
-      std::cout << "OUTER_X3" << std::endl;
     }
   }
   return;
