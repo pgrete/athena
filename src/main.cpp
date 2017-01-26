@@ -352,9 +352,18 @@ int main(int argc, char *argv[])
                 << " time=" << pmesh->time << " dt=" << pmesh->dt <<std::endl;
     }
 
-    //ptlist->DoTaskList(pmesh);
+    //ptlist->DoTaskList(pmesh); //MHD
+    
+    //time radiation
     if (RADIATION_ENABLED) {
+      clock_t tstart_rad = clock();
       pradlist->DoTaskList(pmesh);
+      clock_t tstop_rad = clock();
+      float cpu_time_rad = (tstop_rad>tstart_rad ? (float)(tstop_rad-tstart_rad) : 1.0)/(float)CLOCKS_PER_SEC;
+      int64_t zones_rad = pmesh->GetTotalCells();
+      float zc_cpus_rad = (float)(zones_rad*(pmesh->ncycle-ncstart))/cpu_time_rad;
+      std::cout << std::endl << "Radiation: cpu time used  = " << cpu_time_rad << std::endl;
+      std::cout << "Radiation: zone-cycles/cpu_second = " << zc_cpus_rad << std::endl;
     }
 
 #ifdef INCLUDE_CHEMISTRY
