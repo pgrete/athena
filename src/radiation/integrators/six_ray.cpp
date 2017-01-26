@@ -491,7 +491,6 @@ void RadIntegrator::CopyToOutput() {
 
 void RadIntegrator::SetSixRayNeighbors() {
   //assign neighbors for six-ray
-  //TODO: delete output for testing.
   NeighborBlock* nb;
   for(int n=0; n<pmy_mb->nneighbor; n++) {
     nb = &pmy_mb->neighbor[n];
@@ -513,13 +512,6 @@ void RadIntegrator::SetSixRayNeighbors() {
     } else if (nb->fid == OUTER_X3) {
       pfacenb_[OUTER_X3] = nb;
       std::cout << "OUTER_X3" << std::endl;
-    }
-  }
-  //test
-  std::cout << "nneighbor = " << pmy_mb->nneighbor << std::endl;
-  for (int i=0; i<6; i++) {
-    if (pfacenb_[i] != NULL) {
-      std::cout << i << ", " << int(pfacenb_[i]->fid) << std::endl;
     }
   }
   return;
