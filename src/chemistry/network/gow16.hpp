@@ -119,7 +119,7 @@ private:
 	static const int icr_H_;
 	static const int incr_[n_cr_]; //reactant
 	static const int outcr_[n_cr_]; //product
-	static const double kcr_base_[n_cr_]; //coefficents of rates relative to H
+	static const Real kcr_base_[n_cr_]; //coefficents of rates relative to H
 	Real kcr_[n_cr_]; //rates for cosmic-ray reactions.
 	//2body reactions
 	static const int i2body_H2_H;
@@ -129,9 +129,13 @@ private:
 	static const int in2body2_[n_2body_];
 	static const int out2body1_[n_2body_];
 	static const int out2body2_[n_2body_];
-	static const double k2Texp_[n_2body_]; //exponent of temp dependance
-	static const double k2body_base_[n_2body_]; //base rate coefficents
+	static const Real k2Texp_[n_2body_]; //exponent of temp dependance
+	static const Real k2body_base_[n_2body_]; //base rate coefficents
 	Real k2body_[n_2body_]; //rates for 2 body reacrtions.
+  static const Real A_kCHx_;
+  static const Real n_kCHx_;
+  static const Real c_kCHx_[4];
+  static const Real Ti_kCHx_[4];
 	//(15) H2 + *H -> 3 *H  and (16) H2 + H2 -> H2 + 2 *H
 	//temperature above which collisional dissociation (15), (16) and (17)
 	// will be importatant k>~1e-30

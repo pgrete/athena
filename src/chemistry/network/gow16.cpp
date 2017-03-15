@@ -120,17 +120,17 @@ const int ChemNetwork::outcr_[n_cr_] =
 													iSiplus_};
 const Real ChemNetwork::kcr_base_[n_cr_] = 
 												 {2.0, 1.1, 1.0, 
-													1020., 10., 6.52,
-													4200.}; 
+													560., 90., 6.52,
+													8400.}; 
 
 //2 body reactions
 //NOTE: photons from recombination are ignored
 // Reactions are, in order.
 //  -- are equations of special rate treatment in Glover, Federrath+ 2010:
-// (0) H3+ + *C -> CH + H2
+// (0) H3+ + *C -> CH + H2         --Vissapragada2016 new rates
 // (1) H3+ + *O -> OH + H2        
 // (2) H3+ + CO -> HCO+ + H2
-// (3) He+ + H2 -> H+ + *He + *H   --(89) exp(-35/T)
+// (3) He+ + H2 -> H+ + *He + *H    --fit to Schauer1989
 // (4) He+ + CO -> C+ + *O + *He   
 // (5) C+ + H2 -> CH + *H         -- schematic reaction for C+ + H2 -> CH2+
 // (6) C+ + OH -> HCO+             -- Schematic equation for C+ + OH -> CO+ + H.
@@ -218,13 +218,18 @@ const Real ChemNetwork::k2Texp_[n_2body_] =
   0.0, 0.0, 0.0, 0.0, 0.0,
   0.0};
 const Real ChemNetwork::k2body_base_[n_2body_] = 
-                {2.0e-9, 1.99e-9, 1.7e-9, 3.7e-14, 1.6e-9, 
+                {1.00, 1.99e-9, 1.7e-9, 1.26e-13, 1.6e-9, 
                  3.3e-13 * 0.7, 1.00, 7.0e-11, 7.95e-10, 1.0e-11, 
-                 4.54e-7, 1.00, 1.15e-5, 2.84e-9, 2.753e-14,
+                 4.54e-7, 1.00, 1.06e-5, 2.84e-9, 2.753e-14,
                  1.00, 1.00, 1.00, 8.46e-7, 7.20e-15, 
                  2.81e-11, 3.5e-11, 3.3e-13 * 0.3, 1.46e-10, 1.99e-9,
-                 1.00, 6.4e-10, 7.00e-10, 6.8e-10, 1.6e-9,
+                 1.00, 6.4e-10, 1.00, 1.00, 1.6e-9,
                  1.6e-9};
+//rates for H3+ + C forming CH+ and CH2+
+const Real ChemNetwork::A_kCHx_ = 1.04e-9;
+const Real ChemNetwork::n_kCHx_ = 2.31e-3;
+const Real ChemNetwork::c_kCHx_[4] = {3.4e-8, 6.97e-9, 1.31e-7, 1.51e-4};
+const Real ChemNetwork::Ti_kCHx_[4] = {7.62, 1.38, 2.66e1, 8.11e3};
 
 // photo reactions.
 // Reaction rates in Drain 1978 field units.
@@ -246,12 +251,10 @@ const int ChemNetwork::inph_[n_ph_] = {
 const int ChemNetwork::outph1_[n_ph_] = {
               iCplus_, igC_, igC_,
               igO_, igH_, iSiplus_};
-const Real ChemNetwork::kph_base_[n_ph_] = {3.1e-10, 9.2e-10, 2.6e-10, //Visser2009,   
-																			      3.9e-10, 5.6e-11,
-                                            3.1e-9}; 
-const Real ChemNetwork::kph_avfac_[n_ph_] = {3.33, 1.72, 3.53, //Visser2009,  
-	                                           2.24, 3.74, //Draine+Bertoldi1996,
-                                             2.27};
+const Real ChemNetwork::kph_base_[n_ph_] = {3.5e-10, 9.1e-10, 2.4e-10, 
+																			      3.8e-10, 5.7e-11, 4.5e-9}; 
+const Real ChemNetwork::kph_avfac_[n_ph_] = {3.76, 2.12, 3.88,
+	                                           2.66, 4.18, 2.61};
 
 // Grain assisted recombination of H, H2, C+ and H+
 // (0) *H + *H + gr -> H2 + gr
@@ -640,6 +643,7 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
   Real kcr_H_fac;//ratio of total rate to primary rate
   Real psi_gr_fac_;
   const Real kida_fac = ( 0.62 + 45.41 / sqrt(T) ) * nH_;
+  Real t1_CHx, t2_CHx;
 	//cosmic ray reactions
 	for (int i=0; i<n_cr_; i++) {
 		kcr_[i] = kcr_base_[i] * cr_rate_;
@@ -663,8 +667,13 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
 		k2body_[i] = k2body_base_[i] * pow(T, k2Texp_[i]) * nH_;
 	}
 	//Special treatment of rates for some equations
-	//(3) He+ + H2 -> H+ + *He + *H   --(89) exp(-35/T) 
-	k2body_[3] *= exp(-35./T);
+  /*(0) H3+ + *C -> CH + H2         --Vissapragada2016 new rates*/
+  t1_CHx = A_kCHx_ * pow( 300./T, n_kCHx_);
+  t2_CHx = c_kCHx_[0] * exp(-Ti_kCHx_[0]/T) + c_kCHx_[1] * exp(-Ti_kCHx_[1]/T)
+           + c_kCHx_[2]*exp(-Ti_kCHx_[2]/T) + c_kCHx_[3] *exp(-Ti_kCHx_[3]/T);
+  k2body_[0] *= t1_CHx + pow(T, -1.5) * t2_CHx;
+	/*(3) He+ + H2 -> H+ + *He + *H   --fit to Schauer1989 */
+	k2body_[3] *= exp(-22.5/T);
   //(5) C+ + H2 -> CH + *H         -- schematic reaction for C+ + H2 -> CH2+
   k2body_[5] *= exp(-23./T);
   // ---branching of C+ + H2 ------
@@ -700,10 +709,12 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
   // (25) He+ + OH -> *H + *He + *O(O+)
   k2body_[25] = 1.35e-9 * kida_fac;
   //  --- O+ reactions ---
-  //  (27) H+ + *O -> O+ + *H -- exp(-232/T)
+  //  (27) H+ + *O -> O+ + *H -- exp(-227/T)
+  //  (28) O+ + *H -> H+ + *O 
   //  (29) O+ + H2 -> OH + *H     -- branching of H2O+
   //  (30) O+ + H2 -> *O + *H + *H  -- branching of H2O+ */
-  k2body_[27] *= exp(-232/T);
+  k2body_[27] *= ( 1.1e-11 * pow(T, 0.517) + 4.0e-10 * pow(T, 6.69e-3) )*exp(-227./T);
+  k2body_[28] *= 4.99e-11* pow(T, 0.405) + 7.5e-10 * pow(T, -0.458);
   k2body_[29] *= fac_H2Oplus_H2;
   k2body_[30] *= fac_H2Oplus_e;
 
