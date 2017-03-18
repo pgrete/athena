@@ -165,9 +165,29 @@ Real Shielding::fShield_H2(const Real NH2, const Real bH2) {
 Real Shielding::fShield_C(const Real NC, const Real NH2) {
   //Tielens+Hollenbach1985 (A6) and (A7). Also see Wolfire's email on April 18,
   //2016.
+  Real NCi, NH2i;
+  if (NC < 0) {
+    NCi = 0;
+  } else {
+    NCi = NC;
+  }
+  if (NH2 < 0) {
+    NH2i = 0;
+  } else {
+    NH2i = NH2;
+  }
   const Real AH2 = 1.17e-8;
-  const Real tau_H2 = 1.2e-14 * 2 * NH2;
+  const Real tau_H2 = 1.2e-14 * 2 * NH2i;
   const Real y = AH2 * tau_H2;
   const Real ry = exp(-y) * (1. + y);
-  return exp(-1.6e-17*NC) * ry;
+  const Real rc = exp(-1.6e-17*NCi);
+  return rc * ry;
+}
+
+Real Shielding::fShield_CO_C(const Real NC) {
+  if (NC < 0) {
+    return 0.;
+  } else {
+    return exp(-1.6e-17*NC);
+  }
 }

@@ -28,6 +28,8 @@ class Shielding {
 		static Real fShield_H2(const Real NH2, const Real bH2);
     //CI self shielding. TODO: ref from Mark wolfire
 		static Real fShield_C(const Real NC, const Real NH2);
+    //CI shielding of CO
+    static Real fShield_CO_C(const Real NC);
   private:
 		//CO column density for DB table
 		static const int len_NCO_DB_ = 8;

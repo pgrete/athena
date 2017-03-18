@@ -107,10 +107,11 @@ private:
 	static const int ige_;
 	static const int igH_;
   //species needed for calculating shielding
-  static const int n_cols_ = 3;
+  static const int n_cols_ = 4;
   static const int iNHtot_ = 0;
   static const int iNH2_ = 1;
   static const int iNCO_ = 2;
+  static const int iNC_ = 3;
 	//-------------------chemical network---------------------
 	//number of different reactions
 	//cosmic ray reactions

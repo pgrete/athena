@@ -603,6 +603,12 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
         num_vars_++;
         pod = new OutputData;
         pod->type = "VECTORS";
+        pod->name = "col_C_p";
+        pod->data.InitWithShallowSlice(prad->pradintegrator->col_C,4,0,3);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+        pod = new OutputData;
+        pod->type = "VECTORS";
         pod->name = "col_Htot_m";
         pod->data.InitWithShallowSlice(prad->pradintegrator->col_Htot,4,3,3);
         AppendOutputDataNode(pod);
@@ -617,6 +623,12 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
         pod->type = "VECTORS";
         pod->name = "col_CO_m";
         pod->data.InitWithShallowSlice(prad->pradintegrator->col_CO,4,3,3);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "col_C_m";
+        pod->data.InitWithShallowSlice(prad->pradintegrator->col_C,4,3,3);
         AppendOutputDataNode(pod);
         num_vars_++;
     }

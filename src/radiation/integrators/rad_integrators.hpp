@@ -40,7 +40,7 @@ public:
 #ifdef INCLUDE_CHEMISTRY
   int ncol;
   AthenaArray<Real> col;
-  AthenaArray<Real> col_avg, col_Htot, col_CO, col_H2;//TODO:for output
+  AthenaArray<Real> col_avg, col_Htot, col_CO, col_H2,  col_C;//TODO:for output
   ChemNetwork* pmy_chemnet;
   //calcuate column within each meshblock
   void GetColMB(int direction);

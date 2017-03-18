@@ -71,6 +71,7 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
   col_Htot.NewAthenaArray(6, ncells3, ncells2, ncells1);
   col_H2.NewAthenaArray(6, ncells3, ncells2, ncells1);
   col_CO.NewAthenaArray(6, ncells3, ncells2, ncells1);
+  col_C.NewAthenaArray(6, ncells3, ncells2, ncells1);
 #endif 
 }
 
@@ -82,6 +83,7 @@ RadIntegrator::~RadIntegrator() {
   col_Htot.DeleteAthenaArray();
   col_H2.DeleteAthenaArray();
   col_CO.DeleteAthenaArray();
+  col_C.DeleteAthenaArray();
 #endif 
 }
 
@@ -91,7 +93,12 @@ RadIntegrator::~RadIntegrator() {
 void RadIntegrator::GetColMB(int direction) {
   const int iH2 = pmy_chemnet->iH2_;
   const int iCO = pmy_chemnet->iCO_;
+  const int iCplus = pmy_chemnet->iCplus_;
+  const int iHCOplus = pmy_chemnet->iHCOplus_;
+  const int iCHx = pmy_chemnet->iCHx_;
   Real NHtot_cell, NHtot_cell_prev;
+  Real xCI, xCI_prev;
+  const Real xCtot =  pmy_chemnet->xC_;
   std::stringstream msg; //error message
   int is = pmy_mb->is;
   int js = pmy_mb->js;
@@ -112,10 +119,20 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iH2, k, j, i);
             col(INNER_X1, k, j, i, pmy_chemnet->iNCO_) = 
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            col(INNER_X1, k, j, i, pmy_chemnet->iNC_) = 
+              NHtot_cell/2. * xCI;
           } else {
             NHtot_cell_prev = pmy_mb->phydro->w(IDN, k, j, i-1)
               * pmy_mb->pcoord->dx1f(i-1) * unit_length_in_cm_;
-            col(INNER_X1, k, j, i, pmy_chemnet->iNHtot_) = NHtot_cell/2. +  NHtot_cell_prev/2
+            col(INNER_X1, k, j, i, pmy_chemnet->iNHtot_) = NHtot_cell/2.
+              +  NHtot_cell_prev/2
               + col(INNER_X1, k, j, i-1, pmy_chemnet->iNHtot_);
             col(INNER_X1, k, j, i, pmy_chemnet->iNH2_) = 
               NHtot_cell/2. * pmy_mb->pspec->s(iH2, k, j, i)
@@ -125,6 +142,24 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i)
               + NHtot_cell_prev/2. * pmy_mb->pspec->s(iCO, k, j, i-1)
               + col(INNER_X1, k, j, i-1, pmy_chemnet->iNCO_);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            xCI_prev = xCtot - pmy_mb->pspec->s(iCO, k, j, i-1)
+                  - pmy_mb->pspec->s(iCplus, k, j, i-1) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i-1)
+                  - pmy_mb->pspec->s(iCHx, k, j, i-1);
+            if (xCI_prev < 0) {
+              xCI_prev = 0.;
+            }
+            col(INNER_X1, k, j, i, pmy_chemnet->iNC_) =
+              NHtot_cell/2. * xCI
+              + NHtot_cell_prev/2. * xCI_prev
+              + col(INNER_X1, k, j, i-1, pmy_chemnet->iNC_);
           }
         }
       }
@@ -142,6 +177,15 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iH2, k, j, i);
             col(OUTER_X1, k, j, i, pmy_chemnet->iNCO_) = 
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            col(OUTER_X1, k, j, i, pmy_chemnet->iNC_) = 
+              NHtot_cell/2. * xCI;
           } else {
             NHtot_cell_prev = pmy_mb->phydro->w(IDN, k, j, i+1)
               * pmy_mb->pcoord->dx1f(i+1) * unit_length_in_cm_;
@@ -155,6 +199,24 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i)
               + NHtot_cell_prev/2. * pmy_mb->pspec->s(iCO, k, j, i+1)
               + col(OUTER_X1, k, j, i+1, pmy_chemnet->iNCO_);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            xCI_prev = xCtot - pmy_mb->pspec->s(iCO, k, j, i+1)
+                  - pmy_mb->pspec->s(iCplus, k, j, i+1) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i+1)
+                  - pmy_mb->pspec->s(iCHx, k, j, i+1);
+            if (xCI_prev < 0) {
+              xCI_prev = 0.;
+            }
+            col(OUTER_X1, k, j, i, pmy_chemnet->iNC_) =
+              NHtot_cell/2. * xCI
+              + NHtot_cell_prev/2. * xCI_prev
+              + col(OUTER_X1, k, j, i+1, pmy_chemnet->iNC_);
           }
         }
       }
@@ -172,6 +234,15 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iH2, k, j, i);
             col(INNER_X2, k, j, i, pmy_chemnet->iNCO_) = 
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            col(INNER_X2, k, j, i, pmy_chemnet->iNC_) = 
+              NHtot_cell/2. * xCI;
           } else {
             NHtot_cell_prev = pmy_mb->phydro->w(IDN, k, j-1, i)
               * pmy_mb->pcoord->dx2f(j-1) * unit_length_in_cm_;
@@ -185,6 +256,24 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i)
               + NHtot_cell_prev/2. * pmy_mb->pspec->s(iCO, k, j-1, i)
               + col(INNER_X2, k, j-1, i, pmy_chemnet->iNCO_);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            xCI_prev = xCtot - pmy_mb->pspec->s(iCO, k, j-1, i)
+                  - pmy_mb->pspec->s(iCplus, k, j-1, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j-1, i)
+                  - pmy_mb->pspec->s(iCHx, k, j-1, i);
+            if (xCI_prev < 0) {
+              xCI_prev = 0.;
+            }
+            col(INNER_X2, k, j, i, pmy_chemnet->iNC_) =
+              NHtot_cell/2. * xCI
+              + NHtot_cell_prev/2. * xCI_prev
+              + col(INNER_X2, k, j-1, i, pmy_chemnet->iNC_);
           }
         }
       }
@@ -202,6 +291,15 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iH2, k, j, i);
             col(OUTER_X2, k, j, i, pmy_chemnet->iNCO_) = 
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            col(OUTER_X2, k, j, i, pmy_chemnet->iNC_) = 
+              NHtot_cell/2. * xCI;
           } else {
             NHtot_cell_prev = pmy_mb->phydro->w(IDN, k, j+1, i)
               * pmy_mb->pcoord->dx2f(j+1) * unit_length_in_cm_;
@@ -215,6 +313,24 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i)
               + NHtot_cell_prev/2. * pmy_mb->pspec->s(iCO, k, j+1, i)
               + col(OUTER_X2, k, j+1, i, pmy_chemnet->iNCO_);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            xCI_prev = xCtot - pmy_mb->pspec->s(iCO, k, j+1, i)
+                  - pmy_mb->pspec->s(iCplus, k, j+1, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j+1, i)
+                  - pmy_mb->pspec->s(iCHx, k, j+1, i);
+            if (xCI_prev < 0) {
+              xCI_prev = 0.;
+            }
+            col(OUTER_X2, k, j, i, pmy_chemnet->iNC_) =
+              NHtot_cell/2. * xCI
+              + NHtot_cell_prev/2. * xCI_prev
+              + col(OUTER_X2, k, j+1, i, pmy_chemnet->iNC_);
           }
         }
       }
@@ -232,6 +348,15 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iH2, k, j, i);
             col(INNER_X3, k, j, i, pmy_chemnet->iNCO_) = 
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            col(INNER_X3, k, j, i, pmy_chemnet->iNC_) = 
+              NHtot_cell/2. * xCI;
           } else {
             NHtot_cell_prev = pmy_mb->phydro->w(IDN, k-1, j, i) 
               * pmy_mb->pcoord->dx3f(k-1) * unit_length_in_cm_;
@@ -245,6 +370,24 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i)
               + NHtot_cell_prev/2. * pmy_mb->pspec->s(iCO, k-1, j, i)
               + col(INNER_X3, k-1, j, i, pmy_chemnet->iNCO_);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            xCI_prev = xCtot - pmy_mb->pspec->s(iCO, k-1, j, i)
+                  - pmy_mb->pspec->s(iCplus, k-1, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k-1, j, i)
+                  - pmy_mb->pspec->s(iCHx, k-1, j, i);
+            if (xCI_prev < 0) {
+              xCI_prev = 0.;
+            }
+            col(INNER_X3, k, j, i, pmy_chemnet->iNC_) =
+              NHtot_cell/2. * xCI
+              + NHtot_cell_prev/2. * xCI_prev
+              + col(INNER_X3, k-1, j, i, pmy_chemnet->iNC_);
           }
         }
       }
@@ -262,6 +405,15 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iH2, k, j, i);
             col(OUTER_X3, k, j, i, pmy_chemnet->iNCO_) = 
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            col(OUTER_X3, k, j, i, pmy_chemnet->iNC_) = 
+              NHtot_cell/2. * xCI;
           } else {
             NHtot_cell_prev = pmy_mb->phydro->w(IDN, k+1, j, i) 
               * pmy_mb->pcoord->dx3f(k+1) * unit_length_in_cm_;
@@ -275,6 +427,24 @@ void RadIntegrator::GetColMB(int direction) {
               NHtot_cell/2. * pmy_mb->pspec->s(iCO, k, j, i)
               + NHtot_cell_prev/2. * pmy_mb->pspec->s(iCO, k+1, j, i)
               + col(OUTER_X3, k+1, j, i, pmy_chemnet->iNCO_);
+            xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, i)
+                  - pmy_mb->pspec->s(iCplus, k, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k, j, i)
+                  - pmy_mb->pspec->s(iCHx, k, j, i);
+            if (xCI < 0) {
+              xCI = 0.;
+            }
+            xCI_prev = xCtot - pmy_mb->pspec->s(iCO, k+1, j, i)
+                  - pmy_mb->pspec->s(iCplus, k+1, j, i) 
+                  - pmy_mb->pspec->s(iHCOplus, k+1, j, i)
+                  - pmy_mb->pspec->s(iCHx, k+1, j, i);
+            if (xCI_prev < 0) {
+              xCI_prev = 0.;
+            }
+            col(OUTER_X3, k, j, i, pmy_chemnet->iNC_) =
+              NHtot_cell/2. * xCI
+              + NHtot_cell_prev/2. * xCI_prev
+              + col(OUTER_X3, k+1, j, i, pmy_chemnet->iNC_);
           }
         }
       }
@@ -290,6 +460,11 @@ void RadIntegrator::GetColMB(int direction) {
 void RadIntegrator::UpdateCol(int direction) {
   const int iH2 = pmy_chemnet->iH2_;
   const int iCO = pmy_chemnet->iCO_;
+  const int iCplus = pmy_chemnet->iCplus_;
+  const int iHCOplus = pmy_chemnet->iHCOplus_;
+  const int iCHx = pmy_chemnet->iCHx_;
+  const Real xCtot =  pmy_chemnet->xC_;
+  Real xCI;
   int is = pmy_mb->is;
   int js = pmy_mb->js;
   int ks = pmy_mb->ks;
@@ -298,7 +473,7 @@ void RadIntegrator::UpdateCol(int direction) {
   int ke = pmy_mb->ke;
   std::stringstream msg; //error message
   Real NH_ghostzone;
-  Real NH_boundary, NH2_boundary, NCO_boundary;
+  Real NH_boundary, NH2_boundary, NCO_boundary, NC_boundary;
   if (direction == INNER_X1) {
     //+x
     for (int k=ks; k<=ke; ++k) {
@@ -310,10 +485,20 @@ void RadIntegrator::UpdateCol(int direction) {
           + pmy_mb->pspec->s(iH2, k, j, is-1) * NH_ghostzone; 
         NCO_boundary = col(direction, k, j, is-1, pmy_chemnet->iNCO_)
           + pmy_mb->pspec->s(iCO, k, j, is-1) * NH_ghostzone;
+        xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, is-1)
+          - pmy_mb->pspec->s(iCplus, k, j, is-1) 
+          - pmy_mb->pspec->s(iHCOplus, k, j, is-1)
+          - pmy_mb->pspec->s(iCHx, k, j, is-1);
+        if (xCI < 0) {
+          xCI = 0.;
+        }
+        NC_boundary = col(direction, k, j, is-1, pmy_chemnet->iNC_)
+          + xCI * NH_ghostzone;
         for (int i=is; i<=ie; ++i) {
           col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
           col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
           col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNC_) += NC_boundary;
         }
       }
     }
@@ -328,10 +513,20 @@ void RadIntegrator::UpdateCol(int direction) {
           + pmy_mb->pspec->s(iH2, k, j, ie+1) * NH_ghostzone; 
         NCO_boundary = col(direction, k, j, ie+1, pmy_chemnet->iNCO_)
           + pmy_mb->pspec->s(iCO, k, j, ie+1) * NH_ghostzone;
+        xCI = xCtot - pmy_mb->pspec->s(iCO, k, j, ie+1)
+          - pmy_mb->pspec->s(iCplus, k, j, ie+1) 
+          - pmy_mb->pspec->s(iHCOplus, k, j, ie+1)
+          - pmy_mb->pspec->s(iCHx, k, j, ie+1);
+        if (xCI < 0) {
+          xCI = 0.;
+        }
+        NC_boundary = col(direction, k, j, ie+1, pmy_chemnet->iNC_)
+          + xCI * NH_ghostzone;
         for (int i=ie; i>=is; --i) {
           col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
           col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
           col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNC_) += NC_boundary;
         }
       }
     }
@@ -346,10 +541,20 @@ void RadIntegrator::UpdateCol(int direction) {
           + pmy_mb->pspec->s(iH2, k, js-1, i) * NH_ghostzone; 
         NCO_boundary = col(direction, k, js-1, i, pmy_chemnet->iNCO_)
           + pmy_mb->pspec->s(iCO, k, js-1, i) * NH_ghostzone;
+        xCI = xCtot - pmy_mb->pspec->s(iCO, k, js-1, i)
+          - pmy_mb->pspec->s(iCplus, k, js-1, i) 
+          - pmy_mb->pspec->s(iHCOplus, k, js-1, i)
+          - pmy_mb->pspec->s(iCHx, k, js-1, i);
+        if (xCI < 0) {
+          xCI = 0.;
+        }
+        NC_boundary = col(direction, k, js-1, i, pmy_chemnet->iNC_)
+          + xCI * NH_ghostzone;
         for (int j=js; j<=je; ++j) {
           col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
           col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
           col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNC_) += NC_boundary;
         }
       }
     }
@@ -364,10 +569,20 @@ void RadIntegrator::UpdateCol(int direction) {
           + pmy_mb->pspec->s(iH2, k, je+1, i) * NH_ghostzone; 
         NCO_boundary = col(direction, k, je+1, i, pmy_chemnet->iNCO_)
           + pmy_mb->pspec->s(iCO, k, je+1, i) * NH_ghostzone;
+        xCI = xCtot - pmy_mb->pspec->s(iCO, k, je+1, i)
+          - pmy_mb->pspec->s(iCplus, k, je+1, i) 
+          - pmy_mb->pspec->s(iHCOplus, k, je+1, i)
+          - pmy_mb->pspec->s(iCHx, k, je+1, i);
+        if (xCI < 0) {
+          xCI = 0.;
+        }
+        NC_boundary = col(direction, k, je+1, i, pmy_chemnet->iNC_)
+          + xCI * NH_ghostzone;
         for (int j=je; j>=js; --j) {
           col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
           col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
           col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNC_) += NC_boundary;
         }
       }
     }
@@ -382,10 +597,20 @@ void RadIntegrator::UpdateCol(int direction) {
           + pmy_mb->pspec->s(iH2, ks-1, j, i) * NH_ghostzone; 
         NCO_boundary = col(direction, ks-1, j, i, pmy_chemnet->iNCO_)
           + pmy_mb->pspec->s(iCO, ks-1, j, i) * NH_ghostzone;
+        xCI = xCtot - pmy_mb->pspec->s(iCO, ks-1, j, i)
+          - pmy_mb->pspec->s(iCplus, ks-1, j, i) 
+          - pmy_mb->pspec->s(iHCOplus, ks-1, j, i)
+          - pmy_mb->pspec->s(iCHx, ks-1, j, i);
+        if (xCI < 0) {
+          xCI = 0.;
+        }
+        NC_boundary = col(direction, ks-1, j, i, pmy_chemnet->iNC_)
+          + xCI * NH_ghostzone;
         for (int k=ks; k<=ke; ++k) {
           col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
           col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
           col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNC_) += NC_boundary;
         }
       }
     }
@@ -400,10 +625,20 @@ void RadIntegrator::UpdateCol(int direction) {
           + pmy_mb->pspec->s(iH2, ke+1, j, i) * NH_ghostzone; 
         NCO_boundary = col(direction, ke+1, j, i, pmy_chemnet->iNCO_)
           + pmy_mb->pspec->s(iCO, ke+1, j, i) * NH_ghostzone;
+        xCI = xCtot - pmy_mb->pspec->s(iCO, ke+1, j, i)
+          - pmy_mb->pspec->s(iCplus, ke+1, j, i) 
+          - pmy_mb->pspec->s(iHCOplus, ke+1, j, i)
+          - pmy_mb->pspec->s(iCHx, ke+1, j, i);
+        if (xCI < 0) {
+          xCI = 0.;
+        }
+        NC_boundary = col(direction, ke+1, j, i, pmy_chemnet->iNC_)
+          + xCI * NH_ghostzone;
         for (int k=ke; k>=ks; --k) {
           col(direction, k, j, i, pmy_chemnet->iNHtot_) += NH_boundary;
           col(direction, k, j, i, pmy_chemnet->iNH2_) += NH2_boundary;
           col(direction, k, j, i, pmy_chemnet->iNCO_) += NCO_boundary;
+          col(direction, k, j, i, pmy_chemnet->iNC_) += NC_boundary;
         }
       }
     }
@@ -421,15 +656,17 @@ void RadIntegrator::UpdateRadiation(int direction) {
   const Real bH2 = 3.0e5; //H2 velocity dispersion
   const int iph_H2 = ChemNetwork::iph_H2_;
   const int iph_CO = ChemNetwork::iph_CO_;
+  const int iph_C = ChemNetwork::iph_C_;
   const int iPE = pmy_chemnet->index_gpe_;
   const Real sigmaPE = Thermo::sigmaPE_;
-  Real NH, AV, NCO, NH2, fs_CO, fs_H2;
+  Real NH, AV, NCO, NC, NH2, fs_CO, fs_H2, fs_CI;
   for (int k=pmy_mb->ks; k<=pmy_mb->ke; ++k) {
     for (int j=pmy_mb->js; j<=pmy_mb->je; ++j) {
       for (int i=pmy_mb->is; i<=pmy_mb->ie; ++i) {
         NH = col(direction, k, j, i, pmy_chemnet->iNHtot_);
         NH2 = col(direction, k, j, i,  pmy_chemnet->iNH2_);
         NCO = col(direction, k, j, i,  pmy_chemnet->iNCO_);
+        NC = col(direction, k, j, i,  pmy_chemnet->iNC_);
         AV = NH * Zd / 1.87e21;
         //photo-reactions
         for (int ifreq=0; ifreq < pmy_rad->nfreq-1; ++ifreq) {
@@ -439,10 +676,13 @@ void RadIntegrator::UpdateRadiation(int direction) {
         //H2 and CO self-sheilding
         fs_CO = Shielding::fShield_CO_V09(NCO, NH2);
         fs_H2 = Shielding::fShield_H2(NH2, bH2);
+        fs_CI = Shielding::fShield_C(NC, NH2);
         pmy_rad->ir(k, j, i, iph_H2 * pmy_rad->nang+iang) *= 
           fs_H2;
         pmy_rad->ir(k, j, i, iph_CO * pmy_rad->nang+iang) *= 
           fs_CO;
+        pmy_rad->ir(k, j, i, iph_C * pmy_rad->nang+iang) *= 
+          fs_CI;
         //GPE 
         pmy_rad->ir(k, j, i, iPE * pmy_rad->nang+iang) = rad_G0_
           *  exp(-NH * sigmaPE * Zd);
@@ -468,6 +708,7 @@ void RadIntegrator::CopyToOutput() {
           col_Htot(iang, k, j, i) = col(iang_arr[iang], k, j, i, pmy_chemnet->iNHtot_);
           col_H2(iang, k, j, i) = col(iang_arr[iang], k, j, i, pmy_chemnet->iNH2_); 
           col_CO(iang, k, j, i) = col(iang_arr[iang], k, j, i, pmy_chemnet->iNCO_); 
+          col_C(iang, k, j, i) = col(iang_arr[iang], k, j, i, pmy_chemnet->iNC_); 
           //angel averaged column densities
           for (int icol=0; icol<ncol; icol++) {
             if (iang == 0) {
