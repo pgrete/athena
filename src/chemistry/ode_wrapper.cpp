@@ -29,7 +29,6 @@
 #include "network/network.hpp"
 #include "../mesh/mesh.hpp"
 
-//TODO: lib directory
 #include <cvode/cvode.h> // CV_SUCCESS
 #include <nvector/nvector_serial.h> // N_Vector
 #include <sundials/sundials_dense.h> // definitions DlsMat DENSE_ELEM

@@ -398,8 +398,9 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
         printf("%.2e  ", rad_[ifreq]);
       }
       printf("\n");
+      printf("nH_ = %.2e\n", nH_);
       throw std::runtime_error(
-             "ChemNetwork (gow16): RHS: nan, inf or too low species\n");
+             "ChemNetwork (gow16): RHS(yprev): nan or inf\n");
     }
   }
 
@@ -446,6 +447,31 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 	for (int i=0; i<NSPECIES; i++) {
 		ydot[i] = ydotg[i];
 	}
+
+  //throw error if nan, or inf, or large negative value occurs
+  for (int i=0; i<NSPECIES; i++) {
+    if ( isnan(ydot[i]) || isinf(ydot[i]) ) {
+      printf("ydot: ");
+      for (int j=0; j<NSPECIES; j++) {
+        printf("%s: %.2e  ", species_names[j].c_str(), ydot[j]);
+      }
+      printf("abundances: ");
+      for (int j=0; j<NSPECIES+ngs_; j++) {
+        printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
+      }
+      printf("\n");
+      OutputRates(stdout);
+      printf("rad_ = ");
+      for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
+        printf("%.2e  ", rad_[ifreq]);
+      }
+      printf("\n");
+      printf("nH_ = %.2e\n", nH_);
+      throw std::runtime_error(
+          "ChemNetwork (gow16): RHS(ydot): nan or inf\n");
+    }
+  }
+
   return;
 }
 
@@ -470,8 +496,6 @@ void ChemNetwork::Jacobian(const Real t,
 
   // copy y to yprev and set ghost species
   GetGhostSpecies(y, yprev);
-  // TODO: We can might skip this, which was caluclated in RHS
-  //UpdateRates(yprev);
   // 2 body reactions: a+b -> c+d
   for (int i=0; i<n_2body_; i++) {
     ia = in2body1_[i];
@@ -809,8 +833,7 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
 										 ) 
 									) * nH_ * zdg_;
 	} else {
-		//TODO: maybe has variables for 1-5 here.
-		for (int i=1; i<6; i++) {
+		for (int i=1; i<5; i++) {
 			kgr_[i] = 0.;
 		}
 	}

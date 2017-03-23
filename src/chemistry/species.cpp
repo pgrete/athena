@@ -33,8 +33,6 @@
 // this class header
 #include "species.hpp"
 
-//TODO: MPI & OMP header?
-
 // constructor, initializes data structures and parameters
 ChemSpecies::ChemSpecies(MeshBlock *pmb, ParameterInput *pin) {
   pmy_block = pmb;

@@ -22,11 +22,10 @@ class Shielding {
     ~Shielding();
 		static Real fShield_CO_vDB(const Real NCO, const Real NH2);
     //CO sheilding from Visser+2009, Table 5
-    //TODO: change b(CO) or Tex(CO)?
 		static Real fShield_CO_V09(const Real NCO, const Real NH2);
     //H2 self shielding from Draine+Bertoldi1996
 		static Real fShield_H2(const Real NH2, const Real bH2);
-    //CI self shielding. TODO: ref from Mark wolfire
+    //CI self shielding. 
 		static Real fShield_C(const Real NC, const Real NH2);
     //CI shielding of CO
     static Real fShield_CO_C(const Real NC);
