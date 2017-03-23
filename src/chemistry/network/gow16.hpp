@@ -66,6 +66,7 @@ private:
 	Real nH_; //density, updated at InitializeNextStep
 	//units of density and radiation
 	Real unit_density_in_nH_;
+	Real unit_vel_in_cms_;
 	Real unit_radiation_in_draine1987_;
 	Real temperature_;
 	Real temp_max_heat_; 
@@ -188,7 +189,6 @@ private:
 	//these are needed for LVG approximation
 	Real gradv_; //abosolute value of velocity gradient in cgs, >0
 	Real gradnH_; //abosolute value of density gradient in cgs, >0
-	Real dx_cell_; //cell size
 	Real Leff_CO_max_; //maximum effective length for CO cooling
 	//these are needed for assigned NCO and bCO
 	Real NCO_;
@@ -202,9 +202,10 @@ private:
 	Real CII_rec_rate_(const Real temp);
 	Real dEdt_(const Real y[NSPECIES+ngs_]);
 	void OutputRates(FILE *pf) const;
-
-
-
+  Real GetStddev(Real arr[], const int len);
+  void SetbCO(const int k, const int j, const int i); //set bCO_ for CO cooling
+  //set gradients of v and nH for CO cooling
+  void SetGrad_v_nH(const int k, const int j, const int i); 
 };
 
 #endif // GOW16_HPP

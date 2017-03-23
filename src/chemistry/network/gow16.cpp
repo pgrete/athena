@@ -304,6 +304,7 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	cr_rate_ = pin->GetOrAddReal("chemistry", "CR", 2e-16);
   //units of density and radiation
 	unit_density_in_nH_ = pin->GetReal("chemistry", "unit_density_in_nH");
+	unit_vel_in_cms_ = pin->GetReal("chemistry", "unit_vel_in_cms");
 	unit_radiation_in_draine1987_ = pin->GetReal(
                                 "chemistry", "unit_radiation_in_draine1987");
   //constant temperature
@@ -327,9 +328,8 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	//CO cooling parameters
 	//default: not use LVG approximation
 	isNCOeff_LVG_ = pin->GetOrAddInteger("chemistry", "isNCOeff_LVG", 0);
-	//Maximum CO cooling length. default 1kpc.
-	Leff_CO_max_ = pin->GetOrAddReal("chemistry", "Leff_CO_max", 3.0e21);
-	dx_cell_ = 0.;
+	//Maximum CO cooling length. default 100pc.
+	Leff_CO_max_ = pin->GetOrAddReal("chemistry", "Leff_CO_max", 3.0e20);
 	gradv_ = 0.;
 	gradnH_ = 0.;
 	NCO_ = 0.;
@@ -552,7 +552,7 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
   Real rad_sum, temp, NCO_sum;
   int nang = pmy_mb_->prad->nang;
   //density
-  nH_ = pmy_mb_->phydro->u(IDN, k, j, i) / unit_density_in_nH_;
+  nH_ = pmy_mb_->phydro->w(IDN, k, j, i) / unit_density_in_nH_;
   //average radiation field of all angles
   for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
     rad_sum = 0;
@@ -574,7 +574,11 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
       NCO_sum += pmy_mb_->prad->pradintegrator->col(iang, k, j, i, iNCO_);
   }
   NCO_ = NCO_sum/float(nang);
-  bCO_ = 3.0e5; //3km/s, TODO: need to get from calculation
+  if (isNCOeff_LVG_ != 0) {
+    SetGrad_v_nH(k, j, i);
+  } else {
+    SetbCO_(k, j, i);
+  }
 	return;
 }
 
@@ -911,19 +915,15 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
 		nCO = nH_ * y[iCO_];
 		grad_small_ = 1e-100;
 		if (isNCOeff_LVG_ != 0) {
-			if (gradv_ > vth / dx_cell_) {
-				NCOeff = nCO / gradv_;
-			} else {
-				Leff_n = nH_ / gradnH_;
-				Leff_v = vth / gradv_;
-				if (gradnH_ < grad_small_ || gradv_ < grad_small_
-						|| Leff_n > Leff_CO_max_ || Leff_v > Leff_CO_max_ ) {
-					Leff = Leff_CO_max_;
-				} else {
-					Leff = std::min(Leff_n, Leff_v);
-				}
-				NCOeff = nCO * Leff / vth;
-			}
+      Leff_n = nH_ / gradnH_;
+      Leff_v = vth / gradv_;
+      if (gradnH_ < grad_small_ || gradv_ < grad_small_
+          || Leff_n > Leff_CO_max_ || Leff_v > Leff_CO_max_ ) {
+        Leff = Leff_CO_max_;
+      } else {
+        Leff = std::min(Leff_n, Leff_v);
+      }
+      NCOeff = nCO * Leff / vth;
 		} else {
 			NCOeff = NCO_ / sqrt(bCO_*bCO_ + vth*vth);
 		}
@@ -994,5 +994,108 @@ void ChemNetwork::OutputRates(FILE *pf) const {
 		 species_names_all_[ingr_[i]].c_str(), species_names_all_[outgr_[i]].c_str(),
 		 kgr_[i]);
 	}
+  return;
+}
+
+Real ChemNetwork::GetStddev(Real arr[], const int len) {
+  Real sum=0, avg=0, sum_sq=0, avg_sq=0;
+  for (int i=0; i<len; i++) {
+    sum += arr[i];
+    sum_sq += arr[i] * arr[i];
+  }
+  avg = sum/Real(len);
+  avg_sq = sum_sq/Real(len);
+  return sqrt(avg_sq - avg*avg);
+}
+
+void ChemNetwork::SetbCO(const int k, const int j, const int i) {
+  AthenaArray<Real> &w = pmy_mb_->phydro->w;
+  Real dvx, dvy, dvz, dvtot;
+  Real vx[27] = {
+                w[IVX, k, j, i],   w[IVX, k, j, i-1],   w[IVX, k, j, i+1],
+                w[IVX, k, j-1, i], w[IVX, k, j-1,i-1],  w[IVX, k, j-1, i+1],
+                w[IVX, k, j+1, i], w[IVX, k, j+1,i-1],  w[IVX, k, j+1, i+1],
+                w[IVX, k-1, j, i],   w[IVX, k-1, j, i-1],   w[IVX, k-1, j, i+1],
+                w[IVX, k-1, j-1, i], w[IVX, k-1, j-1,i-1],  w[IVX, k-1, j-1, i+1],
+                w[IVX, k-1, j+1, i], w[IVX, k-1, j+1,i-1],  w[IVX, k-1, j+1, i+1],
+                w[IVX, k+1, j, i],   w[IVX, k+1, j, i-1],   w[IVX, k+1, j, i+1],
+                w[IVX, k+1, j-1, i], w[IVX, k+1, j-1,i-1],  w[IVX, k+1, j-1, i+1],
+                w[IVX, k+1, j+1, i], w[IVX, k+1, j+1,i-1],  w[IVX, k+1, j+1, i+1],
+                };
+  Real vy[27] = {
+                w[IVY, k, j, i],   w[IVY, k, j, i-1],   w[IVY, k, j, i+1],
+                w[IVY, k, j-1, i], w[IVY, k, j-1,i-1],  w[IVY, k, j-1, i+1],
+                w[IVY, k, j+1, i], w[IVY, k, j+1,i-1],  w[IVY, k, j+1, i+1],
+                w[IVY, k-1, j, i],   w[IVY, k-1, j, i-1],   w[IVY, k-1, j, i+1],
+                w[IVY, k-1, j-1, i], w[IVY, k-1, j-1,i-1],  w[IVY, k-1, j-1, i+1],
+                w[IVY, k-1, j+1, i], w[IVY, k-1, j+1,i-1],  w[IVY, k-1, j+1, i+1],
+                w[IVY, k+1, j, i],   w[IVY, k+1, j, i-1],   w[IVY, k+1, j, i+1],
+                w[IVY, k+1, j-1, i], w[IVY, k+1, j-1,i-1],  w[IVY, k+1, j-1, i+1],
+                w[IVY, k+1, j+1, i], w[IVY, k+1, j+1,i-1],  w[IVY, k+1, j+1, i+1],
+                };
+  Real vz[27] = {
+                w[IVZ, k, j, i],   w[IVZ, k, j, i-1],   w[IVZ, k, j, i+1],
+                w[IVZ, k, j-1, i], w[IVZ, k, j-1,i-1],  w[IVZ, k, j-1, i+1],
+                w[IVZ, k, j+1, i], w[IVZ, k, j+1,i-1],  w[IVZ, k, j+1, i+1],
+                w[IVZ, k-1, j, i],   w[IVZ, k-1, j, i-1],   w[IVZ, k-1, j, i+1],
+                w[IVZ, k-1, j-1, i], w[IVZ, k-1, j-1,i-1],  w[IVZ, k-1, j-1, i+1],
+                w[IVZ, k-1, j+1, i], w[IVZ, k-1, j+1,i-1],  w[IVZ, k-1, j+1, i+1],
+                w[IVZ, k+1, j, i],   w[IVZ, k+1, j, i-1],   w[IVZ, k+1, j, i+1],
+                w[IVZ, k+1, j-1, i], w[IVZ, k+1, j-1,i-1],  w[IVZ, k+1, j-1, i+1],
+                w[IVZ, k+1, j+1, i], w[IVZ, k+1, j+1,i-1],  w[IVZ, k+1, j+1, i+1],
+                };
+  dvx = GetStddev(vx, 27);
+  dvy = GetStddev(vy, 27);
+  dvz = GetStddev(vz, 27);
+  dvtot = sqrt(dvx*dvx + dvy*dvy + dvz*dvz);
+  bCO_ = dvtot * unit_vel_in_cms_;
+  return;
+}
+
+void ChemNetwork::SetGrad_v_nH(const int k, const int j, const int i) {
+  AthenaArray<Real> &w = pmy_mb_->phydro->w;
+  Real dvdx, dvdy, dvdz, dvdr_avg, di1, di2;
+  Real dx1, dx2, dy1, dy2, dz1, dz2;
+  Real dndx, dndy, dndz, gradn;
+  //velocity gradient, same as LVG approximation in RADMC-3D when calculating
+  //CO line emission.
+  //vx
+  di1 = w(IVX, k, j, i+1) - w(IVX, k, j, i);
+  dx1 = ( pmy_mb->pcoord->dx1f(i+1)+pmy_mb->pcoord->dx1f(i) )/2.;
+  di2 = w(IVX, k, j, i) - w(IVX, k, j, i-1);
+  dx2 = ( pmy_mb->pcoord->dx1f(i)+pmy_mb->pcoord->dx1f(i-1) )/2.;
+  dvdx = (di1/dx1 + di2/dx2)/2.;
+  //vy
+  di1 = w(IVY, k, j+1, i) - w(IVY, k, j, i);
+  dy1 = ( pmy_mb->pcoord->dx2f(j+1)+pmy_mb->pcoord->dx2f(j) )/2.;
+  di2 = w(IVY, k, j, i) - w(IVY, k, j-1, i);
+  dy2   ( pmy_mb->pcoord->dx2f(j)+pmy_mb->pcoord->dx2f(j-1) )/2.;
+  dvdy = (di1/dy1 + di2/dy2)/2.;
+  //vz
+  di1 = w(IVZ, k+1, j, i) - w(IVZ, k, j, i);
+  dz1 = ( pmy_mb->pcoord->dx3f(k+1)+pmy_mb->pcoord->dx3f(k) )/2.;
+  di2 = w(IVZ, k, j, i) - w(IVZ, k-1, j, i);
+  dz2 = ( pmy_mb->pcoord->dx3f(k)+pmy_mb->pcoord->dx3f(k-1) )/2.;
+  dvdz = (di1/dz1 + di2/dz2)/2.;
+  dvdr_avg = ( fabs(dvdx) + fabs(dvdy) + fabs(dvdz) ) / 3.;
+  //asign gradv_, in cgs.
+  gradv_ = dvdr_avg * unit_vel_in_cms_ / unit_length_in_cm_;
+  //density gradient, same as the escape probability length using density
+  //gradient calcuated in RADMC-3D.
+  //nx
+  di1 = w(IDN, k, j, i+1) - w(IDN, k, j, i);
+  di2 = w(IDN, k, j, i) - w(IDN, k, j, i-1);
+  dndx = (di1/dx1 + di2/dx2)/2.;
+  //ny
+  di1 = w(IDN, k, j+1, i) - w(IDN, k, j, i);
+  di2 = w(IDN, k, j, i) - w(IDN, k, j-1, i);
+  dndy = (di1/dy1 + di2/dy2)/2.;
+  //nz
+  di1 = w(IDN, k+1, j, i) - w(IDN, k, j, i);
+  di2 = w(IDN, k, j, i) - w(IDN, k-1, j, i);
+  dndz = (di1/dz1 + di2/dz2)/2.;
+  gradn = sqrt(dndx*dndx + dndy+dndy + dndz*dndz);
+  //asign gradnH_, in units of H /cm;
+  gradnH_ = gradn * unit_density_in_nH_ / unit_length_in_cm_;
   return;
 }
