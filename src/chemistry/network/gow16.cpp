@@ -24,6 +24,7 @@
 //athena++ header
 #include "network.hpp"
 #include "../species.hpp"
+#include "../../coordinates/coordinates.hpp"
 #include "../../parameter_input.hpp"       //ParameterInput
 #include "../../mesh/mesh.hpp"
 #include "../../hydro/hydro.hpp"
@@ -304,6 +305,7 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	cr_rate_ = pin->GetOrAddReal("chemistry", "CR", 2e-16);
   //units of density and radiation
 	unit_density_in_nH_ = pin->GetReal("chemistry", "unit_density_in_nH");
+	unit_length_in_cm_ = pin->GetReal("chemistry", "unit_length_in_cm");
 	unit_vel_in_cms_ = pin->GetReal("chemistry", "unit_vel_in_cms");
 	unit_radiation_in_draine1987_ = pin->GetReal(
                                 "chemistry", "unit_radiation_in_draine1987");
@@ -577,7 +579,7 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
   if (isNCOeff_LVG_ != 0) {
     SetGrad_v_nH(k, j, i);
   } else {
-    SetbCO_(k, j, i);
+    SetbCO(k, j, i);
   }
 	return;
 }
@@ -1012,37 +1014,37 @@ void ChemNetwork::SetbCO(const int k, const int j, const int i) {
   AthenaArray<Real> &w = pmy_mb_->phydro->w;
   Real dvx, dvy, dvz, dvtot;
   Real vx[27] = {
-                w[IVX, k, j, i],   w[IVX, k, j, i-1],   w[IVX, k, j, i+1],
-                w[IVX, k, j-1, i], w[IVX, k, j-1,i-1],  w[IVX, k, j-1, i+1],
-                w[IVX, k, j+1, i], w[IVX, k, j+1,i-1],  w[IVX, k, j+1, i+1],
-                w[IVX, k-1, j, i],   w[IVX, k-1, j, i-1],   w[IVX, k-1, j, i+1],
-                w[IVX, k-1, j-1, i], w[IVX, k-1, j-1,i-1],  w[IVX, k-1, j-1, i+1],
-                w[IVX, k-1, j+1, i], w[IVX, k-1, j+1,i-1],  w[IVX, k-1, j+1, i+1],
-                w[IVX, k+1, j, i],   w[IVX, k+1, j, i-1],   w[IVX, k+1, j, i+1],
-                w[IVX, k+1, j-1, i], w[IVX, k+1, j-1,i-1],  w[IVX, k+1, j-1, i+1],
-                w[IVX, k+1, j+1, i], w[IVX, k+1, j+1,i-1],  w[IVX, k+1, j+1, i+1],
+                w(IVX, k, j, i),   w(IVX, k, j, i-1),   w(IVX, k, j, i+1),
+                w(IVX, k, j-1, i), w(IVX, k, j-1,i-1),  w(IVX, k, j-1, i+1),
+                w(IVX, k, j+1, i), w(IVX, k, j+1,i-1),  w(IVX, k, j+1, i+1),
+                w(IVX, k-1, j, i),   w(IVX, k-1, j, i-1),   w(IVX, k-1, j, i+1),
+                w(IVX, k-1, j-1, i), w(IVX, k-1, j-1,i-1),  w(IVX, k-1, j-1, i+1),
+                w(IVX, k-1, j+1, i), w(IVX, k-1, j+1,i-1),  w(IVX, k-1, j+1, i+1),
+                w(IVX, k+1, j, i),   w(IVX, k+1, j, i-1),   w(IVX, k+1, j, i+1),
+                w(IVX, k+1, j-1, i), w(IVX, k+1, j-1,i-1),  w(IVX, k+1, j-1, i+1),
+                w(IVX, k+1, j+1, i), w(IVX, k+1, j+1,i-1),  w(IVX, k+1, j+1, i+1),
                 };
   Real vy[27] = {
-                w[IVY, k, j, i],   w[IVY, k, j, i-1],   w[IVY, k, j, i+1],
-                w[IVY, k, j-1, i], w[IVY, k, j-1,i-1],  w[IVY, k, j-1, i+1],
-                w[IVY, k, j+1, i], w[IVY, k, j+1,i-1],  w[IVY, k, j+1, i+1],
-                w[IVY, k-1, j, i],   w[IVY, k-1, j, i-1],   w[IVY, k-1, j, i+1],
-                w[IVY, k-1, j-1, i], w[IVY, k-1, j-1,i-1],  w[IVY, k-1, j-1, i+1],
-                w[IVY, k-1, j+1, i], w[IVY, k-1, j+1,i-1],  w[IVY, k-1, j+1, i+1],
-                w[IVY, k+1, j, i],   w[IVY, k+1, j, i-1],   w[IVY, k+1, j, i+1],
-                w[IVY, k+1, j-1, i], w[IVY, k+1, j-1,i-1],  w[IVY, k+1, j-1, i+1],
-                w[IVY, k+1, j+1, i], w[IVY, k+1, j+1,i-1],  w[IVY, k+1, j+1, i+1],
+                w(IVY, k, j, i),   w(IVY, k, j, i-1),   w(IVY, k, j, i+1),
+                w(IVY, k, j-1, i), w(IVY, k, j-1,i-1),  w(IVY, k, j-1, i+1),
+                w(IVY, k, j+1, i), w(IVY, k, j+1,i-1),  w(IVY, k, j+1, i+1),
+                w(IVY, k-1, j, i),   w(IVY, k-1, j, i-1),   w(IVY, k-1, j, i+1),
+                w(IVY, k-1, j-1, i), w(IVY, k-1, j-1,i-1),  w(IVY, k-1, j-1, i+1),
+                w(IVY, k-1, j+1, i), w(IVY, k-1, j+1,i-1),  w(IVY, k-1, j+1, i+1),
+                w(IVY, k+1, j, i),   w(IVY, k+1, j, i-1),   w(IVY, k+1, j, i+1),
+                w(IVY, k+1, j-1, i), w(IVY, k+1, j-1,i-1),  w(IVY, k+1, j-1, i+1),
+                w(IVY, k+1, j+1, i), w(IVY, k+1, j+1,i-1),  w(IVY, k+1, j+1, i+1),
                 };
   Real vz[27] = {
-                w[IVZ, k, j, i],   w[IVZ, k, j, i-1],   w[IVZ, k, j, i+1],
-                w[IVZ, k, j-1, i], w[IVZ, k, j-1,i-1],  w[IVZ, k, j-1, i+1],
-                w[IVZ, k, j+1, i], w[IVZ, k, j+1,i-1],  w[IVZ, k, j+1, i+1],
-                w[IVZ, k-1, j, i],   w[IVZ, k-1, j, i-1],   w[IVZ, k-1, j, i+1],
-                w[IVZ, k-1, j-1, i], w[IVZ, k-1, j-1,i-1],  w[IVZ, k-1, j-1, i+1],
-                w[IVZ, k-1, j+1, i], w[IVZ, k-1, j+1,i-1],  w[IVZ, k-1, j+1, i+1],
-                w[IVZ, k+1, j, i],   w[IVZ, k+1, j, i-1],   w[IVZ, k+1, j, i+1],
-                w[IVZ, k+1, j-1, i], w[IVZ, k+1, j-1,i-1],  w[IVZ, k+1, j-1, i+1],
-                w[IVZ, k+1, j+1, i], w[IVZ, k+1, j+1,i-1],  w[IVZ, k+1, j+1, i+1],
+                w(IVZ, k, j, i),   w(IVZ, k, j, i-1),   w(IVZ, k, j, i+1),
+                w(IVZ, k, j-1, i), w(IVZ, k, j-1,i-1),  w(IVZ, k, j-1, i+1),
+                w(IVZ, k, j+1, i), w(IVZ, k, j+1,i-1),  w(IVZ, k, j+1, i+1),
+                w(IVZ, k-1, j, i),   w(IVZ, k-1, j, i-1),   w(IVZ, k-1, j, i+1),
+                w(IVZ, k-1, j-1, i), w(IVZ, k-1, j-1,i-1),  w(IVZ, k-1, j-1, i+1),
+                w(IVZ, k-1, j+1, i), w(IVZ, k-1, j+1,i-1),  w(IVZ, k-1, j+1, i+1),
+                w(IVZ, k+1, j, i),   w(IVZ, k+1, j, i-1),   w(IVZ, k+1, j, i+1),
+                w(IVZ, k+1, j-1, i), w(IVZ, k+1, j-1,i-1),  w(IVZ, k+1, j-1, i+1),
+                w(IVZ, k+1, j+1, i), w(IVZ, k+1, j+1,i-1),  w(IVZ, k+1, j+1, i+1),
                 };
   dvx = GetStddev(vx, 27);
   dvy = GetStddev(vy, 27);
@@ -1061,21 +1063,21 @@ void ChemNetwork::SetGrad_v_nH(const int k, const int j, const int i) {
   //CO line emission.
   //vx
   di1 = w(IVX, k, j, i+1) - w(IVX, k, j, i);
-  dx1 = ( pmy_mb->pcoord->dx1f(i+1)+pmy_mb->pcoord->dx1f(i) )/2.;
+  dx1 = ( pmy_mb_->pcoord->dx1f(i+1)+pmy_mb_->pcoord->dx1f(i) )/2.;
   di2 = w(IVX, k, j, i) - w(IVX, k, j, i-1);
-  dx2 = ( pmy_mb->pcoord->dx1f(i)+pmy_mb->pcoord->dx1f(i-1) )/2.;
+  dx2 = ( pmy_mb_->pcoord->dx1f(i)+pmy_mb_->pcoord->dx1f(i-1) )/2.;
   dvdx = (di1/dx1 + di2/dx2)/2.;
   //vy
   di1 = w(IVY, k, j+1, i) - w(IVY, k, j, i);
-  dy1 = ( pmy_mb->pcoord->dx2f(j+1)+pmy_mb->pcoord->dx2f(j) )/2.;
+  dy1 = ( pmy_mb_->pcoord->dx2f(j+1)+pmy_mb_->pcoord->dx2f(j) )/2.;
   di2 = w(IVY, k, j, i) - w(IVY, k, j-1, i);
-  dy2   ( pmy_mb->pcoord->dx2f(j)+pmy_mb->pcoord->dx2f(j-1) )/2.;
+  dy2 = ( pmy_mb_->pcoord->dx2f(j)+pmy_mb_->pcoord->dx2f(j-1) )/2.;
   dvdy = (di1/dy1 + di2/dy2)/2.;
   //vz
   di1 = w(IVZ, k+1, j, i) - w(IVZ, k, j, i);
-  dz1 = ( pmy_mb->pcoord->dx3f(k+1)+pmy_mb->pcoord->dx3f(k) )/2.;
+  dz1 = ( pmy_mb_->pcoord->dx3f(k+1)+pmy_mb_->pcoord->dx3f(k) )/2.;
   di2 = w(IVZ, k, j, i) - w(IVZ, k-1, j, i);
-  dz2 = ( pmy_mb->pcoord->dx3f(k)+pmy_mb->pcoord->dx3f(k-1) )/2.;
+  dz2 = ( pmy_mb_->pcoord->dx3f(k)+pmy_mb_->pcoord->dx3f(k-1) )/2.;
   dvdz = (di1/dz1 + di2/dz2)/2.;
   dvdr_avg = ( fabs(dvdx) + fabs(dvdy) + fabs(dvdz) ) / 3.;
   //asign gradv_, in cgs.

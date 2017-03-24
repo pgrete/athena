@@ -66,6 +66,7 @@ private:
 	Real nH_; //density, updated at InitializeNextStep
 	//units of density and radiation
 	Real unit_density_in_nH_;
+	Real unit_length_in_cm_;
 	Real unit_vel_in_cms_;
 	Real unit_radiation_in_draine1987_;
 	Real temperature_;
