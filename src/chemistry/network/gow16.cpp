@@ -333,7 +333,6 @@ ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
 	//Maximum CO cooling length. default 100pc.
 	Leff_CO_max_ = pin->GetOrAddReal("chemistry", "Leff_CO_max", 3.0e20);
 	gradv_ = 0.;
-	gradnH_ = 0.;
 	NCO_ = 0.;
 	bCO_ = 0.;
 	
@@ -577,7 +576,7 @@ void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
   }
   NCO_ = NCO_sum/float(nang);
   if (isNCOeff_LVG_ != 0) {
-    SetGrad_v_nH(k, j, i);
+    SetGrad_v(k, j, i);
   } else {
     SetbCO(k, j, i);
   }
@@ -887,7 +886,7 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
 	//cut-off cooling at low temperature
 	Real LCII, LCI, LOI, LHotGas, LCOR, LH2, LDust, LRec, LH2diss, LHIion;
 	Real vth, nCO, grad_small_;
-  Real NCOeff, Leff_n, Leff_v, Leff;
+  Real NCOeff, gradeff;
 	if (T < temp_min_cool_) {
 		LCII = 0.;
 		LCI = 0;
@@ -915,17 +914,10 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
 		// Calculate effective CO column density
 		vth = sqrt(2. * Thermo::kb_ * T / CGKUtility::mCO);
 		nCO = nH_ * y[iCO_];
-		grad_small_ = 1e-100;
+		grad_small_ = vth/Leff_CO_max_;
 		if (isNCOeff_LVG_ != 0) {
-      Leff_n = nH_ / gradnH_;
-      Leff_v = vth / gradv_;
-      if (gradnH_ < grad_small_ || gradv_ < grad_small_
-          || Leff_n > Leff_CO_max_ || Leff_v > Leff_CO_max_ ) {
-        Leff = Leff_CO_max_;
-      } else {
-        Leff = std::min(Leff_n, Leff_v);
-      }
-      NCOeff = nCO * Leff / vth;
+      gradeff = std::max(gradv_, grad_small_);
+      NCOeff = nCO / gradeff;
 		} else {
 			NCOeff = NCO_ / sqrt(bCO_*bCO_ + vth*vth);
 		}
@@ -954,6 +946,15 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
             - (LCII + LCI + LOI + LHotGas + LCOR 
                 + LH2 + LDust + LRec + LH2diss + LHIion);
 	if ( isnan(dEdt) || isinf(dEdt) ) {
+    if ( isnan(LCOR) || isinf(LCOR) ) {
+      if (isNCOeff_LVG_ != 0) {
+        printf("NCOeff=%.2e, gradeff=%.2e, gradv_=%.2e, vth=%.2e, nH_=%.2e, nCO=%.2e\n",
+                NCOeff, gradeff, gradv_, vth, nH_, nCO);
+      } else {
+        printf("NCOeff=%.2e, bCO_=%.2e, vth=%.2e, nH_=%.2e, nCO=%.2e, NCO_=%.2e\n",
+                NCOeff, bCO_, vth, nH_, nCO, NCO_);
+      }
+    }
 		printf("GCR=%.2e, GPE=%.2e, GH2gr=%.2e, GH2pump=%.2e GH2diss=%.2e\n",
 				GCR , GPE , GH2gr , GH2pump , GH2diss);
 		printf("LCII=%.2e, LCI=%.2e, LOI=%.2e, LHotGas=%.2e, LCOR=%.2e\n",
@@ -1054,7 +1055,7 @@ void ChemNetwork::SetbCO(const int k, const int j, const int i) {
   return;
 }
 
-void ChemNetwork::SetGrad_v_nH(const int k, const int j, const int i) {
+void ChemNetwork::SetGrad_v(const int k, const int j, const int i) {
   AthenaArray<Real> &w = pmy_mb_->phydro->w;
   Real dvdx, dvdy, dvdz, dvdr_avg, di1, di2;
   Real dx1, dx2, dy1, dy2, dz1, dz2;
@@ -1082,22 +1083,5 @@ void ChemNetwork::SetGrad_v_nH(const int k, const int j, const int i) {
   dvdr_avg = ( fabs(dvdx) + fabs(dvdy) + fabs(dvdz) ) / 3.;
   //asign gradv_, in cgs.
   gradv_ = dvdr_avg * unit_vel_in_cms_ / unit_length_in_cm_;
-  //density gradient, same as the escape probability length using density
-  //gradient calcuated in RADMC-3D.
-  //nx
-  di1 = w(IDN, k, j, i+1) - w(IDN, k, j, i);
-  di2 = w(IDN, k, j, i) - w(IDN, k, j, i-1);
-  dndx = (di1/dx1 + di2/dx2)/2.;
-  //ny
-  di1 = w(IDN, k, j+1, i) - w(IDN, k, j, i);
-  di2 = w(IDN, k, j, i) - w(IDN, k, j-1, i);
-  dndy = (di1/dy1 + di2/dy2)/2.;
-  //nz
-  di1 = w(IDN, k+1, j, i) - w(IDN, k, j, i);
-  di2 = w(IDN, k, j, i) - w(IDN, k-1, j, i);
-  dndz = (di1/dz1 + di2/dz2)/2.;
-  gradn = sqrt(dndx*dndx + dndy+dndy + dndz*dndz);
-  //asign gradnH_, in units of H /cm;
-  gradnH_ = gradn * unit_density_in_nH_ / unit_length_in_cm_;
   return;
 }
