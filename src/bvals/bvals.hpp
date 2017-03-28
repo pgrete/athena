@@ -122,21 +122,55 @@ public:
   void ProlongateBoundaries(AthenaArray<Real> &pdst, AthenaArray<Real> &cdst, 
        FaceField &bfdst, AthenaArray<Real> &bcdst, const Real time, const Real dt);
 
-  int LoadHydroBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
+  int LoadCellCenteredBoundaryBufferSameLevel(AthenaArray<Real> &src,
+                      int ns, int ne, Real *buf, const NeighborBlock& nb);
+  int LoadCellCenteredBoundaryBufferToCoarser(AthenaArray<Real> &src,
+      int ns, int ne, Real *buf, AthenaArray<Real> &cbuf, const NeighborBlock& nb);
+  int LoadCellCenteredBoundaryBufferToFiner(AthenaArray<Real> &src,
+                      int ns, int ne, Real *buf, const NeighborBlock& nb);
+  void SendCellCenteredBoundaryBuffers(AthenaArray<Real> &src,
+                                       enum CCBoundaryType type);
+  void SetCellCenteredBoundarySameLevel(AthenaArray<Real> &dst, int ns, int ne,
+                                  Real *buf, const NeighborBlock& nb, bool *flip);
+  void SetCellCenteredBoundaryFromCoarser(int ns, int ne, Real *buf,
+                      AthenaArray<Real> &cbuf, const NeighborBlock& nb, bool *flip);
+  void SetCellCenteredBoundaryFromFiner(AthenaArray<Real> &dst, int ns, int ne,
+                                  Real *buf, const NeighborBlock& nb, bool *flip);
+  bool ReceiveCellCenteredBoundaryBuffers(AthenaArray<Real> &dst,
+                                          enum CCBoundaryType type);
+  void ReceiveCellCenteredBoundaryBuffersWithWait(AthenaArray<Real> &dst,
+                                           enum CCBoundaryType type);
+  void PolarSingleCellCentered(AthenaArray<Real> &dst, int ns, int ne);
+
+  int LoadFieldBoundaryBufferSameLevel(FaceField &src, Real *buf,
                                        const NeighborBlock& nb);
-  int LoadHydroBoundaryBufferToCoarser(AthenaArray<Real> &src, Real *buf,
-                                       const NeighborBlock& nb, bool cons);
-  int LoadHydroBoundaryBufferToFiner(AthenaArray<Real> &src, Real *buf,
+  int LoadFieldBoundaryBufferToCoarser(FaceField &src, Real *buf,
+                                       const NeighborBlock& nb);
+  int LoadFieldBoundaryBufferToFiner(FaceField &src, Real *buf,
                                      const NeighborBlock& nb);
-  void SendHydroBoundaryBuffers(AthenaArray<Real> &src, bool cons);
-  void SetHydroBoundarySameLevel(AthenaArray<Real> &dst, Real *buf,
-                                 const NeighborBlock& nb);
-  void SetHydroBoundaryFromCoarser(Real *buf, const NeighborBlock& nb, bool cons);
-  void SetHydroBoundaryFromFiner(AthenaArray<Real> &dst, Real *buf,
-                                 const NeighborBlock& nb);
-  bool ReceiveHydroBoundaryBuffers(AthenaArray<Real> &dst);
-  void ReceiveHydroBoundaryBuffersWithWait(AthenaArray<Real> &dst, bool cons);
-  void PolarSingleHydro(AthenaArray<Real> &dst);
+  void SendFieldBoundaryBuffers(FaceField &src);
+  void SetFieldBoundarySameLevel(FaceField &dst, Real *buf, const NeighborBlock& nb);
+  void SetFieldBoundaryFromCoarser(Real *buf, const NeighborBlock& nb);
+  void SetFieldBoundaryFromFiner(FaceField &dst, Real *buf, const NeighborBlock& nb);
+  bool ReceiveFieldBoundaryBuffers(FaceField &dst);
+  void ReceiveFieldBoundaryBuffersWithWait(FaceField &dst);
+  void PolarSingleField(FaceField &dst);
+
+  void SendFluxCorrection(enum FluxCorrectionType type);
+  bool ReceiveFluxCorrection(enum FluxCorrectionType type);
+
+  int LoadEMFBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb);
+  int LoadEMFBoundaryBufferToCoarser(Real *buf, const NeighborBlock& nb);
+  int LoadEMFBoundaryPolarBuffer(Real *buf, const PolarNeighborBlock &nb);
+  void SendEMFCorrection(void);
+  void SetEMFBoundarySameLevel(Real *buf, const NeighborBlock& nb);
+  void SetEMFBoundaryFromFiner(Real *buf, const NeighborBlock& nb);
+  void SetEMFBoundaryPolar(Real **buf_list, int num_bufs, bool north);
+  void ClearCoarseEMFBoundary(void);
+  void AverageEMFBoundary(void);
+  void PolarSingleEMF(void);
+  bool ReceiveEMFCorrection(void);
+
 #ifdef INCLUDE_CHEMISTRY
   void StartReceivingSpecies(void);
   void ClearBoundarySpecies(void);
@@ -159,35 +193,6 @@ public:
   bool ReceiveSixrayBoundaryBuffers(AthenaArray<Real> &dst, const int direction);
 
 #endif //INCLUDE_CHEMISTRY
-
-  int LoadFieldBoundaryBufferSameLevel(FaceField &src, Real *buf,
-                                       const NeighborBlock& nb);
-  int LoadFieldBoundaryBufferToCoarser(FaceField &src, Real *buf,
-                                       const NeighborBlock& nb);
-  int LoadFieldBoundaryBufferToFiner(FaceField &src, Real *buf,
-                                     const NeighborBlock& nb);
-  void SendFieldBoundaryBuffers(FaceField &src);
-  void SetFieldBoundarySameLevel(FaceField &dst, Real *buf, const NeighborBlock& nb);
-  void SetFieldBoundaryFromCoarser(Real *buf, const NeighborBlock& nb);
-  void SetFieldBoundaryFromFiner(FaceField &dst, Real *buf, const NeighborBlock& nb);
-  bool ReceiveFieldBoundaryBuffers(FaceField &dst);
-  void ReceiveFieldBoundaryBuffersWithWait(FaceField &dst);
-  void PolarSingleField(FaceField &dst);
-
-  void SendFluxCorrection(void);
-  bool ReceiveFluxCorrection(void);
-
-  int LoadEMFBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb);
-  int LoadEMFBoundaryBufferToCoarser(Real *buf, const NeighborBlock& nb);
-  int LoadEMFBoundaryPolarBuffer(Real *buf, const PolarNeighborBlock &nb);
-  void SendEMFCorrection(void);
-  void SetEMFBoundarySameLevel(Real *buf, const NeighborBlock& nb);
-  void SetEMFBoundaryFromFiner(Real *buf, const NeighborBlock& nb);
-  void SetEMFBoundaryPolar(Real **buf_list, int num_bufs, bool north);
-  void ClearCoarseEMFBoundary(void);
-  void AverageEMFBoundary(void);
-  void PolarSingleEMF(void);
-  bool ReceiveEMFCorrection(void);
 
 private:
   MeshBlock *pmy_block_;  // ptr to MeshBlock containing this BVals

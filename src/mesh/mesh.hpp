@@ -122,6 +122,7 @@ public:
   // user output variables for analysis
   int nuser_out_var;
   AthenaArray<Real> user_out_var;
+  std::string *user_out_var_names_;
 
   // user MeshBlock data that can be stored in restart files
   AthenaArray<Real> *ruser_meshblock_data;
@@ -167,6 +168,8 @@ private:
   void AllocateRealUserMeshBlockDataField(int n);
   void AllocateIntUserMeshBlockDataField(int n);
   void AllocateUserOutputVariables(int n);
+  void SetUserOutputVariableName(int n, const char *name);
+
   void ProblemGenerator(ParameterInput *pin); // in ../pgen
 };
 
@@ -247,6 +250,7 @@ private:
   AMRFlagFunc_t AMRFlag_;
   TimeStepFunc_t UserTimeStep_;
   HistoryOutputFunc_t *user_history_func_;
+  MetricFunc_t UserMetric_;
   void AllocateRealUserMeshDataField(int n);
   void AllocateIntUserMeshDataField(int n);
   void OutputMeshStructure(int dim);
@@ -261,6 +265,7 @@ private:
   void EnrollUserTimeStepFunction(TimeStepFunc_t my_func);
   void AllocateUserHistoryOutput(int n);
   void EnrollUserHistoryOutput(int i, HistoryOutputFunc_t my_func, const char *name);
+  void EnrollUserMetric(MetricFunc_t my_func);
 };
 
 //----------------------------------------------------------------------------------------

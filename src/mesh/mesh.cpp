@@ -880,8 +880,8 @@ void Mesh::OutputMeshStructure(int dim)
   std::cout << "Number of logical  refinement levels = " << current_level << std::endl;
 
   // compute/output number of blocks per level, and cost per level
-  int nb_per_plevel[max_level];
-  int cost_per_plevel[max_level];
+  int *nb_per_plevel = new int[max_level];
+  int *cost_per_plevel = new int[max_level];
   for (int i=0; i<=max_level; ++i) {
     nb_per_plevel[i]=0;
     cost_per_plevel[i]=0;
@@ -900,8 +900,8 @@ void Mesh::OutputMeshStructure(int dim)
 
   // compute/output number of blocks per rank, and cost per rank
   std::cout << "Number of parallel ranks = " << Globals::nranks << std::endl;
-  int nb_per_rank[Globals::nranks];
-  int cost_per_rank[Globals::nranks];
+  int *nb_per_rank = new int[Globals::nranks];
+  int *cost_per_rank = new int[Globals::nranks];
   for (int i=0; i<Globals::nranks; ++i) {
     nb_per_rank[i]=0;
     cost_per_rank[i]=0;
@@ -972,6 +972,11 @@ void Mesh::OutputMeshStructure(int dim)
             << " of MeshBlocks." << std::endl;
   std::cout << "Use 'python ../vis/python/plot_mesh.py' or gnuplot"
             << " to visualize mesh structure." << std::endl << std::endl;
+
+  delete [] nb_per_plevel;
+  delete [] cost_per_plevel;
+  delete [] nb_per_rank;
+  delete [] cost_per_rank;
 
   return;
 }
@@ -1105,6 +1110,16 @@ void Mesh::EnrollUserHistoryOutput(int i, HistoryOutputFunc_t my_func, const cha
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn void Mesh::EnrollUserMetric(MetricFunc_t my_func)
+//  \brief Enroll a user-defined metric for arbitrary GR coordinates
+
+void Mesh::EnrollUserMetric(MetricFunc_t my_func)
+{
+  UserMetric_ = my_func;
+  return;
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn void Mesh::AllocateRealUserMeshDataField(int n)
 //  \brief Allocate Real AthenaArrays for user-defned data in Mesh
 
@@ -1175,7 +1190,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
     while (pmb != NULL)  {
       phydro=pmb->phydro;
       pfield=pmb->pfield;
-      pmb->pbval->SendHydroBoundaryBuffers(phydro->u, true);
+      pmb->pbval->SendCellCenteredBoundaryBuffers(phydro->u, HYDRO_CONS);
 #ifdef INCLUDE_CHEMISTRY
       pmb->pbval->SendSpeciesBoundaryBuffers(pmb->pspec->s);
 #endif
@@ -1190,7 +1205,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       phydro=pmb->phydro;
       pfield=pmb->pfield;
       pbval=pmb->pbval;
-      pbval->ReceiveHydroBoundaryBuffersWithWait(phydro->u, true);
+      pbval->ReceiveCellCenteredBoundaryBuffersWithWait(phydro->u, HYDRO_CONS);
 #ifdef INCLUDE_CHEMISTRY
       pbval->ReceiveSpeciesBoundaryBuffersWithWait(pmb->pspec->s);
 #endif
@@ -1214,7 +1229,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pmb = pblock;
       while (pmb != NULL) {
         phydro=pmb->phydro;
-        pmb->pbval->SendHydroBoundaryBuffers(phydro->w, false);
+        pmb->pbval->SendCellCenteredBoundaryBuffers(phydro->w, HYDRO_PRIM);
         pmb=pmb->next;
       }
 
@@ -1224,7 +1239,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
         phydro=pmb->phydro;
         pfield=pmb->pfield;
         pbval=pmb->pbval;
-        pbval->ReceiveHydroBoundaryBuffersWithWait(phydro->w, false);
+        pbval->ReceiveCellCenteredBoundaryBuffersWithWait(phydro->w, HYDRO_PRIM);
         pmb->pbval->ClearBoundaryForInit(false);
         pmb=pmb->next;
       }
