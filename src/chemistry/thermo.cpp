@@ -565,7 +565,7 @@ Real Thermo::CoolingDustTd(const Real Zd, const Real nH, const Real Tg,
 
 Real Thermo::CoolingRec(const Real Zd, const Real T, const Real ne, 
                           const Real G) {
-  const Real x = 1.7 * G * sqrt(T)/ne + 50.;
+  const Real x = 1.7 * G * sqrt(T)/(ne+1e-50) + 50.;
   const Real lnx = log(x);
   const Real cooling = 1.0e-28 * ne * pow(T, DPE_[0] + DPE_[1]/lnx) 
                           * exp( DPE_[2] + (DPE_[3] - DPE_[4]*lnx)*lnx );
