@@ -38,10 +38,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
 #include "../utils/cgk_utils.hpp"
-#ifdef INCLUDE_CHEMISTRY
-#include "../chemistry/species.hpp"
-#endif
-
+#include "../species/species.hpp"
 
 //function to split a string into a vector
 static std::vector<std::string> split(std::string str, char delimiter);

@@ -29,9 +29,7 @@ class Coordinates;
 struct FaceField;
 struct NeighborBlock;
 struct PolarNeighborBlock;
-#ifdef INCLUDE_CHEMISTRY
-class ChemSpecies;
-#endif
+class Species;
 
 // identifiers for all 6 faces of a MeshBlock
 enum BoundaryFace {FACE_UNDEF=-1, INNER_X1=0, OUTER_X1=1, INNER_X2=2, OUTER_X2=3, 
@@ -171,7 +169,6 @@ public:
   void PolarSingleEMF(void);
   bool ReceiveEMFCorrection(void);
 
-#ifdef INCLUDE_CHEMISTRY
   void StartReceivingSpecies(void);
   void ClearBoundarySpecies(void);
   int LoadSpeciesBoundaryBufferSameLevel(AthenaArray<Real> &src, Real *buf,
@@ -181,6 +178,7 @@ public:
                                    const NeighborBlock& nb);
   bool ReceiveSpeciesBoundaryBuffers(AthenaArray<Real> &dst);
   void ReceiveSpeciesBoundaryBuffersWithWait(AthenaArray<Real> &dst);
+#ifdef INCLUDE_CHEMISTRY
   //six-ray
   void StartReceivingSixray(void);
   void ClearBoundarySixray(void);
@@ -203,8 +201,8 @@ private:
   bool firsttime_;
 
   enum BoundaryStatus hydro_flag_[56], field_flag_[56];
-#ifdef INCLUDE_CHEMISTRY
   enum BoundaryStatus species_flag_[56];
+#ifdef INCLUDE_CHEMISTRY
   enum BoundaryStatus sixray_flag_[6];
 #endif
   enum BoundaryStatus flcor_flag_[6][2][2];
@@ -212,8 +210,8 @@ private:
   enum BoundaryStatus *emf_north_flag_;
   enum BoundaryStatus *emf_south_flag_;
   Real *hydro_send_[56],  *hydro_recv_[56];
-#ifdef INCLUDE_CHEMISTRY
   Real *species_send_[56],  *species_recv_[56];
+#ifdef INCLUDE_CHEMISTRY
   Real *col_sixray_send_[6],  *col_sixray_recv_[6];
 #endif
   Real *field_send_[56],  *field_recv_[56];
@@ -227,8 +225,8 @@ private:
 
 #ifdef MPI_PARALLEL
   MPI_Request req_hydro_send_[56],  req_hydro_recv_[56];
-#ifdef INCLUDE_CHEMISTRY
   MPI_Request req_species_send_[56],  req_species_recv_[56];
+#ifdef INCLUDE_CHEMISTRY
   MPI_Request req_sixray_send_[6],  req_sixray_recv_[6];
 #endif
   MPI_Request req_field_send_[56],  req_field_recv_[56];

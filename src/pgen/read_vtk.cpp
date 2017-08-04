@@ -39,9 +39,7 @@
 #include "../radiation/radiation.hpp"
 #include "../utils/cgk_utils.hpp"
 #include "../globals.hpp"
-#ifdef INCLUDE_CHEMISTRY
-#include "../chemistry/species.hpp"
-#endif
+#include "../species/species.hpp"
 #ifdef MPI_PARALLEL
 #include <mpi.h>
 #endif

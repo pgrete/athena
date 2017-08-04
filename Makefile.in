@@ -12,6 +12,7 @@ RSOLVER_DIR = @RSOLVER_DIR@
 HYDRO_INT_FILE = @HYDRO_INT_FILE@
 CHEMNET_FILE = @CHEMNET_FILE@
 CHEMISTRY_FILE = @CHEMISTRY_FILE@
+SPECIES_FILE = @SPECIES_FILE@
 RADIATION_FILE = @RADIATION_FILE@
 
 # General compiler specifications
@@ -34,6 +35,7 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/hydro/*.cpp) \
 	     $(wildcard src/hydro/srcterms/*.cpp) \
 			 $(wildcard $(CHEMISTRY_FILE)) \
+			 $(wildcard $(SPECIES_FILE)) \
        $(CHEMNET_FILE) \
 	     src/hydro/rsolvers/$(RSOLVER_DIR)$(RSOLVER_FILE) \
 	     $(wildcard src/mesh/*.cpp) \

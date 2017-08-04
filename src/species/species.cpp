@@ -14,7 +14,7 @@
 // distribution.  If not see <http://www.gnu.org/licenses/>.
 //======================================================================================
 //! \file species.cpp
-//  \brief implementation of functions in class ChemSpecies 
+//  \brief implementation of functions in class Species 
 //======================================================================================
 
 //c++ headers
@@ -28,13 +28,12 @@
 #include "../athena_arrays.hpp"         // AthenaArray
 #include "../mesh/mesh.hpp"                  // MeshBlock, Mesh
 #include "../parameter_input.hpp"       //ParameterInput
-#include "network/network.hpp"          //ChemNetwork
 
 // this class header
 #include "species.hpp"
 
 // constructor, initializes data structures and parameters
-ChemSpecies::ChemSpecies(MeshBlock *pmb, ParameterInput *pin) {
+Species::Species(MeshBlock *pmb, ParameterInput *pin) {
   pmy_block = pmb;
 
   //allocate memory for fractional abundance of species
@@ -45,21 +44,23 @@ ChemSpecies::ChemSpecies(MeshBlock *pmb, ParameterInput *pin) {
 
   s.NewAthenaArray(NSPECIES, ncells3, ncells2, ncells1);
 
+#ifdef INCLUDE_CHEMISTRY
   //allocate memory for the copy of s at intermediate step
   s1.NewAthenaArray(ncells1, NSPECIES);
-
   //next step size
   h.NewAthenaArray(ncells3, ncells2, ncells1);
-
   //construct ptrs to objects related to solving chemistry source term.
   pchemnet = new ChemNetwork(this, pin);
   podew = new ODEWrapper(this, pin);
+#endif //INCLUDE_CHEMISTRY
 }
 
-ChemSpecies::~ChemSpecies() {
+Species::~Species() {
   s.DeleteAthenaArray();
+#ifdef INCLUDE_CHEMISTRY
   s1.DeleteAthenaArray();
   h.DeleteAthenaArray();
   delete pchemnet;
   delete podew;
+#endif //INCLUDE_CHEMISTRY
 }

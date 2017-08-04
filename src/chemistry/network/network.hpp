@@ -5,8 +5,8 @@
 // Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
 // See LICENSE file for full public license information.
 //======================================================================================
-//! \file species.hpp
-//  \brief definitions for chemical species, network, and ode solver classes.
+//! \file network.hpp
+//  \brief definitions for chemical  network.
 //======================================================================================
 
 // Athena++ classes headers
@@ -21,7 +21,7 @@
 #include <sundials/sundials_dense.h> // definitions DlsMat DENSE_ELEM
 
 
-class ChemSpecies;
+class Species;
 class ParameterInput;
 class NetworkWrapper;
 

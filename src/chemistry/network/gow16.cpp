@@ -23,7 +23,7 @@
 
 //athena++ header
 #include "network.hpp"
-#include "../species.hpp"
+#include "../../species/species.hpp"
 #include "../../coordinates/coordinates.hpp"
 #include "../../parameter_input.hpp"       //ParameterInput
 #include "../../mesh/mesh.hpp"
@@ -280,7 +280,7 @@ const Real ChemNetwork::cSip_[7] = {2.166, 5.678e-8, 1.874, 4.375e4, 1.635e-6,
 //-----------------end of chemical network---------------------
 
 
-ChemNetwork::ChemNetwork(ChemSpecies *pspec, ParameterInput *pin) {
+ChemNetwork::ChemNetwork(Species *pspec, ParameterInput *pin) {
 	//number of species and a list of name of species
   pmy_spec_ = pspec;
 	pmy_mb_ = pspec->pmy_block;

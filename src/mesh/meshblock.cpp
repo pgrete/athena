@@ -29,9 +29,7 @@
 #include "../utils/buffer_utils.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../radiation/radiation.hpp"
-#ifdef INCLUDE_CHEMISTRY
-#include "../chemistry/species.hpp" 
-#endif
+#include "../species/species.hpp" 
 
 // this class header
 #include "mesh_refinement.hpp"
@@ -131,9 +129,11 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
   //new physics
-#ifdef INCLUDE_CHEMISTRY
-  pspec = new ChemSpecies(this, pin);
-#endif
+  if (SPECIES_ENABLED){
+    pspec = new Species(this, pin);
+  } else {
+    pspec = NULL;
+  }
   if (RADIATION_ENABLED) {
     prad = new Radiation(this, pin);
   } else {
@@ -232,9 +232,9 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
   //new physics
-#ifdef INCLUDE_CHEMISTRY
-  pspec = new ChemSpecies(this, pin);
-#endif
+  if (SPECIES_ENABLED) {
+    pspec = new Species(this, pin);
+  }
   if (RADIATION_ENABLED) {
     prad = new Radiation(this, pin);
   }

@@ -36,9 +36,7 @@
 #include "mesh.hpp"
 #include "../radiation/radiation.hpp"
 #include "../radiation/integrators/rad_integrators.hpp"
-#ifdef INCLUDE_CHEMISTRY
-#include "../chemistry/species.hpp"
-#endif
+#include "../species/species.hpp"
 
 // MPI/OpenMP header
 #ifdef MPI_PARALLEL
@@ -1191,9 +1189,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       phydro=pmb->phydro;
       pfield=pmb->pfield;
       pmb->pbval->SendCellCenteredBoundaryBuffers(phydro->u, HYDRO_CONS);
-#ifdef INCLUDE_CHEMISTRY
-      pmb->pbval->SendSpeciesBoundaryBuffers(pmb->pspec->s);
-#endif
+      if (SPECIES_ENABLED) {
+        pmb->pbval->SendSpeciesBoundaryBuffers(pmb->pspec->s);
+      }
       if (MAGNETIC_FIELDS_ENABLED)
         pmb->pbval->SendFieldBoundaryBuffers(pfield->b);
       pmb=pmb->next;
@@ -1206,9 +1204,9 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pfield=pmb->pfield;
       pbval=pmb->pbval;
       pbval->ReceiveCellCenteredBoundaryBuffersWithWait(phydro->u, HYDRO_CONS);
-#ifdef INCLUDE_CHEMISTRY
-      pbval->ReceiveSpeciesBoundaryBuffersWithWait(pmb->pspec->s);
-#endif
+      if (SPECIES_ENABLED) {
+        pbval->ReceiveSpeciesBoundaryBuffersWithWait(pmb->pspec->s);
+      }
       if (MAGNETIC_FIELDS_ENABLED)
         pbval->ReceiveFieldBoundaryBuffersWithWait(pfield->b);
       pmb->pbval->ClearBoundaryForInit(true);

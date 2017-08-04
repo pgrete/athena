@@ -120,6 +120,11 @@ parser.add_argument('--chemistry',
     choices=["gow16", "gow16_ng"],
     help='select chemical network')
 
+# -nspecies argument
+parser.add_argument('--nspecies',
+    default=None,
+    help='specify the number of chemical species/passive scalar.')
+
 # -radiation argument
 parser.add_argument('--radiation',
     default=None,
@@ -387,30 +392,44 @@ if args['std'] != None:
 if args['cvode_path'] != '':
   makefile_options['PREPROCESSOR_FLAGS'] += '-I%s/include' % args['cvode_path']
   makefile_options['LINKER_FLAGS'] += '-L%s/lib' % args['cvode_path']
+# --nspecies argument
+if args['nspecies'] != None:
+  definitions['SPECIES_ENABLED'] = '1'
+  definitions['NUM_SPECIES'] = args['nspecies']
+  makefile_options['SPECIES_FILE'] = 'src/species/*.cpp'
+else:
+  definitions['SPECIES_ENABLED'] = '0'
+  definitions['NUM_SPECIES'] = '0'
+  makefile_options['SPECIES_FILE'] = ''
+
 # -chemistry argument
 if args['chemistry'] == "gow16":
+  definitions['SPECIES_ENABLED'] = '1'
   definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
   definitions['NUM_SPECIES'] = '13'
   #ChemNetwork class header file included in species.hpp
-  definitions['CHEMNETWORK_HEADER'] = 'network/gow16.hpp'
+  definitions['CHEMNETWORK_HEADER'] = '../chemistry/network/gow16.hpp'
   makefile_options['CHEMNET_FILE'] = 'src/chemistry/network/' \
                                       + args['chemistry'] + '.cpp'
   makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
+  makefile_options['SPECIES_FILE'] = 'src/species/*.cpp'
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
 elif args['chemistry'] == "gow16_ng":
+  definitions['SPECIES_ENABLED'] = '1'
   definitions['CHEMISTRY_OPTION'] = 'INCLUDE_CHEMISTRY'
   definitions['NUM_SPECIES'] = '19'
-  definitions['CHEMNETWORK_HEADER'] = 'network/gow16_ng.hpp'
+  definitions['CHEMNETWORK_HEADER'] = '../chemistry/network/gow16_ng.hpp'
   makefile_options['CHEMNET_FILE'] = 'src/chemistry/network/' \
                                       + args['chemistry'] + '.cpp'
   makefile_options['CHEMISTRY_FILE'] = 'src/chemistry/*.cpp'
+  makefile_options['SPECIES_FILE'] = 'src/species/*.cpp'
   makefile_options['LIBRARY_FLAGS'] += ' -lsundials_cvode -lsundials_nvecserial'
 else:
   definitions['CHEMISTRY_OPTION'] = 'NOT_INCLUDE_CHEMISTRY'
-  definitions['NUM_SPECIES'] = '0'
   makefile_options['CHEMNET_FILE'] = ''
   makefile_options['CHEMISTRY_FILE'] = ''
-  definitions['CHEMNETWORK_HEADER'] = 'network/network.hpp'
+  definitions['CHEMNETWORK_HEADER'] = '../chemistry/network/network.hpp'
+
 
 # -radiation argument
 if args['radiation'] != None:

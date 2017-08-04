@@ -24,9 +24,7 @@
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
 #include "../radiation/radiation.hpp"
-#ifdef INCLUDE_CHEMISTRY
-#include "../chemistry/species.hpp"
-#endif
+#include "../species/species.hpp"
 
 // This class header
 #include "outputs.hpp"

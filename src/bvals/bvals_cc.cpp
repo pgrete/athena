@@ -31,9 +31,7 @@
 #include "../utils/cgk_utils.hpp"
 #include "../radiation/radiation.hpp"
 #include "../radiation/integrators/rad_integrators.hpp"
-#ifdef INCLUDE_CHEMISTRY
-#include "../chemistry/species.hpp"
-#endif
+#include "../species/species.hpp"
 
 // MPI header
 #ifdef MPI_PARALLEL
@@ -591,7 +589,6 @@ void BoundaryValues::PolarSingleCellCentered(AthenaArray<Real> &dst, int ns, int
   return;
 }
 
-#ifdef INCLUDE_CHEMISTRY
 //----------------------------------------------------------------------------------------
 //! \fn int BoundaryValues::LoadSpeciesBoundaryBufferSameLevel(AthenaArray<Real> &src,
 //                                                 Real *buf, const NeighborBlock& nb)
@@ -815,6 +812,7 @@ void BoundaryValues::ClearBoundarySpecies(void)
   return;
 }
 
+#ifdef INCLUDE_CHEMISTRY
 //six-ray
 //----------------------------------------------------------------------------------------
 //! \fn void BoundaryValues::StartReceivingSixray(void)

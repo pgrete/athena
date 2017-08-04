@@ -1,51 +1,28 @@
-#ifndef SPECIES_HPP
-#define SPECIES_HPP
+#ifndef ODE_WRAPPER_HPP
+#define ODE_WRAPPER_HPP
 //======================================================================================
 // Athena++ astrophysical MHD code
 // Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
 // See LICENSE file for full public license information.
 //======================================================================================
-//! \file species.hpp
-//  \brief definitions for chemical species, network, and ode solver classes.
+//! \file ode_wrapper.hpp
+//  \brief definitions for ode solver classes.
 //======================================================================================
 
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "network/network.hpp" 
-#include  CHEMNETWORK_HEADER //ChemNetwork class
 
-class MeshBlock;
 class ParameterInput;
-class ODEWrapper;
-class ChemNetwork;
-
-//! \class ChemSpecies
-//  \brief Chemical species data and functions
-class ChemSpecies {
-public:
-  //constructor: allocate memory. Need number of species in input file.
-  ChemSpecies(MeshBlock *pmb, ParameterInput *pin); 
-  ~ChemSpecies();
-
-  MeshBlock *pmy_block; //ptr to a meshblock containing the chemical species
-
-  //s(ispec, k, j, i). read in s1(i, ispec), and loop over i,
-  //maybe parallelize i with openmpi later.
-  AthenaArray<Real> s;  //fractional abundance of species s = n(s)/n(H)
-  AthenaArray<Real> s1; //abundance of species copy at intermediate step
-  AthenaArray<Real> h; //next stepsize  
-
-  ChemNetwork *pchemnet; //pointer to chemical network
-  ODEWrapper *podew; //pointer to ode solver
-};
+class Species;
 
 //! \class ODEWrapper
 //  \brief Wrapper for ODE solver, CVODE
 class ODEWrapper {
 public:
   //Constructor: Initialize CVODE, allocate memory for the ODE solver.
-  ODEWrapper(ChemSpecies *pspec, ParameterInput *pin);
+  ODEWrapper(Species *pspec, ParameterInput *pin);
   ~ODEWrapper();
   //Update abundance in species over time dt.
   // For each cell:
@@ -75,7 +52,7 @@ public:
   long int GetNsteps() const;
 
 private:
-  ChemSpecies *pmy_spec_;
+  Species *pmy_spec_;
   Real reltol_;//relative tolerance
   Real abstol_[NSPECIES];//absolute tolerance
   void *cvode_mem_;
@@ -89,4 +66,4 @@ private:
 };
 
 
-#endif // SPECIES_HPP
+#endif // ODE_WRAPPER_HPP

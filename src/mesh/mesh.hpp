@@ -38,9 +38,7 @@ class Field;
 class EquationOfState;
 //TODO: need to bring these to task list
 class Radiation;
-#ifdef INCLUDE_CHEMISTRY
-class ChemSpecies;
-#endif
+class Species;
 
 //----------------------------------------------------------------------------------------
 //! \struct NeighborBlock
@@ -92,9 +90,7 @@ class MeshBlock {
   friend class BoundaryValues;
   friend class Mesh;
   friend class Hydro;
-#ifdef INCLUDE_CHEMISTRY
-  friend class ChemSpecies;
-#endif
+  friend class Species;
   friend class TaskList;
   friend class Radiation;
   friend class RadIntegrator;
@@ -140,9 +136,7 @@ public:
   EquationOfState *peos;
 
   // new physics
-#ifdef INCLUDE_CHEMISTRY
-  ChemSpecies *pspec;
-#endif
+  Species *pspec;
   Radiation *prad;
 
   MeshBlock *prev, *next;

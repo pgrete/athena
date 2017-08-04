@@ -13,9 +13,7 @@
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
 #include "../radiation.hpp" // radiation
-#ifdef INCLUDE_CHEMISTRY
-#include "../../chemistry/species.hpp"
-#endif
+#include "../../species/species.hpp"
 
 class MeshBlock;
 class ParameterInput;

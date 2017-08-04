@@ -22,7 +22,7 @@
 class ChemNetwork : public NetworkWrapper {
 	friend class RadIntegrator;
 public:
-  ChemNetwork(ChemSpecies *pspec, ParameterInput *pin);
+  ChemNetwork(Species *pspec, ParameterInput *pin);
   ~ChemNetwork();
 
 	//a list of species name, used in output
@@ -45,7 +45,7 @@ public:
                Real tmp1[NSPECIES], Real tmp2[NSPECIES], Real tmp3[NSPECIES]);
 
 private:
-  ChemSpecies *pmy_spec_;
+  Species *pmy_spec_;
 	MeshBlock *pmy_mb_;
 
 	//constants

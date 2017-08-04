@@ -29,8 +29,8 @@
 #include "../../hydro/hydro.hpp"
 #include "../../eos/eos.hpp"
 #include "../radiation.hpp"
+#include "../../species/species.hpp"
 #ifdef INCLUDE_CHEMISTRY
-#include "../../chemistry/species.hpp"
 #include "../../chemistry/shielding.hpp"
 #include "../../chemistry/thermo.hpp"
 #endif

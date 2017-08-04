@@ -25,9 +25,7 @@
 #include "outputs.hpp"
 #include "../radiation/radiation.hpp"
 #include "../radiation/integrators/rad_integrators.hpp"
-#ifdef INCLUDE_CHEMISTRY
-#include "../chemistry/species.hpp"
-#endif
+#include "../species/species.hpp"
 
 // Only proceed if HDF5 output enabled
 #ifdef HDF5OUTPUT
@@ -132,9 +130,9 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
     if (RADIATION_ENABLED) {
       num_variables[n_dataset++] = pmb->prad->pradintegrator->ncol + pmb->prad->nfreq;
     }
-#ifdef INCLUDE_CHEMISTRY
-    num_variables[n_dataset++] = NSPECIES;
-#endif 
+    if (SPECIES_ENABLED){
+      num_variables[n_dataset++] = NSPECIES;
+    }
   }
   else {
     num_datasets = 1;
@@ -156,9 +154,9 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
     if (RADIATION_ENABLED) {
       std::strncpy(dataset_names[n_dataset++], "rad", max_name_length+1);
     }
-#ifdef INCLUDE_CHEMISTRY
-    std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
-#endif
+    if (SPECIES_ENABLED) {
+      std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
+    }
   }
   else { // single data
     if(variable.compare(0,1,"B") == 0 && MAGNETIC_FIELDS_ENABLED)
@@ -166,10 +164,10 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
     else if (variable.compare("r") == 0 && RADIATION_ENABLED) {
       std::strncpy(dataset_names[n_dataset++], "rad", max_name_length+1);
     }
-#ifdef INCLUDE_CHEMISTRY
-    else if (variable.compare("s") == 0) 
-      std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
-#endif
+    if (SPECIES_ENABLED) {
+      else if (variable.compare("s") == 0) 
+        std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
+    }
     else if(variable.compare(0,1,"uov") == 0
          || variable.compare(0,1,"user_out_var") == 0)
       std::strncpy(dataset_names[n_dataset++], "user_out_var", max_name_length+1);
@@ -399,6 +397,12 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
           }
 #ifdef INCLUDE_CHEMISTRY
           if(pod->name == pmb->pspec->pchemnet->species_names[0]) {
+            n_dataset++;
+            ndv=0;
+          }
+#endif
+#ifdef NOT_INCLUDE_CHEMISTRY
+          if(pod->name == "species0" && SPECIES_ENABLED) {
             n_dataset++;
             ndv=0;
           }

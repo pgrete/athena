@@ -14,7 +14,7 @@
 // distribution.  If not see <http://www.gnu.org/licenses/>.
 //======================================================================================
 //! \file species.cpp
-//  \brief implementation of functions in class ChemSpecies 
+//  \brief implementation of functions in class Thermo 
 //======================================================================================
 // this class header
 #include "thermo.hpp"

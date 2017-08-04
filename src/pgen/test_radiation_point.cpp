@@ -33,7 +33,7 @@
 #include "../parameter_input.hpp"
 #include "../mesh/mesh.hpp"
 #include "../hydro/hydro.hpp"
-#include "../chemistry/species.hpp"
+#include "../species/species.hpp"
 #include "../chemistry/thermo.hpp"
 #include "../radiation/radiation.hpp"
 #include "../field/field.hpp"

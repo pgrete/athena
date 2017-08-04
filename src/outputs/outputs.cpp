@@ -66,9 +66,7 @@
 #include "../coordinates/coordinates.hpp" // Coordinates
 #include "../radiation/radiation.hpp"
 #include "../radiation/integrators/rad_integrators.hpp"
-#ifdef INCLUDE_CHEMISTRY
-#include "../chemistry/species.hpp"
-#endif
+#include "../species/species.hpp"
 
 // this class header
 #include "outputs.hpp"
@@ -309,9 +307,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
 {
   Hydro *phyd = pmb->phydro;
   Field *pfld = pmb->pfield;
-#ifdef INCLUDE_CHEMISTRY
-	ChemSpecies *pspec = pmb->pspec;
-#endif
+	Species *pspec = pmb->pspec;
   Radiation *prad = pmb->prad;
   std::stringstream str;
   num_vars_ = 0;
@@ -647,21 +643,27 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
     }
   }
 
+  if (SPECIES_ENABLED) {
+    //go over each species, and output as scaler fields
+    if (output_params.variable.compare("s") == 0 || 
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      for (int ispec=0; ispec < NSPECIES; ispec++) {
+        pod = new OutputData;
+        pod->type = "SCALARS";
+        char vn[16];
+        sprintf(vn, "species%d", ispec);
+        pod->name = vn;
 #ifdef INCLUDE_CHEMISTRY
-  //go over each species, and output as scaler fields
-  if (output_params.variable.compare("s") == 0 || 
-      output_params.variable.compare("prim") == 0 ||
-      output_params.variable.compare("cons") == 0) {
-    for (int ispec=0; ispec < NSPECIES; ispec++) {
-      pod = new OutputData;
-      pod->type = "SCALARS";
-      pod->name = pspec->pchemnet->species_names[ispec];
-      pod->data.InitWithShallowSlice(pspec->s,4,ispec,1);
-      AppendOutputDataNode(pod);
-      num_vars_++;
+        pod->name = pspec->pchemnet->species_names[ispec];
+#endif
+        pod->data.InitWithShallowSlice(pspec->s,4,ispec,1);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+      }
     }
   }
-#endif
+
   for (int n = 0; n < pmb->nuser_out_var; ++n) {
     if(pmb->user_out_var_names_[n].length()!=0) {
       if(output_params.variable.compare(pmb->user_out_var_names_[n]) == 0) {

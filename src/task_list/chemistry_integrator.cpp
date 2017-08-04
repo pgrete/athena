@@ -26,8 +26,8 @@
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../mesh/mesh.hpp"
+#include "../species/species.hpp" 
 #ifdef INCLUDE_CHEMISTRY
-#include "../chemistry/species.hpp" 
 #include "../chemistry/network/network.hpp" 
 #endif
 

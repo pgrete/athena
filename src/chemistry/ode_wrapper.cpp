@@ -26,8 +26,8 @@
 
 // Athena++ classes headers
 #include "../parameter_input.hpp"
-#include "network/network.hpp"
 #include "../mesh/mesh.hpp"
+#include "../species/species.hpp"
 
 #include <cvode/cvode.h> // CV_SUCCESS
 #include <nvector/nvector_serial.h> // N_Vector
@@ -37,9 +37,9 @@
 #include <cvode/cvode_dense.h>       // prototype for CVDense 
 
 // this class header
-#include "species.hpp"
+#include "ode_wrapper.hpp"
 
-ODEWrapper::ODEWrapper(ChemSpecies *pspec, ParameterInput *pin) {
+ODEWrapper::ODEWrapper(Species *pspec, ParameterInput *pin) {
   int flag;
   pmy_spec_ = pspec;
 
