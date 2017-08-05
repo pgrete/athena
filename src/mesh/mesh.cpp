@@ -486,9 +486,11 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test)
     }
 
     pblock->SearchAndSetNeighbors(tree, ranklist, nslist);
-    if (pblock->prad->integrator == "six_ray") {
+#ifdef INCLUDE_CHEMISTRY
+    if (RADIATION_ENABLED && pblock->prad->integrator == "six_ray") {
       pblock->prad->pradintegrator->SetSixRayNeighbors();
     }
+#endif
   }
   pblock=pfirst;
 
@@ -797,9 +799,11 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test)
       pblock = pblock->next;
     }
     pblock->SearchAndSetNeighbors(tree, ranklist, nslist);
-    if (pblock->prad->integrator == "six_ray") {
+#ifdef INCLUDE_CHEMISTRY
+    if (RADIATION_ENABLED && pblock->prad->integrator == "six_ray") {
       pblock->prad->pradintegrator->SetSixRayNeighbors();
     }
+#endif
   }
   pblock=pfirst;
   delete [] mbdata;
@@ -2148,9 +2152,11 @@ void Mesh::AdaptiveMeshRefinement(ParameterInput *pin)
   pmb=pblock;
   while(pmb!=NULL) {
     pmb->SearchAndSetNeighbors(tree, ranklist, nslist);
-    if (pblock->prad->integrator == "six_ray") {
+#ifdef INCLUDE_CHEMISTRY
+    if (RADIATION_ENABLED && pblock->prad->integrator == "six_ray") {
       pmb->prad->pradintegrator->SetSixRayNeighbors();
     }
+#endif
     pmb=pmb->next;
   }
   Initialize(2, pin);
