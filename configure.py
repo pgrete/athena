@@ -555,6 +555,8 @@ print('  General relativity:      ' + ('ON' if args['g'] else 'OFF'))
 print('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF'))
 print('  Chemistry:               ' + (args['chemistry'] if  args['chemistry'] \
         !=  None else 'OFF'))
+print('  npecies:                 ' + (args['nspecies'] if  args['nspecies'] \
+        !=  None else '0'))
 print('  Radiation:               ' + (args['radiation'] if  args['radiation'] \
         !=  None else 'OFF'))
 print('  Post processing:         ' + ('ON' if args['pp'] else 'OFF'))
