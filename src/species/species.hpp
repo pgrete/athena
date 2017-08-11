@@ -32,12 +32,12 @@ public:
 
   MeshBlock *pmy_block; //ptr to a meshblock containing the chemical species
 
-  //s(ispec, k, j, i). read in s1(i, ispec), and loop over i,
-  //maybe parallelize i with openmpi later.
   AthenaArray<Real> s;  //fractional abundance of species s = n(s)/n(H)
 
 #ifdef INCLUDE_CHEMISTRY
   //chemistry source term
+  //s(ispec, k, j, i). read in s1(i, ispec), and loop over i,
+  //maybe parallelize i with openmpi later.
   AthenaArray<Real> s1; //abundance of species copy at intermediate step
   ChemNetwork *pchemnet; //pointer to chemical network
   ODEWrapper *podew; //pointer to ode solver
