@@ -33,6 +33,7 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     src/hydro/rsolvers/$(RSOLVER_DIR)$(RSOLVER_FILE) \
 	     $(wildcard src/mesh/*.cpp) \
 	     $(wildcard src/outputs/*.cpp) \
+	     $(wildcard src/particles/*.cpp) \
 	     $(wildcard src/reconstruct/*.cpp) \
 	     $(wildcard src/task_list/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \

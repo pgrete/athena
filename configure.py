@@ -16,6 +16,7 @@
 #   -s                enable special relativity
 #   -g                enable general relativity
 #   -t                enable interface frame transformations for GR
+#   -p                enable particles
 #   -debug            enable debug flags (-g -O0); override other compiler options
 #   -mpi              enable parallelization with MPI
 #   -omp              enable parallelization with OpenMP
@@ -97,6 +98,12 @@ parser.add_argument('-t',
     action='store_true',
     default=False,
     help='enable interface frame transformations for GR')
+
+# -p argument
+parser.add_argument('-p',
+    action='store_true',
+    default=False,
+    help='enable particles')
 
 # -debug argument
 parser.add_argument('-debug',
@@ -275,6 +282,9 @@ if args['g']:
   makefile_options['RSOLVER_FILE'] += '_rel'
   if not args['t']:
     makefile_options['RSOLVER_FILE'] += '_no_transform'
+
+# -p arguments
+definitions['PARTICLES'] = '1' if args['p'] else '0'
 
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
@@ -486,6 +496,7 @@ print('  Magnetic fields:         ' + ('ON' if args['b'] else 'OFF'))
 print('  Special relativity:      ' + ('ON' if args['s'] else 'OFF'))
 print('  General relativity:      ' + ('ON' if args['g'] else 'OFF'))
 print('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF'))
+print('  Particles:               ' + ('ON' if args['p'] else 'OFF'))
 print('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF'))
 print('  Linker flags:            ' + makefile_options['LINKER_FLAGS'] + ' ' \
     + makefile_options['LIBRARY_FLAGS'])
