@@ -1,0 +1,37 @@
+#ifndef PARTICLE_HPP
+#define PARTICLE_HPP
+//======================================================================================
+// Athena++ astrophysical MHD code
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+//======================================================================================
+//! \file particles.hpp
+//  \brief defines classes for particle dynamics.
+//======================================================================================
+
+// Athena headers
+#include "../athena.hpp"
+#include "../athena_arrays.hpp"
+
+class MeshBlock;
+class ParameterInput;
+
+//--------------------------------------------------------------------------------------
+//! \class Particles
+//  \brief defines the bass class for all implementations of particles.
+
+class Particles {
+public:
+  Particles(MeshBlock *pmb, ParameterInput *pin);   // create particles
+  ~Particles();                                     // destroy particles
+
+  // Particle properties
+  AthenaArray<Real> x1, x2, x3;    // particle position
+  AthenaArray<Real> v1, v2, v3;    // particle velocity
+
+  // Bookkeeping indices
+  MeshBlock* pmy_block;    // MeshBlock pointer
+  long int npar;           // number of particles
+  long int nparmax;        // maximum number of particles per meshblock
+};
+
+#endif
