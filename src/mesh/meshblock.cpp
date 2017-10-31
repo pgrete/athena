@@ -23,6 +23,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "../hydro/hydro.hpp" 
 #include "../field/field.hpp"
+#include "../particles/particles.hpp"
 #include "../gravity/gravity.hpp"
 #include "../fft/athena_fft.hpp"
 #include "../bvals/bvals.hpp"
@@ -103,7 +104,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
-
+  if (PARTICLES) ppar = new Particles(this, pin);
   if (SELF_GRAVITY_ENABLED) pgrav = new Gravity(this, pin);
 
   // Reconstruction
@@ -196,7 +197,7 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
-
+  if (PARTICLES) ppar = new Particles(this, pin);
   if (SELF_GRAVITY_ENABLED) pgrav = new Gravity(this, pin);
 
   precon = new Reconstruction(this, pin);
@@ -285,6 +286,7 @@ MeshBlock::~MeshBlock()
   delete phydro;
   if (MAGNETIC_FIELDS_ENABLED) delete pfield;
   delete peos;
+  if (PARTICLES) delete ppar;
   if (SELF_GRAVITY_ENABLED) delete pgrav;
 
   // delete user output variables array
