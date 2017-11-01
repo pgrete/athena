@@ -19,6 +19,9 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   npar = 1;
   nparmax = 1;
 
+  // Allocate IDs.
+  id.NewAthenaArray(nparmax);
+
   // Allocate positions.
   x1.NewAthenaArray(nparmax);
   x2.NewAthenaArray(nparmax);
@@ -36,6 +39,9 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 
 Particles::~Particles()
 {
+  // Delete IDs.
+  id.DeleteAthenaArray();
+
   // Delete positions.
   x1.DeleteAthenaArray();
   x2.DeleteAthenaArray();

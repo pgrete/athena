@@ -25,13 +25,14 @@ public:
   ~Particles();                                     // destroy particles
 
   // Particle properties
+  AthenaArray<long> id;            // particle id
   AthenaArray<Real> x1, x2, x3;    // particle position
   AthenaArray<Real> v1, v2, v3;    // particle velocity
 
   // Bookkeeping indices
   MeshBlock* pmy_block;    // MeshBlock pointer
-  long int npar;           // number of particles
-  long int nparmax;        // maximum number of particles per meshblock
+  long npar;               // number of particles
+  long nparmax;            // maximum number of particles per meshblock
 };
 
 #endif
