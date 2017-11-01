@@ -88,7 +88,7 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
     }
 
     // Write the particle data in the meshblock.
-    for (int k = 1; k <= ppar->npar; ++k)
+    for (int k = 0; k < ppar->npar; ++k)
       os << ppar->id(k) << "  "
          << ppar->x1(k) << "  " << ppar->x2(k) << "  " << ppar->x3(k) << "  "
          << ppar->v1(k) << "  " << ppar->v2(k) << "  " << ppar->v3(k) << std::endl;
