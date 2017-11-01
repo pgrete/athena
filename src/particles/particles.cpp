@@ -54,6 +54,57 @@ Particles::~Particles()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::Drift(Real t, Real dt)
+//  \brief updates the particle positions from t to t + dt given velocities at t.
+
+void Particles::Drift(Real t, Real dt)
+{
+  for (long k = 0; k < npar; ++k) {
+    x1(k) += dt * v1(k);
+    x2(k) += dt * v2(k);
+    x3(k) += dt * v3(k);
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::Kick(Real t, Real dt)
+//  \brief updates the particle velocities from t to t + dt given accelerations at t.
+
+#include <cmath>
+
+void Particles::Kick(Real t, Real dt)
+{
+  Real a1 = 0.0, a2 = 0.0, a3 = 0.0;  // TODO: might need to be put inside the loop for
+                                      // vectorization.
+
+  for (long k = 0; k < npar; ++k) {
+    v1(k) += dt * a1;
+    v2(k) += dt * a2;
+    v3(k) += dt * a3;
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::Update(Mesh *pm)
+//  \brief updates all particle positions and velocities from t to t + dt.
+//======================================================================================
+#include <iostream>
+
+void Particles::Update(Mesh *pm)
+{
+  MeshBlock *pmb = pm->pblock;
+  Real dth = 0.5 * pm->dt;
+
+  // Loop over MeshBlocks
+  while (pmb != NULL) {
+    pmb->ppar->Drift(pm->time, dth);
+    pmb->ppar->Kick(pm->time, pm->dt);
+    pmb->ppar->Drift(pm->time + dth, dth);
+    pmb = pmb->next;
+  }
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn Particles::FormattedTableOutput()
 //  \brief outputs the particle data in tabulated format.
 

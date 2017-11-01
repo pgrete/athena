@@ -37,6 +37,7 @@
 #include "outputs/io_wrapper.hpp"
 #include "utils/utils.hpp"
 #include "gravity/mggravity.hpp"
+#include "particles/particles.hpp"
 
 // MPI/OpenMP headers
 #ifdef MPI_PARALLEL
@@ -349,6 +350,9 @@ int main(int argc, char *argv[])
         pmesh->pgrd->Solve(step);
       ptlist->DoTaskListOneSubstep(pmesh, step);
     }
+
+    // TODO: Move this to the task list.
+    if (PARTICLES) Particles::Update(pmesh);
 
     pmesh->ncycle++;
     pmesh->time += pmesh->dt;

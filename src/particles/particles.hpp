@@ -24,12 +24,17 @@ class Particles {
 public:
   // Class methods
   static void FormattedTableOutput(Mesh *pm, OutputParameters op);
+  static void Update(Mesh *pm);  // master integrator
 
   // Constructor
   Particles(MeshBlock *pmb, ParameterInput *pin);
 
   // Destructor
   ~Particles();
+
+  // Instance methods
+  void Drift(Real t, Real dt);
+  void Kick(Real t, Real dt);
 
   // Particle properties
   AthenaArray<long> id;            // particle id
