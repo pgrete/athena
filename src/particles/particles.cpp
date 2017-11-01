@@ -52,3 +52,49 @@ Particles::~Particles()
   v2.DeleteAthenaArray();
   v3.DeleteAthenaArray();
 }
+
+//--------------------------------------------------------------------------------------
+//! \fn Particles::FormattedTableOutput()
+//  \brief outputs the particle data in tabulated format.
+
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+
+void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
+{
+  MeshBlock *pmb = pm->pblock;
+  Particles *ppar;
+  std::stringstream fname, msg;
+  std::ofstream os;
+
+  // Loop over MeshBlocks
+  while (pmb != NULL) {
+    ppar = pmb->ppar;
+
+    // Create the filename.
+    fname << op.file_basename
+          << ".block" << pmb->gid << '.' << op.file_id
+          << '.' << std::setw(5) << std::right << std::setfill('0') << op.file_number
+          << '.' << "par.tab";
+
+    // Open the file for write.
+    os.open(fname.str());
+    if (!os.is_open()) {
+      msg << "### FATAL ERROR in function [Particles::FormattedTableOutput]"
+          << std::endl << "Output file '" << fname.str() << "' could not be opened"
+          << std::endl;
+      throw std::runtime_error(msg.str().c_str());
+    }
+
+    // Write the particle data in the meshblock.
+    for (int k = 1; k <= ppar->npar; ++k)
+      os << ppar->id(k) << "  "
+         << ppar->x1(k) << "  " << ppar->x2(k) << "  " << ppar->x3(k) << "  "
+         << ppar->v1(k) << "  " << ppar->v2(k) << "  " << ppar->v3(k) << std::endl;
+
+    // Close the file and get the next meshblock.
+    os.close();
+    pmb = pmb->next;
+  }
+}

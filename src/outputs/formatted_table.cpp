@@ -21,6 +21,7 @@
 #include "../athena.hpp"
 #include "../mesh/mesh.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../particles/particles.hpp"
 #include "outputs.hpp"
 
 //----------------------------------------------------------------------------------------
@@ -150,6 +151,9 @@ void FormattedTableOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool f
     pmb=pmb->next;
 
   }  // end loop over MeshBlocks
+
+  // Output particle data if any.
+  if (PARTICLES) Particles::FormattedTableOutput(pm, output_params);
 
   // increment counters
   output_params.file_number++;

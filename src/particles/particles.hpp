@@ -11,8 +11,9 @@
 // Athena headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
+#include "../mesh/mesh.hpp"
+#include "../outputs/outputs.hpp"
 
-class MeshBlock;
 class ParameterInput;
 
 //--------------------------------------------------------------------------------------
@@ -21,8 +22,14 @@ class ParameterInput;
 
 class Particles {
 public:
-  Particles(MeshBlock *pmb, ParameterInput *pin);   // create particles
-  ~Particles();                                     // destroy particles
+  // Class methods
+  static void FormattedTableOutput(Mesh *pm, OutputParameters op);
+
+  // Constructor
+  Particles(MeshBlock *pmb, ParameterInput *pin);
+
+  // Destructor
+  ~Particles();
 
   // Particle properties
   AthenaArray<long> id;            // particle id
