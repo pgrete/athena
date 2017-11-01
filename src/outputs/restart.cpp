@@ -23,6 +23,7 @@
 #include "../parameter_input.hpp"
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
+#include "../particles/particles.hpp"
 #include "outputs.hpp"
 
 //----------------------------------------------------------------------------------------
@@ -171,6 +172,26 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_wr
     // NEW_PHYSICS: add output of additional physics to restarts here
     // also update MeshBlock::GetBlockSizeInBytes accordingly and MeshBlock constructor
     // for restarts.
+    if (PARTICLES) {
+      memcpy(pdata, &(pmb->ppar->npar), sizeof(pmb->ppar->npar));
+      pdata += sizeof(pmb->ppar->npar);
+      if (pmb->ppar->npar > 0) {
+        memcpy(pdata, pmb->ppar->id.data(), pmb->ppar->npar * sizeof(pmb->ppar->id(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->id(0));
+        memcpy(pdata, pmb->ppar->x1.data(), pmb->ppar->npar * sizeof(pmb->ppar->x1(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->x1(0));
+        memcpy(pdata, pmb->ppar->x2.data(), pmb->ppar->npar * sizeof(pmb->ppar->x2(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->x2(0));
+        memcpy(pdata, pmb->ppar->x3.data(), pmb->ppar->npar * sizeof(pmb->ppar->x3(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->x3(0));
+        memcpy(pdata, pmb->ppar->v1.data(), pmb->ppar->npar * sizeof(pmb->ppar->v1(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->v1(0));
+        memcpy(pdata, pmb->ppar->v2.data(), pmb->ppar->npar * sizeof(pmb->ppar->v2(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->v2(0));
+        memcpy(pdata, pmb->ppar->v3.data(), pmb->ppar->npar * sizeof(pmb->ppar->v3(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->v3(0));
+      }
+    }
 
     // pack the user MeshBlock data
     for(int n=0; n<pmb->nint_user_meshblock_data_; n++) {

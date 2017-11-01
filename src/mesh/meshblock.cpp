@@ -104,8 +104,8 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
-  if (PARTICLES) ppar = new Particles(this, pin);
   if (SELF_GRAVITY_ENABLED) pgrav = new Gravity(this, pin);
+  if (PARTICLES) ppar = new Particles(this, pin);
 
   // Reconstruction
   precon = new Reconstruction(this, pin);
@@ -197,8 +197,8 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   phydro = new Hydro(this, pin);
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
-  if (PARTICLES) ppar = new Particles(this, pin);
   if (SELF_GRAVITY_ENABLED) pgrav = new Gravity(this, pin);
+  if (PARTICLES) ppar = new Particles(this, pin);
 
   precon = new Reconstruction(this, pin);
 
@@ -251,6 +251,26 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   if (SELF_GRAVITY_ENABLED >= 1) {
     memcpy(pgrav->phi.data(), &(mbdata[os]), pgrav->phi.GetSizeInBytes());
     os += pgrav->phi.GetSizeInBytes();
+  }
+  if (PARTICLES) {
+    memcpy(&(ppar->npar), &(mbdata[os]), sizeof(ppar->npar));
+    os += sizeof(ppar->npar);
+    if (ppar->npar > 0) {
+      memcpy(ppar->id.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->id(0)));
+      os += ppar->npar * sizeof(ppar->id(0));
+      memcpy(ppar->x1.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->x1(0)));
+      os += ppar->npar * sizeof(ppar->x1(0));
+      memcpy(ppar->x2.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->x2(0)));
+      os += ppar->npar * sizeof(ppar->x2(0));
+      memcpy(ppar->x3.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->x3(0)));
+      os += ppar->npar * sizeof(ppar->x3(0));
+      memcpy(ppar->v1.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->v1(0)));
+      os += ppar->npar * sizeof(ppar->v1(0));
+      memcpy(ppar->v2.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->v2(0)));
+      os += ppar->npar * sizeof(ppar->v2(0));
+      memcpy(ppar->v3.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->v3(0)));
+      os += ppar->npar * sizeof(ppar->v3(0));
+    }
   }
 
   // load user MeshBlock data
@@ -400,6 +420,13 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
     size+=pgrav->phi.GetSizeInBytes();
 
   // NEW_PHYSICS: modify the size counter here when new physics is introduced
+  if (PARTICLES) {
+    size += sizeof(ppar->npar);
+    if (ppar->npar > 0)
+      size += ppar->npar * (sizeof(ppar->id(0)) +
+                  sizeof(ppar->x1(0)) + sizeof(ppar->x2(0)) + sizeof(ppar->x3(0)) +
+                  sizeof(ppar->v1(0)) + sizeof(ppar->v2(0)) + sizeof(ppar->v3(0)));
+  }
 
   // calculate user MeshBlock data size
   for(int n=0; n<nint_user_meshblock_data_; n++)
