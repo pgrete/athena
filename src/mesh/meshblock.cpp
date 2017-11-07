@@ -256,20 +256,20 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     memcpy(&(ppar->npar), &(mbdata[os]), sizeof(ppar->npar));
     os += sizeof(ppar->npar);
     if (ppar->npar > 0) {
-      memcpy(ppar->id.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->id(0)));
-      os += ppar->npar * sizeof(ppar->id(0));
-      memcpy(ppar->x1.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->x1(0)));
-      os += ppar->npar * sizeof(ppar->x1(0));
-      memcpy(ppar->x2.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->x2(0)));
-      os += ppar->npar * sizeof(ppar->x2(0));
-      memcpy(ppar->x3.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->x3(0)));
-      os += ppar->npar * sizeof(ppar->x3(0));
-      memcpy(ppar->v1.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->v1(0)));
-      os += ppar->npar * sizeof(ppar->v1(0));
-      memcpy(ppar->v2.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->v2(0)));
-      os += ppar->npar * sizeof(ppar->v2(0));
-      memcpy(ppar->v3.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->v3(0)));
-      os += ppar->npar * sizeof(ppar->v3(0));
+      memcpy(ppar->pid.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->pid(0)));
+      os += ppar->npar * sizeof(ppar->pid(0));
+      memcpy(ppar->xp1.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->xp1(0)));
+      os += ppar->npar * sizeof(ppar->xp1(0));
+      memcpy(ppar->xp2.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->xp2(0)));
+      os += ppar->npar * sizeof(ppar->xp2(0));
+      memcpy(ppar->xp3.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->xp3(0)));
+      os += ppar->npar * sizeof(ppar->xp3(0));
+      memcpy(ppar->vp1.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->vp1(0)));
+      os += ppar->npar * sizeof(ppar->vp1(0));
+      memcpy(ppar->vp2.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->vp2(0)));
+      os += ppar->npar * sizeof(ppar->vp2(0));
+      memcpy(ppar->vp3.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->vp3(0)));
+      os += ppar->npar * sizeof(ppar->vp3(0));
     }
   }
 
@@ -423,9 +423,9 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
   if (PARTICLES) {
     size += sizeof(ppar->npar);
     if (ppar->npar > 0)
-      size += ppar->npar * (sizeof(ppar->id(0)) +
-                  sizeof(ppar->x1(0)) + sizeof(ppar->x2(0)) + sizeof(ppar->x3(0)) +
-                  sizeof(ppar->v1(0)) + sizeof(ppar->v2(0)) + sizeof(ppar->v3(0)));
+      size += ppar->npar * (sizeof(ppar->pid(0)) +
+                  sizeof(ppar->xp1(0)) + sizeof(ppar->xp2(0)) + sizeof(ppar->xp3(0)) +
+                  sizeof(ppar->vp1(0)) + sizeof(ppar->vp2(0)) + sizeof(ppar->vp3(0)));
   }
 
   // calculate user MeshBlock data size

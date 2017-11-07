@@ -6,7 +6,41 @@
 //! \file particles.cpp
 //  \brief implements functions in particle classes
 
+#include <sstream>
+#include <string>
+#include "../athena_arrays.hpp"
 #include "particles.hpp"
+
+bool Particles::initialized = false;
+int Particles::nint = 0;
+int Particles::nreal = 0;
+int Particles::ipid = -1;
+int Particles::ixp1 = -1, Particles::ixp2 = -1, Particles::ixp3 = -1;
+int Particles::ivp1 = -1, Particles::ivp2 = -1, Particles::ivp3 = -1;
+
+void _ErrorIfInitialized(const std::string& calling_function, bool initialized);
+
+//--------------------------------------------------------------------------------------
+//! \fn Particles::Initialize()
+//  \brief initializes the class.
+
+void Particles::Initialize()
+{
+  // Add particle ID.
+  ipid = AddIntProperty();
+
+  // Add particle position.
+  ixp1 = AddRealProperty();
+  ixp2 = AddRealProperty();
+  ixp3 = AddRealProperty();
+
+  // Add particle velocity.
+  ivp1 = AddRealProperty();
+  ivp2 = AddRealProperty();
+  ivp3 = AddRealProperty();
+
+  initialized = true;
+}
 
 //--------------------------------------------------------------------------------------
 //! \fn Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
@@ -14,23 +48,26 @@
 
 Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 {
+  // Initialize the class if first called.
+  if (!initialized) Particles::Initialize();
+
   // Point to the calling MeshBlock.
   pmy_block = pmb;
   npar = 1;
-  nparmax = 1;
+  nparmax = 1;  // TODO: dynamically adjust npar and nparmax.
 
-  // Allocate IDs.
-  id.NewAthenaArray(nparmax);
+  // Allocate integer properties.
+  intprop.NewAthenaArray(nint,nparmax);
+  pid.InitWithShallowSlice(intprop, 1, ipid, 1);
 
-  // Allocate positions.
-  x1.NewAthenaArray(nparmax);
-  x2.NewAthenaArray(nparmax);
-  x3.NewAthenaArray(nparmax);
-
-  // Allocate velocities.
-  v1.NewAthenaArray(nparmax);
-  v2.NewAthenaArray(nparmax);
-  v3.NewAthenaArray(nparmax);
+  // Allocate integer properties.
+  realprop.NewAthenaArray(nreal,nparmax);
+  xp1.InitWithShallowSlice(realprop, 1, ixp1, 1);
+  xp2.InitWithShallowSlice(realprop, 1, ixp2, 1);
+  xp3.InitWithShallowSlice(realprop, 1, ixp3, 1);
+  vp1.InitWithShallowSlice(realprop, 1, ivp1, 1);
+  vp2.InitWithShallowSlice(realprop, 1, ivp2, 1);
+  vp3.InitWithShallowSlice(realprop, 1, ivp3, 1);
 }
 
 //--------------------------------------------------------------------------------------
@@ -39,18 +76,11 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 
 Particles::~Particles()
 {
-  // Delete IDs.
-  id.DeleteAthenaArray();
+  // Delete integer properties.
+  intprop.DeleteAthenaArray();
 
-  // Delete positions.
-  x1.DeleteAthenaArray();
-  x2.DeleteAthenaArray();
-  x3.DeleteAthenaArray();
-
-  // Delete velocities.
-  v1.DeleteAthenaArray();
-  v2.DeleteAthenaArray();
-  v3.DeleteAthenaArray();
+  // Delete real properties.
+  realprop.DeleteAthenaArray();
 }
 
 //--------------------------------------------------------------------------------------
@@ -60,9 +90,9 @@ Particles::~Particles()
 void Particles::Drift(Real t, Real dt)
 {
   for (long k = 0; k < npar; ++k) {
-    x1(k) += dt * v1(k);
-    x2(k) += dt * v2(k);
-    x3(k) += dt * v3(k);
+    xp1(k) += dt * vp1(k);
+    xp2(k) += dt * vp2(k);
+    xp3(k) += dt * vp3(k);
   }
 }
 
@@ -78,9 +108,9 @@ void Particles::Kick(Real t, Real dt)
                                       // vectorization.
 
   for (long k = 0; k < npar; ++k) {
-    v1(k) += dt * a1;
-    v2(k) += dt * a2;
-    v3(k) += dt * a3;
+    vp1(k) += dt * a1;
+    vp2(k) += dt * a2;
+    vp3(k) += dt * a3;
   }
 }
 
@@ -105,12 +135,31 @@ void Particles::Update(Mesh *pm)
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn int Particles::AddIntProperty()
+//  \brief adds one integer property to the particles and returns the index.
+
+int Particles::AddIntProperty()
+{
+  _ErrorIfInitialized("Particles::AddIntProperty", initialized);
+  return nint++;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn int Particles::AddRealProperty()
+//  \brief adds one real property to the particles and returns the index.
+
+int Particles::AddRealProperty()
+{
+  _ErrorIfInitialized("Particles::AddRealProperty", initialized);
+  return nreal++;
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn Particles::FormattedTableOutput()
 //  \brief outputs the particle data in tabulated format.
 
 #include <fstream>
 #include <iomanip>
-#include <sstream>
 
 void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
 {
@@ -140,12 +189,27 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
 
     // Write the particle data in the meshblock.
     for (long k = 0; k < ppar->npar; ++k)
-      os << ppar->id(k) << "  "
-         << ppar->x1(k) << "  " << ppar->x2(k) << "  " << ppar->x3(k) << "  "
-         << ppar->v1(k) << "  " << ppar->v2(k) << "  " << ppar->v3(k) << std::endl;
+      os << ppar->pid(k) << "  "
+         << ppar->xp1(k) << "  " << ppar->xp2(k) << "  " << ppar->xp3(k) << "  "
+         << ppar->vp1(k) << "  " << ppar->vp2(k) << "  " << ppar->vp3(k) << std::endl;
 
     // Close the file and get the next meshblock.
     os.close();
     pmb = pmb->next;
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void _ErrorIfInitialized(const string& calling_function)
+//  \brief throws an error when the class has already been initialized.
+
+void _ErrorIfInitialized(const std::string& calling_function, bool initialized)
+{
+  if (initialized)
+  {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [" << calling_function << "]" << std::endl
+        << "The Particles class has already been initialized. " << std::endl;
+    throw std::runtime_error(msg.str().c_str());
   }
 }

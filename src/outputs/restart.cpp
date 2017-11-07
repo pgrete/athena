@@ -176,20 +176,27 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_wr
       memcpy(pdata, &(pmb->ppar->npar), sizeof(pmb->ppar->npar));
       pdata += sizeof(pmb->ppar->npar);
       if (pmb->ppar->npar > 0) {
-        memcpy(pdata, pmb->ppar->id.data(), pmb->ppar->npar * sizeof(pmb->ppar->id(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->id(0));
-        memcpy(pdata, pmb->ppar->x1.data(), pmb->ppar->npar * sizeof(pmb->ppar->x1(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->x1(0));
-        memcpy(pdata, pmb->ppar->x2.data(), pmb->ppar->npar * sizeof(pmb->ppar->x2(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->x2(0));
-        memcpy(pdata, pmb->ppar->x3.data(), pmb->ppar->npar * sizeof(pmb->ppar->x3(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->x3(0));
-        memcpy(pdata, pmb->ppar->v1.data(), pmb->ppar->npar * sizeof(pmb->ppar->v1(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->v1(0));
-        memcpy(pdata, pmb->ppar->v2.data(), pmb->ppar->npar * sizeof(pmb->ppar->v2(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->v2(0));
-        memcpy(pdata, pmb->ppar->v3.data(), pmb->ppar->npar * sizeof(pmb->ppar->v3(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->v3(0));
+        memcpy(pdata, pmb->ppar->pid.data(),
+               pmb->ppar->npar * sizeof(pmb->ppar->pid(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->pid(0));
+        memcpy(pdata, pmb->ppar->xp1.data(),
+               pmb->ppar->npar * sizeof(pmb->ppar->xp1(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->xp1(0));
+        memcpy(pdata, pmb->ppar->xp2.data(),
+               pmb->ppar->npar * sizeof(pmb->ppar->xp2(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->xp2(0));
+        memcpy(pdata, pmb->ppar->xp3.data(),
+               pmb->ppar->npar * sizeof(pmb->ppar->xp3(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->xp3(0));
+        memcpy(pdata, pmb->ppar->vp1.data(),
+               pmb->ppar->npar * sizeof(pmb->ppar->vp1(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->vp1(0));
+        memcpy(pdata, pmb->ppar->vp2.data(),
+               pmb->ppar->npar * sizeof(pmb->ppar->vp2(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->vp2(0));
+        memcpy(pdata, pmb->ppar->vp3.data(),
+               pmb->ppar->npar * sizeof(pmb->ppar->vp3(0)));
+        pdata += pmb->ppar->npar * sizeof(pmb->ppar->vp3(0));
       }
     }
 

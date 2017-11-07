@@ -23,6 +23,7 @@ class ParameterInput;
 class Particles {
 public:
   // Class methods
+  static void Initialize();
   static void FormattedTableOutput(Mesh *pm, OutputParameters op);
   static void Update(Mesh *pm);  // master integrator
 
@@ -36,15 +37,33 @@ public:
   void Drift(Real t, Real dt);
   void Kick(Real t, Real dt);
 
-  // Particle properties
-  AthenaArray<long> id;            // particle id
-  AthenaArray<Real> x1, x2, x3;    // particle position
-  AthenaArray<Real> v1, v2, v3;    // particle velocity
+  // Instance variables
+  AthenaArray<long> pid;            // shorthand for particle ID
+  AthenaArray<Real> xp1, xp2, xp3;  // shorthand for position components
+  AthenaArray<Real> vp1, vp2, vp3;  // shorthand for velocity components
 
-  // Bookkeeping indices
-  MeshBlock* pmy_block;    // MeshBlock pointer
-  long npar;               // number of particles
+  long npar;  // number of particles
+
+private:
+  // Class variables
+  static int ipid;              // index for the particle ID
+  static int ixp1, ixp2, ixp3;  // indices for the position components
+  static int ivp1, ivp2, ivp3;  // indices for the velocity components
+
+  // Class methods
+  static int AddIntProperty();
+  static int AddRealProperty();
+
+  // Class variables
+  static bool initialized;      // whether or not the class is initialized
+  static int nint, nreal;       // numbers of integer and real properties
+
+  // Instance variables
+  AthenaArray<long> intprop;   // integer particle properties
+  AthenaArray<Real> realprop;  // real particle properties
+
   long nparmax;            // maximum number of particles per meshblock
+  MeshBlock* pmy_block;    // MeshBlock pointer
 };
 
 #endif
