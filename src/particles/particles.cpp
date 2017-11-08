@@ -68,6 +68,14 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   vp1.InitWithShallowSlice(realprop, 1, ivp1, 1);
   vp2.InitWithShallowSlice(realprop, 1, ivp2, 1);
   vp3.InitWithShallowSlice(realprop, 1, ivp3, 1);
+
+  // Allocate buffers.
+  nbufmax = 2;  // TODO: dynamically adjust itself later.
+  isend.NewAthenaArray(nint,nbufmax);
+  irecv.NewAthenaArray(nint,nbufmax);
+  rsend.NewAthenaArray(nreal,nbufmax);
+  rrecv.NewAthenaArray(nreal,nbufmax);
+  nbuf = 0;
 }
 
 //--------------------------------------------------------------------------------------
@@ -81,6 +89,12 @@ Particles::~Particles()
 
   // Delete real properties.
   realprop.DeleteAthenaArray();
+
+  // Delete buffers.
+  isend.DeleteAthenaArray();
+  irecv.DeleteAthenaArray();
+  rsend.DeleteAthenaArray();
+  rrecv.DeleteAthenaArray();
 }
 
 //--------------------------------------------------------------------------------------

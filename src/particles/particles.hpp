@@ -61,6 +61,12 @@ protected:
   AthenaArray<long> intprop;   // integer particle properties
   AthenaArray<Real> realprop;  // real particle properties
 
+                                    // MeshBlock-to-MeshBlock communication:
+  AthenaArray<long> isend, irecv;   //   integer buffers
+  AthenaArray<Real> rsend, rrecv;   //   real buffers
+  int nbufmax;                      //   maximum number of particles per buffer
+  int nbuf;                         //   actual number of particles per buffer
+
   AthenaArray<long> pid;            // shorthand for particle ID
   AthenaArray<Real> xp1, xp2, xp3;  // shorthand for position components
   AthenaArray<Real> vp1, vp2, vp3;  // shorthand for velocity components
