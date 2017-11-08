@@ -155,6 +155,80 @@ int Particles::AddRealProperty()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn Particles::GetSizeInBytes()
+//  \brief returns the data size in bytes in the meshblock.
+
+size_t Particles::GetSizeInBytes()
+{
+  size_t size = sizeof(npar);
+  if (npar > 0) size += npar * (nint * sizeof(long) + nreal * sizeof(Real));
+  return size;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn Particles::ReadRestart()
+//  \brief reads the particle data from the restart file.
+
+#include <cstring>
+
+void Particles::ReadRestart(char *mbdata, int &os)
+{
+  // Read number of particles.
+  std::memcpy(&npar, &(mbdata[os]), sizeof(npar));
+  os += sizeof(npar);
+  if (npar > nparmax)
+  {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::ReadRestart]" << std::endl
+        << "npar = " << npar << " > nparmax = " << nparmax << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+
+  if (npar > 0) {
+    // Read integer properties.
+    size_t size = npar * sizeof(long);
+    for (int k = 0; k < nint; ++k) {
+      std::memcpy(&(intprop(k,0)), &(mbdata[os]), size);
+      os += size;
+    }
+
+    // Read real properties.
+    size = npar * sizeof(Real);
+    for (int k = 0; k < nreal; ++k) {
+      std::memcpy(&(realprop(k,0)), &(mbdata[os]), size);
+      os += size;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn Particles::WriteRestart()
+//  \brief writes the particle data to the restart file.
+
+void Particles::WriteRestart(char *&pdata)
+{
+  // Write number of particles.
+  memcpy(pdata, &npar, sizeof(npar));
+  pdata += sizeof(npar);
+
+  if (npar > 0) {
+    // Write integer properties.
+    size_t size = npar * sizeof(long);
+    for (int k = 0; k < nint; ++k) {
+      std::memcpy(pdata, &(intprop(k,0)), size);
+      pdata += size;
+    }
+
+    // Write real properties.
+    size = npar * sizeof(Real);
+    for (int k = 0; k < nreal; ++k) {
+      std::memcpy(pdata, &(realprop(k,0)), size);
+      pdata += size;
+    }
+  }
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn Particles::FormattedTableOutput()
 //  \brief outputs the particle data in tabulated format.
 

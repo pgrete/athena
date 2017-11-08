@@ -21,11 +21,14 @@ class ParameterInput;
 //  \brief defines the bass class for all implementations of particles.
 
 class Particles {
+
+friend MeshBlock;  // Make writing initial conditions possible.
+
 public:
   // Class methods
   static void Initialize();
-  static void FormattedTableOutput(Mesh *pm, OutputParameters op);
   static void Update(Mesh *pm);  // master integrator
+  static void FormattedTableOutput(Mesh *pm, OutputParameters op); 
 
   // Constructor
   Particles(MeshBlock *pmb, ParameterInput *pin);
@@ -37,33 +40,34 @@ public:
   void Drift(Real t, Real dt);
   void Kick(Real t, Real dt);
 
-  // Instance variables
-  AthenaArray<long> pid;            // shorthand for particle ID
-  AthenaArray<Real> xp1, xp2, xp3;  // shorthand for position components
-  AthenaArray<Real> vp1, vp2, vp3;  // shorthand for velocity components
+  size_t GetSizeInBytes();
+  void ReadRestart(char *mbdata, int &os);
+  void WriteRestart(char *&pdata);
 
-  long npar;  // number of particles
-
-private:
-  // Class variables
-  static int ipid;              // index for the particle ID
-  static int ixp1, ixp2, ixp3;  // indices for the position components
-  static int ivp1, ivp2, ivp3;  // indices for the velocity components
-
+protected:
   // Class methods
   static int AddIntProperty();
   static int AddRealProperty();
 
   // Class variables
-  static bool initialized;      // whether or not the class is initialized
-  static int nint, nreal;       // numbers of integer and real properties
+  static bool initialized;  // whether or not the class is initialized
+  static int nint, nreal;   // numbers of integer and real properties
+
+  static int ipid;              // index for the particle ID
+  static int ixp1, ixp2, ixp3;  // indices for the position components
+  static int ivp1, ivp2, ivp3;  // indices for the velocity components
 
   // Instance variables
   AthenaArray<long> intprop;   // integer particle properties
   AthenaArray<Real> realprop;  // real particle properties
 
-  long nparmax;            // maximum number of particles per meshblock
-  MeshBlock* pmy_block;    // MeshBlock pointer
+  AthenaArray<long> pid;            // shorthand for particle ID
+  AthenaArray<Real> xp1, xp2, xp3;  // shorthand for position components
+  AthenaArray<Real> vp1, vp2, vp3;  // shorthand for velocity components
+
+  long npar;             // number of particles
+  long nparmax;          // maximum number of particles per meshblock
+  MeshBlock* pmy_block;  // MeshBlock pointer
 };
 
 #endif

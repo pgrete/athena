@@ -252,26 +252,7 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     memcpy(pgrav->phi.data(), &(mbdata[os]), pgrav->phi.GetSizeInBytes());
     os += pgrav->phi.GetSizeInBytes();
   }
-  if (PARTICLES) {
-    memcpy(&(ppar->npar), &(mbdata[os]), sizeof(ppar->npar));
-    os += sizeof(ppar->npar);
-    if (ppar->npar > 0) {
-      memcpy(ppar->pid.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->pid(0)));
-      os += ppar->npar * sizeof(ppar->pid(0));
-      memcpy(ppar->xp1.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->xp1(0)));
-      os += ppar->npar * sizeof(ppar->xp1(0));
-      memcpy(ppar->xp2.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->xp2(0)));
-      os += ppar->npar * sizeof(ppar->xp2(0));
-      memcpy(ppar->xp3.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->xp3(0)));
-      os += ppar->npar * sizeof(ppar->xp3(0));
-      memcpy(ppar->vp1.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->vp1(0)));
-      os += ppar->npar * sizeof(ppar->vp1(0));
-      memcpy(ppar->vp2.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->vp2(0)));
-      os += ppar->npar * sizeof(ppar->vp2(0));
-      memcpy(ppar->vp3.data(), &(mbdata[os]), ppar->npar * sizeof(ppar->vp3(0)));
-      os += ppar->npar * sizeof(ppar->vp3(0));
-    }
-  }
+  if (PARTICLES) ppar->ReadRestart(mbdata, os);
 
   // load user MeshBlock data
   for(int n=0; n<nint_user_meshblock_data_; n++) {
@@ -420,13 +401,7 @@ size_t MeshBlock::GetBlockSizeInBytes(void)
     size+=pgrav->phi.GetSizeInBytes();
 
   // NEW_PHYSICS: modify the size counter here when new physics is introduced
-  if (PARTICLES) {
-    size += sizeof(ppar->npar);
-    if (ppar->npar > 0)
-      size += ppar->npar * (sizeof(ppar->pid(0)) +
-                  sizeof(ppar->xp1(0)) + sizeof(ppar->xp2(0)) + sizeof(ppar->xp3(0)) +
-                  sizeof(ppar->vp1(0)) + sizeof(ppar->vp2(0)) + sizeof(ppar->vp3(0)));
-  }
+  if (PARTICLES) size += ppar->GetSizeInBytes();
 
   // calculate user MeshBlock data size
   for(int n=0; n<nint_user_meshblock_data_; n++)

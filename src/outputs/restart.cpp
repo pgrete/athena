@@ -172,33 +172,7 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_wr
     // NEW_PHYSICS: add output of additional physics to restarts here
     // also update MeshBlock::GetBlockSizeInBytes accordingly and MeshBlock constructor
     // for restarts.
-    if (PARTICLES) {
-      memcpy(pdata, &(pmb->ppar->npar), sizeof(pmb->ppar->npar));
-      pdata += sizeof(pmb->ppar->npar);
-      if (pmb->ppar->npar > 0) {
-        memcpy(pdata, pmb->ppar->pid.data(),
-               pmb->ppar->npar * sizeof(pmb->ppar->pid(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->pid(0));
-        memcpy(pdata, pmb->ppar->xp1.data(),
-               pmb->ppar->npar * sizeof(pmb->ppar->xp1(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->xp1(0));
-        memcpy(pdata, pmb->ppar->xp2.data(),
-               pmb->ppar->npar * sizeof(pmb->ppar->xp2(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->xp2(0));
-        memcpy(pdata, pmb->ppar->xp3.data(),
-               pmb->ppar->npar * sizeof(pmb->ppar->xp3(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->xp3(0));
-        memcpy(pdata, pmb->ppar->vp1.data(),
-               pmb->ppar->npar * sizeof(pmb->ppar->vp1(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->vp1(0));
-        memcpy(pdata, pmb->ppar->vp2.data(),
-               pmb->ppar->npar * sizeof(pmb->ppar->vp2(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->vp2(0));
-        memcpy(pdata, pmb->ppar->vp3.data(),
-               pmb->ppar->npar * sizeof(pmb->ppar->vp3(0)));
-        pdata += pmb->ppar->npar * sizeof(pmb->ppar->vp3(0));
-      }
-    }
+    if (PARTICLES) pmb->ppar->WriteRestart(pdata);
 
     // pack the user MeshBlock data
     for(int n=0; n<pmb->nint_user_meshblock_data_; n++) {
