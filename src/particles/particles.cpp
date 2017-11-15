@@ -283,6 +283,7 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
 
     // Close the file and get the next meshblock.
     os.close();
+    fname.str("");
     pmb = pmb->next;
   }
 }
