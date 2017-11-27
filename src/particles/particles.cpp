@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include "../athena_arrays.hpp"
+#include "../mesh/meshblock_tree.hpp"
 #include "particles.hpp"
 
 bool Particles::initialized = false;
@@ -70,12 +71,10 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   vp3.InitWithShallowSlice(realprop, 1, ivp3, 1);
 
   // Allocate buffers.
-  nbufmax = 2;  // TODO: dynamically adjust itself later.
-  isend.NewAthenaArray(nint,nbufmax);
-  irecv.NewAthenaArray(nint,nbufmax);
-  rsend.NewAthenaArray(nreal,nbufmax);
-  rrecv.NewAthenaArray(nreal,nbufmax);
-  nbuf = 0;
+  nrecvmax = 1;
+  nrecv = 0;
+  irecv.NewAthenaArray(nint,nrecvmax);
+  rrecv.NewAthenaArray(nreal,nrecvmax);
 }
 
 //--------------------------------------------------------------------------------------
@@ -91,9 +90,7 @@ Particles::~Particles()
   realprop.DeleteAthenaArray();
 
   // Delete buffers.
-  isend.DeleteAthenaArray();
   irecv.DeleteAthenaArray();
-  rsend.DeleteAthenaArray();
   rrecv.DeleteAthenaArray();
 }
 
@@ -129,23 +126,158 @@ void Particles::Kick(Real t, Real dt)
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::Migrate(Mesh *pm)
+//  \brief migrates particles that are outside of the MeshBlock boundary.
+int _CheckSide(int nx, Real x, Real xmin, Real xmax);
+
+void Particles::Migrate(Mesh *pm)
+{
+  // Send particles.
+  MeshBlock *pmb = pm->pblock;
+  while (pmb != NULL) {
+    pmb->ppar->SendToNeighbors();
+    pmb = pmb->next;
+  }
+
+  // Flush the receive buffers.
+  pmb = pm->pblock;
+  while (pmb != NULL) {
+    if (pmb->ppar->nrecv > 0)
+      pmb->ppar->FlushReceiveBuffer();
+    pmb = pmb->next;
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::SendToNeighbors()
+//  \brief sends particles outside boundary to the buffers of neighboring meshblocks.
+
+void Particles::SendToNeighbors()
+{
+  Mesh *pm = pmy_block->pmy_mesh;
+  MeshBlock *pnmb;
+  MeshBlockTree *pnmbt;
+  Particles *pnp;
+  int ox1, ox2, ox3;
+
+  for (long k = 0; k < npar; ++k) {
+    // Check if a particle is outside the boundary.
+    ox1 = _CheckSide(pmy_block->block_size.nx1, xp1(k),
+                     pmy_block->block_size.x1min, pmy_block->block_size.x1max);
+    ox2 = _CheckSide(pmy_block->block_size.nx2, xp2(k),
+                     pmy_block->block_size.x2min, pmy_block->block_size.x2max);
+    ox3 = _CheckSide(pmy_block->block_size.nx3, xp3(k),
+                     pmy_block->block_size.x3min, pmy_block->block_size.x3max);
+    if (ox1 != 0 || ox2 != 0 || ox3 != 0) {
+
+      // Find the neighbor MeshBlock to send it to.
+      pnmbt = pm->tree.FindNeighbor(pmy_block->loc, ox1, ox2, ox3, pm->mesh_bcs,
+                                    pm->nrbx1, pm->nrbx2, pm->nrbx3, pm->root_level);
+      if (pnmbt == NULL) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
+            << "cannot find the neighboring MeshBlock. " << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+        continue;
+      }
+
+      if (pnmbt->flag)  // Neighbor is on the same or a courser level:
+        pnmb = pm->FindMeshBlock(pnmbt->gid);
+      else {          // Neighbor is on a finer level:
+        std::stringstream msg;
+        msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
+            << "coarse-to-fine migration not yet implemented. " << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+        continue;
+      }
+      pnp = pnmb->ppar;
+
+      // Check the buffer size of the target MeshBlock.
+      if (pnp->nrecv >= nrecvmax) {
+        pnp->nrecvmax *= 2;
+        pnp->irecv.ResizeLastDimension(pnp->nrecvmax);
+        pnp->rrecv.ResizeLastDimension(pnp->nrecvmax);
+      }
+
+      // Copy the properties of the particle to the neighbor.
+      for (int j = 0; j < nint; ++j)
+        pnp->irecv(j,pnp->nrecv) = intprop(j,k);
+      for (int j = 0; j < nreal; ++j)
+        pnp->rrecv(j,pnp->nrecv) = realprop(j,k);
+      ++pnp->nrecv;
+
+      // Pop the particle from the current MeshBlock.
+      if (--npar != k) {
+        for (int j = 0; j < nint; ++j)
+          intprop(j,k) = intprop(j,npar);
+        for (int j = 0; j < nreal; ++j)
+          realprop(j,k) = realprop(j,npar);
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::FlushReceiveBuffer()
+//  \brief adds particles from the receive buffer.
+
+void Particles::FlushReceiveBuffer()
+{
+  // Check the memory size.
+  if (npar + nrecv > nparmax) {
+    nparmax += 2 * (npar + nrecv - nparmax);
+    intprop.ResizeLastDimension(nparmax);
+    realprop.ResizeLastDimension(nparmax);
+  }
+
+  // Flush the receive buffers.
+  for (int j = 0; j < nint; ++j) {
+    long ip = npar, k = 0;
+    while (k < nrecv)
+      intprop(j,ip++) = irecv(j,k++);
+  }
+  for (int j = 0; j < nreal; ++j) {
+    long ip = npar, k = 0;
+    while (k < nrecv)
+      realprop(j,ip++) = rrecv(j,k++);
+  }
+  npar += nrecv;
+
+  // Clear the receive buffers.
+  nrecv = 0;
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::Update(Mesh *pm)
 //  \brief updates all particle positions and velocities from t to t + dt.
 //======================================================================================
-#include <iostream>
 
 void Particles::Update(Mesh *pm)
 {
   MeshBlock *pmb = pm->pblock;
   Real dth = 0.5 * pm->dt;
 
-  // Loop over MeshBlocks
+  // Drift particles.
   while (pmb != NULL) {
     pmb->ppar->Drift(pm->time, dth);
+    pmb = pmb->next;
+  }
+  Migrate(pm);
+
+  // Kick particles.
+  pmb = pm->pblock;
+  while (pmb != NULL) {
     pmb->ppar->Kick(pm->time, pm->dt);
+    pmb = pmb->next;
+  }
+
+  // Drift particles.
+  pmb = pm->pblock;
+  while (pmb != NULL) {
     pmb->ppar->Drift(pm->time + dth, dth);
     pmb = pmb->next;
   }
+  Migrate(pm);
 }
 
 //--------------------------------------------------------------------------------------
@@ -301,4 +433,18 @@ void _ErrorIfInitialized(const std::string& calling_function, bool initialized)
         << "The Particles class has already been initialized. " << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn int _CheckSide(int nx, Real x, Real xmin, Real xmax)
+//  \brief returns -1 if x < xmin and nx > 1, +1 if x > xmax and nx > 1,
+//         and 0 otherwise.
+
+inline int _CheckSide(int nx, Real x, Real xmin, Real xmax)
+{
+   if (nx > 1) {
+     if (x < xmin) return -1;
+     if (x > xmax) return +1;
+   }
+   return 0;
 }

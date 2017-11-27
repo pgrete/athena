@@ -48,6 +48,7 @@ protected:
   // Class methods
   static int AddIntProperty();
   static int AddRealProperty();
+  static void Migrate(Mesh *pm);
 
   // Class variables
   static bool initialized;  // whether or not the class is initialized
@@ -61,12 +62,6 @@ protected:
   AthenaArray<long> intprop;   // integer particle properties
   AthenaArray<Real> realprop;  // real particle properties
 
-                                    // MeshBlock-to-MeshBlock communication:
-  AthenaArray<long> isend, irecv;   //   integer buffers
-  AthenaArray<Real> rsend, rrecv;   //   real buffers
-  int nbufmax;                      //   maximum number of particles per buffer
-  int nbuf;                         //   actual number of particles per buffer
-
   AthenaArray<long> pid;            // shorthand for particle ID
   AthenaArray<Real> xp1, xp2, xp3;  // shorthand for position components
   AthenaArray<Real> vp1, vp2, vp3;  // shorthand for velocity components
@@ -74,6 +69,17 @@ protected:
   long npar;             // number of particles
   long nparmax;          // maximum number of particles per meshblock
   MeshBlock* pmy_block;  // MeshBlock pointer
+
+private:
+  // Instance methods
+  void SendToNeighbors();
+  void FlushReceiveBuffer();
+
+                            // MeshBlock-to-MeshBlock communication:
+  AthenaArray<long> irecv;  //   integer receive buffers
+  AthenaArray<Real> rrecv;  //   real receive buffers
+  int nrecvmax;             //   maximum number of particles per receive buffer
+  int nrecv;                //   actual number of particles per receive buffer
 };
 
 #endif

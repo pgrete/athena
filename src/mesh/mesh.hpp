@@ -143,6 +143,7 @@ class Mesh {
   friend class MultigridDriver;
   friend class GravityDriver;
   friend class Gravity;
+  friend class Particles;
 #ifdef HDF5OUTPUT
   friend class ATHDF5Output;
 #endif
