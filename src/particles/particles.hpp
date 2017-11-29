@@ -22,7 +22,7 @@ class ParameterInput;
 
 class Particles {
 
-friend MeshBlock;  // Make writing initial conditions possible.
+friend class MeshBlock;  // Make writing initial conditions possible.
 
 public:
   // Class methods
@@ -71,6 +71,9 @@ protected:
   MeshBlock* pmy_block;  // MeshBlock pointer
 
 private:
+  // Class methods
+  static void ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3);
+
   // Instance methods
   void SendToNeighbors();
   void FlushReceiveBuffer();

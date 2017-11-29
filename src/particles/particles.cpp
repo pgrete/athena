@@ -95,6 +95,97 @@ Particles::~Particles()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
+//  \brief applies boundary conditions if (x1,x2,x3) is outside the mesh.
+
+void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
+{
+  if (pm->mesh_size.nx1 > 1) {
+    // Inner x1
+    if (x1 <= pm->mesh_size.x1min) {
+      if (pm->mesh_bcs[INNER_X1] == PERIODIC_BNDRY)
+        x1 += pm->mesh_size.x1max - pm->mesh_size.x1min;
+      else {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
+            << std::endl
+            << "Non-periodic boundary for inner x1 not supported. " << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
+    }
+
+    // Outer x1
+    if (x1 >= pm->mesh_size.x1max) {
+      if (pm->mesh_bcs[OUTER_X1] == PERIODIC_BNDRY)
+        x1 -= pm->mesh_size.x1max - pm->mesh_size.x1min;
+      else {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
+            << std::endl
+            << "Non-periodic boundary for outer x1 not supported. " << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
+    }
+  }
+
+  if (pm->mesh_size.nx2 > 1) {
+    // Inner x2
+    if (x2 <= pm->mesh_size.x2min) {
+      if (pm->mesh_bcs[INNER_X2] == PERIODIC_BNDRY)
+        x2 += pm->mesh_size.x2max - pm->mesh_size.x2min;
+      else {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
+            << std::endl
+            << "Non-periodic boundary for inner x2 not supported. " << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
+    }
+
+    // Outer x2
+    if (x2 >= pm->mesh_size.x2max) {
+      if (pm->mesh_bcs[OUTER_X2] == PERIODIC_BNDRY)
+        x2 -= pm->mesh_size.x2max - pm->mesh_size.x2min;
+      else {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
+            << std::endl
+            << "Non-periodic boundary for outer x2 not supported. " << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
+    }
+  }
+
+  if (pm->mesh_size.nx3 > 1) {
+    // Inner x3
+    if (x3 <= pm->mesh_size.x3min) {
+      if (pm->mesh_bcs[INNER_X3] == PERIODIC_BNDRY)
+        x3 += pm->mesh_size.x3max - pm->mesh_size.x3min;
+      else {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
+            << std::endl
+            << "Non-periodic boundary for inner x3 not supported. " << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
+    }
+
+    // Outer x3
+    if (x3 >= pm->mesh_size.x3max) {
+      if (pm->mesh_bcs[OUTER_X3] == PERIODIC_BNDRY)
+        x3 -= pm->mesh_size.x3max - pm->mesh_size.x3min;
+      else {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
+            << std::endl
+            << "Non-periodic boundary for outer x3 not supported. " << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+      }
+    }
+  }
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::Drift(Real t, Real dt)
 //  \brief updates the particle positions from t to t + dt given velocities at t.
 
@@ -158,6 +249,7 @@ void Particles::SendToNeighbors()
   MeshBlock *pnmb;
   MeshBlockTree *pnmbt;
   Particles *pnp;
+  Real x1, x2, x3;
   int ox1, ox2, ox3;
 
   // TODO: Currently only works for Cartesian.
@@ -170,12 +262,17 @@ void Particles::SendToNeighbors()
   }
 
   for (long k = 0; k < npar; ++k) {
+    // Convert to the MeshBlock coordinates.
+    x1 = xp(k);  // Assuming they are Cartesian.
+    x2 = yp(k);
+    x3 = zp(k);
+
     // Check if a particle is outside the boundary.
-    ox1 = _CheckSide(pmy_block->block_size.nx1, xp(k),
+    ox1 = _CheckSide(pmy_block->block_size.nx1, x1,
                      pmy_block->block_size.x1min, pmy_block->block_size.x1max);
-    ox2 = _CheckSide(pmy_block->block_size.nx2, yp(k),
+    ox2 = _CheckSide(pmy_block->block_size.nx2, x2,
                      pmy_block->block_size.x2min, pmy_block->block_size.x2max);
-    ox3 = _CheckSide(pmy_block->block_size.nx3, zp(k),
+    ox3 = _CheckSide(pmy_block->block_size.nx3, x3,
                      pmy_block->block_size.x3min, pmy_block->block_size.x3max);
     if (ox1 != 0 || ox2 != 0 || ox3 != 0) {
 
@@ -200,6 +297,14 @@ void Particles::SendToNeighbors()
         continue;
       }
       pnp = pnmb->ppar;
+
+      // Apply boundary conditions.
+      ApplyBoundaryConditions(pm, x1, x2, x3);
+
+      // Convert back to Cartesian coordinates.
+      xp(k) = x1;
+      yp(k) = x2;
+      zp(k) = x3;
 
       // Check the buffer size of the target MeshBlock.
       if (pnp->nrecv >= nrecvmax) {
@@ -438,8 +543,7 @@ void _ErrorIfInitialized(const std::string& calling_function, bool initialized)
   if (initialized)
   {
     std::stringstream msg;
-    msg << "### FATAL ERROR in function [" << calling_function << "]" << std::endl
-        << "The Particles class has already been initialized. " << std::endl;
+    msg << "### FATAL ERROR in function [" << calling_function << "]" << std::endl << "The Particles class has already been initialized. " << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
 }
