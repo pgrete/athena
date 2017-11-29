@@ -55,16 +55,16 @@ protected:
   static int nint, nreal;   // numbers of integer and real properties
 
   static int ipid;              // index for the particle ID
-  static int ixp1, ixp2, ixp3;  // indices for the position components
-  static int ivp1, ivp2, ivp3;  // indices for the velocity components
+  static int ixp, iyp, izp;     // indices for the position components
+  static int ivpx, ivpy, ivpz;  // indices for the velocity components
 
   // Instance variables
   AthenaArray<long> intprop;   // integer particle properties
   AthenaArray<Real> realprop;  // real particle properties
 
   AthenaArray<long> pid;            // shorthand for particle ID
-  AthenaArray<Real> xp1, xp2, xp3;  // shorthand for position components
-  AthenaArray<Real> vp1, vp2, vp3;  // shorthand for velocity components
+  AthenaArray<Real> xp, yp, zp;     // shorthand for position components
+  AthenaArray<Real> vpx, vpy, vpz;  // shorthand for velocity components
 
   long npar;             // number of particles
   long nparmax;          // maximum number of particles per meshblock

@@ -16,8 +16,8 @@ bool Particles::initialized = false;
 int Particles::nint = 0;
 int Particles::nreal = 0;
 int Particles::ipid = -1;
-int Particles::ixp1 = -1, Particles::ixp2 = -1, Particles::ixp3 = -1;
-int Particles::ivp1 = -1, Particles::ivp2 = -1, Particles::ivp3 = -1;
+int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
+int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
 
 void _ErrorIfInitialized(const std::string& calling_function, bool initialized);
 
@@ -31,14 +31,14 @@ void Particles::Initialize()
   ipid = AddIntProperty();
 
   // Add particle position.
-  ixp1 = AddRealProperty();
-  ixp2 = AddRealProperty();
-  ixp3 = AddRealProperty();
+  ixp = AddRealProperty();
+  iyp = AddRealProperty();
+  izp = AddRealProperty();
 
   // Add particle velocity.
-  ivp1 = AddRealProperty();
-  ivp2 = AddRealProperty();
-  ivp3 = AddRealProperty();
+  ivpx = AddRealProperty();
+  ivpy = AddRealProperty();
+  ivpz = AddRealProperty();
 
   initialized = true;
 }
@@ -63,12 +63,12 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 
   // Allocate integer properties.
   realprop.NewAthenaArray(nreal,nparmax);
-  xp1.InitWithShallowSlice(realprop, 1, ixp1, 1);
-  xp2.InitWithShallowSlice(realprop, 1, ixp2, 1);
-  xp3.InitWithShallowSlice(realprop, 1, ixp3, 1);
-  vp1.InitWithShallowSlice(realprop, 1, ivp1, 1);
-  vp2.InitWithShallowSlice(realprop, 1, ivp2, 1);
-  vp3.InitWithShallowSlice(realprop, 1, ivp3, 1);
+  xp.InitWithShallowSlice(realprop, 1, ixp, 1);
+  yp.InitWithShallowSlice(realprop, 1, iyp, 1);
+  zp.InitWithShallowSlice(realprop, 1, izp, 1);
+  vpx.InitWithShallowSlice(realprop, 1, ivpx, 1);
+  vpy.InitWithShallowSlice(realprop, 1, ivpy, 1);
+  vpz.InitWithShallowSlice(realprop, 1, ivpz, 1);
 
   // Allocate buffers.
   nrecvmax = 1;
@@ -101,9 +101,9 @@ Particles::~Particles()
 void Particles::Drift(Real t, Real dt)
 {
   for (long k = 0; k < npar; ++k) {
-    xp1(k) += dt * vp1(k);
-    xp2(k) += dt * vp2(k);
-    xp3(k) += dt * vp3(k);
+    xp(k) += dt * vpx(k);
+    yp(k) += dt * vpy(k);
+    zp(k) += dt * vpz(k);
   }
 }
 
@@ -119,9 +119,9 @@ void Particles::Kick(Real t, Real dt)
                                       // vectorization.
 
   for (long k = 0; k < npar; ++k) {
-    vp1(k) += dt * a1;
-    vp2(k) += dt * a2;
-    vp3(k) += dt * a3;
+    vpx(k) += dt * a1;
+    vpy(k) += dt * a2;
+    vpz(k) += dt * a3;
   }
 }
 
@@ -160,13 +160,22 @@ void Particles::SendToNeighbors()
   Particles *pnp;
   int ox1, ox2, ox3;
 
+  // TODO: Currently only works for Cartesian.
+  if (COORDINATE_SYSTEM != "cartesian") {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
+        << "Non-Cartesian coordinates not yet implemented. " << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+    return;
+  }
+
   for (long k = 0; k < npar; ++k) {
     // Check if a particle is outside the boundary.
-    ox1 = _CheckSide(pmy_block->block_size.nx1, xp1(k),
+    ox1 = _CheckSide(pmy_block->block_size.nx1, xp(k),
                      pmy_block->block_size.x1min, pmy_block->block_size.x1max);
-    ox2 = _CheckSide(pmy_block->block_size.nx2, xp2(k),
+    ox2 = _CheckSide(pmy_block->block_size.nx2, yp(k),
                      pmy_block->block_size.x2min, pmy_block->block_size.x2max);
-    ox3 = _CheckSide(pmy_block->block_size.nx3, xp3(k),
+    ox3 = _CheckSide(pmy_block->block_size.nx3, zp(k),
                      pmy_block->block_size.x3min, pmy_block->block_size.x3max);
     if (ox1 != 0 || ox2 != 0 || ox3 != 0) {
 
@@ -410,8 +419,8 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
     // Write the particle data in the meshblock.
     for (long k = 0; k < ppar->npar; ++k)
       os << ppar->pid(k) << "  "
-         << ppar->xp1(k) << "  " << ppar->xp2(k) << "  " << ppar->xp3(k) << "  "
-         << ppar->vp1(k) << "  " << ppar->vp2(k) << "  " << ppar->vp3(k) << std::endl;
+         << ppar->xp(k) << "  " << ppar->yp(k) << "  " << ppar->zp(k) << "  "
+         << ppar->vpx(k) << "  " << ppar->vpy(k) << "  " << ppar->vpz(k) << std::endl;
 
     // Close the file and get the next meshblock.
     os.close();
