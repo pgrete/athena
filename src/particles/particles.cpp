@@ -59,16 +59,12 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 
   // Allocate integer properties.
   intprop.NewAthenaArray(nint,nparmax);
-  pid.InitWithShallowSlice(intprop, 1, ipid, 1);
 
   // Allocate integer properties.
   realprop.NewAthenaArray(nreal,nparmax);
-  xp.InitWithShallowSlice(realprop, 1, ixp, 1);
-  yp.InitWithShallowSlice(realprop, 1, iyp, 1);
-  zp.InitWithShallowSlice(realprop, 1, izp, 1);
-  vpx.InitWithShallowSlice(realprop, 1, ivpx, 1);
-  vpy.InitWithShallowSlice(realprop, 1, ivpy, 1);
-  vpz.InitWithShallowSlice(realprop, 1, ivpz, 1);
+
+  // Shallow copy to shorthands.
+  AssignShorthands();
 
   // Allocate buffers.
   nrecvmax = 1;
@@ -342,6 +338,7 @@ void Particles::FlushReceiveBuffer()
     nparmax += 2 * (npar + nrecv - nparmax);
     intprop.ResizeLastDimension(nparmax);
     realprop.ResizeLastDimension(nparmax);
+    AssignShorthands();
   }
 
   // Flush the receive buffers.
@@ -412,6 +409,21 @@ int Particles::AddRealProperty()
 {
   _ErrorIfInitialized("Particles::AddRealProperty", initialized);
   return nreal++;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::AssignShorthands()
+//  \brief assigns shorthands by shallow coping slices of the data.
+
+void Particles::AssignShorthands()
+{
+  pid.InitWithShallowSlice(intprop, 2, ipid, 1);
+  xp.InitWithShallowSlice(realprop, 2, ixp, 1);
+  yp.InitWithShallowSlice(realprop, 2, iyp, 1);
+  zp.InitWithShallowSlice(realprop, 2, izp, 1);
+  vpx.InitWithShallowSlice(realprop, 2, ivpx, 1);
+  vpy.InitWithShallowSlice(realprop, 2, ivpy, 1);
+  vpz.InitWithShallowSlice(realprop, 2, ivpz, 1);
 }
 
 //--------------------------------------------------------------------------------------

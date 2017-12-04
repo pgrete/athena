@@ -58,6 +58,10 @@ protected:
   static int ixp, iyp, izp;     // indices for the position components
   static int ivpx, ivpy, ivpz;  // indices for the velocity components
 
+  // Instance methods
+  void AssignShorthands();  // Needs to be called everytime
+                            // intprop & realprop are resized
+
   // Instance variables
   AthenaArray<long> intprop;   // integer particle properties
   AthenaArray<Real> realprop;  // real particle properties
