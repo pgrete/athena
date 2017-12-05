@@ -257,7 +257,7 @@ void Particles::SendToNeighbors()
     return;
   }
 
-  for (long k = 0; k < npar; ++k) {
+  for (long k = 0; k < npar; ) {
     // Convert to the MeshBlock coordinates.
     x1 = xp(k);  // Assuming they are Cartesian.
     x2 = yp(k);
@@ -270,59 +270,61 @@ void Particles::SendToNeighbors()
                      pmy_block->block_size.x2min, pmy_block->block_size.x2max);
     ox3 = _CheckSide(pmy_block->block_size.nx3, x3,
                      pmy_block->block_size.x3min, pmy_block->block_size.x3max);
-    if (ox1 != 0 || ox2 != 0 || ox3 != 0) {
+    if (ox1 == 0 && ox2 == 0 && ox3 == 0) {
+      ++k;
+      continue;
+    }
 
-      // Find the neighbor MeshBlock to send it to.
-      pnmbt = pm->tree.FindNeighbor(pmy_block->loc, ox1, ox2, ox3, pm->mesh_bcs,
-                                    pm->nrbx1, pm->nrbx2, pm->nrbx3, pm->root_level);
-      if (pnmbt == NULL) {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
-            << "cannot find the neighboring MeshBlock. " << std::endl;
-        throw std::runtime_error(msg.str().c_str());
-        continue;
-      }
+    // Find the neighbor MeshBlock to send it to.
+    pnmbt = pm->tree.FindNeighbor(pmy_block->loc, ox1, ox2, ox3, pm->mesh_bcs,
+                                  pm->nrbx1, pm->nrbx2, pm->nrbx3, pm->root_level);
+    if (pnmbt == NULL) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
+          << "cannot find the neighboring MeshBlock. " << std::endl;
+      throw std::runtime_error(msg.str().c_str());
+      continue;
+    }
 
-      if (pnmbt->flag)  // Neighbor is on the same or a courser level:
-        pnmb = pm->FindMeshBlock(pnmbt->gid);
-      else {          // Neighbor is on a finer level:
-        std::stringstream msg;
-        msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
-            << "coarse-to-fine migration not yet implemented. " << std::endl;
-        throw std::runtime_error(msg.str().c_str());
-        continue;
-      }
-      pnp = pnmb->ppar;
+    if (pnmbt->flag)  // Neighbor is on the same or a courser level:
+      pnmb = pm->FindMeshBlock(pnmbt->gid);
+    else {          // Neighbor is on a finer level:
+      std::stringstream msg;
+      msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
+          << "coarse-to-fine migration not yet implemented. " << std::endl;
+      throw std::runtime_error(msg.str().c_str());
+      continue;
+    }
+    pnp = pnmb->ppar;
 
-      // Apply boundary conditions.
-      ApplyBoundaryConditions(pm, x1, x2, x3);
+    // Apply boundary conditions.
+    ApplyBoundaryConditions(pm, x1, x2, x3);
 
-      // Convert back to Cartesian coordinates.
-      xp(k) = x1;
-      yp(k) = x2;
-      zp(k) = x3;
+    // Convert back to Cartesian coordinates.
+    xp(k) = x1;
+    yp(k) = x2;
+    zp(k) = x3;
 
-      // Check the buffer size of the target MeshBlock.
-      if (pnp->nrecv >= nrecvmax) {
-        pnp->nrecvmax *= 2;
-        pnp->irecv.ResizeLastDimension(pnp->nrecvmax);
-        pnp->rrecv.ResizeLastDimension(pnp->nrecvmax);
-      }
+    // Check the buffer size of the target MeshBlock.
+    if (pnp->nrecv >= nrecvmax) {
+      pnp->nrecvmax *= 2;
+      pnp->irecv.ResizeLastDimension(pnp->nrecvmax);
+      pnp->rrecv.ResizeLastDimension(pnp->nrecvmax);
+    }
 
-      // Copy the properties of the particle to the neighbor.
+    // Copy the properties of the particle to the neighbor.
+    for (int j = 0; j < nint; ++j)
+      pnp->irecv(j,pnp->nrecv) = intprop(j,k);
+    for (int j = 0; j < nreal; ++j)
+      pnp->rrecv(j,pnp->nrecv) = realprop(j,k);
+    ++pnp->nrecv;
+
+    // Pop the particle from the current MeshBlock.
+    if (--npar != k) {
       for (int j = 0; j < nint; ++j)
-        pnp->irecv(j,pnp->nrecv) = intprop(j,k);
+        intprop(j,k) = intprop(j,npar);
       for (int j = 0; j < nreal; ++j)
-        pnp->rrecv(j,pnp->nrecv) = realprop(j,k);
-      ++pnp->nrecv;
-
-      // Pop the particle from the current MeshBlock.
-      if (--npar != k) {
-        for (int j = 0; j < nint; ++j)
-          intprop(j,k) = intprop(j,npar);
-        for (int j = 0; j < nreal; ++j)
-          realprop(j,k) = realprop(j,npar);
-      }
+        realprop(j,k) = realprop(j,npar);
     }
   }
 }
