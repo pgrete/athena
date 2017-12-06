@@ -306,7 +306,7 @@ void Particles::SendToNeighbors()
     zp(k) = x3;
 
     // Check the buffer size of the target MeshBlock.
-    if (pnp->nrecv >= nrecvmax) {
+    if (pnp->nrecv >= pnp->nrecvmax) {
       pnp->nrecvmax *= 2;
       pnp->irecv.ResizeLastDimension(pnp->nrecvmax);
       pnp->rrecv.ResizeLastDimension(pnp->nrecvmax);
