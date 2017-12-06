@@ -54,8 +54,8 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 
   // Point to the calling MeshBlock.
   pmy_block = pmb;
-  npar = 1;
-  nparmax = 1;  // TODO: dynamically adjust npar and nparmax.
+  nparmax = pin->GetOrAddInteger("particles", "nparmax", 1);
+  npar = 0;
 
   // Allocate integer properties.
   intprop.NewAthenaArray(nint,nparmax);
