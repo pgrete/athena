@@ -289,11 +289,26 @@ void Particles::SendToNeighbors()
     if (pnmbt->flag)  // Neighbor is on the same or a courser level:
       pnmb = pm->FindMeshBlock(pnmbt->gid);
     else {          // Neighbor is on a finer level:
-      std::stringstream msg;
-      msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
-          << "coarse-to-fine migration not yet implemented. " << std::endl;
-      throw std::runtime_error(msg.str().c_str());
-      continue;
+      bool flag = true;
+      for (int i = 0; flag && i < 2; ++i)
+        for (int j = 0; flag && j < 2; ++j)
+          for (int k = 0; flag && k < 2; ++k) {
+            pnmb = pm->FindMeshBlock(pnmbt->pleaf[i][j][k]->gid);
+            flag = false;
+            if (pm->mesh_size.nx1 > 1)
+              flag = flag || x1 < pnmb->block_size.x1min || x1 > pnmb->block_size.x1max;
+            if (pm->mesh_size.nx2 > 1)
+              flag = flag || x2 < pnmb->block_size.x2min || x2 > pnmb->block_size.x2max;
+            if (pm->mesh_size.nx3 > 1)
+              flag = flag || x3 < pnmb->block_size.x3min || x3 > pnmb->block_size.x3max;
+          }
+      if (flag) {
+        std::stringstream msg;
+        msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
+            << "cannot find the neighboring MeshBlock. " << std::endl;
+        throw std::runtime_error(msg.str().c_str());
+        continue;
+      }
     }
     pnp = pnmb->ppar;
 
