@@ -20,7 +20,7 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "bvals.hpp"
 #include "../radiation/radiation.hpp"
 
@@ -36,7 +36,7 @@
 void CopyIntensity(Real *iri, Real *iro, int li, int lo, int n_ang)
 {
   // here ir is only intensity for each cell and each frequency band
-#pragma simd
+//#pragma simd
   for(int n=0; n<n_ang; ++n){
     int angi = li * n_ang + n;
     int ango = lo * n_ang + n;
@@ -51,7 +51,7 @@ void CopyIntensity(Real *iri, Real *iro, int li, int lo, int n_ang)
 //  \brief REFLECTING boundary conditions for radiation, inner x1 boundary
 
 void RadReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+           Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   
   // copy radiation variables into ghost zones,
@@ -89,7 +89,7 @@ void RadReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief REFLECTING boundary conditions for radiation, outer x1 boundary
 
 void RadReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+          Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy radiation variables into ghost zones,
   // reflect rays along angles with opposite nx
@@ -126,7 +126,7 @@ void RadReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief REFLECTING boundary conditions for x2, inner x2 boundary
 
 void RadReflectInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+           Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy radiation variables into ghost zones
   // reflect rays along angles with opposite ny
@@ -163,7 +163,7 @@ void RadReflectInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief REFLECTING boundary radiation conditions, outer x2 boundary
 
 void RadReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+           Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
 
   // copy radiation variables into ghost zones
@@ -201,7 +201,7 @@ void RadReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief REFLECTING boundary conditions for radiation, inner x3 boundary
 
 void RadReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+          Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
 
   // copy radiation variables into ghost zones
@@ -237,7 +237,7 @@ void RadReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief REFLECTING boundary conditions for radiation, outer x3 boundary
 
 void RadReflectOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+          Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy radiation variables into ghost zones
   // reflect rays along angles with opposite nz

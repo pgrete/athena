@@ -1,17 +1,16 @@
 #ifndef DEFINITIONS_HPP
 #define DEFINITIONS_HPP
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-// See LICENSE file for full public license information.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 //! \file defs.hpp.in
 //  \brief Template file for defs.hpp.  When the configure.py script is run, a new
 //  defs.hpp file will be created (overwriting the last) from this template.  This new
 //  file contains Athena++ specific cpp macros and definitions set by configure.
-//======================================================================================
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // macros which define physics and algorithms
 
 // problem generator
@@ -22,6 +21,15 @@
 
 // non-barotropic equation of state (i.e. P not simply a func of rho)? default=1 (true)
 #define NON_BAROTROPIC_EOS @NON_BAROTROPIC_EOS@
+
+// Riemann solver
+#define RIEMANN_SOLVER "@RSOLVER@"
+
+// spatial reconstruction algorithm
+#define RECONSTRUCTION_METHOD "@RECONSTRUCT@"
+
+// hydro time-integration algorithm
+#define HYDRO_TIME_INTEGRATOR "@HYDRO_INTEGRATOR@"
 
 // include magnetic fields? default=0 (false)
 #define MAGNETIC_FIELDS_ENABLED @MAGNETIC_FIELDS_ENABLED@
@@ -35,23 +43,8 @@
 // enable general relativity? default=0 (false)
 #define GENERAL_RELATIVITY @GENERAL_RELATIVITY@
 
-// enable viscosity? default=0 (false)
-#define VISCOSITY @VISCOSITY@
-
-// Riemann solver
-#define RIEMANN_SOLVER "@RSOLVER@"
-
-// spatial reconstruction algorithm
-#define RECONSTRUCTION_METHOD "@RECONSTRUCT@"
-
-// hydro time-integration algorithm
-#define HYDRO_TIME_INTEGRATOR "@HYDRO_INTEGRATOR@"
-
-// hydro time-integration algorithm
-#define COMPILED_WITH "@COMPILER_CHOICE@"
-
-// compiler options
-#define COMPILED_WITH_OPTIONS "@COMPILER_FLAGS@"
+// enable GR frame transformations? default=0 (false)
+#define FRAME_TRANSFORMATIONS @FRAME_TRANSFORMATIONS@
 
 // MPI parallelization (MPI_PARALLEL or NOT_MPI_PARALLEL)
 #define @MPI_OPTION@
@@ -62,26 +55,21 @@
 // HDF5 output (HDF5OUTPUT or NO_HDF5OUTPUT)
 #define @HDF5_OPTION@
 
-// number of internal hydro output variables
-#define NIFOV  @NUM_IFOV@
+// compiler options
+#define COMPILED_WITH "@COMPILER_CHOICE@"
+#define COMPILER_COMMAND "@COMPILER_COMMAND@"
+#define COMPILED_WITH_OPTIONS "@COMPILER_FLAGS@"
 
-// number of internal radiation output variables
-#define NRADFOV  @NUM_RADFOV@
-
-
-// number of internal radiation output variables
-#define NRADFOV 0
-
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // macros associated with numerical algorithm (rarely modified)
 
 #define NHYDRO @NHYDRO_VARIABLES@
 #define NFIELD @NFIELD_VARIABLES@
 #define NWAVE @NWAVE_VALUE@
 #define NGHOST 2
-#define NSTEP @NSTEP@
+#define MAX_NSTEP 4
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // general purpose macros (never modified)
 
 #define PI 3.1415926535897932

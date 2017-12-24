@@ -314,7 +314,6 @@ void BondiOutflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
   if (MAGNETIC_FIELDS_ENABLED) {
     for(int k=ks; k<=ke; ++k){
     for(int j=js; j<=je; ++j){
-#pragma simd
       for(int i=1; i<=NGHOST; ++i){
         if(a(IVX,k,j,ie) > 0.0)
           b.x1f(k,j,ie+i+1) = b.x1f(k,j,ie+1);
@@ -325,7 +324,6 @@ void BondiOutflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 
     for(int k=ks; k<=ke; ++k){
     for(int j=js; j<=je+1; ++j){
-#pragma simd
       for(int i=1; i<=NGHOST; ++i){
         if(a(IVX,k,j,ie) > 0.0)
           b.x2f(k,j,ie+i) = b.x2f(k,j,ie);
@@ -336,7 +334,6 @@ void BondiOutflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 
     for(int k=ks; k<=ke; ++k){
     for(int j=js; j<=je; ++j){
-#pragma simd
       for(int i=1; i<=NGHOST; ++i){
         if(a(IVX,k,j,ie) > 0.0)
            b.x3f(k,j,ie+i) = b.x3f(k,j,ie);
@@ -371,7 +368,6 @@ void BondiInflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
   if (MAGNETIC_FIELDS_ENABLED) {
     for(int k=ks; k<=ke; ++k){
     for(int j=js; j<=je; ++j){
-#pragma simd
       for(int i=1; i<=NGHOST; ++i){
         b.x1f(k,j,is-i) = b.x1f(k,j,is);
       }
@@ -379,7 +375,6 @@ void BondiInflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 
     for(int k=ks; k<=ke; ++k){
     for(int j=js; j<=je+1; ++j){
-#pragma simd
       for(int i=1; i<=NGHOST; ++i){
         b.x2f(k,j,is-i) = b.x2f(k,j,is);
       }
@@ -390,7 +385,6 @@ void BondiInflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 
     for(int k=kl; k<=ku; ++k){
     for(int j=js; j<=je; ++j){
-#pragma simd
       for(int i=1; i<=NGHOST; ++i){
         b.x3f(k,j,is-i) = b.x3f(k,j,is);
       }

@@ -260,7 +260,7 @@ void Inject_zi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
   if (MAGNETIC_FIELDS_ENABLED) {
     for(int k=1; k<=NGHOST; ++k){
     for(int j=js; j<=je; ++j){
-#pragma simd
+//#pragma simd
       for(int i=is; i<=ie+1; ++i){
         b.x1f(ks-k,j,i) = b.x1f(ks-k+1,j,i);
       }
@@ -268,7 +268,7 @@ void Inject_zi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
 
     for(int k=1; k<=NGHOST; ++k){
     for(int j=js; j<=je+1; ++j){
-#pragma simd
+//#pragma simd
       for(int i=is; i<=ie; ++i){
         b.x2f(ks-k,j,i) = b.x2f(ks-k+1,j,i);
       }
@@ -276,7 +276,7 @@ void Inject_zi(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
 
     for(int k=1; k<=NGHOST; ++k){
     for(int j=js; j<=je; ++j){
-#pragma simd
+//#pragma simd
       for(int i=is; i<=ie; ++i){
         b.x3f(ks-k,j,i) = inb0;
       }
@@ -316,7 +316,7 @@ void Inject_zo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
   if (MAGNETIC_FIELDS_ENABLED) {
     for(int k=1; k<=NGHOST; ++k){
     for(int j=js; j<=je; ++j){
-#pragma simd
+//#pragma simd
       for(int i=is; i<=ie+1; ++i){
         b.x1f(ke+k,j,i) = 0.0 * b.x1f(ke+k-1,j,i);
       }
@@ -324,7 +324,7 @@ void Inject_zo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
 
     for(int k=1; k<=NGHOST; ++k){
     for(int j=js; j<=je+1; ++j){
-#pragma simd
+//#pragma simd
       for(int i=is; i<=ie; ++i){
         b.x2f(ke+k,j,i) = 0.0 * b.x2f(ke+k-1,j,i);
       }
@@ -332,7 +332,7 @@ void Inject_zo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
 
     for(int k=1; k<=NGHOST; ++k){
     for(int j=js; j<=je; ++j){
-#pragma simd
+//#pragma simd
       for(int i=is; i<=ie; ++i){
         b.x3f(ke+k+1,j,i) = inb0;
       }
@@ -398,7 +398,7 @@ void Inject_xo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
   for (int n=0; n<(NHYDRO); ++n) {
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
-#pragma simd
+//#pragma simd
       for (int i=1; i<=(NGHOST); ++i) {
         a(n,k,j,ie+i) = a(n,k,j,ie);
         if(n==IVX) a(n,k,j,ie+i) = std::max(a(n,k,j,ie+i),0.0);
@@ -411,7 +411,7 @@ void Inject_xo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
   if (MAGNETIC_FIELDS_ENABLED) {
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
-#pragma simd
+//#pragma simd
       for (int i=1; i<=(NGHOST); ++i) {
         b.x1f(k,j,(ie+i+1)) = b.x1f(k,j,(ie+1));
       }
@@ -419,7 +419,7 @@ void Inject_xo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
 
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je+1; ++j) {
-#pragma simd
+//#pragma simd
       for (int i=1; i<=(NGHOST); ++i) {
         b.x2f(k,j,(ie+i)) = b.x2f(k,j,ie);
       }
@@ -427,7 +427,7 @@ void Inject_xo(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
 
     for (int k=ks; k<=ke+1; ++k) {
     for (int j=js; j<=je; ++j) {
-#pragma simd
+//#pragma simd
       for (int i=1; i<=(NGHOST); ++i) {
         b.x3f(k,j,(ie+i)) = b.x3f(k,j,ie);
       }

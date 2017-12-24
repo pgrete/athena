@@ -1,30 +1,20 @@
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-//
-// This program is free software: you can redistribute and/or modify it under the terms
-// of the GNU General Public License (GPL) as published by the Free Software Foundation,
-// either version 3 of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-// PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-//
-// You should have received a copy of GNU GPL in the file LICENSE included in the code
-// distribution.  If not see <http://www.gnu.org/licenses/>.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 //! \file outputs.cpp
 //  \brief implements functions for Athena++ outputs
 //
 // The number and types of outputs are all controlled by the number and values of
-// parameters specified in <outputN> blocks in the input file.  Each output block must
-// be labelled by a unique integer "N".  Following the convention of the parser
-// implemented in the ParameterInput class, a second output block with the same integer
-// "N" of an earlier block will silently overwrite the values read by the first block.
-// The numbering of the output blocks does not need to be consecutive, and blocks may
-// appear in any order in the input file.  Moreover, unlike the C version of Athena, the
-// total number of <outputN> blocks does not need to be specified -- in Athena++ a new
-// output type will be created for each and every <outputN> block in the input file.
+// parameters specified in <outputN> blocks in the input file.  Each output block must be
+// labelled by a unique integer "N".  Following the convention of the parser implemented
+// in the ParameterInput class, a second output block with the same integer "N" of an
+// earlier block will silently overwrite the values read by the first block. The numbering
+// of the output blocks does not need to be consecutive, and blocks may appear in any
+// order in the input file.  Moreover, unlike the C version of Athena, the total number of
+// <outputN> blocks does not need to be specified -- in Athena++ a new output type will be
+// created for each and every <outputN> block in the input file.
 //
 // Required parameters that must be specified in an <outputN> block are:
 //   - variable     = cons,prim,D,d,E,e,m,v
@@ -37,7 +27,7 @@
 //   - id           = any string
 //   - file_number  = any integer with up to 4 digits
 //   - x[123]_slice = specifies data should be a slice at x[123] position
-//   - x[123]_sum   = set to 1 to sum data along specified direction
+//   - x[123]_sum   = set to "true" to sum data along specified direction
 //   
 // EXAMPLE of an <outputN> block for a VTK dump:
 //   <output3>
@@ -55,7 +45,7 @@
 // To implement a new output type, write a new derived OutputType class, and construct
 // an object of this class in the Outputs constructor at the location indicated by the
 // text 'ADD NEW OUTPUT TYPES HERE'.
-//======================================================================================
+//========================================================================================
 
 // C/C++ headers
 #include <sstream>
@@ -70,59 +60,24 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../parameter_input.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
 #include "../radiation/radiation.hpp"
 #include "../coordinates/coordinates.hpp" // Coordinates
-
-// this class header
 #include "outputs.hpp"
 
-//--------------------------------------------------------------------------------------
-// OutputVariable constructor
-
-OutputVariable::OutputVariable()
-{
-  pnext = NULL;
-  pprev = NULL;
-}
-
-// destructor - iterates through linked list of OutputVariables and deletes nodes
-
-OutputVariable::~OutputVariable()
-{
-  data.DeleteAthenaArray();
-}
-
-//--------------------------------------------------------------------------------------
-// OutputData constructor
-
-OutputData::OutputData()
-{
-  pfirst_var = NULL;
-  plast_var = NULL;
-}
-
-// destructor - iterates through linked list of OutputVariables and deletes nodes
-
-OutputData::~OutputData()
-{
-  OutputVariable *pvar = pfirst_var;
-  while(pvar != NULL) {
-    OutputVariable *pvar_old = pvar;
-    pvar = pvar->pnext;
-    delete pvar_old;
-  }
-}
-
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // OutputType constructor
 
 OutputType::OutputType(OutputParameters oparams)
 {
   output_params = oparams;
-  pnext_type = NULL; // Terminate linked list with NULL ptr
+  pnext_type = NULL;   // Terminate this node in linked list with NULL ptr
+
+  num_vars_ = 0;
+  pfirst_data_ = NULL; // Initialize start of linked list of OutputData's to NULL
+  plast_data_ = NULL;  // Initialize end   of linked list of OutputData's to NULL
 }
 
 // destructor
@@ -131,7 +86,7 @@ OutputType::~OutputType()
 {
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 // Outputs constructor
 
 Outputs::Outputs(Mesh *pm, ParameterInput *pin)
@@ -141,6 +96,7 @@ Outputs::Outputs(Mesh *pm, ParameterInput *pin)
   InputBlock *pib = pin->pfirst_block;
   OutputType *pnew_type;
   OutputType *plast = pfirst_type_;
+  int num_hst_outputs=0, num_rst_outputs=0; // number of history and restart outputs
 
   // loop over input block names.  Find those that start with "output", read parameters,
   // and construct linked list of OutputTypes.
@@ -149,7 +105,7 @@ Outputs::Outputs(Mesh *pm, ParameterInput *pin)
       OutputParameters op;  // define temporary OutputParameters struct
 
       // extract integer number of output block.  Save name and number 
-      std::string outn = pib->block_name.substr(6); // 6 because starts at 0!
+      std::string outn = pib->block_name.substr(6); // 6 because counting starts at 0!
       op.block_number = atoi(outn.c_str());
       op.block_name.assign(pib->block_name);
 
@@ -172,86 +128,72 @@ Outputs::Outputs(Mesh *pm, ParameterInput *pin)
           Real x1 = pin->GetReal(op.block_name,"x1_slice");
           if (x1 >= pm->mesh_size.x1min && x1 < pm->mesh_size.x1max) {
             op.x1_slice = x1;
-            op.islice = 1;
+            op.output_slicex1 = true;
           } else {
             msg << "### FATAL ERROR in Outputs constructor" << std::endl
                 << "Slice at x1=" << x1 << " in output block '" << op.block_name
                 << "' is out of range of Mesh" << std::endl;
             throw std::runtime_error(msg.str().c_str());
           }
-        } else {
-          op.islice = 0;
         }
 
         if (pin->DoesParameterExist(op.block_name,"x2_slice")) {
           Real x2 = pin->GetReal(op.block_name,"x2_slice");
           if (x2 >= pm->mesh_size.x2min && x2 < pm->mesh_size.x2max) {
             op.x2_slice = x2;
-            op.jslice = 1;
+            op.output_slicex2 = true;
           } else {
             msg << "### FATAL ERROR in Outputs constructor" << std::endl
                 << "Slice at x2=" << x2 << " in output block '" << op.block_name
                 << "' is out of range of Mesh" << std::endl;
             throw std::runtime_error(msg.str().c_str());
           }
-        } else {
-          op.jslice = 0;
         }
 
         if (pin->DoesParameterExist(op.block_name,"x3_slice")) {
           Real x3 = pin->GetReal(op.block_name,"x3_slice");
           if (x3 >= pm->mesh_size.x3min && x3 < pm->mesh_size.x3max) {
             op.x3_slice = x3;
-            op.kslice = 1;
+            op.output_slicex3 = true;
           } else {
             msg << "### FATAL ERROR in Outputs constructor" << std::endl
                 << "Slice at x3=" << x3 << " in output block '" << op.block_name
                 << "' is out of range of Mesh" << std::endl;
             throw std::runtime_error(msg.str().c_str());
           }
-        } else {
-          op.kslice = 0;
         }
 
         // read sum options.  Check for conflicts with slicing.
-        if (pin->DoesParameterExist(op.block_name,"x1_sum")) {
-          if (pin->DoesParameterExist(op.block_name,"x1_slice")) {
-            msg << "### FATAL ERROR in Outputs constructor" << std::endl 
-                << "Cannot request both slice and sum along x1-direction"
-                << " in output block '" << op.block_name << "'" << std::endl;
-            throw std::runtime_error(msg.str().c_str());
-          } else {
-            op.isum = pin->GetInteger(op.block_name,"x1_sum");;
-          }
-        } else {
-          op.isum = 0;
+        op.output_sumx1 = pin->GetOrAddBoolean(op.block_name,"x1_sum",false);
+        if ((op.output_slicex1) && (op.output_sumx1)) {
+          msg << "### FATAL ERROR in Outputs constructor" << std::endl 
+              << "Cannot request both slice and sum along x1-direction"
+              << " in output block '" << op.block_name << "'" << std::endl;
+          throw std::runtime_error(msg.str().c_str());
+        }
+        op.output_sumx2 = pin->GetOrAddBoolean(op.block_name,"x2_sum",false);
+        if ((op.output_slicex2) && (op.output_sumx2)) {
+          msg << "### FATAL ERROR in Outputs constructor" << std::endl
+              << "Cannot request both slice and sum along x2-direction"
+              << " in output block '" << op.block_name << "'" << std::endl;
+          throw std::runtime_error(msg.str().c_str());
+        }
+        op.output_sumx3 = pin->GetOrAddBoolean(op.block_name,"x3_sum",false);
+        if ((op.output_slicex3) && (op.output_sumx3)) {
+          msg << "### FATAL ERROR in Outputs constructor" << std::endl
+              << "Cannot request both slice and sum along x3-direction"
+              << " in output block '" << op.block_name << "'" << std::endl;
+          throw std::runtime_error(msg.str().c_str());
         }
 
-        if (pin->DoesParameterExist(op.block_name,"x2_sum")) {
-          if (pin->DoesParameterExist(op.block_name,"x2_slice")) {
-            msg << "### FATAL ERROR in Outputs constructor" << std::endl
-                << "Cannot request both slice and sum along x2-direction"
-                << " in output block '" << op.block_name << "'" << std::endl;
-            throw std::runtime_error(msg.str().c_str());
-          } else {
-            op.jsum = pin->GetInteger(op.block_name,"x2_sum");;
-          }
-        } else {
-          op.jsum = 0;
-        }
+        // read ghost cell option
+        op.include_ghost_zones=pin->GetOrAddBoolean(op.block_name,"ghost_zones",false);
 
-        if (pin->DoesParameterExist(op.block_name,"x3_sum")) {
-          if (pin->DoesParameterExist(op.block_name,"x3_slice")) {
-            msg << "### FATAL ERROR in Outputs constructor" << std::endl
-                << "Cannot request both slice and sum along x3-direction"
-                << " in output block '" << op.block_name << "'" << std::endl;
-            throw std::runtime_error(msg.str().c_str());
-          } else {
-            op.ksum = pin->GetInteger(op.block_name,"x3_sum");;
-          }
-        } else {
-          op.ksum = 0;
-        }
+        // read ghost cell option
+        if(COORDINATE_SYSTEM == "cylindrical" || COORDINATE_SYSTEM == "spherical_polar")
+          op.cartesian_vector=pin->GetOrAddBoolean(op.block_name,"cartesian_vector",false);
+        else 
+          op.cartesian_vector=false;
 
         // set output variable and optional data format string used in formatted writes
         if (op.file_type.compare("hst") != 0 && op.file_type.compare("rst") != 0) {
@@ -261,22 +203,27 @@ Outputs::Outputs(Mesh *pm, ParameterInput *pin)
         op.data_format.insert(0," "); // prepend with blank to separate columns
 
         // Construct new OutputType according to file format
-        // ADD NEW OUTPUT TYPES HERE
-        if (op.file_type.compare("rst") == 0) {
-          pnew_type = new RestartOutput(op);
+        // NEW_OUTPUT_TYPES: Add block to construct new types here
+        if (op.file_type.compare("hst") == 0) {
+          pnew_type = new HistoryOutput(op);
+          num_hst_outputs++;
         } else if (op.file_type.compare("tab") == 0) {
           pnew_type = new FormattedTableOutput(op);
-        } else if (op.file_type.compare("hst") == 0) {
-          pnew_type = new HistoryOutput(op);
         } else if (op.file_type.compare("vtk") == 0) {
           pnew_type = new VTKOutput(op);
-        }
+        } else if (op.file_type.compare("rst") == 0) {
+          pnew_type = new RestartOutput(op);
+          num_rst_outputs++;
+        } else if (op.file_type.compare("ath5")==0 || op.file_type.compare("hdf5")==0) {
 #ifdef HDF5OUTPUT
-        else if (op.file_type.compare("ath5") == 0 || op.file_type.compare("hdf5") == 0) {
           pnew_type = new ATHDF5Output(op);
-        }
+#else
+          msg << "### FATAL ERROR in Outputs constructor" << std::endl
+              << "Executable not configured for HDF5 outputs, but HDF5 file format "
+              << "is requested in output block '" << op.block_name << "'" << std::endl;
+          throw std::runtime_error(msg.str().c_str());
 #endif
-        else {
+        } else {
           msg << "### FATAL ERROR in Outputs constructor" << std::endl
               << "Unrecognized file format = '" << op.file_type 
               << "' in output block '" << op.block_name << "'" << std::endl;
@@ -295,7 +242,16 @@ Outputs::Outputs(Mesh *pm, ParameterInput *pin)
     pib = pib->pnext;  // move to next input block name
   }
 
-  // Move the restarting block to the end of the list
+  // check there were no more than one history or restart files requested
+  if (num_hst_outputs > 1 || num_rst_outputs > 1) {
+    msg << "### FATAL ERROR in Outputs constructor" << std::endl
+        << "More than one history or restart output block detected in input file"
+        << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+
+  // Move restarts to the end of the OutputType list, so file counters for other 
+  // output types are up-to-date in restart file
   int pos=0, found=0;
   OutputType *pot=pfirst_type_, *prst;
   while(pot!=NULL) {
@@ -339,37 +295,533 @@ Outputs::~Outputs()
   }
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void OutputData::AppendNode()
-//  \brief
+//----------------------------------------------------------------------------------------
+//! \fn void OutputType::LoadOutputData(MeshBlock *pmb)
+//  \brief Create linked list of OutputData's containing requested variables
 
-void OutputData::AppendNode(OutputVariable *pnew_var)
+void OutputType::LoadOutputData(MeshBlock *pmb)
 {
-  if (pfirst_var == NULL)
-    pfirst_var = pnew_var;
-  else {
-    pnew_var->pprev = plast_var;
-    plast_var->pnext = pnew_var;
+  Hydro *phyd = pmb->phydro;
+  Field *pfld = pmb->pfield;
+  Radiation *prad = pmb->prad;
+  num_vars_ = 0;
+  OutputData *pod;
+
+  // (lab-frame) density
+  if (output_params.variable.compare("D") == 0 || 
+      output_params.variable.compare("cons") == 0) {
+    pod = new OutputData;
+    pod->type = "SCALARS";
+    pod->name = "dens";
+    pod->data.InitWithShallowSlice(phyd->u,4,IDN,1);
+    AppendOutputDataNode(pod);
+    num_vars_++;
   }
-  plast_var = pnew_var;
+
+  // (rest-frame) density
+  if (output_params.variable.compare("d") == 0 || 
+      output_params.variable.compare("prim") == 0) {
+    pod = new OutputData;
+    pod->type = "SCALARS";
+    pod->name = "rho";
+    pod->data.InitWithShallowSlice(phyd->w,4,IDN,1);
+    AppendOutputDataNode(pod);
+    num_vars_++;
+  }
+
+  // total energy
+  if (NON_BAROTROPIC_EOS) {
+    if (output_params.variable.compare("E") == 0 || 
+        output_params.variable.compare("cons") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Etot";
+      pod->data.InitWithShallowSlice(phyd->u,4,IEN,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+  }
+
+  // pressure
+  if (NON_BAROTROPIC_EOS) {
+    if (output_params.variable.compare("p") == 0 || 
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "press";
+      pod->data.InitWithShallowSlice(phyd->w,4,IPR,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+  }
+
+  // momentum vector
+  if (output_params.variable.compare("m") == 0 || 
+      output_params.variable.compare("cons") == 0) {
+    pod = new OutputData;
+    pod->type = "VECTORS";
+    pod->name = "mom";
+    pod->data.InitWithShallowSlice(phyd->u,4,IM1,3);
+    AppendOutputDataNode(pod);
+    num_vars_+=3;
+    if(output_params.cartesian_vector) {
+      AthenaArray<Real> src;
+      src.InitWithShallowSlice(phyd->u,4,IM1,3);
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "mom_xyz";
+      pod->data.NewAthenaArray(3,phyd->u.GetDim3(),phyd->u.GetDim2(),phyd->u.GetDim1());
+      CalculateCartesianVector(src, pod->data, pmb->pcoord);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+    }
+  }
+
+  // each component of momentum
+  if (output_params.variable.compare("m1") == 0) {
+    pod = new OutputData;
+    pod->type = "SCALARS";
+    pod->name = "mom1";
+    pod->data.InitWithShallowSlice(phyd->u,4,IM1,1);
+    AppendOutputDataNode(pod);
+    num_vars_++;
+  }
+  if (output_params.variable.compare("m2") == 0) {
+    pod = new OutputData;
+    pod->type = "SCALARS";
+    pod->name = "mom2";
+    pod->data.InitWithShallowSlice(phyd->u,4,IM2,1);
+    AppendOutputDataNode(pod);
+    num_vars_++;
+  }
+  if (output_params.variable.compare("m3") == 0) {
+    pod = new OutputData;
+    pod->type = "SCALARS";
+    pod->name = "mom3";
+    pod->data.InitWithShallowSlice(phyd->u,4,IM3,1);
+    AppendOutputDataNode(pod);
+    num_vars_++;
+  }
+
+  // velocity vector
+  if (output_params.variable.compare("v") == 0 || 
+      output_params.variable.compare("prim") == 0) {
+    pod = new OutputData;
+    pod->type = "VECTORS";
+    pod->name = "vel";
+    pod->data.InitWithShallowSlice(phyd->w,4,IVX,3);
+    AppendOutputDataNode(pod);
+    num_vars_+=3;
+    if(output_params.cartesian_vector) {
+      AthenaArray<Real> src;
+      src.InitWithShallowSlice(phyd->w,4,IVX,3);
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "vel_xyz";
+      pod->data.NewAthenaArray(3,phyd->w.GetDim3(),phyd->w.GetDim2(),phyd->w.GetDim1());
+      CalculateCartesianVector(src, pod->data, pmb->pcoord);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+    }
+  }
+
+  // each component of velocity
+  if (output_params.variable.compare("vx") == 0 || 
+      output_params.variable.compare("v1") == 0) {
+    pod = new OutputData;
+    pod->type = "SCALARS";
+    pod->name = "vel1";
+    pod->data.InitWithShallowSlice(phyd->w,4,IVX,1);
+    AppendOutputDataNode(pod);
+    num_vars_++;
+  }
+  if (output_params.variable.compare("vy") == 0 || 
+      output_params.variable.compare("v2") == 0) {
+    pod = new OutputData;
+    pod->type = "SCALARS";
+    pod->name = "vel2";
+    pod->data.InitWithShallowSlice(phyd->w,4,IVY,1);
+    AppendOutputDataNode(pod);
+    num_vars_++;
+  }
+  if (output_params.variable.compare("vz") == 0 || 
+      output_params.variable.compare("v3") == 0) {
+    pod = new OutputData;
+    pod->type = "SCALARS";
+    pod->name = "vel3";
+    pod->data.InitWithShallowSlice(phyd->w,4,IVZ,1);
+    AppendOutputDataNode(pod);
+    num_vars_++;
+  }
+
+  if (MAGNETIC_FIELDS_ENABLED) {
+    // vector of cell-centered magnetic field
+    if (output_params.variable.compare("bcc") == 0 || 
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Bcc";
+      pod->data.InitWithShallowSlice(pfld->bcc,4,IB1,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+      if(output_params.cartesian_vector) {
+        AthenaArray<Real> src;
+        src.InitWithShallowSlice(pfld->bcc,4,IB1,3);
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "Bcc_xyz";
+        pod->data.NewAthenaArray(3,pfld->bcc.GetDim3(),pfld->bcc.GetDim2(),
+                                                       pfld->bcc.GetDim1());
+        CalculateCartesianVector(src, pod->data, pmb->pcoord);
+        AppendOutputDataNode(pod);
+        num_vars_+=3;
+      }
+    }
+
+    // each component of cell-centered magnetic field
+    if (output_params.variable.compare("bcc1") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Bcc1";
+      pod->data.InitWithShallowSlice(pfld->bcc,4,IB1,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+    if (output_params.variable.compare("bcc2") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Bcc2";
+      pod->data.InitWithShallowSlice(pfld->bcc,4,IB2,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+    if (output_params.variable.compare("bcc3") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Bcc3";
+      pod->data.InitWithShallowSlice(pfld->bcc,4,IB3,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+
+    // each component of face-centered magnetic field
+    if (output_params.variable.compare("b1") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "B1";
+      pod->data.InitWithShallowSlice(pfld->b.x1f,4,0,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+    if (output_params.variable.compare("b2") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "B2";
+      pod->data.InitWithShallowSlice(pfld->b.x2f,4,0,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+    if (output_params.variable.compare("b3") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "B3";
+      pod->data.InitWithShallowSlice(pfld->b.x3f,4,0,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+
+  } // endif (MAGNETIC_FIELDS_ENABLED)
+
+  if(RADIATION_ENABLED){
+    // (lab-frame) radiation energy density
+    if (output_params.variable.compare("Er") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Er";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IER,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+
+
+
+    // lab fram radiation flux vector
+    if (output_params.variable.compare("Fr") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Fr";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IFR1,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+      if(output_params.cartesian_vector) {
+        AthenaArray<Real> src;
+        src.InitWithShallowSlice(prad->rad_mom,4,IFR1,3);
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "Fr_xyz";
+        pod->data.NewAthenaArray(3,prad->rad_mom.GetDim3(),prad->rad_mom.GetDim2(),
+                                    prad->rad_mom.GetDim1());
+        CalculateCartesianVector(src, pod->data, pmb->pcoord);
+        AppendOutputDataNode(pod);
+        num_vars_+=3;
+      }
+    }
+
+
+  // each component of radiation flux
+    if (output_params.variable.compare("Frx") == 0 || 
+        output_params.variable.compare("Fr1") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr1";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IFR1,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }   
+
+    if (output_params.variable.compare("Fry") == 0 || 
+        output_params.variable.compare("Fr2") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr2";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IFR2,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    } 
+
+    if (output_params.variable.compare("Frz") == 0 || 
+        output_params.variable.compare("Fr3") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr3";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IFR3,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+
+    // lab frame radiation pressure
+    if (output_params.variable.compare("Pr") == 0 ||
+          output_params.variable.compare("prim") == 0 ||
+          output_params.variable.compare("cons") == 0) {
+        pod = new OutputData;
+        pod->type = "TENSORS";
+        pod->name = "Pr";
+        pod->data.InitWithShallowSlice(prad->rad_mom,4,IPR11,9);
+        AppendOutputDataNode(pod);
+        num_vars_ += 9;
+      }
+
+
+
+    // (comoving-frame) radiation energy density
+    if (output_params.variable.compare("Er0") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Er0";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IER,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+      
+
+
+    // comoving frame fram radiation flux vector
+    if (output_params.variable.compare("Fr0") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Fr0";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IFR1,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+      if(output_params.cartesian_vector) {
+        AthenaArray<Real> src;
+        src.InitWithShallowSlice(prad->rad_mom_cm,4,IFR1,3);
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "Fr0_xyz";
+        pod->data.NewAthenaArray(3,prad->rad_mom_cm.GetDim3(),prad->rad_mom_cm.GetDim2(),
+                                    prad->rad_mom_cm.GetDim1());
+        CalculateCartesianVector(src, pod->data, pmb->pcoord);
+        AppendOutputDataNode(pod);
+        num_vars_+=3;
+      }
+    }
+
+    if (output_params.variable.compare("Fr0x") == 0 || 
+        output_params.variable.compare("Fr01") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr01";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IFR1,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }   
+
+    if (output_params.variable.compare("Fr0y") == 0 || 
+        output_params.variable.compare("Fr02") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr02";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IFR2,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    } 
+
+    if (output_params.variable.compare("Fr0z") == 0 || 
+        output_params.variable.compare("Fr03") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr03";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IFR3,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }  
+
+
+  
+    if (output_params.variable.compare("Sigma_s") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Sigma_s";
+      pod->data.InitWithShallowSlice(prad->grey_sigma,4,OPAS,1);
+      AppendOutputDataNode(pod);
+      num_vars_ += 1;
+    }
+
+    if (output_params.variable.compare("Sigma_a") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Sigma_a";
+      pod->data.InitWithShallowSlice(prad->grey_sigma,4,OPAA,1);
+      AppendOutputDataNode(pod);      
+      num_vars_ += 1;
+    }
+    
+    if (output_params.variable.compare("Sigma_p") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Sigma_p";
+      pod->data.InitWithShallowSlice(prad->grey_sigma,4,OPAP,1);
+      AppendOutputDataNode(pod); 
+      num_vars_ += 1;
+    }
+
+    // output selected specific intensity
+    if(prad->ir_output > 0){
+      for (int n = 0; n < prad->ir_output; ++n) {
+        pod = new OutputData;
+        pod->type = "SCALARS";
+
+        char vn[16];
+        sprintf(vn, "ir_%d", prad->ir_index(n));
+        pod->name = vn;
+        pod->data.InitWithShallowSlice(prad->dump_ir,4,n,1);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+      }
+
+    }
+
+  }// End (RADIATION_ENABLED)
+
+  if (output_params.variable.compare(0, 3, "uov") == 0
+   || output_params.variable.compare(0, 12, "user_out_var") == 0) {
+    int iv, ns=0, ne=pmb->nuser_out_var-1;
+    if(sscanf(output_params.variable.c_str(), "uov%d", &iv)>0) {
+      if(iv>=0 && iv<pmb->nuser_out_var)
+        ns=iv, ne=iv;
+    }
+    else if(sscanf(output_params.variable.c_str(), "user_out_var%d", &iv)>0) {
+      if(iv>=0 && iv<pmb->nuser_out_var)
+        ns=iv, ne=iv;
+    }
+    for (int n = ns; n <= ne; ++n) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      if(pmb->user_out_var_names_[n].length()!=0)
+        pod->name=pmb->user_out_var_names_[n];
+      else {
+        char vn[16];
+        sprintf(vn, "user_out_var%d", n);
+        pod->name = vn;
+      }
+      pod->data.InitWithShallowSlice(pmb->user_out_var,4,n,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+  }
+
+  for (int n = 0; n < pmb->nuser_out_var; ++n) {
+    if(pmb->user_out_var_names_[n].length()!=0) {
+      if(output_params.variable.compare(pmb->user_out_var_names_[n]) == 0) {
+        pod = new OutputData;
+        pod->type = "SCALARS";
+        pod->name=pmb->user_out_var_names_[n];
+        pod->data.InitWithShallowSlice(pmb->user_out_var,4,n,1);
+        AppendOutputDataNode(pod);
+        num_vars_++;
+      }
+    }
+  }
+
+  // throw an error if output variable name not recognized
+  if (num_vars_==0) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [OutputType::LoadOutputData]" << std::endl
+        << "Output variable '" << output_params.variable << "' not implemented"
+        << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+  }
+
+  return;
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void OutputData::ReplaceNode()
+//----------------------------------------------------------------------------------------
+//! \fn void OutputData::AppendOutputDataNode(OutputData *pod)
 //  \brief
 
-void OutputData::ReplaceNode(OutputVariable *pold, OutputVariable *pnew) 
+void OutputType::AppendOutputDataNode(OutputData *pnew_data)
 {
-  if (pold == pfirst_var) {
-    pfirst_var = pnew;
+  if (pfirst_data_ == NULL) {
+    pfirst_data_ = pnew_data;
+  } else {
+    pnew_data->pprev = plast_data_;
+    plast_data_->pnext = pnew_data;
+  }
+  plast_data_ = pnew_data;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void OutputData::ReplaceOutputDataNode()
+//  \brief
+
+void OutputType::ReplaceOutputDataNode(OutputData *pold, OutputData *pnew)
+{
+  if (pold == pfirst_data_) {
+    pfirst_data_ = pnew;
     if (pold->pnext != NULL) {    // there is another node in the list 
       pnew->pnext = pold->pnext;
       pnew->pnext->pprev = pnew;
     } else {                      // there is only one node in the list
-      plast_var = pnew;
+      plast_data_ = pnew;
     }
-  } else if (pold == plast_var) {
-    plast_var = pnew;
+  } else if (pold == plast_data_) {
+    plast_data_ = pnew;
     pnew->pprev = pold->pprev;
     pnew->pprev->pnext = pnew;
   } else {
@@ -381,485 +833,23 @@ void OutputData::ReplaceNode(OutputVariable *pold, OutputVariable *pnew)
   delete pold;
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void OutputType::LoadOutputData(OutputData *pod)
-//  \brief initializes output data in OutputData container
-
-void OutputType::LoadOutputData(OutputData *pod, MeshBlock *pmb)
-{
-  Hydro *phyd = pmb->phydro;
-  Field *pfld = pmb->pfield;
-  std::stringstream str;
-
-// Create OutputData header
-
-  str << "# Athena++ data at time=" << pmb->pmy_mesh->time
-      << "  cycle=" << pmb->pmy_mesh->ncycle 
-      << "  variables=" << output_params.variable << std::endl;
-  pod->data_header.descriptor.append(str.str());
-  pod->data_header.il = pmb->is;
-  pod->data_header.iu = pmb->ie;
-  pod->data_header.jl = pmb->js;
-  pod->data_header.ju = pmb->je;
-  pod->data_header.kl = pmb->ks;
-  pod->data_header.ku = pmb->ke;
-  pod->data_header.ndata = (pmb->ie - pmb->is + 1)*(pmb->je - pmb->js + 1)
-                          *(pmb->ke - pmb->ks + 1);
-
-// Create linked list of OutputVariables containing requested data
-
-  OutputVariable *pov;
-  var_added = 0;
-  if (output_params.variable.compare("D") == 0 || 
-      output_params.variable.compare("cons") == 0) {
-    pov = new OutputVariable; 
-    pov->type = "SCALARS";
-    pov->name = "dens";
-    pov->data.InitWithShallowSlice(phyd->u,4,IDN,1);
-    pod->AppendNode(pov); // (lab-frame) density
-    var_added++;
-  }
-
-  if (output_params.variable.compare("d") == 0 || 
-      output_params.variable.compare("prim") == 0) {
-    pov = new OutputVariable; 
-    pov->type = "SCALARS";
-    pov->name = "rho";
-    pov->data.InitWithShallowSlice(phyd->w,4,IDN,1);
-    pod->AppendNode(pov); // (rest-frame) density
-    var_added++;
-  }
-
-  if (NON_BAROTROPIC_EOS) {
-    if (output_params.variable.compare("E") == 0 || 
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable; 
-      pov->type = "SCALARS";
-      pov->name = "Etot";
-      pov->data.InitWithShallowSlice(phyd->u,4,IEN,1);
-      pod->AppendNode(pov); // total energy
-      var_added++;
-    }
-  }
-
-  if (NON_BAROTROPIC_EOS) {
-    if (output_params.variable.compare("p") == 0 || 
-        output_params.variable.compare("prim") == 0) {
-      pov = new OutputVariable; 
-      pov->type = "SCALARS";
-      pov->name = "press";
-      pov->data.InitWithShallowSlice(phyd->w,4,IEN,1);
-      pod->AppendNode(pov); // pressure
-      var_added++;
-    }
-  }
-
-  if (output_params.variable.compare("m") == 0 || 
-      output_params.variable.compare("cons") == 0) {
-    pov = new OutputVariable; 
-    pov->type = "VECTORS";
-    pov->name = "mom";
-    pov->data.InitWithShallowSlice(phyd->u,4,IM1,3);
-    pod->AppendNode(pov); // momentum vector
-    var_added+=3;
-  }
-
-  if (output_params.variable.compare("v") == 0 || 
-      output_params.variable.compare("prim") == 0) {
-    pov = new OutputVariable; 
-    pov->type = "VECTORS";
-    pov->name = "vel";
-    pov->data.InitWithShallowSlice(phyd->w,4,IVX,3);
-    pod->AppendNode(pov); // velocity vector
-    var_added+=3;
-  }
-
-  if (MAGNETIC_FIELDS_ENABLED) {
-    if (output_params.variable.compare("b") == 0 || 
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable; 
-      pov->type = "VECTORS";
-      pov->name = "cc-B";
-      pov->data.InitWithShallowSlice(pfld->bcc,4,IB1,3);
-      pod->AppendNode(pov); // magnetic field vector
-      var_added+=3;
-    }
-  }
-  // add radiation varables, default only output Er[0], Fr[3] and Pr[9]
-  // specific intensity is added separately
-  if(RADIATION_ENABLED){
-    if (output_params.variable.compare("Er") == 0 ||
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable;
-      pov->type = "SCALARS";
-      pov->name = "Er";
-      pov->data.InitWithShallowSlice(pmb->prad->rad_mom,4,0,1);
-      pod->AppendNode(pov); // radiation energy density
-      var_added += 1;
-    }
-    
-    if (output_params.variable.compare("Er0") == 0 ||
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable;
-      pov->type = "SCALARS";
-      pov->name = "Er0";
-      pov->data.InitWithShallowSlice(pmb->prad->rad_mom_cm,4,0,1);
-      pod->AppendNode(pov); // co-moving frame radiation energy density
-      var_added += 1;
-    }
-    
-    
-    if (output_params.variable.compare("Fr") == 0 ||
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable;
-      pov->type = "VECTORS";
-      pov->name = "Fr";
-      pov->data.InitWithShallowSlice(pmb->prad->rad_mom,4,1,3);
-      pod->AppendNode(pov); // radiation flux
-      var_added += 1;
-    }
- 
-    if (output_params.variable.compare("Fr0") == 0 ||
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable;
-      pov->type = "VECTORS";
-      pov->name = "Fr0";
-      pov->data.InitWithShallowSlice(pmb->prad->rad_mom_cm,4,1,3);
-      pod->AppendNode(pov); //co-moving radiation flux
-      var_added += 1;
-    }
-
-    
-    if (output_params.variable.compare("Pr") == 0 ||
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable;
-      pov->type = "TENSORS";
-      pov->name = "Pr";
-      pov->data.InitWithShallowSlice(pmb->prad->rad_mom,4,4,9);
-      pod->AppendNode(pov); // magnetic field vector
-      var_added += 1;
-    }
-    
-  
-    if (output_params.variable.compare("Sigma_s") == 0 ||
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable;
-      pov->type = "SCALARS";
-      pov->name = "Sigma_s";
-      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma,4,0,1);
-      pod->AppendNode(pov); // scattering opacity
-      var_added += 1;
-    }
-
-    if (output_params.variable.compare("Sigma_a") == 0 ||
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable;
-      pov->type = "SCALARS";
-      pov->name = "Sigma_a";
-      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma,4,1,1);
-      pod->AppendNode(pov); // absorption opacity
-      var_added += 1;
-    }
-    
-    if (output_params.variable.compare("Sigma_p") == 0 ||
-        output_params.variable.compare("prim") == 0 ||
-        output_params.variable.compare("cons") == 0) {
-      pov = new OutputVariable;
-      pov->type = "SCALARS";
-      pov->name = "Sigma_p";
-      pov->data.InitWithShallowSlice(pmb->prad->grey_sigma,4,2,1);
-      pod->AppendNode(pov); // absorption opacity
-      var_added += 1;
-    }
-    
-    if (output_params.variable.compare("rad_fov") == 0){
-      for (int n=0; n<(NRADFOV); ++n) {
-      
-        std::string iname="rad_fov";
-        char num[4];
-        sprintf(num,"%d",n);
-        iname.append(num);
-      
-        pov = new OutputVariable;
-        pov->type = "SCALARS";
-        pov->name = iname;
-        pov->data.InitWithShallowSlice(pmb->prad->rad_ifov,4,n,1);
-        pod->AppendNode(pov); // internal radiation outvars
-      }
-     var_added+=NRADFOV;
-    }
-    
-  }// End radiation
-
-
-  if (output_params.variable.compare("ifov") == 0) {
-    for (int n=0; n<(NIFOV); ++n) {
-      std::string iname="ifov";
-      char num[4];
-      sprintf(num,"%d",n);
-      iname.append(num);
-
-      pov = new OutputVariable; 
-      pov->type = "SCALARS";
-      pov->name = iname;
-      pov->data.InitWithShallowSlice(phyd->ifov,4,n,1);
-      pod->AppendNode(pov); // internal hydro outvars
-    }
-    var_added+=NIFOV;
-  }
-
-// throw an error if output variable name not recognized
-
-  if (var_added==0) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [OutputType::LoadOutputData]" << std::endl
-        << "Output variable '" << output_params.variable << "' not implemented"
-        << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-  }
-
-  return;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void OutputType::TransformOutputData()
-//  \brief 
-
-void OutputType::TransformOutputData(OutputData *pod, MeshBlock *pmb)
-{
-  if (output_params.kslice) {
-    Slice(pod,pmb,3);
-  }
-  if (output_params.jslice) {
-    Slice(pod,pmb,2);
-  }
-  if (output_params.islice) {
-    Slice(pod,pmb,1);
-  }
-  if (output_params.ksum) {
-    Sum(pod,pmb,3);
-  }
-  if (output_params.jsum) {
-    Sum(pod,pmb,2);
-  }
-  if (output_params.isum) {
-    Sum(pod,pmb,1);
-  }
-  return;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void OutputType::Slice(OutputData* pod, int dim)
+//----------------------------------------------------------------------------------------
+//! \fn void OutputData::ClearOutputData()
 //  \brief
 
-void OutputType::Slice(OutputData* pod, MeshBlock *pmb, int dim)
+void OutputType::ClearOutputData()
 {
-  int islice, jslice, kslice;
-
-// Check that slice is in range of data in this block, if not return 0 in ndata
-
-  if (dim == 1) {
-    if (output_params.x1_slice >= pmb->block_size.x1min && 
-        output_params.x1_slice < pmb->block_size.x1max) {
-      for (int i=pmb->is+1; i<=pmb->ie+1; ++i) {
-        if (pmb->pcoord->x1f(i) > output_params.x1_slice) {
-           islice = i-1;
-           output_params.islice = islice;
-          break;
-        }
-      }
-    } else {
-      pod->data_header.ndata = 0;
-      return;
-    }
-  } else if (dim == 2) {
-    if (output_params.x2_slice >= pmb->block_size.x2min &&
-        output_params.x2_slice < pmb->block_size.x2max) {
-      for (int j=pmb->js+1; j<=pmb->je+1; ++j) {
-        if (pmb->pcoord->x2f(j) > output_params.x2_slice) {
-           jslice = j-1;
-           output_params.jslice = jslice;
-          break;
-        }
-      }
-    } else {
-      pod->data_header.ndata = 0;
-      return;
-    }
-  } else {
-    if (output_params.x3_slice >= pmb->block_size.x3min &&
-        output_params.x3_slice < pmb->block_size.x3max) {
-      for (int k=pmb->ks+1; k<=pmb->ke+1; ++k) {
-        if (pmb->pcoord->x3f(k) > output_params.x3_slice) {
-           kslice = k-1;
-           output_params.kslice = kslice;
-          break;
-        }
-      }
-    } else {
-      pod->data_header.ndata = 0;
-      return;
-    }
+  OutputData *pdata = pfirst_data_;
+  while (pdata != NULL) {
+    OutputData *pdata_old = pdata;
+    pdata = pdata->pnext;
+    delete pdata_old;
   }
-
-// For each node in OutputData linked list, slice arrays containing output data  
-
-  OutputVariable *pvar,*pnew;
-  pvar = pod->pfirst_var;
-
-  while (pvar != NULL) {
-    pnew = new OutputVariable;
-    pnew->type = pvar->type;
-    pnew->name = pvar->name;
-    int nx4 = pvar->data.GetDim4();
-    int nx3 = pvar->data.GetDim3();
-    int nx2 = pvar->data.GetDim2();
-    int nx1 = pvar->data.GetDim1();
-
-// Loop over variables and dimensions, extract slice
-
-    if (dim == 3) {
-      pnew->data.NewAthenaArray(nx4,1,nx2,nx1);
-      for (int n=0; n<nx4; ++n){
-      for (int j=(pod->data_header.jl); j<=(pod->data_header.ju); ++j){
-        for (int i=(pod->data_header.il); i<=(pod->data_header.iu); ++i){
-          pnew->data(n,0,j,i) = pvar->data(n,kslice,j,i);
-        }
-      }}
-    } else if (dim == 2) {
-      pnew->data.NewAthenaArray(nx4,nx3,1,nx1);
-      for (int n=0; n<nx4; ++n){
-      for (int k=(pod->data_header.kl); k<=(pod->data_header.ku); ++k){
-        for (int i=(pod->data_header.il); i<=(pod->data_header.iu); ++i){
-          pnew->data(n,k,0,i) = pvar->data(n,k,jslice,i);
-        }
-      }}
-    } else {
-      pnew->data.NewAthenaArray(nx4,nx3,nx2,1);
-      for (int n=0; n<nx4; ++n){
-      for (int k=(pod->data_header.kl); k<=(pod->data_header.ku); ++k){
-        for (int j=(pod->data_header.jl); j<=(pod->data_header.ju); ++j){
-          pnew->data(n,k,j,0) = pvar->data(n,k,j,islice);
-        }
-      }}
-    }
-
-    pod->ReplaceNode(pvar,pnew);
-    pvar = pvar->pnext;
-  }
- 
-// modify OutputData header
-
-  std::stringstream str;
-  if (dim == 3) {
-    str << "# Slice at x3=" << pmb->pcoord->x3v(output_params.kslice)
-        << "  (k-ks)=" << (output_params.kslice - pmb->ks) << std::endl;
-    pod->data_header.kl = 0;
-    pod->data_header.ku = 0;
-  } else if (dim == 2) {
-    str << "# Slice at x2=" << pmb->pcoord->x2v(output_params.jslice)
-        << "  (j-js)=" << (output_params.jslice - pmb->js) << std::endl;
-    pod->data_header.jl = 0;
-    pod->data_header.ju = 0;
-  } else {
-    str << "# Slice at x1=" << pmb->pcoord->x1v(output_params.islice)
-        << "  (i-is)=" << (output_params.islice - pmb->is) << std::endl;
-    pod->data_header.il = 0;
-    pod->data_header.iu = 0;
-  }
-  pod->data_header.transforms.append(str.str());
-
-  return;
+  pfirst_data_ = NULL;
+  plast_data_  = NULL;
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void OutputType::Sum(OutputData* pod, int dim)
-//  \brief
-
-void OutputType::Sum(OutputData* pod, MeshBlock* pmb, int dim)
-{
-  AthenaArray<Real> *psum;
-  std::stringstream str;
-
-// For each node in OutputData linked list, sum arrays containing output data  
-
-  OutputVariable *pvar,*pnew;
-  pvar = pod->pfirst_var;
-
-  while (pvar != NULL) {
-    pnew = new OutputVariable;
-    pnew->type = pvar->type;
-    pnew->name = pvar->name;
-    int nx4 = pvar->data.GetDim4();
-    int nx3 = pvar->data.GetDim3();
-    int nx2 = pvar->data.GetDim2();
-    int nx1 = pvar->data.GetDim1();
-    psum = new AthenaArray<Real>;
-
-// Loop over variables and dimensions, sum over specified dimension
-
-    if (dim == 3) {
-      pnew->data.NewAthenaArray(nx4,1,nx2,nx1);
-      for (int n=0; n<nx4; ++n){
-      for (int k=(pod->data_header.kl); k<=(pod->data_header.ku); ++k){
-      for (int j=(pod->data_header.jl); j<=(pod->data_header.ju); ++j){
-        for (int i=(pod->data_header.il); i<=(pod->data_header.iu); ++i){
-          pnew->data(n,0,j,i) += pvar->data(n,k,j,i);
-        }
-      }}}
-    } else if (dim == 2) {
-      pnew->data.NewAthenaArray(nx4,nx3,1,nx1);
-      for (int n=0; n<nx4; ++n){
-      for (int k=(pod->data_header.kl); k<=(pod->data_header.ku); ++k){
-      for (int j=(pod->data_header.jl); j<=(pod->data_header.ju); ++j){
-        for (int i=(pod->data_header.il); i<=(pod->data_header.iu); ++i){
-          pnew->data(n,k,0,i) += pvar->data(n,k,j,i);
-        }
-      }}}
-    } else {
-      pnew->data.NewAthenaArray(nx4,nx3,nx2,1);
-      for (int n=0; n<nx4; ++n){
-      for (int k=(pod->data_header.kl); k<=(pod->data_header.ku); ++k){
-      for (int j=(pod->data_header.jl); j<=(pod->data_header.ju); ++j){
-        for (int i=(pod->data_header.il); i<=(pod->data_header.iu); ++i){
-          pnew->data(n,k,j,0) += pvar->data(n,k,j,i);
-        }
-      }}}
-    }
-
-    pod->ReplaceNode(pvar,pnew);
-    pvar = pvar->pnext;
-  }
- 
-// modify OutputData header
-
-  if (dim == 3) {
-    str << "# Sum over x3" << std::endl;
-    pod->data_header.kl = 0;
-    pod->data_header.ku = 0;
-  } else if (dim == 2) {
-    str << "# Sum over x2" << std::endl;
-    pod->data_header.jl = 0;
-    pod->data_header.ju = 0;
-  } else {
-    str << "# Sum over x1" << std::endl;
-    pod->data_header.il = 0;
-    pod->data_header.iu = 0;
-  }
-  pod->data_header.transforms.append(str.str());
-
-  return;
-}
-
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
 //  \brief scans through linked list of OutputTypes and makes any outputs needed.
 
@@ -867,7 +857,7 @@ void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
 {
   OutputType* ptype = pfirst_type_;
   MeshBlock *pmb;
-  
+
   //calculate radiation quantities for dump
   // Only need to do once for all output type
   
@@ -878,12 +868,11 @@ void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
      
      // Calculate Com-moving moments and grey opacity for dump
       pmb->prad->CalculateComMoment();
-      // Load internal variable for dump
-      pmb->prad->LoadInternalVariable(pmb);
 
       pmb=pmb->next;
     }
   }
+
 
   while (ptype != NULL) {
     if ((pm->time == pm->start_time) ||
@@ -891,31 +880,287 @@ void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
         (pm->time >= pm->tlim) ||
         (wtflag==true && ptype->output_params.file_type=="rst")) {
 
-      ptype->Initialize(pm,pin,wtflag);
-      pmb=pm->pblock;
-      while (pmb != NULL)  {
-        // Create new OutputData container, load and transform data, then write to file
-        OutputData* pod = new OutputData;
-        ptype->LoadOutputData(pod,pmb);
-        ptype->TransformOutputData(pod,pmb);
-        ptype->WriteOutputFile(pod,pmb);
-        delete pod;
-        pmb=pmb->next;
-      }
-      ptype->Finalize(pin);
+      ptype->WriteOutputFile(pm, pin, wtflag);
     }
     ptype = ptype->pnext_type; // move to next OutputType in list
   }
 
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void OutputType::Finalize(ParameterInput *pin)
-//  \brief count up the file number and next output time
-void OutputType::Finalize(ParameterInput *pin)
+//----------------------------------------------------------------------------------------
+//! \fn void OutputType::TransformOutputData(MeshBlock *pmb)
+//  \brief Calls sum and slice functions on each direction in turn, in order to allow
+//  mulitple operations performed on the same data set
+
+bool OutputType::TransformOutputData(MeshBlock *pmb)
 {
-  output_params.file_number++;
-  output_params.next_time += output_params.dt;
-  pin->SetInteger(output_params.block_name, "file_number", output_params.file_number);
-  pin->SetReal(output_params.block_name, "next_time", output_params.next_time);
+  bool flag = true;
+  if (output_params.output_slicex3) {
+    bool ret = SliceOutputData(pmb,3);
+    if (ret==false) flag=false;
+  }
+  if (output_params.output_slicex2) {
+    bool ret = SliceOutputData(pmb,2);
+    if (ret==false) flag=false;
+  }
+  if (output_params.output_slicex1) {
+    bool ret = SliceOutputData(pmb,1);
+    if (ret==false) flag=false;
+  }
+  if (output_params.output_sumx3) {
+    SumOutputData(pmb,3);
+  }
+  if (output_params.output_sumx2) {
+    SumOutputData(pmb,2);
+  }
+  if (output_params.output_sumx1) {
+    SumOutputData(pmb,1);
+  }
+  return flag;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn bool OutputType::SliceOutputData(MeshBlock *pmb, int dim)
+//  \brief perform data slicing and update the data list
+
+bool OutputType::SliceOutputData(MeshBlock *pmb, int dim)
+{
+  int islice, jslice, kslice;
+
+  // Compute i,j,k indices of slice; check if in range of data in this block
+  if (dim == 1) {
+    if (output_params.x1_slice >= pmb->block_size.x1min && 
+        output_params.x1_slice < pmb->block_size.x1max) {
+      for (int i=pmb->is+1; i<=pmb->ie+1; ++i) {
+        if (pmb->pcoord->x1f(i) > output_params.x1_slice) {
+          islice = i-1;
+          output_params.islice = islice;
+          break;
+        }
+      }
+    } else {
+      return false;
+    }
+  } else if (dim == 2) {
+    if (output_params.x2_slice >= pmb->block_size.x2min &&
+        output_params.x2_slice < pmb->block_size.x2max) {
+      for (int j=pmb->js+1; j<=pmb->je+1; ++j) {
+        if (pmb->pcoord->x2f(j) > output_params.x2_slice) {
+          jslice = j-1;
+          output_params.jslice = jslice;
+          break;
+        }
+      }
+    } else {
+      return false;
+    }
+  } else {
+    if (output_params.x3_slice >= pmb->block_size.x3min &&
+        output_params.x3_slice < pmb->block_size.x3max) {
+      for (int k=pmb->ks+1; k<=pmb->ke+1; ++k) {
+        if (pmb->pcoord->x3f(k) > output_params.x3_slice) {
+          kslice = k-1;
+          output_params.kslice = kslice;
+          break;
+        }
+      }
+    } else {
+      return false;
+    }
+  }
+
+  // For each node in OutputData linked list, slice arrays containing output data  
+  OutputData *pdata,*pnew;
+  pdata = pfirst_data_;
+
+  while (pdata != NULL) {
+    pnew = new OutputData;
+    pnew->type = pdata->type;
+    pnew->name = pdata->name;
+    int nx4 = pdata->data.GetDim4();
+    int nx3 = pdata->data.GetDim3();
+    int nx2 = pdata->data.GetDim2();
+    int nx1 = pdata->data.GetDim1();
+
+    // Loop over variables and dimensions, extract slice
+    if (dim == 3) {
+      pnew->data.NewAthenaArray(nx4,1,nx2,nx1);
+      for (int n=0; n<nx4; ++n){
+      for (int j=out_js; j<=out_je; ++j){
+        for (int i=out_is; i<=out_ie; ++i){
+          pnew->data(n,0,j,i) = pdata->data(n,kslice,j,i);
+        }
+      }}
+    } else if (dim == 2) {
+      pnew->data.NewAthenaArray(nx4,nx3,1,nx1);
+      for (int n=0; n<nx4; ++n){
+      for (int k=out_ks; k<=out_ke; ++k){
+        for (int i=out_is; i<=out_ie; ++i){
+          pnew->data(n,k,0,i) = pdata->data(n,k,jslice,i);
+        }
+      }}
+    } else {
+      pnew->data.NewAthenaArray(nx4,nx3,nx2,1);
+      for (int n=0; n<nx4; ++n){
+      for (int k=out_ks; k<=out_ke; ++k){
+        for (int j=out_js; j<=out_je; ++j){
+          pnew->data(n,k,j,0) = pdata->data(n,k,j,islice);
+        }
+      }}
+    }
+
+    ReplaceOutputDataNode(pdata,pnew);
+    pdata = pdata->pnext;
+  }
+ 
+  // modify array indices
+  if (dim == 3) {
+    out_ks = 0;
+    out_ke = 0;
+  } else if (dim == 2) {
+    out_js = 0;
+    out_je = 0;
+  } else {
+    out_is = 0;
+    out_ie = 0;
+  }
+
+  return true;
+}
+
+//----------------------------------------------------------------------------------------
+//! \fn void OutputType::SumOutputData(OutputData* pod, int dim)
+//  \brief perform data summation and update the data list
+
+void OutputType::SumOutputData(MeshBlock* pmb, int dim)
+{
+  AthenaArray<Real> *psum;
+  std::stringstream str;
+
+  // For each node in OutputData linked list, sum arrays containing output data  
+  OutputData *pdata,*pnew;
+  pdata = pfirst_data_;
+
+  while (pdata != NULL) {
+    pnew = new OutputData;
+    pnew->type = pdata->type;
+    pnew->name = pdata->name;
+    int nx4 = pdata->data.GetDim4();
+    int nx3 = pdata->data.GetDim3();
+    int nx2 = pdata->data.GetDim2();
+    int nx1 = pdata->data.GetDim1();
+    psum = new AthenaArray<Real>;
+
+    // Loop over variables and dimensions, sum over specified dimension
+    if (dim == 3) {
+      pnew->data.NewAthenaArray(nx4,1,nx2,nx1);
+      for (int n=0; n<nx4; ++n){
+      for (int k=out_ks; k<=out_ke; ++k){
+      for (int j=out_js; j<=out_je; ++j){
+        for (int i=out_is; i<=out_ie; ++i){
+          pnew->data(n,0,j,i) += pdata->data(n,k,j,i);
+        }
+      }}}
+    } else if (dim == 2) {
+      pnew->data.NewAthenaArray(nx4,nx3,1,nx1);
+      for (int n=0; n<nx4; ++n){
+      for (int k=out_ks; k<=out_ke; ++k){
+      for (int j=out_js; j<=out_je; ++j){
+        for (int i=out_is; i<=out_ie; ++i){
+          pnew->data(n,k,0,i) += pdata->data(n,k,j,i);
+        }
+      }}}
+    } else {
+      pnew->data.NewAthenaArray(nx4,nx3,nx2,1);
+      for (int n=0; n<nx4; ++n){
+      for (int k=out_ks; k<=out_ke; ++k){
+      for (int j=out_js; j<=out_je; ++j){
+        for (int i=out_is; i<=out_ie; ++i){
+          pnew->data(n,k,j,0) += pdata->data(n,k,j,i);
+        }
+      }}}
+    }
+
+    ReplaceOutputDataNode(pdata,pnew);
+    pdata = pdata->pnext;
+  }
+ 
+  // modify array indices
+  if (dim == 3) {
+    out_ks = 0;
+    out_ke = 0;
+  } else if (dim == 2) {
+    out_js = 0;
+    out_je = 0;
+  } else {
+    out_is = 0;
+    out_ie = 0;
+  }
+
+  return;
+}
+
+
+//----------------------------------------------------------------------------------------
+//! \fn void OutputType::CalculateCartesianVector(AthenaArray<Real> &src,
+//                                AthenaArray<Real> &dst, Coordinates *pco)
+//  \brief Convert vectors in curvilinear coordinates into Cartesian
+
+void OutputType::CalculateCartesianVector(AthenaArray<Real> &src, AthenaArray<Real> &dst,
+                                          Coordinates *pco)
+{
+  Real n1x,n1y,n1z,n2x,n2y,n2z,n3x,n3y,n3z;
+  if(COORDINATE_SYSTEM == "spherical_polar") {
+    if(out_ks==out_ke) { // 2D
+      for(int k=out_ks; k<=out_ke; k++) {
+        for(int j=out_js; j<=out_je; j++) {
+          n1x=sin(pco->x2v(j));
+          n1z=cos(pco->x2v(j));
+          n2x=cos(pco->x2v(j));
+          n2z=-sin(pco->x2v(j));
+          for(int i=out_is; i<=out_ie; i++) {
+            dst(0,k,j,i)=src(0,k,j,i)*n1x+src(1,k,j,i)*n2x;
+            dst(1,k,j,i)=src(2,k,j,i);
+            dst(2,k,j,i)=src(0,k,j,i)*n1z+src(1,k,j,i)*n2z;
+          }
+        }
+      }
+    }
+    else { // 3D
+      for(int k=out_ks; k<=out_ke; k++) {
+        n3x=-sin(pco->x3v(k));
+        n3y=cos(pco->x3v(k));
+        n3z=0.0;
+        for(int j=out_js; j<=out_je; j++) {
+          n1x=sin(pco->x2v(j))*cos(pco->x3v(k));
+          n1y=sin(pco->x2v(j))*sin(pco->x3v(k));
+          n1z=cos(pco->x2v(j));
+          n2x=cos(pco->x2v(j))*cos(pco->x3v(k));
+          n2y=cos(pco->x2v(j))*sin(pco->x3v(k));
+          n2z=-sin(pco->x2v(j));
+          for(int i=out_is; i<=out_ie; i++) {
+            dst(0,k,j,i)=src(0,k,j,i)*n1x+src(1,k,j,i)*n2x+src(2,k,j,i)*n3x;
+            dst(1,k,j,i)=src(0,k,j,i)*n1y+src(1,k,j,i)*n2y+src(2,k,j,i)*n3y;
+            dst(2,k,j,i)=src(0,k,j,i)*n1z+src(1,k,j,i)*n2z+src(2,k,j,i)*n3z;
+          }
+        }
+      }
+    }
+  }
+  if(COORDINATE_SYSTEM == "cylindrical") {
+    for(int k=out_ks; k<=out_ke; k++) {
+      for(int j=out_js; j<=out_je; j++) {
+        n1x=cos(pco->x2v(j));
+        n1y=sin(pco->x2v(j));
+        n2x=-sin(pco->x2v(j));
+        n2y=cos(pco->x2v(j));
+        for(int i=out_is; i<=out_ie; i++) {
+          dst(0,k,j,i)=src(0,k,j,i)*n1x+src(1,k,j,i)*n2x;
+          dst(1,k,j,i)=src(0,k,j,i)*n1y+src(1,k,j,i)*n2y;
+          dst(2,k,j,i)=src(2,k,j,i);
+        }
+      }
+    }
+  }
+  return;
 }

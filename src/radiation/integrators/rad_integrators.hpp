@@ -13,6 +13,7 @@
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
 #include "../radiation.hpp" // radiation
+#include "../../task_list/task_list.hpp"
 
 class MeshBlock;
 class ParameterInput;
@@ -31,47 +32,91 @@ public:
   Radiation *pmy_rad;
   
   void FluxDivergence(MeshBlock *pmb, AthenaArray<Real> &ir, const int step);
+
+  void FluxDivergence(MeshBlock *pmb, AthenaArray<Real> &ir_in1,
+         AthenaArray<Real> &ir_in2, const IntegratorWeight wght,
+                                     AthenaArray<Real> &ir_out);
+    
   void CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &w,
                        AthenaArray<Real> &ir, const int step);
 
-  void FirstOrderFluxX1(const int k, const int j, const int il,
-        const int iu, const AthenaArray<Real> &q,
-        const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  void FirstOrderFluxX1(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
   
-  void FirstOrderFluxX2(const int k, const int j, const int il,
-        const int iu, const AthenaArray<Real> &q,
-        const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  void FirstOrderFluxX2(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
   
-  void FirstOrderFluxX3(const int k, const int j, const int il,
-        const int iu, const AthenaArray<Real> &q,
-        const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  void FirstOrderFluxX3(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
  
   
-  void SecondOrderFluxX1(const int k, const int j, const int il,
-        const int iu, const AthenaArray<Real> &q,
-        const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  void SecondOrderFluxX1(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
   
-  void SecondOrderFluxX2(const int k, const int j, const int il,
-        const int iu, const AthenaArray<Real> &q,
-        const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  void SecondOrderFluxX2(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
   
-  void SecondOrderFluxX3(const int k, const int j, const int il,
-        const int iu, const AthenaArray<Real> &q,
-        const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  void SecondOrderFluxX3(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+
+  void SecondOrderCorrectFluxX1(Coordinates *pco, 
+    const int k, const int j,
+    const int i, const AthenaArray<Real> &q, const AthenaArray<Real> &vel, 
+    AthenaArray<Real> &flx);
+
+  void SecondOrderCorrectFluxX2(Coordinates *pco, 
+    const int k, const int j,
+    const int i, const AthenaArray<Real> &q, const AthenaArray<Real> &vel,
+    AthenaArray<Real> &flx);
   
-  void ThirdOrderFluxX1(const int k, const int j, const int il,
-        const int iu, const AthenaArray<Real> &q,
-        const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  void SecondOrderCorrectFluxX3(Coordinates *pco, 
+    const int k, const int j,
+    const int i, const AthenaArray<Real> &q, const AthenaArray<Real> &vel,
+    AthenaArray<Real> &flx);
   
-  void ThirdOrderFluxX2(const int k, const int j, const int il,
-        const int iu, const AthenaArray<Real> &q,
-        const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  void ThirdOrderFluxX1(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
   
-  void ThirdOrderFluxX3(const int k, const int j, const int il,
-        const int iu, const AthenaArray<Real> &q,
-        const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  void ThirdOrderFluxX2(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
   
-  void AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
+  void ThirdOrderFluxX3(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+
+  void ThirdOrderFluxX1Uniform(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  
+  void ThirdOrderFluxX2Uniform(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  
+  void ThirdOrderFluxX3Uniform(Coordinates *pco, 
+    const int kl, const int ku, const int jl, const int ju,
+    const int il, const int iu, const AthenaArray<Real> &q, 
+    const AthenaArray<Real> &vel, AthenaArray<Real> &flx);
+  
+  void AddSourceTerms(MeshBlock *pmb, const Real dt, AthenaArray<Real> &u,
         AthenaArray<Real> &w, AthenaArray<Real> &ir, const int step);
 
   void AbsorptionScattering(const AthenaArray<Real> &wmu_cm,
@@ -106,7 +151,7 @@ public:
 
  
 private:
-  AthenaArray<Real> flx_, vel_, flx2_, vel2_;
+  AthenaArray<Real> flx_, vel_, vel2_;
                           // temporary array to store the flux, velocity
   AthenaArray<Real> temp_i1_, temp_i2_; // temporary array to store Div q
   AthenaArray<Real> vncsigma_, vncsigma2_, wmu_cm_, tran_coef_, ir_cm_;
@@ -115,9 +160,14 @@ private:
   Real taufact_;
   int compton_flag_; // flag to add simple Compton scattering
   int planck_flag_; // flag to add additional Planck absorption opacity
+  int adv_flag_; // flag used to indicate whether separate
+                 // advection flux from diffustion flux or not.
+
+  int flux_correct_flag_; // flag to do second order flux crrection or not.
+  Real tau_limit_; // the limit of optical depth sure.
   AthenaArray<Real> x1face_area_, x2face_area_, x3face_area_;
   AthenaArray<Real> x2face_area_p1_, x3face_area_p1_;
-  AthenaArray<Real> cell_volume_;
+  AthenaArray<Real> cell_volume_, cwidth2_, cwidth3_;
 
 };
 

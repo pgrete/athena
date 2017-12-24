@@ -27,12 +27,12 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../hydro/hydro.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../eos/eos.hpp"
 #include "../bvals/bvals.hpp"
-#include "../hydro/srcterms/srcterms.hpp"
+#include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
@@ -50,7 +50,7 @@ static Real rhofloor; // density floor
 static int bconf = 0; // bconf=1: pure B_phi
                       // bconf=0: vector potential proportional to density
                       // bconf=2: two loops
-static int iniflag=8;
+static int iniflag=0;
 
 
 static Real gm1 = 1.02737e5;
@@ -65,7 +65,7 @@ static Real wheight=0.248556;
 static Real vr_l1=-0.447214;
 static Real vphi_l1=-vr_l1*0.40035;
 static Real t_l1=0.2;
-static Real beta=0.0;
+static Real beta=1.0;
 static Real amp=1.e-3;
 
 
@@ -76,7 +76,9 @@ static Real tunit;
 
 // the opacity table
 
-static AthenaArray<Real> opacitytable;
+static AthenaArray<Real> opacitytable_R;
+static AthenaArray<Real> opacitytable_P;
+static AthenaArray<Real> opacitytable_e;
 static AthenaArray<Real> logttable;
 static AthenaArray<Real> logrhottable;
 
@@ -88,23 +90,21 @@ static AthenaArray<Real> logrhottable;
  *====================================================================================*/
 
 void Inflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke);
+          Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 
 
 void Outflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke);
+          Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 
 void Outflow_rad_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke);
+          Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 
 void DiskOpacity(MeshBlock *pmb, AthenaArray<Real> &prim);
 
 
-void LoadRadVariable(MeshBlock *pmb);
-
 void TidalPotential(MeshBlock *pmb, const Real time, const Real dt,
   const AthenaArray<Real> &prim, 
-  AthenaArray<Real> &bcc, AthenaArray<Real> &cons);
+  const AthenaArray<Real> &bcc, AthenaArray<Real> &cons);
 
 
 
@@ -115,14 +115,16 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     // Enroll boundary functions
 
   EnrollUserBoundaryFunction(OUTER_X1, Outflow_X2);
+  EnrollUserBoundaryFunction(INNER_X1, Inflow_X1);
   
   tfloor = pin->GetOrAddReal("radiation", "tfloor", 0.01);
-  rhofloor = pin->GetOrAddReal("hydro", "dfloor", 1.e-7);
+  rhofloor = pin->GetOrAddReal("hydro", "dfloor", 5.e-8);
+  rhofloor = 1.e-7;
   rhounit = pin->GetOrAddReal("radiation", "rhounit", 1.e-4);
   tunit = pin->GetOrAddReal("radiation", "Tunit", 5.e4);
   lunit = pin->GetOrAddReal("radiation", "lunit", 4.69e8);
   
-  EnrollUserSourceTermFunction(TidalPotential);
+  EnrollUserExplicitSourceFunction(TidalPotential);
   
 
   if(RADIATION_ENABLED){
@@ -130,46 +132,75 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     EnrollUserRadBoundaryFunction(OUTER_X1, Outflow_rad_X2);
   
     // the opacity table
-    opacitytable.NewAthenaArray(212,46);
-    logttable.NewAthenaArray(212);
-    logrhottable.NewAthenaArray(46);
+    opacitytable_R.NewAthenaArray(94,91);
+    opacitytable_P.NewAthenaArray(94,91);
+    opacitytable_e.NewAthenaArray(94,91);
+    logttable.NewAthenaArray(91);
+    logrhottable.NewAthenaArray(94);
     
     // read in the opacity table
-    FILE *fkappa, *flogt, *flogrhot;
-    if ( (fkappa=fopen("./aveopacity.txt","r"))==NULL )
+    FILE *fkappa_R, *fkappa_P, *fkappa_e, *flogt, *flogrhot;
+      
+    if ( (fkappa_R=fopen("/home/yanfeij/Inputfile/opacity_ross.txt","r"))==NULL )
+    {
+      printf("Open input file error");
+      return;
+    }
+
+    if ( (fkappa_P=fopen("/home/yanfeij/Inputfile/opacity_planck.txt","r"))==NULL )
+    {
+        printf("Open input file error");
+        return;
+    }
+      
+    if ( (fkappa_e=fopen("/home/yanfeij/Inputfile/e_frac.txt","r"))==NULL )
+    {
+        printf("Open input file error");
+        return;
+    }
+    
+    if ( (flogt=fopen("/home/yanfeij/Inputfile/temperature.txt","r"))==NULL )
     {
       printf("Open input file error");
       return;
     }
   
-    if ( (flogt=fopen("./logT.txt","r"))==NULL )
-    {
-      printf("Open input file error");
-      return;
-    }
-  
-    if ( (flogrhot=fopen("./logRhoT.txt","r"))==NULL )
+    if ( (flogrhot=fopen("/home/yanfeij/Inputfile/density.txt","r"))==NULL )
     {
       printf("Open input file error");
       return;
     }
 
     int i, j;
-    for(j=0; j<212; j++){
-      for(i=0; i<46; i++){
-          fscanf(fkappa,"%lf",&(opacitytable(j,i)));
+    for(j=0; j<94; j++){
+      for(i=0; i<91; i++){
+          fscanf(fkappa_R,"%lf",&(opacitytable_R(j,i)));
+      }
+    }
+
+    for(j=0; j<94; j++){
+      for(i=0; i<91; i++){
+          fscanf(fkappa_P,"%lf",&(opacitytable_P(j,i)));
+      }
+    }
+      
+    for(j=0; j<94; j++){
+      for(i=0; i<91; i++){
+          fscanf(fkappa_e,"%lf",&(opacitytable_e(j,i)));
       }
     }
   
-    for(i=0; i<46; i++){
+    for(i=0; i<94; i++){
       fscanf(flogrhot,"%lf",&(logrhottable(i)));
     }
   
-    for(i=0; i<212; i++){
+    for(i=0; i<91; i++){
       fscanf(flogt,"%lf",&(logttable(i)));
     }
   
-    fclose(fkappa);
+    fclose(fkappa_R);
+    fclose(fkappa_P);
+    fclose(fkappa_e);
     fclose(flogt);
     fclose(flogrhot);
   
@@ -190,7 +221,9 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
   // free memory
   if(RADIATION_ENABLED){
   
-    opacitytable.DeleteAthenaArray();
+    opacitytable_R.DeleteAthenaArray();
+    opacitytable_P.DeleteAthenaArray();
+    opacitytable_e.DeleteAthenaArray();
     logttable.DeleteAthenaArray();
     logrhottable.DeleteAthenaArray();
   
@@ -199,7 +232,7 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
   return;
 }
 
-void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
+void MeshBlock::InitUserMeshBlockData(ParameterInput *pin)
 {
   
   
@@ -207,11 +240,6 @@ void MeshBlock::InitUserMeshBlockProperties(ParameterInput *pin)
     
       prad->EnrollOpacityFunction(DiskOpacity);
     
-    
-
-      if(NRADFOV > 0)
-        prad->EnrollInternalVariableFunction(LoadRadVariable);
-
       prad->set_source_flag = 0;
 
 
@@ -242,8 +270,10 @@ void MeshBlock::UserWorkInLoop(void)
       kl -= NGHOST;
       ku += NGHOST;
     }
-    Real gammma1 = phydro->peos->GetGamma() - 1.0;
-    
+    Real gamma1 = peos->GetGamma() - 1.0;
+    AthenaArray<Real> ir_cm;
+    ir_cm.NewAthenaArray(prad->n_fre_ang);
+      
      for (int k=kl; k<=ku; ++k){
       for (int j=jl; j<=ju; ++j){
        for (int i=il; i<=iu; ++i){
@@ -253,6 +283,7 @@ void MeshBlock::UserWorkInLoop(void)
           Real& vz=phydro->w(IVZ,k,j,i);
          
           Real& rho=phydro->w(IDN,k,j,i);
+          Real& pgas=phydro->w(IEN,k,j,i);
 
 /*         if(iniflag){
               if(pcoord->x1v(i) > 50.0 && rho < 1.e-6){
@@ -284,13 +315,50 @@ void MeshBlock::UserWorkInLoop(void)
                      +SQR(pfield->bcc(IB3,k,j,i)));
             }
             
-            Real  eint = phydro->w(IEN,k,j,i)/gammma1;
+            Real  eint = phydro->w(IEN,k,j,i)/gamma1;
             
             phydro->u(IEN,k,j,i) = eint + ke + pb;
 
           }
+          //replace gas pressure with the same of gas and radiation
+          if(iniflag > 0){
+              Real temp0 = pgas/rho;
+              Real coef1 = prad->prat/3.0;
+              Real coef2 = rho;
+              Real coef3 = -pgas;
+              Real gast;
+              
+              gast = Rtsafe(Tequilibrium, 0.0, temp0, 1.e-12, coef1, coef2, coef3, 0.0);
+              if(gast < tfloor) gast = tfloor;
+              pgas = rho * gast;
+              Real eint = pgas/gamma1;
+              Real ke=0.5*rho*vel*vel;
+              Real pb=0.0;
+              if(MAGNETIC_FIELDS_ENABLED){
+                  pb = 0.5*(SQR(pfield->bcc(IB1,k,j,i))+SQR(pfield->bcc(IB2,k,j,i))
+                            +SQR(pfield->bcc(IB3,k,j,i)));
+              }
+              phydro->u(IEN,k,j,i) = eint + ke + pb;
+
+              //initialize the radiation quantity
+              for(int n=0; n<prad->n_fre_ang; ++n)
+                  ir_cm(n) = gast * gast * gast * gast;
+              
+              Real *mux = &(prad->mu(0,k,j,i,0));
+              Real *muy = &(prad->mu(1,k,j,i,0));
+              Real *muz = &(prad->mu(2,k,j,i,0));
+              
+              Real *ir_lab = &(prad->ir(k,j,i,0));
+              
+              prad->pradintegrator->ComToLab(vx,vy,vz,mux,muy,muz,ir_cm,ir_lab);
+            
+               
+          }
   
       }}}
+      
+      ir_cm.DeleteAthenaArray();
+      
     }else{
       int il=is, iu=ie, jl=js, ju=je, kl=ks, ku=ke;
       il -= NGHOST;
@@ -303,7 +371,7 @@ void MeshBlock::UserWorkInLoop(void)
         kl -= NGHOST;
         ku += NGHOST;
       }
-      Real gamma1 = phydro->peos->GetGamma() - 1.0;
+      Real gamma1 = peos->GetGamma() - 1.0;
     
       for (int k=kl; k<=ku; ++k){
        for (int j=jl; j<=ju; ++j){
@@ -317,10 +385,18 @@ void MeshBlock::UserWorkInLoop(void)
           
           Real tgas=phydro->w(IEN,k,j,i)/rho;
 /*
-          if(tgas > 10.0 && rho < 1.e-5){
-            phydro->w(IEN,k,j,i) = rho * tfloor;
-            Real eint = rho * tfloor/gamma1;
-            Real ke = 0.5 * rho * (vx*vx+vy*vy+vz*vz);
+          if( pcoord->x1v(i) < 5.0){
+            phydro->w(IDN,k,j,i) = rhofloor;
+            phydro->u(IDN,k,j,i) = rhofloor;
+            phydro->w(IEN,k,j,i) = rhofloor * tfloor;
+            vx=0.0;
+            vy=0.0;
+            vz=0.0;
+            phydro->u(IM1,k,j,i) = 0.0;
+            phydro->u(IM2,k,j,i) = 0.0;
+            phydro->u(IM3,k,j,i) = 0.0;
+            Real eint = rhofloor * tfloor/gamma1;
+            Real ke = 0.5 * rhofloor * (vx*vx+vy*vy+vz*vz);
             Real pb=0.0;
             if(MAGNETIC_FIELDS_ENABLED){
                pb = 0.5*(SQR(pfield->bcc(IB1,k,j,i))+SQR(pfield->bcc(IB2,k,j,i))
@@ -330,13 +406,13 @@ void MeshBlock::UserWorkInLoop(void)
             phydro->u(IEN,k,j,i) = eint + ke + pb;
           
           }
-*/     
+  */  
         }
        }
       }
     
     }
-//    if(iniflag > 0) iniflag--;
+    if(iniflag > 0) iniflag--;
   return;
 }
 
@@ -347,7 +423,7 @@ void MeshBlock::UserWorkInLoop(void)
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
   
-  Real gamma = phydro->peos->GetGamma();
+  Real gamma = peos->GetGamma();
   Real gm = pin->GetReal("problem", "GM");
 
   //initialize random number
@@ -400,7 +476,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         // initialize radiation quantity
         if(RADIATION_ENABLED){
           for(int n=0; n<prad->n_fre_ang; ++n)
-             prad->ir(k,j,i,n) = 1.e-4;
+             prad->ir(k,j,i,n) = 1.e-8;
         
         }// End Rad
         
@@ -493,6 +569,8 @@ void DiskOpacity(MeshBlock *pmb, AthenaArray<Real> &prim)
     ku += NGHOST;
   }
   
+  int flag=1;
+  Real max_elec=0.66569;
   
   for (int k=kl; k<=ku; ++k) {
   for (int j=jl; j<=ju; ++j) {
@@ -501,37 +579,52 @@ void DiskOpacity(MeshBlock *pmb, AthenaArray<Real> &prim)
     Real rho  = prim(IDN,k,j,i);
     Real gast = std::max(prim(IEN,k,j,i)/rho,tfloor);
    
-    Real logt = log10(gast * tunit);
-    Real logrhot = log10(rho* rhounit) - 3.0* logt + 18.0;
+    Real logt = gast * tunit;
+    Real logrhot = rho* rhounit;
     
     
     int nrhot1 = 0;
     int nrhot2 = 0;
     
-    while((logrhot > logrhottable(nrhot2)) && (nrhot2 < 45)){
+    while((logrhot > logrhottable(nrhot2)) && (nrhot2 < 93)){
       nrhot1 = nrhot2;
       nrhot2++;
     }
+    if(nrhot2==93 && logrhot > logrhottable(nrhot2))
+      nrhot1=nrhot2;
   
   /* The data point should between NrhoT1 and NrhoT2 */
     int nt1 = 0;
     int nt2 = 0;
-    while((logt > logttable(nt2)) && (nt2 < 211)){
+    while((logt > logttable(nt2)) && (nt2 < 90)){
       nt1 = nt2;
       nt2++;
     }
-    
-    Real kappa;
-    Real kappas = 0.2 * (1.0 + 0.6);
-    Real sqrtgasT = sqrt(gast);
-    Real kappff = (4908.12) * rho /(sqrtgasT * gast * gast* gast);
-    
+    if(nt2==90 && logt > logttable(nt2))
+     nt1=nt2;
 
-    Real kappa_t1_rho1=opacitytable(nt1,nrhot1);
-    Real kappa_t1_rho2=opacitytable(nt1,nrhot2);
-    Real kappa_t2_rho1=opacitytable(nt2,nrhot1);
-    Real kappa_t2_rho2=opacitytable(nt2,nrhot2);
+    
+    Real kappaR,kappaP,elec;
 
+      
+    // Get Rosseland mean opacity
+      
+    Real kappaR_t1_rho1=opacitytable_R(nrhot1,nt1);
+    Real kappaR_t1_rho2=opacitytable_R(nrhot2,nt1);
+    Real kappaR_t2_rho1=opacitytable_R(nrhot1,nt2);
+    Real kappaR_t2_rho2=opacitytable_R(nrhot2,nt2);
+      
+    Real kappaP_t1_rho1=opacitytable_P(nrhot1,nt1);
+    Real kappaP_t1_rho2=opacitytable_P(nrhot2,nt1);
+    Real kappaP_t2_rho1=opacitytable_P(nrhot1,nt2);
+    Real kappaP_t2_rho2=opacitytable_P(nrhot2,nt2);
+
+    Real elec_t1_rho1=opacitytable_e(nrhot1,nt1);
+    Real elec_t1_rho2=opacitytable_e(nrhot2,nt1);
+    Real elec_t2_rho1=opacitytable_e(nrhot1,nt2);
+    Real elec_t2_rho2=opacitytable_e(nrhot2,nt2);
+      
+      
     Real rho_1 = logrhottable(nrhot1);
     Real rho_2 = logrhottable(nrhot2);
     Real t_1 = logttable(nt1);
@@ -540,43 +633,71 @@ void DiskOpacity(MeshBlock *pmb, AthenaArray<Real> &prim)
     
     if(nrhot1 == nrhot2){
       if(nt1 == nt2){
-        kappa = kappa_t1_rho1;
+        kappaR = kappaR_t1_rho1;
+        kappaP = kappaP_t1_rho1;
+           elec=elec_t1_rho1;
+        
       }else{
-        kappa = kappa_t1_rho1 + (kappa_t2_rho1 - kappa_t1_rho1) *
+        kappaR = kappaR_t1_rho1 + (kappaR_t2_rho1 - kappaR_t1_rho1) *
                                 (logt - t_1)/(t_2 - t_1);
+        kappaP = kappaP_t1_rho1 + (kappaP_t2_rho1 - kappaP_t1_rho1) *
+                                (logt - t_1)/(t_2 - t_1);
+        elec = elec_t1_rho1 + (elec_t2_rho1 - elec_t1_rho1) *
+                                (logt - t_1)/(t_2 - t_1);
+          
       }/* end same T*/
     }else{
       if(nt1 == nt2){
-        kappa = kappa_t1_rho1 + (kappa_t1_rho2 - kappa_t1_rho1) *
+        kappaR = kappaR_t1_rho1 + (kappaR_t2_rho1 - kappaR_t1_rho1) *
+                                (logrhot - rho_1)/(rho_2 - rho_1);
+        kappaP = kappaP_t1_rho1 + (kappaP_t2_rho1 - kappaP_t1_rho1) *
+                                (logrhot - rho_1)/(rho_2 - rho_1);
+        elec = elec_t1_rho1 + (elec_t2_rho1 - elec_t1_rho1) *
                                 (logrhot - rho_1)/(rho_2 - rho_1);
       }else{
-        kappa = kappa_t1_rho1 * (t_2 - logt) * (rho_2 - logrhot)/
+        kappaR = kappaR_t1_rho1 * (t_2 - logt) * (rho_2 - logrhot)/
                                 ((t_2 - t_1) * (rho_2 - rho_1))
-              + kappa_t2_rho1 * (logt - t_1) * (rho_2 - logrhot)/
+              + kappaR_t2_rho1 * (logt - t_1) * (rho_2 - logrhot)/
                                 ((t_2 - t_1) * (rho_2 - rho_1))
-              + kappa_t1_rho2 * (t_2 - logt) * (logrhot - rho_1)/
+              + kappaR_t1_rho2 * (t_2 - logt) * (logrhot - rho_1)/
                                 ((t_2 - t_1) * (rho_2 - rho_1))
-              + kappa_t2_rho2 * (logt - t_1) * (logrhot - rho_1)/
+              + kappaR_t2_rho2 * (logt - t_1) * (logrhot - rho_1)/
+                                ((t_2 - t_1) * (rho_2 - rho_1));
+        kappaP = kappaP_t1_rho1 * (t_2 - logt) * (rho_2 - logrhot)/
+                                ((t_2 - t_1) * (rho_2 - rho_1))
+              + kappaP_t2_rho1 * (logt - t_1) * (rho_2 - logrhot)/
+                                ((t_2 - t_1) * (rho_2 - rho_1))
+              + kappaP_t1_rho2 * (t_2 - logt) * (logrhot - rho_1)/
+                                ((t_2 - t_1) * (rho_2 - rho_1))
+              + kappaP_t2_rho2 * (logt - t_1) * (logrhot - rho_1)/
+                                ((t_2 - t_1) * (rho_2 - rho_1));
+        elec = elec_t1_rho1 * (t_2 - logt) * (rho_2 - logrhot)/
+                                ((t_2 - t_1) * (rho_2 - rho_1))
+              + elec_t2_rho1 * (logt - t_1) * (rho_2 - logrhot)/
+                                ((t_2 - t_1) * (rho_2 - rho_1))
+              + elec_t1_rho2 * (t_2 - logt) * (logrhot - rho_1)/
+                                ((t_2 - t_1) * (rho_2 - rho_1))
+              + elec_t2_rho2 * (logt - t_1) * (logrhot - rho_1)/
                                 ((t_2 - t_1) * (rho_2 - rho_1));
       }
     }/* end same rhoT */
+    
+    // electron scattering opacity drops with free electron fraction
+    Real kappas = 0.2*elec/max_elec;
+    Real kappa_aR = 0.0;
+    if(kappaR > kappas) kappa_aR = kappaR - kappas;
+    else kappas = kappaR;
+      
+    Real kappa_aP = kappaP - kappa_aR;
+    if(kappa_aP < 0.0) kappa_aP = 0.0;
+    
+    
+      
 
- 
-    if(kappa < kappas){
-     if(gast > 1.0 && kappff < kappa){
-       kappas = kappa - kappff;
-       kappa = kappff;
-     }else{
-       kappas = 0.0;
-     }
-    }else{
-      kappa -= kappas;
-    }
-    
-    
     prad->sigma_s(k,j,i,ifr) = kappas * rho * rhounit * lunit;
-    prad->sigma_a(k,j,i,ifr) = kappa * rho * rhounit * lunit;
+    prad->sigma_a(k,j,i,ifr) = kappa_aR * rho * rhounit * lunit;
     prad->sigma_ae(k,j,i,ifr) = prad->sigma_a(k,j,i,ifr);
+    prad->sigma_planck(k,j,i,ifr) = kappa_aP * rho * rhounit * lunit;
   }
   }}}
 
@@ -586,7 +707,7 @@ void DiskOpacity(MeshBlock *pmb, AthenaArray<Real> &prim)
 
 
 void Inflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke)
+      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
 
   
@@ -635,11 +756,12 @@ void Inflow_X1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField
 }
 
 void Outflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-               int is, int ie, int js, int je, int ks, int ke)
+      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   //initialize random number
   std::srand(pmb->gid);
-
+  Real Bheight = 0.5* wheight;
+  
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=1; i<=NGHOST; ++i) {
@@ -649,7 +771,7 @@ void Outflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFiel
           Real xpos=radius*sin(theta)*cos(phi);
           Real ypos=radius*sin(theta)*sin(phi);
           Real zpos=radius*cos(theta);
-          Real dis=xpos*xpos+(ypos-radius)*(ypos-radius)+zpos*zpos;
+          Real dis=ypos*ypos+(xpos-radius)*(xpos-radius)+zpos*zpos;
           Real rhostream=rho0*exp(-dis/(wheight*wheight));
 
           if(rhostream < rhofloor){
@@ -678,19 +800,54 @@ void Outflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFiel
   }
    // set magnetic field in inlet ghost zones
   if (MAGNETIC_FIELDS_ENABLED) {
+    Real a0=0.05*sqrt(2.0*rho0*t_l1);
+  
     for(int k=ks; k<=ke; ++k){
     for(int j=js; j<=je; ++j){
-#pragma simd
+//#pragma simd
       for(int i=1; i<=NGHOST; ++i){
-        b.x1f(k,j,ie+i+1) = b.x1f(k,j,ie+1);
+        Real radius=pmb->pcoord->x1v(ie+i);
+        Real theta=pmb->pcoord->x2v(j);
+        Real phi=pmb->pcoord->x3v(k);
+        Real xpos=radius*sin(theta)*cos(phi);
+        Real ypos=radius*sin(theta)*sin(phi);
+        Real zpos=radius*cos(theta);
+        Real dis=ypos*ypos+(xpos-radius)*(xpos-radius)+zpos*zpos;
+        Real aphi = a0 * 2.0 * Bheight * cos(0.5 * PI * dis/(Bheight*Bheight))/PI;
+        Real rhostream=rho0*exp(-dis/(wheight*wheight));
+        dis=sqrt(dis);
+        
+        if(rhostream < rhofloor){
+          b.x1f(k,j,ie+i+1) = b.x1f(k,j,ie+1);
+        }else{
+          b.x1f(k,j,ie+i+1) = aphi/(tan(theta)*radius)
+                            - a0*sin(0.5*PI*dis/Bheight)*radius
+                            *(1.0-cos(theta)*cos(phi))/dis;
+        }
       }
     }}
 
     for(int k=ks; k<=ke; ++k){
     for(int j=js; j<=je+1; ++j){
-#pragma simd
+//#pragma simd
       for(int i=1; i<=NGHOST; ++i){
-        b.x2f(k,j,ie+i) = b.x2f(k,j,ie);
+        Real radius=pmb->pcoord->x1v(ie+i);
+        Real theta=pmb->pcoord->x2v(j);
+        Real phi=pmb->pcoord->x3v(k);
+        Real xpos=radius*sin(theta)*cos(phi);
+        Real ypos=radius*sin(theta)*sin(phi);
+        Real zpos=radius*cos(theta);
+        Real dis=ypos*ypos+(xpos-radius)*(xpos-radius)+zpos*zpos;
+        Real aphi = a0 * 2.0 * Bheight * cos(0.5 * PI * dis/(Bheight*Bheight))/PI;
+        Real rhostream=rho0*exp(-dis/(wheight*wheight));
+        dis=sqrt(dis);
+        
+        if(rhostream < rhofloor){
+          b.x2f(k,j,ie+i) = b.x2f(k,j,ie);
+        }else{
+          b.x2f(k,j,ie+i) = a0*sin(0.5*PI*dis/Bheight)*2.0*(1.0-sin(theta)*cos(phi))*radius/dis
+                          - aphi/radius;
+        }
       }
     }}
 
@@ -704,7 +861,7 @@ void Outflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFiel
           Real xpos=radius*sin(theta)*cos(phi);
           Real ypos=radius*sin(theta)*sin(phi);
           Real zpos=radius*cos(theta);
-          Real dis=xpos*xpos+(ypos-radius)*(ypos-radius)+zpos*zpos;
+          Real dis=ypos*ypos+(xpos-radius)*(xpos-radius)+zpos*zpos;
           Real rhostream=rho0*exp(-dis/(wheight*wheight));
           if(rhostream < rhofloor){
             b.x3f(k,j,ie+i) = b.x3f(k,j,ie);
@@ -715,13 +872,18 @@ void Outflow_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceFiel
     }}
     
   }
-
+  
+/*  if(MAGNETIC_FIELDS_ENABLED){
+    AthenaArray<Real> baphi;
+    baphi.NewAthenaArray(ke-ks+1,je-js+1,NGHOST);
+  }
+*/
   return;
 }
 
 
 void Outflow_rad_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke)
+      Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   Radiation *prad=pmb->prad;
 
@@ -741,7 +903,7 @@ void Outflow_rad_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
          Real xpos=radius*sin(theta)*cos(phi);
          Real ypos=radius*sin(theta)*sin(phi);
          Real zpos=radius*cos(theta);
-         Real dis=xpos*xpos+(ypos-radius)*(ypos-radius)+zpos*zpos;
+         Real dis=ypos*ypos+(xpos-radius)*(xpos-radius)+zpos*zpos;
          Real rhostream=rho0*exp(-dis/(wheight*wheight));
 
          if(rhostream > rhofloor){
@@ -788,31 +950,6 @@ void Outflow_rad_X2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 
 
 
-void LoadRadVariable(MeshBlock *pmb)
-{
-
-  int il=pmb->is, iu=pmb->ie;
-  int jl=pmb->js, ju=pmb->je;
-  int kl=pmb->ks, ku=pmb->ke;
-  
-  for(int k=kl; k<=ku; ++k)
-    for(int j=jl; j<=ju; ++j)
-      for(int i=il; i<=iu; ++i){
-          pmb->prad->rad_ifov(0,k,j,i) =  pmb->prad->mu(0,k,j,i,0);
-          pmb->prad->rad_ifov(1,k,j,i) =  pmb->prad->mu(1,k,j,i,0);
-          pmb->prad->rad_ifov(2,k,j,i) =  pmb->prad->mu(2,k,j,i,0);
-        
-          pmb->prad->rad_ifov(3,k,j,i) =  pmb->prad->mu(0,k,j,i,3);
-          pmb->prad->rad_ifov(4,k,j,i) =  pmb->prad->mu(1,k,j,i,3);
-          pmb->prad->rad_ifov(5,k,j,i) =  pmb->prad->mu(2,k,j,i,3);
-        
-      }
-  
-  
-  
-  return;
-}
-
 
 Real grav_pot(const Real radius, const Real theta, const Real phi)
 {
@@ -829,14 +966,14 @@ Real grav_pot(const Real radius, const Real theta, const Real phi)
 
 void TidalPotential(MeshBlock *pmb, const Real time, const Real dt,
   const AthenaArray<Real> &prim, 
-  AthenaArray<Real> &bcc, AthenaArray<Real> &cons)
+  const AthenaArray<Real> &bcc, AthenaArray<Real> &cons)
 {
 
 // add the effective tidal potential in the co-rotating frame
 // -GM1/r-GM2/(r-R2)+GM2(r\cos\theta)/R2^2
-  AthenaArray<Real> &x1flux=pmb->phydro->flux[x1face];
-  AthenaArray<Real> &x2flux=pmb->phydro->flux[x2face];
-  AthenaArray<Real> &x3flux=pmb->phydro->flux[x3face];
+  AthenaArray<Real> &x1flux=pmb->phydro->flux[X1DIR];
+  AthenaArray<Real> &x2flux=pmb->phydro->flux[X2DIR];
+  AthenaArray<Real> &x3flux=pmb->phydro->flux[X3DIR];
   
   for(int k=pmb->ks; k<=pmb->ke; ++k){
     for(int j=pmb->js; j<=pmb->je; ++j){

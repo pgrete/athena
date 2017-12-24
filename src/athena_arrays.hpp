@@ -1,17 +1,16 @@
 #ifndef ATHENA_ARRAYS_HPP
 #define ATHENA_ARRAYS_HPP
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-// See LICENSE file for full public license information.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 //! \file athena_arrays.hpp
 //  \brief provides array classes valid in 1D to 5D.
 //
 //  The operator() is overloaded, e.g. elements of a 4D array of size [N4xN3xN2xN1]
 //  are accessed as:  A(n,k,j,i) = A[i + N1*(j + N2*(k + N3*n))]
 //  NOTE THE TRAILING INDEX INSIDE THE PARENTHESES IS INDEXED FASTEST
-//======================================================================================
 
 // C++ headers
 #include <cstddef>  // size_t
@@ -42,10 +41,9 @@ public:
 
   // a function to get the total size of the array
   int GetSize() const { return nx1_*nx2_*nx3_*nx4_*nx5_; }
+  size_t GetSizeInBytes() const {return nx1_*nx2_*nx3_*nx4_*nx5_*sizeof(T); }
 
-  T *GetArrayPointer() const { return pdata_; } // a brute force approach
-
-  bool IsShallowCopy() { return (scopy_ == 1); }
+  bool IsShallowCopy() { return (scopy_ == true); }
   T *data() { return pdata_; }
   const T *data() const	{ return pdata_; }
 
@@ -83,22 +81,23 @@ public:
 private:
   T *pdata_;
   int nx1_, nx2_, nx3_, nx4_, nx5_;
-  int scopy_;  // =0 if shallow copy (prevents source from being deleted)
+  bool scopy_;  // true if shallow copy (prevents source from being deleted)
 };
 
 //constructor
 
 template<typename T>
 AthenaArray<T>::AthenaArray()
-  : pdata_(0), nx1_(0), nx2_(0), nx3_(0), nx4_(0), nx5_(0), scopy_(0)
+  : pdata_(0), nx1_(0), nx2_(0), nx3_(0), nx4_(0), nx5_(0), scopy_(true)
 {
 }
 
-// destructor -- does nothing as DeleteAthenaArray should always be used to free memory
+// destructor
 
 template<typename T>
 AthenaArray<T>::~AthenaArray()
 {
+  DeleteAthenaArray();
 }
 
 // copy constructor (does a deep copy)
@@ -133,7 +132,7 @@ AthenaArray<T> &AthenaArray<T>::operator= (const AthenaArray<T> &src) {
   return *this;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn AthenaArray::InitWithShallowCopy()
 //  \brief shallow copy of array (copies ptrs, but not data)
 
@@ -145,11 +144,11 @@ void AthenaArray<T>::InitWithShallowCopy(AthenaArray<T> &src) {
   nx4_=src.nx4_;
   nx5_=src.nx5_;
   pdata_ = src.pdata_;
-  scopy_ = 1;
+  scopy_ = true;
   return;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn AthenaArray::InitWithShallowSlice()
 //  \brief shallow copy of nvar elements in dimension dim of an array, starting at
 //  index=indx.  Copies pointers to data, but not data itself.
@@ -196,92 +195,103 @@ void AthenaArray<T>::InitWithShallowSlice(AthenaArray<T> &src, const int dim,
     nx1_=nvar;
     pdata_ += indx;
   }
-  scopy_ = 1;
+  scopy_ = true;
   return;
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn
 //  \brief allocate new 1D array with elements initialized to zero.
 
 template<typename T>
 void AthenaArray<T>::NewAthenaArray(int nx1)
 {
+  scopy_ = false;
   nx1_ = nx1;
   nx2_ = 1;
   nx3_ = 1;
   nx4_ = 1;
   nx5_ = 1;
-  pdata_ = new T[nx1](); // initialized with zeroes using ()
+  pdata_ = new T[nx1](); // allocate memory and initialize to zero
 }
  
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn
 //  \brief 2d data allocation
 
 template<typename T>
 void AthenaArray<T>::NewAthenaArray(int nx2, int nx1)
 {
+  scopy_ = false;
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = 1;
   nx4_ = 1;
   nx5_ = 1;
-  pdata_ = new T[nx1*nx2](); // allocate memory (initialized to zero using () )
+  pdata_ = new T[nx1*nx2](); // allocate memory and initialize to zero
 }
  
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn
 //  \brief 3d data allocation
 
 template<typename T>
 void AthenaArray<T>::NewAthenaArray(int nx3, int nx2, int nx1)
 {
+  scopy_ = false;
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = nx3;
   nx4_ = 1;
   nx5_ = 1;
-  pdata_ = new T[nx1*nx2*nx3](); // allocate memory (initialized to zero using () )
+  pdata_ = new T[nx1*nx2*nx3](); // allocate memory and initialize to zero
 }
  
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn
 //  \brief 4d data allocation
 
 template<typename T>
 void AthenaArray<T>::NewAthenaArray(int nx4, int nx3, int nx2, int nx1)
 {
+  scopy_ = false;
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = nx3;
   nx4_ = nx4;
   nx5_ = 1;
-  pdata_ = new T[nx1*nx2*nx3*nx4](); // allocate memory (initialized to zero using () )
+  pdata_ = new T[nx1*nx2*nx3*nx4](); // allocate memory and initialize to zero
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn
 //  \brief 5d data allocation
 
 template<typename T>
 void AthenaArray<T>::NewAthenaArray(int nx5, int nx4, int nx3, int nx2, int nx1)
 {
+  scopy_ = false;
   nx1_ = nx1;
   nx2_ = nx2;
   nx3_ = nx3;
   nx4_ = nx4;
   nx5_ = nx5;
-  pdata_ = new T[nx1*nx2*nx3*nx4*nx5](); // allocate memory (initialized to zero using () )
+  pdata_ = new T[nx1*nx2*nx3*nx4*nx5](); // allocate memory and initialize to zero
 }
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn
 //  \brief  free memory allocated for data array
 
 template<typename T>
 void AthenaArray<T>::DeleteAthenaArray()
 {
-  if (!scopy_) delete[] pdata_;
+  if (scopy_) {
+    pdata_ = NULL;
+  } else {
+    delete[] pdata_;
+    scopy_ = true;
+  }
 } 
+
 #endif // ATHENA_ARRAYS_HPP

@@ -1,21 +1,10 @@
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-//
-// This program is free software: you can redistribute and/or modify it under the terms
-// of the GNU General Public License (GPL) as published by the Free Software Foundation,
-// either version 3 of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-// PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-//
-// You should have received a copy of GNU GPL in the file LICENSE included in the code
-// distribution.  If not see <http://www.gnu.org/licenses/>.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 //! \file restart.cpp
-//  \brief writes restart dump files
-//======================================================================================
+//  \brief writes restart files
 
 // C/C++ headers
 #include <iomanip>
@@ -30,96 +19,128 @@
 #include "../athena.hpp"
 #include "../globals.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
 #include "../radiation/radiation.hpp"
-
-// This class header
 #include "outputs.hpp"
+
+//----------------------------------------------------------------------------------------
+// RestartOutput constructor
+// destructor - not needed for this derived class
 
 RestartOutput::RestartOutput(OutputParameters oparams)
   : OutputType(oparams)
 {
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void RestartOutput::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag)
-//  \brief open the restarting file, output the parameter and header blocks
+//----------------------------------------------------------------------------------------
+//! \fn void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
+//  \brief Cycles over all MeshBlocks and writes data to a single restart file.
 
-void RestartOutput::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag)
+void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_write)
 {
-  std::string fname;
-  std::stringstream ost;
   MeshBlock *pmb;
+  IOWrapper resfile;
+  IOWrapperSize_t listsize, headeroffset, datasize;
 
-  // create single output, filename:"file_basename"+"."+"file_id"+"."+XXXXX+".rst",
+  // create single output filename:"file_basename"+"."+XXXXX+".rst",
   // where XXXXX = 5-digit file_number
-  char number[6]; // array to store 4-digit number and end-of-string char
+  std::string fname;
+  char number[6];
   sprintf(number,"%05d",output_params.file_number);
+
   fname.assign(output_params.file_basename);
   fname.append(".");
-  fname.append(output_params.file_id);
-  fname.append(".");
-  if(wtflag==false) 
+  // add file number to name, unless write is forced by terminate signal, in which case
+  // replace number in the name by the string "final".  This keeps the restart file
+  // numbers consistent with output.dt when a job is restarted many times.
+  if(force_write==false) 
     fname.append(number);
   else 
-    fname.append("last");
+    fname.append("final");
   fname.append(".rst");
 
-  // count up here for the restarting file.
-  if(wtflag==false) {
+  // increment counters now so values for *next* dump are stored in restart file
+  if(force_write==false) {
     output_params.file_number++;
     output_params.next_time += output_params.dt;
     pin->SetInteger(output_params.block_name, "file_number", output_params.file_number);
     pin->SetReal(output_params.block_name, "next_time", output_params.next_time);
   }
-  resfile.Open(fname.c_str(),WRAPPER_WRITE_MODE);
+  resfile.Open(fname.c_str(),IO_WRAPPER_WRITE_MODE);
 
   // prepare the input parameters
+  std::stringstream ost;
   pin->ParameterDump(ost);
   std::string sbuf=ost.str();
 
   // calculate the header size
+  IOWrapperSize_t udsize=0;
+  for(int n=0; n<pm->nint_user_mesh_data_; n++)
+    udsize+=pm->iuser_mesh_data[n].GetSizeInBytes();
+  for(int n=0; n<pm->nreal_user_mesh_data_; n++)
+    udsize+=pm->ruser_mesh_data[n].GetSizeInBytes();
+
   headeroffset=sbuf.size()*sizeof(char)+3*sizeof(int)+sizeof(RegionSize)
-              +2*sizeof(Real)+sizeof(IOWrapperSize_t);
+              +2*sizeof(Real)+sizeof(IOWrapperSize_t)+udsize;
   // the size of an element of the ID list
   listsize=sizeof(LogicalLocation)+sizeof(Real);
   // the size of each MeshBlock
-  datasize = pM->pblock->GetBlockSizeInBytes();
-  nbtotal=pM->nbtotal;
-  myns=pM->nslist[Globals::my_rank];
-  mynb=pM->nblist[Globals::my_rank];
+  datasize = pm->pblock->GetBlockSizeInBytes();
+  int nbtotal=pm->nbtotal;
+  int myns=pm->nslist[Globals::my_rank];
+  int mynb=pm->nblist[Globals::my_rank];
 
-  // write the header
+  // write the header; this part is serial
   if(Globals::my_rank==0) {
-    // output the input parameters; this part is serial
+    // output the input parameters
     resfile.Write(sbuf.c_str(),sizeof(char),sbuf.size());
 
-    // output Mesh information; this part is serial
-    resfile.Write(&(pM->nbtotal), sizeof(int), 1);
-    resfile.Write(&(pM->root_level), sizeof(int), 1);
-    resfile.Write(&(pM->mesh_size), sizeof(RegionSize), 1);
-    resfile.Write(&(pM->time), sizeof(Real), 1);
-    resfile.Write(&(pM->dt), sizeof(Real), 1);
-    resfile.Write(&(pM->ncycle), sizeof(int), 1);
+    // output Mesh information
+    resfile.Write(&(pm->nbtotal), sizeof(int), 1);
+    resfile.Write(&(pm->root_level), sizeof(int), 1);
+    resfile.Write(&(pm->mesh_size), sizeof(RegionSize), 1);
+    resfile.Write(&(pm->time), sizeof(Real), 1);
+    resfile.Write(&(pm->dt), sizeof(Real), 1);
+    resfile.Write(&(pm->ncycle), sizeof(int), 1);
     resfile.Write(&(datasize), sizeof(IOWrapperSize_t), 1);
+
+    // collect and write user Mesh data
+    if(udsize!=0) {
+      char *ud = new char[udsize];
+      IOWrapperSize_t udoffset = 0;
+      for(int n=0; n<pm->nint_user_mesh_data_; n++) {
+        memcpy(&(ud[udoffset]), pm->iuser_mesh_data[n].data(),
+               pm->iuser_mesh_data[n].GetSizeInBytes());
+        udoffset+=pm->iuser_mesh_data[n].GetSizeInBytes();
+      }
+      for(int n=0; n<pm->nreal_user_mesh_data_; n++) {
+        memcpy(&(ud[udoffset]), pm->ruser_mesh_data[n].data(),
+               pm->ruser_mesh_data[n].GetSizeInBytes());
+        udoffset+=pm->ruser_mesh_data[n].GetSizeInBytes();
+      }
+      resfile.Write(ud, 1, udsize);
+      delete [] ud;
+    }
   }
 
   // allocate memory for the ID list and the data
-  char *idlist=new char [listsize*mynb];
-  data = new Real [mynb*datasize/sizeof(Real)];
-  pmb=pM->pblock;
+  char *idlist = new char [listsize*mynb];
+  char *data = new char [mynb*datasize];
+
+  // Loop over MeshBlocks and pack the meta data
+  pmb=pm->pblock;
   int os=0;
   while(pmb!=NULL) {
-    // pack the meta data
     memcpy(&(idlist[os]), &(pmb->loc), sizeof(LogicalLocation));
     os+=sizeof(LogicalLocation);
     memcpy(&(idlist[os]), &(pmb->cost), sizeof(Real));
     os+=sizeof(Real);
     pmb=pmb->next;
   }
+
   // write the ID list collectively
   IOWrapperSize_t myoffset=headeroffset+listsize*myns;
   resfile.Write_at_all(idlist,listsize,mynb,myoffset);
@@ -127,62 +148,52 @@ void RestartOutput::Initialize(Mesh *pM, ParameterInput *pin, bool wtflag)
   // deallocate the idlist array
   delete [] idlist;
 
-  // leave the file open; it will be closed in Finalize()
-  return;
-}
+  // Loop over MeshBlocks and pack the data
+  pmb=pm->pblock;
+  while (pmb != NULL) {
+    char *pdata=&(data[pmb->lid*datasize]);
+    memcpy(pdata,pmb->phydro->u.data(), pmb->phydro->u.GetSizeInBytes());
+    pdata+=pmb->phydro->u.GetSizeInBytes();
+    if (GENERAL_RELATIVITY) {
+      memcpy(pdata,pmb->phydro->w.data(), pmb->phydro->w.GetSizeInBytes());
+      pdata+=pmb->phydro->w.GetSizeInBytes();
+      memcpy(pdata,pmb->phydro->w1.data(), pmb->phydro->w1.GetSizeInBytes());
+      pdata+=pmb->phydro->w1.GetSizeInBytes();
+    }
+    if (MAGNETIC_FIELDS_ENABLED) {
+      memcpy(pdata,pmb->pfield->b.x1f.data(),pmb->pfield->b.x1f.GetSizeInBytes());
+      pdata+=pmb->pfield->b.x1f.GetSizeInBytes();
+      memcpy(pdata,pmb->pfield->b.x2f.data(),pmb->pfield->b.x2f.GetSizeInBytes());
+      pdata+=pmb->pfield->b.x2f.GetSizeInBytes();
+      memcpy(pdata,pmb->pfield->b.x3f.data(),pmb->pfield->b.x3f.GetSizeInBytes());
+      pdata+=pmb->pfield->b.x3f.GetSizeInBytes();
+    }
+    if(RADIATION_ENABLED){
+      memcpy(pdata,pmb->prad->ir.data(),pmb->prad->ir.GetSizeInBytes());
+      pdata+=pmb->prad->ir.GetSizeInBytes();
+    }
 
+    // NEW_PHYSICS: add output of additional physics to restarts here
+    // also update MeshBlock::GetBlockSizeInBytes accordingly and MeshBlock constructor
+    // for restarts.
 
-//--------------------------------------------------------------------------------------
-//! \fn void RestartOutput::LoadOutputData(OutputData *pout_data, MeshBlock *pblock)
-//  \brief Load the data array from all the MeshBlocks
-void RestartOutput::LoadOutputData(OutputData *pout_data, MeshBlock *pblock)
-{
-  // pack the data
-  Real *pdata=&(data[pblock->lid*datasize/sizeof(Real)]);
-  memcpy(pdata,pblock->phydro->u.GetArrayPointer(),
-         sizeof(Real)*pblock->phydro->u.GetSize());
-  pdata+=pblock->phydro->u.GetSize();
-
-  if (GENERAL_RELATIVITY) {
-    memcpy(pdata,pblock->phydro->w.GetArrayPointer(),
-           sizeof(Real)*pblock->phydro->w.GetSize());
-    pdata+=pblock->phydro->w.GetSize();
-    memcpy(pdata,pblock->phydro->w1.GetArrayPointer(),
-           sizeof(Real)*pblock->phydro->w1.GetSize());
-    pdata+=pblock->phydro->w1.GetSize();
+    // pack the user MeshBlock data
+    for(int n=0; n<pmb->nint_user_meshblock_data_; n++) {
+      memcpy(pdata, pmb->iuser_meshblock_data[n].data(),
+             pmb->iuser_meshblock_data[n].GetSizeInBytes());
+      pdata+=pmb->iuser_meshblock_data[n].GetSizeInBytes();
+    }
+    for(int n=0; n<pmb->nreal_user_meshblock_data_; n++) {
+      memcpy(pdata, pmb->ruser_meshblock_data[n].data(),
+             pmb->ruser_meshblock_data[n].GetSizeInBytes());
+      pdata+=pmb->ruser_meshblock_data[n].GetSizeInBytes();
+    }
+    pmb=pmb->next;
   }
-  if (MAGNETIC_FIELDS_ENABLED) {
-    memcpy(pdata,pblock->pfield->b.x1f.GetArrayPointer(),
-           sizeof(Real)*pblock->pfield->b.x1f.GetSize());
-    pdata+=pblock->pfield->b.x1f.GetSize();
-    memcpy(pdata,pblock->pfield->b.x2f.GetArrayPointer(),
-           sizeof(Real)*pblock->pfield->b.x2f.GetSize());
-    pdata+=pblock->pfield->b.x2f.GetSize();
-    memcpy(pdata,pblock->pfield->b.x3f.GetArrayPointer(),
-           sizeof(Real)*pblock->pfield->b.x3f.GetSize());
-    pdata+=pblock->pfield->b.x3f.GetSize();
-  }
-  if (RADIATION_ENABLED) {
-    memcpy(pdata,pblock->prad->ir.GetArrayPointer(),
-           sizeof(Real)*pblock->prad->ir.GetSize());
-    pdata+=pblock->prad->ir.GetSize();
-  
-  }
 
-  // add additional physics here
-  // also update MeshBlock::GetBlockSizeInBytes accordingly
-}
-
-
-//--------------------------------------------------------------------------------------
-//! \fn void RestartOutput::Finalize(ParameterInput *pin)
-//  \brief perform collective data output and clean up
-void RestartOutput::Finalize(ParameterInput *pin)
-{
-  // call actual write here
-  IOWrapperSize_t myoffset=headeroffset+listsize*nbtotal+datasize*myns;
+  // now write restart data in parallel
+  myoffset=headeroffset+listsize*nbtotal+datasize*myns;
   resfile.Write_at_all(data,datasize,mynb,myoffset);
   resfile.Close();
   delete [] data;
 }
-

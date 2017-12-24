@@ -29,7 +29,7 @@
 #include "../athena_arrays.hpp" 
 #include "radiation.hpp"
 #include "../parameter_input.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../globals.hpp"
 #include "integrators/rad_integrators.hpp"
 
@@ -38,12 +38,6 @@
 // The default opacity function.
 // Do nothing. Keep the opacity as the initial value
 inline void DefaultOpacity(MeshBlock *pmb, AthenaArray<Real> &prim)
-{
-  
-}
-
-// Default function to load internal variable. Nothing to do
-inline void DefaultInternalVariable(MeshBlock *pmb)
 {
   
 }
@@ -63,6 +57,8 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   vmax = pin->GetOrAddReal("radiation","vmax",0.9);
   tunit = pin->GetOrAddReal("radiation","Tunit",1.e7);
   t_floor_ = pin->GetOrAddReal("radiation", "tfloor", TINY_NUMBER);
+
+  ir_output=pin->GetOrAddInteger("radiation","ir_output",0);
   
   set_source_flag = 0;
 
@@ -111,7 +107,19 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   nang = n_ang * noct;
   
   n_fre_ang = nang * nfreq;
+
+  if(ir_output > n_fre_ang){    
+
+    std::stringstream msg;
+    msg << "### FATAL ERROR in Radiation Class" << std::endl
+        << "number of output specific intensity is too large!";
+    throw std::runtime_error(msg.str().c_str());
+  }
   
+  if(ir_output > 0){
+    ir_index.NewAthenaArray(ir_output);
+    dump_ir.NewAthenaArray(ir_output,n3z,n2z,n1z);
+  }
   
   // allocate arrays
   // store frequency and angles as [nfre][ang]
@@ -126,9 +134,7 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   sigma_planck.NewAthenaArray(n3z,n2z,n1z,nfreq);
   
   grey_sigma.NewAthenaArray(3,n3z,n2z,n1z);
-  
-  if(NRADFOV > 0)
-    rad_ifov.NewAthenaArray(NRADFOV,n3z,n2z,n1z);
+
   
   mu.NewAthenaArray(3,n3z,n2z,n1z,nang);
   wmu.NewAthenaArray(nang);
@@ -138,9 +144,9 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   AngularGrid(angle_flag, nmu);
   
   //allocate memory to store the flux
-  flux[x1face].NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
-  if(n2z > 1) flux[x2face].NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
-  if(n3z > 1) flux[x3face].NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
+  flux[X1DIR].NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
+  if(n2z > 1) flux[X2DIR].NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
+  if(n3z > 1) flux[X3DIR].NewAthenaArray(n3z,n2z,n1z,n_fre_ang);
   
   // Initialize the frequency weight
   FrequencyGrid();
@@ -148,8 +154,6 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
   // set a default opacity function
   UpdateOpacity = DefaultOpacity;
   
-  //  default function for internal output
-  LoadInternalVariable = DefaultInternalVariable;
   
   pradintegrator = new RadIntegrator(this, pin);
   
@@ -174,6 +178,7 @@ Radiation::Radiation(MeshBlock *pmb, ParameterInput *pin)
     fprintf(pfile,"Tfloor        %4.2e \n",t_floor_);
     fprintf(pfile,"rotate_theta  %d  \n",rotate_theta);
     fprintf(pfile,"rotate_phi    %d  \n",rotate_phi);
+    fprintf(pfile,"adv_flag:     %d  \n",pradintegrator->adv_flag_);
     
     for(int n=0; n<nang; ++n){
       fprintf(pfile,"%2d   %e   %e   %e    %e\n",n,mu(0,0,0,0,n),mu(1,0,0,0,n),
@@ -203,16 +208,18 @@ Radiation::~Radiation()
   sigma_planck.DeleteAthenaArray();
   grey_sigma.DeleteAthenaArray();
   
-  if(NRADFOV > 0)
-    rad_ifov.DeleteAthenaArray();
+  if(ir_output > 0){
+    ir_index.DeleteAthenaArray();
+    dump_ir.DeleteAthenaArray();
+  }
   
   mu.DeleteAthenaArray();
   wmu.DeleteAthenaArray();
   wfreq.DeleteAthenaArray();
   
-  flux[x1face].DeleteAthenaArray();
-  if(pmy_block->block_size.nx2 > 1) flux[x2face].DeleteAthenaArray();
-  if(pmy_block->block_size.nx3 > 1) flux[x3face].DeleteAthenaArray();
+  flux[X1DIR].DeleteAthenaArray();
+  if(pmy_block->block_size.nx2 > 1) flux[X2DIR].DeleteAthenaArray();
+  if(pmy_block->block_size.nx3 > 1) flux[X3DIR].DeleteAthenaArray();
   
   delete pradintegrator;
   
@@ -224,12 +231,6 @@ Radiation::~Radiation()
 void Radiation::EnrollOpacityFunction(Opacity_t MyOpacityFunction)
 {
   UpdateOpacity = MyOpacityFunction;
-  
-}
-
-void Radiation::EnrollInternalVariableFunction(OutInternal_t MyOutputInternalFunction)
-{
-  LoadInternalVariable = MyOutputInternalFunction;
   
 }
 

@@ -20,7 +20,7 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "bvals.hpp"
 #include "../radiation/radiation.hpp"
 
@@ -30,13 +30,13 @@
 //  \brief OUTFLOW boundary conditions for radiation, inner x1 boundary
 
 void RadOutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke)
+                Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy radiation variables into ghost zones
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=1; i<=(NGHOST); ++i) {
-#pragma simd
+//#pragma simd
       for(int n=0; n<pmb->prad->n_fre_ang; n++){
         a(k,j,is-i,n) = a(k,j,is,n);
       }
@@ -54,14 +54,14 @@ void RadOutflowInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief OUTFLOW boundary conditions for radiation, outer x1 boundary
 
 void RadOutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke)
+            Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy radiation variables into ghost zones
 
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=1; i<=(NGHOST); ++i) {
-#pragma simd
+//#pragma simd
        for(int n=0; n<pmb->prad->n_fre_ang; n++){
          a(k,j,ie+i,n) = a(k,j,ie,n);
        }
@@ -79,13 +79,13 @@ void RadOutflowOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief OUTFLOW boundary conditions for radiation, inner x2 boundary
 
 void RadOutflowInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke)
+            Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy rad variables into ghost zones
   for (int k=ks; k<=ke; ++k) {
     for (int j=1; j<=(NGHOST); ++j) {
       for (int i=is; i<=ie; ++i) {
-#pragma simd
+//#pragma simd
         for(int n=0; n<pmb->prad->n_fre_ang; n++){
           a(k,js-j,i,n) = a(k,js,i,n);
         }
@@ -103,13 +103,13 @@ void RadOutflowInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief OUTFLOW boundary conditions for radiation, outer x2 boundary
 
 void RadOutflowOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke)
+            Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy rad variables into ghost zones
   for (int k=ks; k<=ke; ++k) {
     for (int j=1; j<=(NGHOST); ++j) {
       for (int i=is; i<=ie; ++i) {
-#pragma simd
+//#pragma simd
         for(int n=0; n<pmb->prad->n_fre_ang; n++){
            a(k,je+j,i,n) = a(k,je,i,n);
         }
@@ -127,13 +127,13 @@ void RadOutflowOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief OUTFLOW boundary conditions for radiation, inner x3 boundary
 
 void RadOutflowInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke)
+           Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy rad variables into ghost zones
   for (int k=1; k<=(NGHOST); ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-#pragma simd
+//#pragma simd
        for(int n=0; n<pmb->prad->n_fre_ang; n++){
          a(ks-k,j,i,n) = a(ks,j,i,n);
        }
@@ -151,13 +151,13 @@ void RadOutflowInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief OUTFLOW boundary conditions for radiation, outer x3 boundary
 
 void RadOutflowOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke)
+           Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy hydro variables into ghost zones
   for (int k=1; k<=(NGHOST); ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-#pragma simd
+//#pragma simd
        for(int n=0; n<pmb->prad->n_fre_ang; n++){
         a(ke+k,j,i,n) = a(ke,j,i,n);
        }

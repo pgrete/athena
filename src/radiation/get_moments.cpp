@@ -21,7 +21,7 @@
 // Athena++ headers
 #include "./radiation.hpp"
 #include "./integrators/rad_integrators.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../hydro/hydro.hpp"
 
 //--------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ void Radiation::CalculateMoment(AthenaArray<Real> &ir_in)
   for(int n=0; n<13; ++n)
     for(int k=0; k<n3z; ++k)
       for(int j=0; j<n2z; ++j)
-#pragma simd
+#pragma omp simd
         for(int i=0; i<n1z; ++i){
           i_mom(n,k,j,i) = 0.0;
         }
@@ -70,18 +70,19 @@ void Radiation::CalculateMoment(AthenaArray<Real> &ir_in)
           Real *cosx = &(mu(0,k,j,i,0));
           Real *cosy = &(mu(1,k,j,i,0));
           Real *cosz = &(mu(2,k,j,i,0));
-#pragma simd reduction(+:er,frx,fry,frz,prxx,pryy,przz,prxy,prxz,pryz)
+#pragma omp simd reduction(+:er,frx,fry,frz,prxx,pryy,przz,prxy,prxz,pryz)
           for(int n=0; n<nang; ++n){
-            er   += weight[n] * intensity[n];
-            frx  += weight[n] * intensity[n] * cosx[n];
-            fry  += weight[n] * intensity[n] * cosy[n];
-            frz  += weight[n] * intensity[n] * cosz[n];
-            prxx += weight[n] * intensity[n] * cosx[n] * cosx[n];
-            pryy += weight[n] * intensity[n] * cosy[n] * cosy[n];
-            przz += weight[n] * intensity[n] * cosz[n] * cosz[n];
-            prxy += weight[n] * intensity[n] * cosx[n] * cosy[n];
-            prxz += weight[n] * intensity[n] * cosx[n] * cosz[n];
-            pryz += weight[n] * intensity[n] * cosy[n] * cosz[n];
+            Real irweight = weight[n] * intensity[n];
+            er   += irweight;
+            frx  += irweight * cosx[n];
+            fry  += irweight * cosy[n];
+            frz  += irweight * cosz[n];
+            prxx += irweight * cosx[n] * cosx[n];
+            pryy += irweight * cosy[n] * cosy[n];
+            przz += irweight * cosz[n] * cosz[n];
+            prxy += irweight * cosx[n] * cosy[n];
+            prxz += irweight * cosx[n] * cosz[n];
+            pryz += irweight * cosy[n] * cosz[n];
           }
           //multiply the frequency weight
           er *= wfreq(ifr);
@@ -128,6 +129,7 @@ void Radiation::CalculateMoment(AthenaArray<Real> &ir_in)
 // \!fn void CalculateComMoment()
 
 // \brief Calculate the radiation moments in the co-moving frame
+// Also load specific intensity for dump
 
 void Radiation::CalculateComMoment()
 {
@@ -157,7 +159,7 @@ void Radiation::CalculateComMoment()
   for(int n=0; n<4; ++n)
     for(int k=0; k<n3z; ++k)
       for(int j=0; j<n2z; ++j)
-#pragma simd
+#pragma omp simd
         for(int i=0; i<n1z; ++i){
           i_mom(n,k,j,i) = 0.0;
         }
@@ -195,7 +197,7 @@ void Radiation::CalculateComMoment()
         for(int ifr=0; ifr<nfreq; ++ifr){
           er=0.0; frx=0.0; fry=0.0; frz=0.0;
           Real numsum = 0.0;
-#pragma simd reduction(+:er,frx,fry,frz)
+#pragma omp simd reduction(+:numsum,er,frx,fry,frz)
           for(int n=0; n<nang; ++n){
             Real vdotn = vx * cosx[n] + vy * cosy[n] + vz * cosz[n];
             Real vnc = 1.0 - vdotn * invcrat;
@@ -248,6 +250,21 @@ void Radiation::CalculateComMoment()
 
       }
     }
+  }
+
+  // Load the specific intensity for dump
+  if(ir_output > 0){
+    for(int n=0; n<ir_output; ++n){
+      for(int k=0; k<n3z; ++k){
+        for(int j=0; j<n2z; ++j){
+          for(int i=0; i<n1z; ++i){
+            dump_ir(n,k,j,i)=ir(k,j,i,ir_index(n));
+          }
+        }
+      }
+    }
+
+
   }
   
   

@@ -22,12 +22,12 @@
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
 #include "../../parameter_input.hpp"
-#include "../../mesh.hpp"
+#include "../../mesh/mesh.hpp"
 #include "../radiation.hpp"
 #include "../../coordinates/coordinates.hpp" //
 #include "../../hydro/hydro.hpp"
 #include "../../field/field.hpp"
-#include "../../hydro/eos/eos.hpp"
+#include "../../eos/eos.hpp"
 
 // class header
 #include "rad_integrators.hpp"
@@ -44,7 +44,7 @@
 #endif
 
 
-void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
+void RadIntegrator::AddSourceTerms(MeshBlock *pmb, const Real dt, AthenaArray<Real> &u,
         AthenaArray<Real> &w, AthenaArray<Real> &ir, const int step)
 {
   Radiation *prad=pmb->prad;
@@ -74,14 +74,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
   int is = pmb->is; int js = pmb->js; int ks = pmb->ks;
   int ie = pmb->ie; int je = pmb->je; int ke = pmb->ke;
 
-  Real dt;
-  if (step == 1) {
-    dt = 0.5*(pmb->pmy_mesh->dt);
-  } else {
-    dt = (pmb->pmy_mesh->dt);
-  }
-  
-  
+ 
   for(int k=ks; k<=ke; ++k){
     for(int j=js; j<=je; ++j){
       for(int i=is; i<=ie; ++i){
@@ -139,7 +132,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
          // Prepare the transformation coefficients
          Real numsum = 0.0;
 
-#pragma simd
+#pragma omp simd reduction(+:numsum)
          for(int n=0; n<nang; ++n){
             Real vdotn = vx * prad->mu(0,k,j,i,n) + vy * prad->mu(1,k,j,i,n)
                         + vz * prad->mu(2,k,j,i,n);
@@ -152,7 +145,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
          }
            // Normalize weight in co-moving frame to make sure the sum is one
          numsum = 1.0/numsum;
-#pragma simd
+#pragma omp simd
          for(int n=0; n<nang; ++n){
             wmu_cm(n) *= numsum;
          }
@@ -160,7 +153,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
          lab_ir=&(ir(k,j,i,0));
         
          for(int ifr=0; ifr<nfreq; ++ifr){
-#pragma simd
+#pragma omp simd
            for(int n=0; n<nang; ++n){
              ir_cm(n+ifr*nang) = lab_ir[n+ifr*nang] * cm_to_lab(n);
            }
@@ -185,7 +178,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
       if(prad->set_source_flag == 0){
         
         for(int ifr=0; ifr<nfreq; ++ifr){
-#pragma simd
+#pragma omp simd reduction (+:er0,frx0,fry0,frz0)
            for(int n=0; n<nang; ++n){
                Real ir_weight = lab_ir[n+ifr*prad->nang] * prad->wmu(n);
                er0 += ir_weight;
@@ -202,7 +195,6 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
        
        // now update the lab frame intensity
         for(int ifr=0; ifr<nfreq; ++ifr){
-#pragma simd
           for(int n=0; n<nang; ++n){
               lab_ir[n+ifr*nang] = std::max(ir_cm(n+ifr*nang)/cm_to_lab(n),
                                    TINY_NUMBER);
@@ -218,7 +210,7 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
         Real frz = 0.0;
         
         for(int ifr=0; ifr<nfreq; ++ifr){
-#pragma simd
+#pragma omp simd reduction (+:er,frx,fry,frz)
            for(int n=0; n<nang; ++n){
                Real ir_weight = lab_ir[n+ifr*prad->nang] * prad->wmu(n);
                er += ir_weight;
@@ -256,24 +248,24 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, AthenaArray<Real> &u,
         }
         
         // check internal energy
-        Real ekin=0.5 * (u(IM1,k,j,i) * u(IM1,k,j,i)
-                       + u(IM2,k,j,i) * u(IM2,k,j,i)
-                       + u(IM3,k,j,i) * u(IM3,k,j,i))/u(IDN,k,j,i);
-        Real pb=0.0;
-        if(MAGNETIC_FIELDS_ENABLED){
-          if(step==1){
-            const Real& bcc1 = pmb->pfield->bcc1(IB1,k,j,i);
-            const Real& bcc2 = pmb->pfield->bcc1(IB2,k,j,i);
-            const Real& bcc3 = pmb->pfield->bcc1(IB3,k,j,i);
-            pb=0.5*(SQR(bcc1) + SQR(bcc2) + SQR(bcc3));
-          }else{
-            const Real& bcc1 = pmb->pfield->bcc(IB1,k,j,i);
-            const Real& bcc2 = pmb->pfield->bcc(IB2,k,j,i);
-            const Real& bcc3 = pmb->pfield->bcc(IB3,k,j,i);
-            pb=0.5*(SQR(bcc1) + SQR(bcc2) + SQR(bcc3));
-          }
-        }
-        Real eint=u(IEN,k,j,i) - pb - ekin;
+//        Real ekin=0.5 * (u(IM1,k,j,i) * u(IM1,k,j,i)
+//                       + u(IM2,k,j,i) * u(IM2,k,j,i)
+//                       + u(IM3,k,j,i) * u(IM3,k,j,i))/u(IDN,k,j,i);
+//        Real pb=0.0;
+//        if(MAGNETIC_FIELDS_ENABLED){
+//          if(step==1){
+//            const Real& bcc1 = pmb->pfield->bcc1(IB1,k,j,i);
+//            const Real& bcc2 = pmb->pfield->bcc1(IB2,k,j,i);
+//            const Real& bcc3 = pmb->pfield->bcc1(IB3,k,j,i);
+//            pb=0.5*(SQR(bcc1) + SQR(bcc2) + SQR(bcc3));
+//          }else{
+//            const Real& bcc1 = pmb->pfield->bcc(IB1,k,j,i);
+//            const Real& bcc2 = pmb->pfield->bcc(IB2,k,j,i);
+//            const Real& bcc3 = pmb->pfield->bcc(IB3,k,j,i);
+//            pb=0.5*(SQR(bcc1) + SQR(bcc2) + SQR(bcc3));
+//          }
+//        }
+//        Real eint=u(IEN,k,j,i) - pb - ekin;
 //        if(eint < 0.0){
 //          Real gm1 = pmb->phydro->peos->GetGamma() - 1.0;
 //          eint = u(IDN,k,j,i) * tgas /gm1;

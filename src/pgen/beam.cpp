@@ -26,12 +26,12 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../hydro/hydro.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../eos/eos.hpp"
 #include "../bvals/bvals.hpp"
-#include "../hydro/srcterms/srcterms.hpp"
+#include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
@@ -47,7 +47,7 @@ static int octnum;
  *====================================================================================*/
 
 void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke);
+            Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 
 void Mesh::InitUserMeshData(ParameterInput *pin)
 {
@@ -70,7 +70,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
   
-  Real gamma = phydro->peos->GetGamma();
+  Real gamma = peos->GetGamma();
   
   // Initialize hydro variable
   for(int k=ks; k<=ke; ++k) {
@@ -118,7 +118,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 
 
 void TwoBeams(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                     int is, int ie, int js, int je, int ks, int ke)
+         Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   Radiation *prad=pmb->prad;
   int nang=prad->nang;

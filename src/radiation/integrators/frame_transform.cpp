@@ -21,7 +21,7 @@
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
 #include "../radiation.hpp"
-#include "../../mesh.hpp"
+#include "../../mesh/mesh.hpp"
 #include "../../coordinates/coordinates.hpp"
 #include "../../utils/utils.hpp"
 
@@ -54,7 +54,7 @@ void RadIntegrator::LabToCom(const Real vx, const Real vy, const Real vz,
 
 
   for(int ifr=0; ifr<nfreq; ++ifr){
-#pragma simd
+#pragma omp simd
     for(int n=0; n<nang; n++){
        Real vnc = vx * mux[n] + vy * muy[n] + vz * muz[n];
       
@@ -95,7 +95,7 @@ void RadIntegrator::ComToLab(const Real vx, const Real vy, const Real vz,
 
 
   for(int ifr=0; ifr<nfreq; ++ifr){
-#pragma simd
+#pragma omp simd
     for(int n=0; n<nang; n++){
        Real vnc = vx * mux[n] + vy * muy[n] + vz * muz[n];
       

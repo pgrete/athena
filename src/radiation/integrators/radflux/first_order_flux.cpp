@@ -21,7 +21,7 @@
 #include "../../../athena.hpp"
 #include "../../../athena_arrays.hpp"
 #include "../../radiation.hpp"
-#include "../../../mesh.hpp"
+#include "../../../mesh/mesh.hpp"
 #include "../../../coordinates/coordinates.hpp"
 
 // this class header
@@ -31,22 +31,26 @@
 //! \fn RadIntegrator::FirstOrderFluxX1()
 //  \brief 
 
-void RadIntegrator::FirstOrderFluxX1(const int k, const int j,
-  const int il, const int iu,
-  const AthenaArray<Real> &q, const AthenaArray<Real> &vel,
-  AthenaArray<Real> &flx)
+void RadIntegrator::FirstOrderFluxX1(Coordinates *pco, 
+  const int kl, const int ku, const int jl, const int ju,
+  const int il, const int iu, const AthenaArray<Real> &q, 
+  const AthenaArray<Real> &vel, AthenaArray<Real> &flx)
 {
+  for (int k=kl; k<=ku; ++k){
+  for (int j=jl; j<=ju; ++j){
   for (int i=il; i<=iu; ++i){
-#pragma simd
+//#pragma simd
+
     for(int n=0; n<pmy_rad->n_fre_ang; ++n){
-      if(vel(i,n)>0.0){
-        flx(i,n) = q(k,j,i-1,n) * vel(i,n);
+      if(vel(k,j,i,n)>0.0){
+        flx(k,j,i,n) += q(k,j,i-1,n) * vel(k,j,i,n);
       }
-      if(vel(i,n) <= 0.0){
-        flx(i,n) = q(k,j,i,n) * vel(i,n);
+      if(vel(k,j,i,n) <= 0.0){
+        flx(k,j,i,n) += q(k,j,i,n) * vel(k,j,i,n);
       }
     }
-  }
+
+  }}}
 
 
   return;
@@ -55,22 +59,25 @@ void RadIntegrator::FirstOrderFluxX1(const int k, const int j,
 //! \fn RadIntegrator::FirstOrderFluxX2()
 //  \brief 
 
-void RadIntegrator::FirstOrderFluxX2(const int k, const int j,
-  const int il, const int iu,
-  const AthenaArray<Real> &q, const AthenaArray<Real> &vel,
-  AthenaArray<Real> &flx)
+void RadIntegrator::FirstOrderFluxX2(Coordinates *pco, 
+  const int kl, const int ku, const int jl, const int ju,
+  const int il, const int iu, const AthenaArray<Real> &q, 
+  const AthenaArray<Real> &vel, AthenaArray<Real> &flx)
 {
+  for (int k=kl; k<=ku; ++k){
+  for (int j=jl; j<=ju; ++j){
   for (int i=il; i<=iu; ++i){
-#pragma simd
+//#pragma simd
+
     for(int n=0; n<pmy_rad->n_fre_ang; ++n){
-      if(vel(i,n)>0.0){
-        flx(i,n) = q(k,j-1,i,n) * vel(i,n);
+      if(vel(k,j,i,n)>0.0){
+        flx(k,j,i,n) += q(k,j-1,i,n) * vel(k,j,i,n);
       }
-      if(vel(i,n) <= 0.0){
-        flx(i,n) = q(k,j,i,n) * vel(i,n);
+      if(vel(k,j,i,n) <= 0.0){
+        flx(k,j,i,n) += q(k,j,i,n) * vel(k,j,i,n);
       }
     }
-  }
+  }}}
 
 
   return;
@@ -80,22 +87,26 @@ void RadIntegrator::FirstOrderFluxX2(const int k, const int j,
 //! \fn RadIntegrator::FirstOrderFluxX3()
 //  \brief 
 
-void RadIntegrator::FirstOrderFluxX3(const int k, const int j,
-  const int il, const int iu,
-  const AthenaArray<Real> &q, const AthenaArray<Real> &vel,
-  AthenaArray<Real> &flx)
+void RadIntegrator::FirstOrderFluxX3(Coordinates *pco, 
+  const int kl, const int ku, const int jl, const int ju,
+  const int il, const int iu, const AthenaArray<Real> &q, 
+  const AthenaArray<Real> &vel, AthenaArray<Real> &flx)
 {
+  for (int k=kl; k<=ku; ++k){
+  for (int j=jl; j<=ju; ++j){  
   for (int i=il; i<=iu; ++i){
-#pragma simd
+//#pragma simd
+
     for(int n=0; n<pmy_rad->n_fre_ang; ++n){
-      if(vel(i,n)>0.0){
-        flx(i,n) = q(k-1,j,i,n) * vel(i,n);
+      if(vel(k,j,i,n)>0.0){
+        flx(k,j,i,n) += q(k-1,j,i,n) * vel(k,j,i,n);
       }
-      if(vel(i,n) <= 0.0){
-        flx(i,n) = q(k,j,i,n) * vel(i,n);
+      if(vel(k,j,i,n) <= 0.0){
+        flx(k,j,i,n) += q(k,j,i,n) * vel(k,j,i,n);
       }
     }
-  }
+    
+  }}}
 
 
   return;

@@ -10,11 +10,10 @@ RECONSTRUCT_FILE = @RECONSTRUCT_FILE@
 RSOLVER_FILE = @RSOLVER_FILE@
 RSOLVER_DIR = @RSOLVER_DIR@
 HYDRO_INT_FILE = @HYDRO_INT_FILE@
-VIS_FILE = @VIS_FILE@
 
 # General compiler specifications
 
-CXX := @COMPILER_CHOICE@
+CXX := @COMPILER_COMMAND@
 CPPFLAGS := @PREPROCESSOR_FLAGS@
 CXXFLAGS := @COMPILER_FLAGS@
 LDFLAGS := @LINKER_FLAGS@
@@ -26,25 +25,23 @@ EXE_DIR := bin/
 EXECUTABLE := $(EXE_DIR)athena
 SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/bvals/*.cpp) \
-	     src/coordinates/$(COORDINATES_FILE) \
+	     $(wildcard src/coordinates/*.cpp) \
+	     src/eos/$(EOS_FILE) \
 	     $(wildcard src/field/*.cpp) \
-	     $(wildcard src/field/integrators/*.cpp) \
 	     $(wildcard src/hydro/*.cpp) \
 	     $(wildcard src/hydro/srcterms/*.cpp) \
-	     $(wildcard src/hydro/viscosity/$(VIS_FILE)) \
-	     src/hydro/eos/$(EOS_FILE) \
-	     $(wildcard src/hydro/integrators/*.cpp) \
-	     $(wildcard src/hydro/integrators/reconstruct/*.cpp) \
-	     src/hydro/integrators/rsolvers/$(RSOLVER_DIR)$(RSOLVER_FILE) \
-	     $(wildcard src/mesh_refinement/*.cpp) \
+	     src/hydro/rsolvers/$(RSOLVER_DIR)$(RSOLVER_FILE) \
+	     $(wildcard src/mesh/*.cpp) \
 	     $(wildcard src/outputs/*.cpp) \
+	     $(wildcard src/reconstruct/*.cpp) \
+	     $(wildcard src/task_list/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
 	     src/pgen/$(PROBLEM_FILE) \
-             src/pgen/default_pgen.cpp \
-             $(wildcard src/radiation/*.cpp) \
-             $(wildcard src/radiation/integrators/*.cpp) \
-             $(wildcard src/radiation/integrators/radflux/*.cpp) \
-             $(wildcard src/radiation/integrators/srcterms/*.cpp)
+	     src/pgen/default_pgen.cpp \
+         $(wildcard src/radiation/*.cpp) \
+         $(wildcard src/radiation/integrators/*.cpp) \
+         $(wildcard src/radiation/integrators/radflux/*.cpp) \
+         $(wildcard src/radiation/integrators/srcterms/*.cpp)
 
 
 OBJ_DIR := obj/
@@ -71,11 +68,6 @@ $(OBJ_DIR):
 $(EXECUTABLE) : $(OBJ_FILES)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $(OBJ_FILES) $(LDFLAGS) $(LDLIBS)
 
-## Create static library containing default problem generator functions
-#
-#$(OBJ_DIR)libprob.a : $(PROB_OBJ)
-#	ar rc $@ $(PROB_OBJ)
-#
 # Create objects from source files
 
 $(OBJ_DIR)%.o : %.cpp

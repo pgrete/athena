@@ -22,8 +22,8 @@
 #include "../../../athena_arrays.hpp"
 #include "../../radiation.hpp"
 #include "../../../hydro/hydro.hpp"
-#include "../../../hydro/eos/eos.hpp"
-#include "../../../mesh.hpp"
+#include "../../../eos/eos.hpp"
+#include "../../../mesh/mesh.hpp"
 #include "../../../coordinates/coordinates.hpp"
 #include "../../../utils/utils.hpp"
 
@@ -52,7 +52,7 @@ void RadIntegrator::AbsorptionScattering(const AthenaArray<Real> &wmu_cm,
   Real redfactor=pmy_rad->reduced_c/pmy_rad->crat;
   int& nang=pmy_rad->nang;
   int& nfreq=pmy_rad->nfreq;
-  Real gamma = pmy_rad->pmy_block->phydro->peos->GetGamma();
+  Real gamma = pmy_rad->pmy_block->peos->GetGamma();
   
   // Temporary array
   AthenaArray<Real> vncsigma, vncsigma2;
@@ -88,7 +88,7 @@ void RadIntegrator::AbsorptionScattering(const AthenaArray<Real> &wmu_cm,
       rdtcsigmap = redfactor * dtcsigmap;
     }
     
-//#pragma simd
+#pragma omp simd reduction(+:jr_cm,suma1,suma2)
     for(int n=0; n<nang; n++){
        vncsigma(n) = 1.0/(1.0 + (rdtcsigmae + rdtcsigmas) * tran_coef(n));
        vncsigma2(n) = tran_coef(n) * vncsigma(n);
@@ -128,7 +128,7 @@ void RadIntegrator::AbsorptionScattering(const AthenaArray<Real> &wmu_cm,
       jr_cm = (suma1 * emission + suma2)/(1.0-suma3);
     
     // Update the co-moving frame specific intensity
-#pragma simd
+#pragma omp simd
       for(int n=0; n<nang; n++){
         ir_cm(n+nang*ifr) +=
                          ((rdtcsigmas - rdtcsigmap) * jr_cm + (rdtcsigmat + rdtcsigmap) * emission

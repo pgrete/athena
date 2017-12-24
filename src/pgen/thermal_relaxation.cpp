@@ -26,12 +26,12 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../hydro/hydro.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../eos/eos.hpp"
 #include "../bvals/bvals.hpp"
-#include "../hydro/srcterms/srcterms.hpp"
+#include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
@@ -45,14 +45,6 @@
  *====================================================================================*/
 
 
-void Mesh::InitUserMeshData(ParameterInput *pin)
-{
-
-
-  return;
-}
-
-
 
 
 //======================================================================================
@@ -62,15 +54,14 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
 
-  Real tgas, er;
-  int flag=1;
-  if(flag==1){
-    tgas=1.0;
-    er =10.0;
+  Real tgas, er, sigma;
+
+  er = pin->GetOrAddReal("problem","er",10.0);
+  tgas = pin->GetOrAddReal("problem","tgas",1.0);
+  sigma = pin->GetOrAddReal("problem","sigma",100.0);
+
   
-  }
-  
-  Real gamma = phydro->peos->GetGamma();
+  Real gamma = peos->GetGamma();
   
   // Initialize hydro variable
   for(int k=ks; k<=ke; ++k) {
@@ -121,8 +112,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           
           for (int ifr=0; ifr < nfreq; ++ifr){
             prad->sigma_s(k,j,i,ifr) = 0.0;
-            prad->sigma_a(k,j,i,ifr) = 100.0;
-            prad->sigma_ae(k,j,i,ifr) = 100.0;
+            prad->sigma_a(k,j,i,ifr) = sigma;
+            prad->sigma_ae(k,j,i,ifr) = sigma;
             
           }
         }

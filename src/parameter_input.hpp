@@ -1,27 +1,26 @@
 #ifndef PARAMETER_INPUT_HPP
 #define PARAMETER_INPUT_HPP
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-// See LICENSE file for full public license information.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 //! \file parameter_input.hpp
 //  \brief definition of class ParameterInput
 // Contains data structures used to store, and functions used to access, parameters
 // read from the input file.  See comments at start of parameter_input.cpp for more
 // information on the Athena++ input file format.
-//======================================================================================
 
 // C++ headers
 #include <cstddef>  // size_t
 #include <ostream>  // ostream
 #include <string>   // string
 
-// Athena headers
-#include "athena.hpp"  // Real
-#include "outputs/wrapper.hpp"
+// Athena++ headers
+#include "athena.hpp"
+#include "outputs/io_wrapper.hpp"
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \struct InputLine
 //  \brief  node in a linked list of parameters contained within a single input block
 
@@ -32,7 +31,7 @@ typedef struct InputLine {
   struct InputLine *pnext;    // pointer to the next node
 } InputLine;
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \class InputBlock
 //  \brief  node in a linked list of all input blocks contained within input file
 
@@ -53,7 +52,7 @@ public:
   InputLine* GetPtrToLine(std::string name);
 };
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \class ParameterInput
 //  \brief data and definitions of functions used to store and access input parameters
 //  Functions are implemented in parameter_input.cpp
@@ -79,6 +78,9 @@ public:
   Real GetReal(std::string block, std::string name);
   Real GetOrAddReal(std::string block, std::string name, Real value);
   Real SetReal(std::string block, std::string name, Real value);
+  bool GetBoolean(std::string block, std::string name);
+  bool GetOrAddBoolean(std::string block, std::string name, bool value);
+  bool SetBoolean(std::string block, std::string name, bool value);
   std::string GetString(std::string block, std::string name);
   std::string GetOrAddString(std::string block, std::string name, std::string value);
 

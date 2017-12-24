@@ -1,31 +1,18 @@
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-//
-// This program is free software: you can redistribute and/or modify it under the terms
-// of the GNU General Public License (GPL) as published by the Free Software Foundation,
-// either version 3 of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-// PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-//
-// You should have received a copy of GNU GPL in the file LICENSE included in the code
-// distribution.  If not see <http://www.gnu.org/licenses/>.
-//======================================================================================
-
-// Athena headers
-#include "../athena.hpp"
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
+//! \file show_config.cpp 
 
 // C++ headers
 #include <iostream>
 #include <sstream>
 
-//======================================================================================
-//! \file show_config.cpp 
-//======================================================================================
+// Athena headers
+#include "../athena.hpp"
 
-//--------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------
 //! \fn void ShowConfig(void)
 //  \brief prints diagnostic messages about the configuration of an Athena++ executable
 
@@ -42,26 +29,30 @@ void ShowConfig(void)
   std::cout<<"  Riemann solver:             " << RIEMANN_SOLVER << std::endl;
   std::cout<<"  Reconstruction method:      " << RECONSTRUCTION_METHOD << std::endl;
   std::cout<<"  Hydro integrator:           " << HYDRO_TIME_INTEGRATOR << std::endl;
-  std::cout<<"  Compiler and flags:         " << COMPILED_WITH << std::endl;
   if (MAGNETIC_FIELDS_ENABLED) {
     std::cout<<"  Magnetic fields:            ON" << std::endl;
   } else {
     std::cout<<"  Magnetic fields:            OFF" << std::endl;
   }
   if (RELATIVISTIC_DYNAMICS) {
-    std::cout<<"  Relativistic dynamics:      ON " << std::endl;
+    std::cout<<"  Relativistic dynamics:      ON" << std::endl;
   } else {
-    std::cout<<"  Relativistic dynamics:      OFF " << std::endl;
+    std::cout<<"  Relativistic dynamics:      OFF" << std::endl;
   }
   if (GENERAL_RELATIVITY) {
-    std::cout<<"  General Relativity:         ON " << std::endl;
+    std::cout<<"  General relativity:         ON" << std::endl;
+    if (FRAME_TRANSFORMATIONS) {
+      std::cout<<"  Frame transformations:      ON" << std::endl;
+    } else {
+      std::cout<<"  Frame transformations:      OFF" << std::endl;
+    }
   } else {
-    std::cout<<"  General Relativity:         OFF " << std::endl;
+    std::cout<<"  General Relativity:         OFF" << std::endl;
   }
-  if (VISCOSITY) {
-    std::cout<<"  Viscosity:                  ON " << std::endl;
+  if (RADIATION_ENABLED) {
+    std::cout<<"  Radiative Transfer:         ON" << std::endl;    
   } else {
-    std::cout<<"  Viscosity:                  OFF " << std::endl;
+    std::cout<<"  Radiative Transfer:         OFF" << std::endl; 
   }
 #ifdef MPI_PARALLEL
   std::cout<<"  MPI parallelism:            ON" << std::endl;
@@ -78,6 +69,8 @@ void ShowConfig(void)
 #else
   std::cout<<"  HDF5 Output:                OFF" << std::endl;
 #endif
-
+  std::cout<<"  Compiler:                   " << COMPILED_WITH << std::endl;
+  std::cout<<"  Compilation command:        " << COMPILER_COMMAND << ' '
+      << COMPILED_WITH_OPTIONS << std::endl;
   return;
 }

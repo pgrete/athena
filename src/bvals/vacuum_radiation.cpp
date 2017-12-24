@@ -20,7 +20,7 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "bvals.hpp"
 #include "../radiation/radiation.hpp"
 
@@ -36,7 +36,7 @@
 //  \brief VACUUM boundary conditions for radiation, inner x1 boundary
 
 void RadVacuumInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+         Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   
 
@@ -70,7 +70,7 @@ void RadVacuumInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief VACUUM boundary conditions for radiation, outer x1 boundary
 
 void RadVacuumOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+          Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   int &nang = pmb->prad->nang;
   int &nfreq = pmb->prad->nfreq; // number of frequency bands
@@ -102,7 +102,7 @@ void RadVacuumOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief VACUUM boundary conditions for x2, inner x2 boundary
 
 void RadVacuumInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+         Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   int &nang = pmb->prad->nang;
   int &nfreq = pmb->prad->nfreq; // number of frequency bands
@@ -134,7 +134,7 @@ void RadVacuumInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief VACUUM boundary radiation conditions, outer x2 boundary
 
 void RadVacuumOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+          Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
 
   int &nang = pmb->prad->nang;
@@ -167,7 +167,7 @@ void RadVacuumOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief VACUUM boundary conditions for radiation, inner x3 boundary
 
 void RadVacuumInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+         Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
 
   int &nang = pmb->prad->nang;
@@ -202,7 +202,7 @@ void RadVacuumInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
 //  \brief VACUUM boundary conditions for radiation, outer x3 boundary
 
 void RadVacuumOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-                    int is, int ie, int js, int je, int ks, int ke)
+         Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
 
   int &nang = pmb->prad->nang;

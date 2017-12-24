@@ -26,12 +26,12 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
 #include "../hydro/hydro.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../eos/eos.hpp"
 #include "../bvals/bvals.hpp"
-#include "../hydro/srcterms/srcterms.hpp"
+#include "../hydro/srcterms/hydro_srcterms.hpp"
 #include "../field/field.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../radiation/radiation.hpp"
@@ -44,7 +44,7 @@
  *
  *====================================================================================*/
 
-static Real eps0 = 1.e-4;
+static Real eps0 = 1.e-2;
 
 
 
@@ -66,7 +66,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   Real rho0=1.e-3;
   Real ztop = block_size.x3max;
   
-  Real gamma = phydro->peos->GetGamma();
+  Real gamma = peos->GetGamma();
   
   // Initialize hydro variable
   for(int k=ks; k<=ke; ++k) {

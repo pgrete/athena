@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 #---------------------------------------------------------------------------------------
 # configure.py: Athena++ configuration script in python. Original version by CJW.
 #
@@ -17,15 +18,15 @@
 #   -s                enable special relativity
 #   -g                enable general relativity
 #   -t                enable interface frame transformations for GR
-#   -vis              enable viscosity
-#   --cxx=choice      use choice as the C++ compiler
 #   -debug            enable debug flags (-g -O0); override other compiler options
 #   -mpi              enable parallelization with MPI
 #   -omp              enable parallelization with OpenMP
 #   -hdf5             enable HDF5 output (requires the HDF5 library)
-#   --ifov=N          enable N internal hydro output variables
-#   -radiation        enable radiative transfer
-#   --radfov=N        enable N internal radiation output variable
+#   --hdf5_path=path  path to HDF5 libraries (requires the HDF5 library)
+#   --cxx=choice      use choice as the C++ compiler
+#   --ccmd=name       use name as the command to call the C++ compiler
+#   --include=path    use -Ipath when compiling
+#   --lib=path        use -Lpath when linking
 #---------------------------------------------------------------------------------------
 
 # Modules
@@ -57,7 +58,7 @@ parser.add_argument('--prob',
 parser.add_argument('--coord',
     default='cartesian',
     choices=['cartesian','cylindrical','spherical_polar','minkowski','sinusoidal',
-        'tilted','schwarzschild','kerr-schild'],
+        'tilted','schwarzschild','kerr-schild','gr_user'],
     help='select coordinate system')
 
 # --eos=[name] argument
@@ -102,23 +103,17 @@ parser.add_argument('-g',
     default=False,
     help='enable general relativity')
 
+# -radiation argument
+parser.add_argument('-radiation',
+    action='store_true',
+    default=False,
+    help='enable radiative transfer')
+
 # -t argument
 parser.add_argument('-t',
     action='store_true',
     default=False,
     help='enable interface frame transformations for GR')
-
-# -vis argument
-parser.add_argument('-vis',
-    action='store_true',
-    default=False,
-    help='enable viscosity')
-
-# --cxx=[name] argument
-parser.add_argument('--cxx',
-    default='g++',
-    choices=['g++','icc','cray','bgxl','mac'],
-    help='select C++ compiler')
 
 # -debug argument
 parser.add_argument('-debug',
@@ -144,67 +139,78 @@ parser.add_argument('-hdf5',
     default=False,
     help='enable HDF5 Output')
 
-# -ifov=N argument
-parser.add_argument('--ifov',
-    type=int,
-    default=0,
-    help='number of internal hydro output variables')
+# --hdf5_path argument
+parser.add_argument('--hdf5_path',
+    default='',
+    help='path to HDF5 libraries')
 
+# --cxx=[name] argument
+parser.add_argument('--cxx',
+    default='g++',
+    choices=['g++','icc','cray','bgxl','icc-phi','mac'],
+    help='select C++ compiler')
 
-    
-# -radiation argument
-parser.add_argument('-radiation',
-    action='store_true',
-    default=False,
-    help='enable radiative transfer')
-    
+# --ccmd=[name] argument
+parser.add_argument('--ccmd',
+    default=None,
+    help='override for command to use to call C++ compiler')
 
-# -radfov=N argument
-parser.add_argument('--radfov',
-    type=int,
-    default=0,
-    help='number of internal radiation output variables')
+# --include=[name] arguments
+parser.add_argument('--include',
+    default=[],
+    action='append',
+    help='extra path for included header files (-I<path>); can be specified multiple \
+        times')
 
+# --lib=[name] arguments
+parser.add_argument('--lib',
+    default=[],
+    action='append',
+    help='extra path for linked library files (-L<path>); can be specified multiple \
+        times')
 
 # Parse command-line inputs
 args = vars(parser.parse_args())
 
 #--- Step 2. Test for incompatible arguments -------------------------------------------
 
-# Set default flux; HLLD for MHD, HLLC for hydro, HLLE for isothermal hydro
-if args['flux']=='default':
-  if args['b']:
-    args['flux']='hlld'
+# Set default flux; HLLD for MHD, HLLC for hydro, HLLE for isothermal hydro or any GR
+if args['flux'] == 'default':
+  if args['g']:
+    args['flux'] = 'hlle'
+  elif args['b']:
+    args['flux'] = 'hlld'
+  elif args['eos'] == 'isothermal':
+    args['flux'] = 'hlle'
   else:
-    if args['eos']=='isothermal':
-      args['flux']='hlle'
-    else:
-      args['flux']='hllc'
+    args['flux'] = 'hllc'
 
 # Check Riemann solver compatibility
-if args['flux']=='hllc' and args['eos']=='isothermal':
+if args['flux'] == 'hllc' and args['eos'] == 'isothermal':
   raise SystemExit('### CONFIGURE ERROR: HLLC flux cannot be used with isothermal EOS')
-if args['flux']=='hllc' and args['b']:
+if args['flux'] == 'hllc' and args['b']:
   raise SystemExit('### CONFIGURE ERROR: HLLC flux cannot be used with MHD')
-if args['flux']=='hlld' and not args['b']:
+if args['flux'] == 'hlld' and not args['b']:
   raise SystemExit('### CONFIGURE ERROR: HLLD flux can only be used with MHD')
 
 # Check relativity
 if args['s'] and args['g']:
   raise SystemExit('### CONFIGURE ERROR: ' \
-      + 'GR implies SR; the -s option is restricted to pure SR.')
+      + 'GR implies SR; the -s option is restricted to pure SR')
 if args['t'] and not args['g']:
-  raise SystemExit('### CONFIGURE ERROR: Frame transformations only apply to GR.')
+  raise SystemExit('### CONFIGURE ERROR: Frame transformations only apply to GR')
+if args['g'] and not args['t'] and args['flux'] not in ('llf','hlle'):
+  raise SystemExit('### CONFIGURE ERROR: Frame transformations required for ' + args['flux'])
 if args['g'] and args['coord'] in ('cartesian','cylindrical','spherical_polar'):
   raise SystemExit('### CONFIGURE ERROR: ' \
       + 'GR cannot be used with ' + args['coord'] + ' coordinates')
 if not args['g'] and args['coord'] not in ('cartesian','cylindrical','spherical_polar'):
   raise SystemExit('### CONFIGURE ERROR: ' \
       + args['coord'] + ' coordinates only apply to GR')
-if args['eos']=='isothermal':
+if args['eos'] == 'isothermal':
   if args['s'] or args['g']:
     raise SystemExit('### CONFIGURE ERROR: '\
-        + 'Isothermal EOS is incompatible with relativity.')
+        + 'Isothermal EOS is incompatible with relativity')
 
 #--- Step 3. Set definitions and Makefile options based on above arguments -------------
 
@@ -236,7 +242,6 @@ definitions['RECONSTRUCT'] = makefile_options['RECONSTRUCT_FILE'] = args['order'
 
 # --fint=[name] argument
 definitions['HYDRO_INTEGRATOR'] = makefile_options['HYDRO_INT_FILE'] = args['fint']
-definitions['NSTEP'] = '2'
 
 # -b argument
 # set variety of macros based on whether MHD/hydro or adi/iso are defined
@@ -266,6 +271,7 @@ else:
 # -s, -g, and -t arguments
 definitions['RELATIVISTIC_DYNAMICS'] = '1' if args['s'] or args['g'] else '0'
 definitions['GENERAL_RELATIVITY'] = '1' if args['g'] else '0'
+definitions['FRAME_TRANSFORMATIONS'] = '1' if args['t'] else '0'
 if args['s']:
   makefile_options['EOS_FILE'] += '_sr'
   makefile_options['RSOLVER_FILE'] += '_rel'
@@ -275,14 +281,6 @@ if args['g']:
   if not args['t']:
     makefile_options['RSOLVER_FILE'] += '_no_transform'
 
-# -vis argument
-if args['vis']:
-  definitions['VISCOSITY'] = '1'
-  makefile_options['VIS_FILE'] = '*.cpp'
-else:
-  definitions['VISCOSITY'] = '0'
-  makefile_options['VIS_FILE'] = '*.cpp'
-  
 # -radiation argument
 definitions['RADIATION_ENABLED'] = '1' if args['radiation'] else '0'
 if args['radiation']:
@@ -293,38 +291,54 @@ else:
 
 # --cxx=[name] argument
 if args['cxx'] == 'g++':
-  definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'g++'
+  definitions['COMPILER_CHOICE'] = 'g++'
+  definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'g++'
   makefile_options['PREPROCESSOR_FLAGS'] = ''
   makefile_options['COMPILER_FLAGS'] = '-O3'
   makefile_options['LINKER_FLAGS'] = ''
   makefile_options['LIBRARY_FLAGS'] = ''
 if args['cxx'] == 'icc':
-  definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'icc'
+  definitions['COMPILER_CHOICE'] = 'icc'
+  definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'icc'
   makefile_options['PREPROCESSOR_FLAGS'] = ''
   makefile_options['COMPILER_FLAGS'] = '-O3 -xhost -ipo -inline-forceinline'
   makefile_options['LINKER_FLAGS'] = ''
   makefile_options['LIBRARY_FLAGS'] = ''
 if args['cxx'] == 'cray':
   definitions['COMPILER_CHOICE'] = 'cray'
-  makefile_options['COMPILER_CHOICE'] = 'CC'
+  definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'CC'
   makefile_options['PREPROCESSOR_FLAGS'] = ''
   makefile_options['COMPILER_FLAGS'] = '-O3 -h aggress -h vector3 -hfp3'
   makefile_options['LINKER_FLAGS'] = '-hwp -hpl=obj/lib'
   makefile_options['LIBRARY_FLAGS'] = '-lm'
 if args['cxx'] == 'mac':
-  definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'g++'
+  definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_COMMAND'] = 'g++'
   makefile_options['PREPROCESSOR_FLAGS'] = ''
   makefile_options['COMPILER_FLAGS'] = '-O3'
   makefile_options['LINKER_FLAGS'] = ''
   makefile_options['LIBRARY_FLAGS'] = ''
 if args['cxx'] == 'bgxl':
   # suppressed messages:
-  #   1500-036:  nostrict option can change semantics
-  #   1540-1401: pragma (simd) not recognized
-  definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'bgxlc++'
+  #   1500-036:  The NOSTRICT option has the potential to alter the semantics of a program
+  #   1540-1401: An unknown "pragma simd" is specified
+  #   1586-083:  ld option ignored by IPA
+  #   1586-233:  Duplicate definition of symbol ignored
+  #   1586-267:  Inlining of specified subprogram failed due to the presence of a C++
+  #                exception handler
+  definitions['COMPILER_CHOICE'] = 'bgxlc++'
+  definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'bgxlc++'
   makefile_options['PREPROCESSOR_FLAGS'] = ''
   makefile_options['COMPILER_FLAGS'] = \
-      '-O3 -qstrict=nolibrary  -qhot -qdebug=recipf:forcesqrt -qlanglvl=extended -qsuppress=1500-036 -qsuppress=1540-1401'
+      '-O3 -qhot=level=1:vector -qinline=level=5:auto -qipa=level=1:noobject' \
+      + ' -qmaxmem=150000 -qlanglvl=extended -qsuppress=1500-036 -qsuppress=1540-1401' \
+      + ' -qsuppress=1586-083 -qsuppress=1586-233 -qsuppress=1586-267'
+  makefile_options['LINKER_FLAGS'] = makefile_options['COMPILER_FLAGS']
+  makefile_options['LIBRARY_FLAGS'] = ''
+if args['cxx'] == 'icc-phi':
+  definitions['COMPILER_CHOICE'] = 'icc'
+  definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'icc'
+  makefile_options['PREPROCESSOR_FLAGS'] = ''
+  makefile_options['COMPILER_FLAGS'] = '-O3 -xMIC-AVX512 -ipo -inline-forceinline'
   makefile_options['LINKER_FLAGS'] = ''
   makefile_options['LIBRARY_FLAGS'] = ''
 
@@ -337,18 +351,20 @@ if args['debug']:
     makefile_options['COMPILER_FLAGS'] = '-O0'
   if args['cxx'] == 'bgxl':
     makefile_options['COMPILER_FLAGS'] = '-O0 -g -qlanglvl=extended'
+  if args['cxx'] == 'icc-phi':
+    makefile_options['COMPILER_FLAGS'] = '-O0 -g -xMIC-AVX512'
 else:
   definitions['DEBUG'] = 'NOT_DEBUG'
 
 # -mpi argument
 if args['mpi']:
   definitions['MPI_OPTION'] = 'MPI_PARALLEL'
-  if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'mac':
-    definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'mpicxx'
+  if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'icc-phi' or args['cxx'] == 'mac':
+    definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'mpicxx'
   if args['cxx'] == 'cray':
     makefile_options['COMPILER_FLAGS'] += ' -h mpi1'
   if args['cxx'] == 'bgxl':
-    definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_CHOICE'] = 'mpixlcxx'
+    definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'mpixlcxx'
 else:
   definitions['MPI_OPTION'] = 'NOT_MPI_PARALLEL'
 
@@ -357,20 +373,20 @@ if args['omp']:
   definitions['OPENMP_OPTION'] = 'OPENMP_PARALLEL'
   if args['cxx'] == 'g++' or args['cxx'] == 'mac':
     makefile_options['COMPILER_FLAGS'] += ' -fopenmp'
-  if args['cxx'] == 'icc':
+  if args['cxx'] == 'icc' or args['cxx'] == 'icc-phi':
     makefile_options['COMPILER_FLAGS'] += ' -openmp'
   if args['cxx'] == 'cray':
     makefile_options['COMPILER_FLAGS'] += ' -homp'
   if args['cxx'] == 'bgxl':
     # use thread-safe version of compiler
-    definitions['COMPILER_CHOICE'] += '_r'
-    makefile_options['COMPILER_CHOICE'] += '_r'
+    definitions['COMPILER_COMMAND'] += '_r'
+    makefile_options['COMPILER_COMMAND'] += '_r'
     makefile_options['COMPILER_FLAGS'] += ' -qsmp'
 else:
   definitions['OPENMP_OPTION'] = 'NOT_OPENMP_PARALLEL'
   if args['cxx'] == 'cray':
     makefile_options['COMPILER_FLAGS'] += ' -hnoomp'
-  if args['cxx'] == 'icc':
+  if args['cxx'] == 'icc' or args['cxx'] == 'icc-phi':
     # suppressed messages:
     #   3180: pragma omp not recognized
     makefile_options['COMPILER_FLAGS'] += ' -diag-disable 3180'
@@ -378,32 +394,41 @@ else:
 # -hdf5 argument
 if args['hdf5']:
   definitions['HDF5_OPTION'] = 'HDF5OUTPUT'
-  if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'cray':
+  if args['hdf5_path'] != '':
+    makefile_options['PREPROCESSOR_FLAGS'] += '-I%s/include' % args['hdf5_path']
+    makefile_options['LINKER_FLAGS'] += '-L%s/lib' % args['hdf5_path']
+  if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'cray' or args['cxx'] == 'icc-phi':
     makefile_options['LIBRARY_FLAGS'] += ' -lhdf5'
   if args['cxx'] == 'mac':
-     makefile_options['LIBRARY_FLAGS'] += '-L/usr/local/Cellar/hdf5/1.8.16_1/lib -lhdf5'
-     makefile_options['COMPILER_FLAGS'] += ' -I/usr/local/Cellar/hdf5/1.8.16_1/include/'
+     makefile_options['LIBRARY_FLAGS'] += '-L/usr/local/Cellar/hdf5/1.8.18/lib -lhdf5'
+     makefile_options['COMPILER_FLAGS'] += ' -I/usr/local/Cellar/hdf5/1.8.18/include/'
   if args['cxx'] == 'bgxl':
     makefile_options['PREPROCESSOR_FLAGS'] += \
         ' -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_BSD_SOURCE' \
-        + ' -I/soft/libraries/hdf5/1.8.14/cnk-xl/V1R2M2-20150213/include' \
+        + ' -I/soft/libraries/hdf5/1.10.0/cnk-xl/current/include' \
         + ' -I/bgsys/drivers/ppcfloor/comm/include'
     makefile_options['LINKER_FLAGS'] += \
-        ' -L/soft/libraries/hdf5/1.8.14/cnk-xl/V1R2M2-20150213/lib' \
+        ' -L/soft/libraries/hdf5/1.10.0/cnk-xl/current/lib' \
         + ' -L/soft/libraries/alcf/current/xl/ZLIB/lib'
     makefile_options['LIBRARY_FLAGS'] += ' -lhdf5 -lz -lm'
 else:
   definitions['HDF5_OPTION'] = 'NO_HDF5OUTPUT'
 
+# --ccmd=[name] argument
+if args['ccmd'] is not None:
+  definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = args['ccmd']
+
+# --include=[name] arguments
+for include_path in args['include']:
+  makefile_options['COMPILER_FLAGS'] += ' -I'+include_path
+
+# --lib=[name] arguments
+for library_path in args['lib']:
+  makefile_options['LINKER_FLAGS'] += ' -L'+library_path
+
 # Assemble all flags of any sort given to compiler
 definitions['COMPILER_FLAGS'] = ' '.join([makefile_options[opt+'_FLAGS'] for opt in \
     ['PREPROCESSOR','COMPILER','LINKER','LIBRARY']])
-
-# -ifov=N argument
-definitions['NUM_IFOV'] = str(args['ifov'])
-
-# -radfov=N argument
-definitions['NUM_RADFOV'] = str(args['radfov'])
 
 #--- Step 4. Create new files, finish up -----------------------------------------------
 
@@ -422,9 +447,9 @@ with open(makefile_input, 'r') as current_file:
   makefile_template = current_file.read()
 
 # Make substitutions
-for key,val in definitions.iteritems():
+for key,val in definitions.items():
   defsfile_template = re.sub(r'@{0}@'.format(key), val, defsfile_template)
-for key,val in makefile_options.iteritems():
+for key,val in makefile_options.items():
   makefile_template = re.sub(r'@{0}@'.format(key), val, makefile_template)
 
 # Write output files
@@ -445,18 +470,16 @@ print('  Magnetic fields:         ' + ('ON' if args['b'] else 'OFF'))
 print('  Special relativity:      ' + ('ON' if args['s'] else 'OFF'))
 print('  General relativity:      ' + ('ON' if args['g'] else 'OFF'))
 print('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF'))
-print('  Viscosity:               ' + ('ON' if args['vis'] else 'OFF'))
-print('  Compiler and flags:      ' + makefile_options['COMPILER_CHOICE'] + ' ' \
-    + makefile_options['PREPROCESSOR_FLAGS'] + ' ' + makefile_options['COMPILER_FLAGS'])
 print('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF'))
 print('  Linker flags:            ' + makefile_options['LINKER_FLAGS'] + ' ' \
     + makefile_options['LIBRARY_FLAGS'])
 print('  MPI parallelism:         ' + ('ON' if args['mpi'] else 'OFF'))
 print('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF'))
-print('  HDF5 Output:             ' + ('ON' if args['hdf5'] else 'OFF'))
+print('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF'))
 print('  Radiative Transfer:      ' + ('ON' if args['radiation'] else 'OFF'))
-print('  Internal hydro outvars:  ' + str(args['ifov']))
-print('  Internal rad outvars:    ' + str(args['radfov']))
+print('  Compiler:                ' + args['cxx'])
+print('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] + ' ' \
+    + makefile_options['PREPROCESSOR_FLAGS'] + ' ' + makefile_options['COMPILER_FLAGS'])
 
 # write the configuration optitions into a log file
 flog=open('./configure.log', 'w')
@@ -472,16 +495,16 @@ flog.write('  Magnetic fields:         ' + ('ON' if args['b'] else 'OFF') + '\n'
 flog.write('  Special relativity:      ' + ('ON' if args['s'] else 'OFF') + '\n')
 flog.write('  General relativity:      ' + ('ON' if args['g'] else 'OFF') + '\n')
 flog.write('  Frame transformations:   ' + ('ON' if args['t'] else 'OFF') + '\n')
-flog.write('  Viscosity:               ' + ('ON' if args['vis'] else 'OFF') + '\n')
-flog.write('  Compiler and flags:      ' + makefile_options['COMPILER_CHOICE'] + ' ' \
-    + makefile_options['PREPROCESSOR_FLAGS'] + ' ' + makefile_options['COMPILER_FLAGS']\
-                                         + '\n')
 flog.write('  Debug flags:             ' + ('ON' if args['debug'] else 'OFF') + '\n')
 flog.write('  Linker flags:            ' + makefile_options['LINKER_FLAGS'] + ' ' \
     + makefile_options['LIBRARY_FLAGS'] + '\n')
 flog.write('  MPI parallelism:         ' + ('ON' if args['mpi'] else 'OFF') + '\n')
 flog.write('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF') + '\n')
-flog.write('  HDF5 Output:             ' + ('ON' if args['hdf5'] else 'OFF') + '\n')
+flog.write('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF') + '\n')
 flog.write('  Radiative Transfer:      ' + ('ON' if args['radiation'] else 'OFF') + '\n')
-flog.write('  Internal hydro outvars:  ' + str(args['ifov']) + '\n')
-flog.write('  Internal rad outvars:    ' + str(args['radfov']) + '\n')
+flog.write('  Compiler:                ' + args['cxx'] + '\n')
+flog.write('  Compilation command:     ' + makefile_options['COMPILER_COMMAND'] + ' ' \
+    + makefile_options['PREPROCESSOR_FLAGS'] + ' ' + makefile_options['COMPILER_FLAGS'] + '\n')
+
+flog.close()
+

@@ -26,7 +26,6 @@ class RadIntegrator;
 
 // prototype for user-defined opacity function for radiative transfer
 typedef void (*Opacity_t)(MeshBlock *pmb, AthenaArray<Real> &prim);
-typedef void (*OutInternal_t)(MeshBlock *pmb);
 
 // Array indices for radiation moments
 enum {IER=0, IFR1=1, IFR2=2, IFR3=3, IPR11=4, IPR22=5, IPR33=6, IPR12=7,
@@ -49,7 +48,6 @@ public:
                                  // the difference between Planck
                                 // mean and Rosseland mean
   AthenaArray<Real> grey_sigma; // frequency integrated opacity
-  AthenaArray<Real> rad_ifov; // internal radiation variable
   AthenaArray<Real> mu, wmu; // angles and weight
   AthenaArray<Real> wfreq; // weight in frequency space
   
@@ -63,6 +61,10 @@ public:
   
   int nang, nfreq, noct, n_fre_ang; // n_fre_ang=nang*nfreq
 
+  int ir_output; // the number of specific intensity to dump
+  AthenaArray<int> ir_index; // the array 
+  AthenaArray<Real> dump_ir;
+
   MeshBlock* pmy_block;    // ptr to MeshBlock containing this Fluid
   
   RadIntegrator *pradintegrator;
@@ -71,15 +73,11 @@ public:
   //Function in problem generators to update opacity
   void EnrollOpacityFunction(Opacity_t MyOpacityFunction);
   
-    //Function in problem generators to update opacity
-  void EnrollInternalVariableFunction(OutInternal_t MyOutputInternalFunction);
-  
+
   // The function pointer for the opacity
   Opacity_t UpdateOpacity;
   
-  // Function pointer to load internal variable output
-  OutInternal_t LoadInternalVariable;
-  
+ 
   //functin to calculate the radiation moments
   void CalculateMoment(AthenaArray<Real> &ir_in);
   void CalculateComMoment();

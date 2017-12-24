@@ -1,35 +1,25 @@
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-//
-// This program is free software: you can redistribute and/or modify it under the terms
-// of the GNU General Public License (GPL) as published by the Free Software Foundation,
-// either version 3 of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-// PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-//
-// You should have received a copy of GNU GPL in the file LICENSE included in the code
-// distribution.  If not see <http://www.gnu.org/licenses/>.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 //! \file reflect.cpp
 //  \brief implementation of reflecting BCs in each dimension
-//======================================================================================
 
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "bvals.hpp"
 
-//--------------------------------------------------------------------------------------
-//! \fn void ReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+//----------------------------------------------------------------------------------------
+//! \fn void ReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+//                          FaceField &b, const Real time, const Real dt,
 //                          int is, int ie, int js, int je, int ks, int ke)
 //  \brief REFLECTING boundary conditions, inner x1 boundary
 
-void ReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-                    int is, int ie, int js, int je, int ks, int ke)
+void ReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy hydro variables into ghost zones, reflecting v1
   for (int n=0; n<(NHYDRO); ++n) {
@@ -38,7 +28,7 @@ void ReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=1; i<=(NGHOST); ++i) {
-          a(IVX,k,j,is-i) = -a(IVX,k,j,(is+i-1));  // reflect 1-velocity
+          prim(IVX,k,j,is-i) = -prim(IVX,k,j,(is+i-1));  // reflect 1-velocity
         }
       }}
     } else {
@@ -46,7 +36,7 @@ void ReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=1; i<=(NGHOST); ++i) {
-          a(n,k,j,is-i) = a(n,k,j,(is+i-1));
+          prim(n,k,j,is-i) = prim(n,k,j,(is+i-1));
         }
       }}
     }
@@ -82,13 +72,14 @@ void ReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
   return;
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void ReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+//----------------------------------------------------------------------------------------
+//! \fn void ReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+//                          FaceField &b, const Real time, const Real dt,
 //                          int is, int ie, int js, int je, int ks, int ke)
 //  \brief REFLECTING boundary conditions, outer x1 boundary
 
-void ReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-                    int is, int ie, int js, int je, int ks, int ke)
+void ReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy hydro variables into ghost zones, reflecting v1
   for (int n=0; n<(NHYDRO); ++n) {
@@ -97,7 +88,7 @@ void ReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=1; i<=(NGHOST); ++i) {
-          a(IVX,k,j,ie+i) = -a(IVX,k,j,(ie-i+1));  // reflect 1-velocity
+          prim(IVX,k,j,ie+i) = -prim(IVX,k,j,(ie-i+1));  // reflect 1-velocity
         }
       }}
     } else {
@@ -105,7 +96,7 @@ void ReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=1; i<=(NGHOST); ++i) {
-          a(n,k,j,ie+i) = a(n,k,j,(ie-i+1));
+          prim(n,k,j,ie+i) = prim(n,k,j,(ie-i+1));
         }
       }}
     }
@@ -141,13 +132,14 @@ void ReflectOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
   return;
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void ReflecInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
-//                          int is, int ie, int js, int je, int ks, int ke)
+//----------------------------------------------------------------------------------------
+//! \fn void ReflecInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+//                         FaceField &b, const Real time, const Real dt,
+//                         int is, int ie, int js, int je, int ks, int ke)
 //  \brief REFLECTING boundary conditions, inner x2 boundary
 
-void ReflectInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-                    int is, int ie, int js, int je, int ks, int ke)
+void ReflectInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy hydro variables into ghost zones, reflecting v2
   for (int n=0; n<(NHYDRO); ++n) {
@@ -156,7 +148,7 @@ void ReflectInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=1; j<=(NGHOST); ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
-          a(IVY,k,js-j,i) = -a(IVY,k,js+j-1,i);  // reflect 2-velocity
+          prim(IVY,k,js-j,i) = -prim(IVY,k,js+j-1,i);  // reflect 2-velocity
         }
       }}
     } else {
@@ -164,7 +156,7 @@ void ReflectInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=1; j<=(NGHOST); ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
-          a(n,k,js-j,i) = a(n,k,js+j-1,i);
+          prim(n,k,js-j,i) = prim(n,k,js+j-1,i);
         }
       }}
     }
@@ -200,13 +192,14 @@ void ReflectInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
   return;
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void ReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+//----------------------------------------------------------------------------------------
+//! \fn void ReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+//                          FaceField &b, const Real time, const Real dt,
 //                          int is, int ie, int js, int je, int ks, int ke)
 //  \brief REFLECTING boundary conditions, outer x2 boundary
 
-void ReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-                    int is, int ie, int js, int je, int ks, int ke)
+void ReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy hydro variables into ghost zones, reflecting v2
   for (int n=0; n<(NHYDRO); ++n) {
@@ -215,7 +208,7 @@ void ReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=1; j<=(NGHOST); ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
-          a(IVY,k,je+j,i) = -a(IVY,k,je-j+1,i);  // reflect 2-velocity
+          prim(IVY,k,je+j,i) = -prim(IVY,k,je-j+1,i);  // reflect 2-velocity
         }
       }}
     } else {
@@ -223,7 +216,7 @@ void ReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=1; j<=(NGHOST); ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
-          a(n,k,je+j,i) = a(n,k,je-j+1,i);
+          prim(n,k,je+j,i) = prim(n,k,je-j+1,i);
         }
       }}
     }
@@ -259,13 +252,14 @@ void ReflectOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
   return;
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void ReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+//----------------------------------------------------------------------------------------
+//! \fn void ReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+//                          FaceField &b, const Real time, const Real dt,
 //                          int is, int ie, int js, int je, int ks, int ke)
 //  \brief REFLECTING boundary conditions, inner x3 boundary
 
-void ReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-                    int is, int ie, int js, int je, int ks, int ke)
+void ReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy hydro variables into ghost zones, reflecting v3
   for (int n=0; n<(NHYDRO); ++n) {
@@ -274,7 +268,7 @@ void ReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
-          a(IVZ,ks-k,j,i) = -a(IVZ,ks+k-1,j,i);  // reflect 3-velocity
+          prim(IVZ,ks-k,j,i) = -prim(IVZ,ks+k-1,j,i);  // reflect 3-velocity
         }
       }}
     } else {
@@ -282,7 +276,7 @@ void ReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
-          a(n,ks-k,j,i) = a(n,ks+k-1,j,i);
+          prim(n,ks-k,j,i) = prim(n,ks+k-1,j,i);
         }
       }}
     }
@@ -318,13 +312,14 @@ void ReflectInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
   return;
 }
 
-//--------------------------------------------------------------------------------------
-//! \fn void ReflectOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a,
+//----------------------------------------------------------------------------------------
+//! \fn void ReflectOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+//                          FaceField &b, const Real time, const Real dt,
 //                          int is, int ie, int js, int je, int ks, int ke)
 //  \brief REFLECTING boundary conditions, outer x3 boundary
 
-void ReflectOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, FaceField &b,
-                    int is, int ie, int js, int je, int ks, int ke)
+void ReflectOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
 {
   // copy hydro variables into ghost zones, reflecting v3
   for (int n=0; n<(NHYDRO); ++n) {
@@ -333,7 +328,7 @@ void ReflectOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
-          a(IVZ,ke+k,j,i) = -a(IVZ,ke-k+1,j,i);  // reflect 3-velocity
+          prim(IVZ,ke+k,j,i) = -prim(IVZ,ke-k+1,j,i);  // reflect 3-velocity
         }
       }}
     } else {
@@ -341,7 +336,7 @@ void ReflectOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &a, Face
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
-          a(n,ke+k,j,i) = a(n,ke-k+1,j,i);
+          prim(n,ke+k,j,i) = prim(n,ke-k+1,j,i);
         }
       }}
     }

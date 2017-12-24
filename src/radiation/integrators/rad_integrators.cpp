@@ -22,7 +22,7 @@
 #include "../../athena.hpp"
 #include "../../athena_arrays.hpp"
 #include "../../parameter_input.hpp"
-#include "../../mesh.hpp"
+#include "../../mesh/mesh.hpp"
 #include "../radiation.hpp"
 #include "rad_integrators.hpp"
 
@@ -37,6 +37,9 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
   taufact_ = pin->GetOrAddInteger("radiation","taucell",5);
   compton_flag_=pin->GetOrAddInteger("radiation","Compton",0);
   planck_flag_=pin->GetOrAddInteger("radiation","Planck",0);
+  adv_flag_=pin->GetOrAddInteger("radiation","Advection",0);
+  flux_correct_flag_ = pin->GetOrAddInteger("radiation","CorrectFlux",0);
+  tau_limit_ =  pin->GetOrAddReal("radiation","tau_limit",0);
 
 
   int nthreads = prad->pmy_block->pmy_mesh->GetNumMeshThreads();
@@ -45,9 +48,8 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
   int ncells3 = 1;
 
   flx_.NewAthenaArray(nthreads,ncells1,prad->n_fre_ang);
-  vel_.NewAthenaArray(nthreads,ncells1,prad->n_fre_ang);
-  flx2_.NewAthenaArray(nthreads,ncells1,prad->n_fre_ang);
-  vel2_.NewAthenaArray(nthreads,ncells1,prad->n_fre_ang);
+  cwidth2_.NewAthenaArray(ncells1);
+  cwidth3_.NewAthenaArray(ncells1);
   
   x1face_area_.NewAthenaArray(nthreads,ncells1+1);
   if(prad->pmy_block->block_size.nx2 > 1) {
@@ -62,8 +64,11 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
   }
   cell_volume_.NewAthenaArray(nthreads,ncells1);
   
-  temp_i1_.NewAthenaArray(nthreads,ncells3,ncells2,ncells1,prad->n_fre_ang);
-  temp_i2_.NewAthenaArray(nthreads,ncells3,ncells2,ncells1,prad->n_fre_ang);
+  temp_i1_.NewAthenaArray(ncells3,ncells2,ncells1,prad->n_fre_ang);
+  temp_i2_.NewAthenaArray(ncells3,ncells2,ncells1,prad->n_fre_ang);
+  
+  vel_.NewAthenaArray(ncells3,ncells2,ncells1,prad->n_fre_ang);
+  vel2_.NewAthenaArray(ncells3,ncells2,ncells1,prad->n_fre_ang);
   
   vncsigma_.NewAthenaArray(prad->nang);
   vncsigma2_.NewAthenaArray(prad->nang);
@@ -78,10 +83,12 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 
 RadIntegrator::~RadIntegrator()
 {
-  flx_.DeleteAthenaArray();
   vel_.DeleteAthenaArray();
-  flx2_.DeleteAthenaArray();
   vel2_.DeleteAthenaArray();
+  flx_.DeleteAthenaArray();
+
+  cwidth2_.DeleteAthenaArray();
+  cwidth3_.DeleteAthenaArray();
   
   x1face_area_.DeleteAthenaArray();
   if(pmy_rad->pmy_block->block_size.nx2 > 1) {

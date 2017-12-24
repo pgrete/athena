@@ -8,7 +8,7 @@ problem_id = disk        # problem ID: basename of output filenames
 
 <output1>
 file_type  = hdf5       # Binary data dump
-dt         = 0.0002       # time increment between outputs
+dt         = 0.0005       # time increment between outputs
 variable   = prim
 
 #<output2>
@@ -18,7 +18,7 @@ variable   = prim
 
 <output3>
 file_type  = rst       # Binary data dump
-dt         = 0.0005       # time increment between outputs
+dt         = 0.001       # time increment between outputs
 
 
 <time>
@@ -29,7 +29,7 @@ tlim       = 2000000.0      # time limit
 <mesh>
 nx1        = 64       # Number of zones in X1-direction
 x1min      = 2.0     # minimum value of X1
-x1max      = 179.168      # maximum value of X1
+x1max      = 801.462      # maximum value of X1
 ix1_bc     = user  # inner-X1 boundary flag
 ox1_bc     = user  # inner-X1 boundary flag
 ix1_rad_bc = vacuum
@@ -57,22 +57,23 @@ refinement = static
 
 <meshblock>
 nx1         = 8 
-nx2         = 8 
+nx2         = 4
 nx3         = 8
 
 <refinement1>
-x1min       = 2
-x1max       = 60
-x2min       = 1.30900
-x2max       = 1.83259
+x1min       = 3
+x1max       = 100
+x2min       = 1.43117
+x2max       = 1.71042
 x3min       = 0.0
-x3max       = 6.283185307179586 
-level       = 3
+x3max       = 6.283185307179586
+level       = 2
+
 
 <hydro>
 gamma           = 1.6666666666667       # gamma = C_p/C_v
-dfloor          = 1.e-6
-pfloor          = 1.e-7
+dfloor          = 1.e-9
+pfloor          = 1.e-12
 
 
 <radiation>
@@ -82,8 +83,9 @@ Crat        = 5694.76
 Tunit       = 2.e5
 rhounit     = 1.e-8
 lunit       = 1.48428e14
-Compton     = 0
-tfloor      = 0.01
+Compton     = 1
+tfloor      = 0.005
+Planck      = 1
 
 <problem>
 

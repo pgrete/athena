@@ -24,7 +24,7 @@
 #include "radiation.hpp"
 #include "../utils/utils.hpp"
 #include "../coordinates/coordinates.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 
 
 //--------------------------------------------------------------------------------------
@@ -77,92 +77,93 @@ void Radiation::AngularGrid(int angle_flag, int nmu)
   
   
   if(angle_flag == 0){
-    Real deltamu = 2.0 / (2 * nmu - 1);
-    mu2tmp(0) = 1.0 / (3.0 * (2 * nmu - 1));
-    for(int i=1; i<nmu; i++) {
-      mu2tmp(i) = mu2tmp(i-1) + deltamu;
-    }
-    
-    Real w2 = 4.0 * mu2tmp(0);
-    Real wsum2 = sqrt(w2);
-    wtmp2(0) = wsum2;
-    
-    for(int i=1; i<nmu-2; i++) {
-      w2 += deltamu;
-      wtmp2(i) = sqrt(w2);
-      wsum2 += wtmp2(i);
-    }
-    
-    if(nmu > 2)
-      wtmp2(nmu-2) = 2.0*(nmu-1)/3.0 - wsum2;
-    
-    wtmp(0) = wtmp2(0);
-    Real wsum = wtmp(0);
-    for(int i=1; i<nmu-1; ++i) {
-      wtmp(i) = wtmp2(i) - wtmp2(i-1);
-      wsum += wtmp(i);
-    }
-    wtmp(nmu-1) = 1.0 - wsum;
-    
-    int np = 0;
-    int iang = 0;
-    
-    // initialize to be zero
-    for(int i=0; i<nmu; ++i)
-      for(int j=0; j<nmu; ++j)
-        pmat(i,j) = 0.0;
-    
-    for(int i=0; i<nmu; i++) {
-      for(int j=0; j<nmu; j++) {
-        for (int k=0; k<nmu; k++) {
-          if (i + j + k == nmu - 1) {
-            // assign cosines to temporary array grid
-            mutmp(iang,0) = sqrt(mu2tmp(j));
-            mutmp(iang,1) = sqrt(mu2tmp(k));
-            mutmp(iang,2) = sqrt(mu2tmp(i));
-            
-            int ip=Permutation(i,j,k,np,pl);
-            if (ip == -1) {
-              pl(np,0) = i;
-              pl(np,1) = j;
-              pl(np,2) = k;
-              pmat(i,np) += 1.0;
-              plab(iang) = np;
-              np++;
-            } else {
-              pmat(i,ip) += 1.0;
-              plab(iang) = ip;
-            }
-            
-            iang++;
-          }// end if i+j+k
-        }// end k nmu
-      }// end j nmu
-    }// end i nmu
-    
-    
-    
-    
-    if (nmu > 1) {
-      //  Invert matrix of Permutations families */
-      InverseMatrix(nmu-1, pmat,pinv);
-      // Solve for and assign weights for each Permutation family
-      MatrixMult(nmu-1,nmu-1,pinv,wtmp,wpf);
+    if(ndim > 1){
+      Real deltamu = 2.0 / (2 * nmu - 1);
+      mu2tmp(0) = 1.0 / (3.0 * (2 * nmu - 1));
+      for(int i=1; i<nmu; i++) {
+        mu2tmp(i) = mu2tmp(i-1) + deltamu;
+      }
+      
+      Real w2 = 4.0 * mu2tmp(0);
+      Real wsum2 = sqrt(w2);
+      wtmp2(0) = wsum2;
+      
+      for(int i=1; i<nmu-2; i++) {
+        w2 += deltamu;
+        wtmp2(i) = sqrt(w2);
+        wsum2 += wtmp2(i);
+      }
+      
+      if(nmu > 2)
+        wtmp2(nmu-2) = 2.0*(nmu-1)/3.0 - wsum2;
+      
+      wtmp(0) = wtmp2(0);
+      Real wsum = wtmp(0);
+      for(int i=1; i<nmu-1; ++i) {
+        wtmp(i) = wtmp2(i) - wtmp2(i-1);
+        wsum += wtmp(i);
+      }
+      wtmp(nmu-1) = 1.0 - wsum;
+      
+      int np = 0;
+      int iang = 0;
+      
+      // initialize to be zero
+      for(int i=0; i<nmu; ++i)
+        for(int j=0; j<nmu; ++j)
+          pmat(i,j) = 0.0;
+      
+      for(int i=0; i<nmu; i++) {
+        for(int j=0; j<nmu; j++) {
+          for (int k=0; k<nmu; k++) {
+            if (i + j + k == nmu - 1) {
+              // assign cosines to temporary array grid
+              mutmp(iang,0) = sqrt(mu2tmp(j));
+              mutmp(iang,1) = sqrt(mu2tmp(k));
+              mutmp(iang,2) = sqrt(mu2tmp(i));
+              
+              int ip=Permutation(i,j,k,np,pl);
+              if (ip == -1) {
+                pl(np,0) = i;
+                pl(np,1) = j;
+                pl(np,2) = k;
+                pmat(i,np) += 1.0;
+                plab(iang) = np;
+                np++;
+              } else {
+                pmat(i,ip) += 1.0;
+                plab(iang) = ip;
+              }
+              
+              iang++;
+            }// end if i+j+k
+          }// end k nmu
+        }// end j nmu
+      }// end i nmu
+      
+      
+      
+      
+      if (nmu > 1) {
+        //  Invert matrix of Permutations families */
+        InverseMatrix(nmu-1, pmat,pinv);
+        // Solve for and assign weights for each Permutation family
+        MatrixMult(nmu-1,nmu-1,pinv,wtmp,wpf);
 
-      for(int l=0; l<noct; ++l){
-        for (int i=0; i<n_ang; ++i){
-            wmu(l*n_ang+i) = wpf(plab(i));
-        }// end nang
-      }// end noct
+        for(int l=0; l<noct; ++l){
+          for (int i=0; i<n_ang; ++i){
+              wmu(l*n_ang+i) = wpf(plab(i));
+          }// end nang
+        }// end noct
 
-    } else {
-      for(int l=0; l<noct; ++l){
-          wmu(l) = 1.0;
-      }// end l
-    }// end nmu > 1
-    
+      } else {
+        for(int l=0; l<noct; ++l){
+            wmu(l) = 1.0;
+        }// end l
+      }// end nmu > 1
+      
 
-    
+    }// end ndim > 1
     
 
     

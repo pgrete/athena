@@ -1,24 +1,14 @@
-//======================================================================================
+//========================================================================================
 // Athena++ astrophysical MHD code
-// Copyright (C) 2014 James M. Stone  <jmstone@princeton.edu>
-//
-// This program is free software: you can redistribute and/or modify it under the terms
-// of the GNU General Public License (GPL) as published by the Free Software Foundation,
-// either version 3 of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful, but WITHOUT ANY
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
-// PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-//
-// You should have received a copy of GNU GPL in the file LICENSE included in the code
-// distribution.  If not see <http://www.gnu.org/licenses/>.
-//======================================================================================
+// Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
+// Licensed under the 3-clause BSD License, see LICENSE file for details
+//========================================================================================
 //! \file shock_tube.cpp
 //  \brief Problem generator for shock tube problems.  
 //
 // Problem generator for shock tube (1-D Riemann) problems. Initializes plane-parallel
 // shock along x1 (in 1D, 2D, 3D), along x2 (in 2D, 3D), and along x3 (in 3D).
-//======================================================================================
+//========================================================================================
 
 // C++ headers
 #include <iostream>   // endl
@@ -31,24 +21,22 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../parameter_input.hpp"
-#include "../mesh.hpp"
+#include "../mesh/mesh.hpp"
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
-#include "../hydro/eos/eos.hpp"
+#include "../eos/eos.hpp"
 #include "../coordinates/coordinates.hpp"
 
-//======================================================================================
+//========================================================================================
 //! \fn void Mesh::UserWorkAfterLoop(ParameterInput *pin)
 //  \brief Calculate L1 errors in Sod (hydro) and RJ2a (MHD) tests
-//======================================================================================
+//========================================================================================
 
 void Mesh::UserWorkAfterLoop(ParameterInput *pin)
 {
   MeshBlock *pmb = pblock;
 
-  // return if compute_error=0 (default)
-  int error_test;
-  if ((error_test=pin->GetOrAddInteger("problem","compute_error",0))==0) return;
+  if (!pin->GetOrAddBoolean("problem","compute_error",false)) return;
   
   // Read shock direction and set array indices
   int shk_dir = pin->GetInteger("problem","shock_dir"); 
@@ -77,7 +65,7 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
     Real xsm = (0.60588 - 0.51594/1.4903)*tlim;
     Real xrm = (0.60588 - 1.0/sqrt(PI*1.4903))*tlim;
     Real xfm = (1.2 - 2.3305/1.08)*tlim;
-    Real gm1 = pmb->phydro->peos->GetGamma() - 1.0;
+    Real gm1 = pmb->peos->GetGamma() - 1.0;
     for (int k=pmb->ks; k<=pmb->ke; k++) {
     for (int j=pmb->js; j<=pmb->je; j++) {
       for (int i=pmb->is; i<=pmb->ie; i++) {
@@ -256,10 +244,10 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
   return;
 }
 
-//======================================================================================
+//========================================================================================
 //! \fn void MeshBlock::ProblemGenerator(ParameterInput *pin)
 //  \brief Problem Generator for the shock tube tests
-//======================================================================================
+//========================================================================================
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
@@ -295,7 +283,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   wl[IVX] = pin->GetReal("problem","ul");
   wl[IVY] = pin->GetReal("problem","vl");
   wl[IVZ] = pin->GetReal("problem","wl");
-  if (NON_BAROTROPIC_EOS) wl[IEN] = pin->GetReal("problem","pl");
+  if (NON_BAROTROPIC_EOS) wl[IPR] = pin->GetReal("problem","pl");
   if (MAGNETIC_FIELDS_ENABLED) {
     wl[NHYDRO  ] = pin->GetReal("problem","bxl");
     wl[NHYDRO+1] = pin->GetReal("problem","byl");
@@ -308,7 +296,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   wr[IVX] = pin->GetReal("problem","ur");
   wr[IVY] = pin->GetReal("problem","vr");
   wr[IVZ] = pin->GetReal("problem","wr");
-  if (NON_BAROTROPIC_EOS) wr[IEN] = pin->GetReal("problem","pr");
+  if (NON_BAROTROPIC_EOS) wr[IPR] = pin->GetReal("problem","pr");
   if (MAGNETIC_FIELDS_ENABLED) {
     wr[NHYDRO  ] = pin->GetReal("problem","bxr");
     wr[NHYDRO+1] = pin->GetReal("problem","byr");
@@ -330,7 +318,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           phydro->u(IM2,k,j,i) = wl[IVY]*wl[IDN];
           phydro->u(IM3,k,j,i) = wl[IVZ]*wl[IDN];
           if (NON_BAROTROPIC_EOS) phydro->u(IEN,k,j,i) =
-            wl[IEN]/(phydro->peos->GetGamma() - 1.0)
+            wl[IPR]/(peos->GetGamma() - 1.0)
             + 0.5*wl[IDN]*(wl[IVX]*wl[IVX] + wl[IVY]*wl[IVY] + wl[IVZ]*wl[IVZ]);
         } else {
           phydro->u(IDN,k,j,i) = wr[IDN];
@@ -338,7 +326,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           phydro->u(IM2,k,j,i) = wr[IVY]*wr[IDN];
           phydro->u(IM3,k,j,i) = wr[IVZ]*wr[IDN];
           if (NON_BAROTROPIC_EOS) phydro->u(IEN,k,j,i) =
-            wr[IEN]/(phydro->peos->GetGamma() - 1.0)
+            wr[IPR]/(peos->GetGamma() - 1.0)
             + 0.5*wr[IDN]*(wr[IVX]*wr[IVX] + wr[IVY]*wr[IVY] + wr[IVZ]*wr[IVZ]);
         }
       }
@@ -356,7 +344,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           phydro->u(IM3,k,j,i) = wl[IVY]*wl[IDN];
           phydro->u(IM1,k,j,i) = wl[IVZ]*wl[IDN];
           if (NON_BAROTROPIC_EOS) phydro->u(IEN,k,j,i) =
-            wl[IEN]/(phydro->peos->GetGamma() - 1.0)
+            wl[IPR]/(peos->GetGamma() - 1.0)
             + 0.5*wl[IDN]*(wl[IVX]*wl[IVX] + wl[IVY]*wl[IVY] + wl[IVZ]*wl[IVZ]);
         }
       } else {
@@ -366,7 +354,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           phydro->u(IM3,k,j,i) = wr[IVY]*wr[IDN];
           phydro->u(IM1,k,j,i) = wr[IVZ]*wr[IDN];
           if (NON_BAROTROPIC_EOS) phydro->u(IEN,k,j,i) =
-            wr[IEN]/(phydro->peos->GetGamma() - 1.0)
+            wr[IPR]/(peos->GetGamma() - 1.0)
             + 0.5*wr[IDN]*(wr[IVX]*wr[IVX] + wr[IVY]*wr[IVY] + wr[IVZ]*wr[IVZ]);
         }
       }
@@ -385,7 +373,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           phydro->u(IM1,k,j,i) = wl[IVY]*wl[IDN];
           phydro->u(IM2,k,j,i) = wl[IVZ]*wl[IDN];
           if (NON_BAROTROPIC_EOS) phydro->u(IEN,k,j,i) =
-            wl[IEN]/(phydro->peos->GetGamma() - 1.0)
+            wl[IPR]/(peos->GetGamma() - 1.0)
             + 0.5*wl[IDN]*(wl[IVX]*wl[IVX] + wl[IVY]*wl[IVY] + wl[IVZ]*wl[IVZ]);
         }}
       } else {
@@ -396,7 +384,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           phydro->u(IM1,k,j,i) = wr[IVY]*wr[IDN];
           phydro->u(IM2,k,j,i) = wr[IVZ]*wr[IDN];
           if (NON_BAROTROPIC_EOS) phydro->u(IEN,k,j,i) =
-            wr[IEN]/(phydro->peos->GetGamma() - 1.0)
+            wr[IPR]/(peos->GetGamma() - 1.0)
             + 0.5*wr[IDN]*(wr[IVX]*wr[IVX] + wr[IVY]*wr[IVY] + wr[IVZ]*wr[IVZ]);
         }}
       }

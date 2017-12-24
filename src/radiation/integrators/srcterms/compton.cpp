@@ -22,8 +22,8 @@
 #include "../../../athena_arrays.hpp"
 #include "../../radiation.hpp"
 #include "../../../hydro/hydro.hpp"
-#include "../../../hydro/eos/eos.hpp"
-#include "../../../mesh.hpp"
+#include "../../../eos/eos.hpp"
+#include "../../../mesh/mesh.hpp"
 #include "../../../coordinates/coordinates.hpp"
 #include "../../../utils/utils.hpp"
 
@@ -52,7 +52,7 @@ void RadIntegrator::Compton(const AthenaArray<Real> &wmu_cm,
 
   int& nang=pmy_rad->nang;
   int& nfreq=pmy_rad->nfreq;
-  Real gamma = pmy_rad->pmy_block->phydro->peos->GetGamma();
+  Real gamma = pmy_rad->pmy_block->peos->GetGamma();
   Real telectron = 1.0/pmy_rad->telectron;
   
   
@@ -76,7 +76,7 @@ void RadIntegrator::Compton(const AthenaArray<Real> &wmu_cm,
     
      // Calculate the sum \int gamma (1-vdotn/c) dw_0 4 dt csigma_s /T_e
       Real suma1 = 0.0, suma2 = 0.0, jr_cm=0.0, source=0.0;
-//#pragma simd
+#pragma omp simd reduction(+:jr_cm,suma1)
       for(int n=0; n<nang; n++){
          jr_cm += ir_cm(n+nang*ifr) * wmu_cm(n);
          suma1 += tran_coef(n) * wmu_cm(n) * 4.0 * rdtcsigma * telectron;
@@ -104,7 +104,7 @@ void RadIntegrator::Compton(const AthenaArray<Real> &wmu_cm,
        }
       }
       // Update the co-moving frame specific intensity
-#pragma simd
+#pragma omp simd
       for(int n=0; n<nang; n++){
         ir_cm(n+nang*ifr) += source * tran_coef(n);
       }
