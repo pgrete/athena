@@ -9,8 +9,7 @@
 //  \brief prototypes of functions and class definitions for utils/*.cpp files
 
 #include <csignal>
-#include "../athena.hpp"
-#include "../athena_arrays.hpp"
+
 
 void ChangeRunDir(const char *pdir);
 double ran2(long int *idum);
@@ -44,6 +43,7 @@ int ExactPolynomial(const Real coef4, const Real coef, const Real tconst, Real &
 int FouthPolyRoot(const Real coef4, const Real tconst, Real &root);
 
 
+
 //----------------------------------------------------------------------------------------
 //! SignalHandler
 //  \brief static data and functions that implement a simple signal handling system
@@ -59,14 +59,6 @@ namespace SignalHandler {
   void SetSignalFlag(int s);
   void SetWallTimeAlarm(int t);
   void CancelWallTimeAlarm(void);
-}
-
-//Timer for MPI
-namespace WallTimeLimit {
-    void InitWTLimit(void);
-    void SendWTLimit(int nwtlimit);
-    bool TestWTLimit(int &nwtlimit);
-    void FinalizeWTLimit(int wtflag);
 }
 
 #endif // UTILS_HPP

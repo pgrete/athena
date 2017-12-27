@@ -37,7 +37,6 @@ Cylindrical::Cylindrical(MeshBlock *pmb, ParameterInput *pin, bool flag)
     ng=NGHOST;
   }
   Mesh *pm=pmy_block->pmy_mesh;
-  RegionSize& mesh_size  = pmy_block->pmy_mesh->mesh_size;
   RegionSize& block_size = pmy_block->block_size;
 
   // allocate arrays for volume-centered coordinates and positions of cells
@@ -258,6 +257,7 @@ Real Cylindrical::GetFace3Area(const int k, const int j, const int i)
   return coord_area3_i_(i)*dx2f(j);
 }
 
+
 //----------------------------------------------------------------------------------------
 // Cell Volume function: compute volume of cell as vector
 
@@ -372,10 +372,6 @@ void Cylindrical::ConvertAngle(MeshBlock *pmb, const int nang,
 
 }
 //###########################################################
-
-
-
-
 
 
 

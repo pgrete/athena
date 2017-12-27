@@ -31,10 +31,8 @@ public:
   
   Radiation *pmy_rad;
   
-  void FluxDivergence(MeshBlock *pmb, AthenaArray<Real> &ir, const int step);
-
   void FluxDivergence(MeshBlock *pmb, AthenaArray<Real> &ir_in1,
-         AthenaArray<Real> &ir_in2, const IntegratorWeight wght,
+         AthenaArray<Real> &ir_in2, const Real wght[3],
                                      AthenaArray<Real> &ir_out);
     
   void CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &w,
@@ -145,8 +143,6 @@ public:
 
   void PredictVel(int k, int j, int i, Real dt, Real rho,
                   Real *vx, Real *vy, Real *vz);
-
-
 
 
  

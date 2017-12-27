@@ -36,6 +36,7 @@
   #define NRAD 0
 #endif
 
+
 //----------------------------------------------------------------------------------------
 // HistoryOutput constructor
 // destructor - not needed for this derived class
@@ -149,7 +150,6 @@ void HistoryOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
           << "Output file '" << fname << "' could not be opened";
       throw std::runtime_error(msg.str().c_str());
     }
-
     // If this is the first output, write header
     int iout = 1;
     if (output_params.file_number == 0) {
@@ -184,7 +184,6 @@ void HistoryOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
         fprintf(pfile,"[%d]=Pr22    ", iout++);
         fprintf(pfile,"[%d]=Pr23    ", iout++);
         fprintf(pfile,"[%d]=Pr33    ", iout++);
-
       }
       for(int n=0; n<pm->nuser_history_output_; n++)
         fprintf(pfile,"[%d]=%-8s", iout++, pm->user_history_output_names_[n].c_str());

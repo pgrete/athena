@@ -34,20 +34,31 @@ Field::Field(MeshBlock *pmb, ParameterInput *pin)
     b1.x1f.NewAthenaArray( ncells3   , ncells2   ,(ncells1+1));
     b1.x2f.NewAthenaArray( ncells3   ,(ncells2+1), ncells1   );
     b1.x3f.NewAthenaArray((ncells3+1), ncells2   , ncells1   );
+    // If user-requested time integrator is type 3S*, allocate additional memory registers
+    std::string integrator = pin->GetOrAddString("time","integrator","vl2");
+    if (integrator == "ssprk5_4"){
+      // future extension may add "int nregister" to Hydro class
+      b2.x1f.NewAthenaArray( ncells3   , ncells2   ,(ncells1+1));
+      b2.x2f.NewAthenaArray( ncells3   ,(ncells2+1), ncells1   );
+      b2.x3f.NewAthenaArray((ncells3+1), ncells2   , ncells1   );
+    }
 
     bcc.NewAthenaArray (NFIELD,ncells3,ncells2,ncells1);
-    bcc1.NewAthenaArray(NFIELD,ncells3,ncells2,ncells1);
 
     e.x1e.NewAthenaArray((ncells3+1),(ncells2+1), ncells1   );
     e.x2e.NewAthenaArray((ncells3+1), ncells2   ,(ncells1+1));
     e.x3e.NewAthenaArray( ncells3   ,(ncells2+1),(ncells1+1));
 
-    ei.x1f.NewAthenaArray(((NFIELD)-1), ncells3   , ncells2   ,(ncells1+1));
-    ei.x2f.NewAthenaArray(((NFIELD)-1), ncells3   ,(ncells2+1), ncells1   );
-    ei.x3f.NewAthenaArray(((NFIELD)-1),(ncells3+1), ncells2   , ncells1   );
     wght.x1f.NewAthenaArray( ncells3   , ncells2   ,(ncells1+1));
     wght.x2f.NewAthenaArray( ncells3   ,(ncells2+1), ncells1   );
     wght.x3f.NewAthenaArray((ncells3+1), ncells2   , ncells1   );
+
+    e2_x1f.NewAthenaArray( ncells3   , ncells2   ,(ncells1+1));
+    e3_x1f.NewAthenaArray( ncells3   , ncells2   ,(ncells1+1));
+    e1_x2f.NewAthenaArray( ncells3   ,(ncells2+1), ncells1   );
+    e3_x2f.NewAthenaArray( ncells3   ,(ncells2+1), ncells1   );
+    e1_x3f.NewAthenaArray((ncells3+1), ncells2   , ncells1   );
+    e2_x3f.NewAthenaArray((ncells3+1), ncells2   , ncells1   );
 
     // Allocate memory for scratch vectors
     cc_e_.NewAthenaArray(ncells3,ncells2,ncells1);
@@ -74,18 +85,24 @@ Field::~Field()
   b1.x1f.DeleteAthenaArray();
   b1.x2f.DeleteAthenaArray();
   b1.x3f.DeleteAthenaArray();
+  // b2 only allocated if integrator was 3S* integrator
+  b2.x1f.DeleteAthenaArray();
+  b2.x2f.DeleteAthenaArray();
+  b2.x3f.DeleteAthenaArray();
   bcc.DeleteAthenaArray();
-  bcc1.DeleteAthenaArray();
 
   e.x1e.DeleteAthenaArray();
   e.x2e.DeleteAthenaArray();
   e.x3e.DeleteAthenaArray();
-  ei.x1f.DeleteAthenaArray();
-  ei.x2f.DeleteAthenaArray();
-  ei.x3f.DeleteAthenaArray();
   wght.x1f.DeleteAthenaArray();
   wght.x2f.DeleteAthenaArray();
   wght.x3f.DeleteAthenaArray();
+  e2_x1f.DeleteAthenaArray();
+  e3_x1f.DeleteAthenaArray();
+  e1_x2f.DeleteAthenaArray();
+  e3_x2f.DeleteAthenaArray();
+  e1_x3f.DeleteAthenaArray();
+  e2_x3f.DeleteAthenaArray();
 
   cc_e_.DeleteAthenaArray();
   face_area_.DeleteAthenaArray();
@@ -152,4 +169,3 @@ void Field::CalculateCellCenteredField(const FaceField &bf, AthenaArray<Real> &b
 }
   return;
 }
-

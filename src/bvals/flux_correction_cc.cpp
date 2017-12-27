@@ -48,65 +48,33 @@ void BoundaryValues::SendFluxCorrection(enum FluxCorrectionType type)
   int ns, ne;
   int rns, rne;
   int rad_flux_flag=0;
-  Real *sbuf, *rbuf;
-  enum BoundaryStatus *flag;
-#ifdef MPI_PARALLEL
-  MPI_Request *req;
-#endif
+  BoundaryData *pbd, *ptarget;
 
-  int fx1=pmb->loc.lx1&1L, fx2=pmb->loc.lx2&1L, fx3=pmb->loc.lx3&1L;
-  int fi1, fi2;
+  if(type==FLUX_HYDRO) {
+    ns=0, ne=NHYDRO-1;
+    x1flux.InitWithShallowCopy(pmb->phydro->flux[X1DIR]);
+    x2flux.InitWithShallowCopy(pmb->phydro->flux[X2DIR]);
+    x3flux.InitWithShallowCopy(pmb->phydro->flux[X3DIR]);
+    if(RADIATION_ENABLED){
+      // only do radiation with hydro together
+      rns=0, rne=pmb->prad->n_fre_ang-1;
+      x1flux_rad.InitWithShallowCopy(pmb->prad->flux[X1DIR]);
+      x2flux_rad.InitWithShallowCopy(pmb->prad->flux[X2DIR]);
+      x3flux_rad.InitWithShallowCopy(pmb->prad->flux[X3DIR]);
+      rad_flux_flag = 1;
+    }
+    pbd=&bd_flcor_;
+  }
 
-  for(int n=0; n<pmb->nneighbor; n++) {
-    NeighborBlock& nb = pmb->neighbor[n];
+  for(int n=0; n<nneighbor; n++) {
+    NeighborBlock& nb = neighbor[n];
     if(nb.type!=NEIGHBOR_FACE) break;
     if(nb.level==pmb->loc.level-1) {
-      if(nb.rank==Globals::my_rank) // on the same node
-        pbl=pmb->pmy_mesh->FindMeshBlock(nb.gid);
-      switch (type) {
-        case FLUX_HYDRO:
-          ns=0, ne=NHYDRO-1;
-          x1flux.InitWithShallowCopy(pmb->phydro->flux[X1DIR]);
-          x2flux.InitWithShallowCopy(pmb->phydro->flux[X2DIR]);
-          x3flux.InitWithShallowCopy(pmb->phydro->flux[X3DIR]);
-          if(RADIATION_ENABLED){
-
-            x1flux_rad.InitWithShallowCopy(pmb->prad->flux[X1DIR]);
-            x2flux_rad.InitWithShallowCopy(pmb->prad->flux[X2DIR]);
-            x3flux_rad.InitWithShallowCopy(pmb->prad->flux[X3DIR]);
-            // only do radiation with hydro together
-            rad_flux_flag = 1;
-            rns=0, rne=pmb->prad->n_fre_ang-1;
-
-          }
-          sbuf=flcor_send_[nb.fid];
-          if(nb.rank==Globals::my_rank) {
-            if(nb.fid==INNER_X1 || nb.fid==OUTER_X1)
-              fi1=fx2, fi2=fx3;
-            else if(nb.fid==INNER_X2 || nb.fid==OUTER_X2)
-              fi1=fx1, fi2=fx3;
-            else if(nb.fid==INNER_X3 || nb.fid==OUTER_X3)
-              fi1=fx1, fi2=fx2;
-            rbuf=pbl->pbval->flcor_recv_[(nb.fid^1)][fi2][fi1];
-            flag=&(pbl->pbval->flcor_flag_[(nb.fid^1)][fi2][fi1]);
-          }
-#ifdef MPI_PARALLEL
-          else
-            req=&(req_flcor_send_[nb.fid]);
-#endif
-          break;
-        default:
-          std::stringstream msg;
-          msg << "### FATAL ERROR in SendFluxCorrection" << std::endl
-              << "invalid flux correction type." << std::endl;
-          throw std::runtime_error(msg.str().c_str());
-          break;
-      }
       int p=0;
+      Real *sbuf=pbd->send[nb.bufid];
       // x1 direction
       if(nb.fid==INNER_X1 || nb.fid==OUTER_X1) {
         int i=pmb->is+(pmb->ie-pmb->is+1)*nb.fid;
-        fi1=fx2, fi2=fx3;
         if(pmb->block_size.nx3>1) { // 3D
           for(int nn=ns; nn<=ne; nn++) {
             for(int k=pmb->ks; k<=pmb->ke; k+=2) {
@@ -145,7 +113,6 @@ void BoundaryValues::SendFluxCorrection(enum FluxCorrectionType type)
       // x2 direction
       else if(nb.fid==INNER_X2 || nb.fid==OUTER_X2) {
         int j=pmb->js+(pmb->je-pmb->js+1)*(nb.fid&1);
-        fi1=fx1, fi2=fx3;
         if(pmb->block_size.nx3>1) { // 3D
           for(int nn=ns; nn<=ne; nn++) {
             for(int k=pmb->ks; k<=pmb->ke; k+=2) {
@@ -176,7 +143,6 @@ void BoundaryValues::SendFluxCorrection(enum FluxCorrectionType type)
       // x3 direction - 3D only
       else if(nb.fid==INNER_X3 || nb.fid==OUTER_X3) {
         int k=pmb->ks+(pmb->ke-pmb->ks+1)*(nb.fid&1);
-        fi1=fx1, fi2=fx2;
         for(int nn=ns; nn<=ne; nn++) {
           for(int j=pmb->js; j<=pmb->je; j+=2) {
             pco->Face3Area(k, j,   pmb->is, pmb->ie, sarea_[0]);
@@ -197,7 +163,6 @@ void BoundaryValues::SendFluxCorrection(enum FluxCorrectionType type)
       if(rad_flux_flag > 0){
         if(nb.fid==INNER_X1 || nb.fid==OUTER_X1) {
           int i=pmb->is+(pmb->ie-pmb->is+1)*nb.fid;
-          fi1=fx2, fi2=fx3;
           if(pmb->block_size.nx3>1) { // 3D
             for(int k=pmb->ks; k<=pmb->ke; k+=2) {
               for(int j=pmb->js; j<=pmb->je; j+=2) {
@@ -236,7 +201,6 @@ void BoundaryValues::SendFluxCorrection(enum FluxCorrectionType type)
         // x2 direction
         else if(nb.fid==INNER_X2 || nb.fid==OUTER_X2) {
           int j=pmb->js+(pmb->je-pmb->js+1)*(nb.fid&1);
-          fi1=fx1, fi2=fx3;
           if(pmb->block_size.nx3>1) { // 3D
             for(int k=pmb->ks; k<=pmb->ke; k+=2) {
               pco->Face2Area(k  , j, pmb->is, pmb->ie, sarea_[0]);
@@ -267,7 +231,6 @@ void BoundaryValues::SendFluxCorrection(enum FluxCorrectionType type)
         // x3 direction - 3D only
         else if(nb.fid==INNER_X3 || nb.fid==OUTER_X3) {
           int k=pmb->ks+(pmb->ke-pmb->ks+1)*(nb.fid&1);
-          fi1=fx1, fi2=fx2;
           for(int j=pmb->js; j<=pmb->je; j+=2) {
             pco->Face3Area(k, j,   pmb->is, pmb->ie, sarea_[0]);
             pco->Face3Area(k, j+1, pmb->is, pmb->ie, sarea_[1]);
@@ -285,12 +248,15 @@ void BoundaryValues::SendFluxCorrection(enum FluxCorrectionType type)
       }// End Radiation
 
       if(nb.rank==Globals::my_rank) { // on the same node
-        std::memcpy(rbuf, sbuf, p*sizeof(Real));
-        *flag=BNDRY_ARRIVED;
+        pbl=pmb->pmy_mesh->FindMeshBlock(nb.gid);
+        if(type==FLUX_HYDRO)
+          ptarget=&(pbl->pbval->bd_flcor_);
+        std::memcpy(ptarget->recv[nb.targetid], sbuf, p*sizeof(Real));
+        ptarget->flag[nb.targetid]=BNDRY_ARRIVED;
       }
 #ifdef MPI_PARALLEL
       else
-        MPI_Start(req);
+        MPI_Start(&(pbd->req_send[nb.bufid]));
 #endif
     }
   }
@@ -305,55 +271,36 @@ void BoundaryValues::SendFluxCorrection(enum FluxCorrectionType type)
 bool BoundaryValues::ReceiveFluxCorrection(enum FluxCorrectionType type)
 {
   MeshBlock *pmb=pmy_block_;
-  Coordinates *pco=pmb->pcoord;
   AthenaArray<Real> x1flux, x2flux, x3flux;
   AthenaArray<Real> x1flux_rad, x2flux_rad, x3flux_rad;
+  bool bflag=true;
   int ns, ne;
   int rns, rne;
   int rad_flux_flag = 0;
-  Real *rbuf;
-  enum BoundaryStatus *flag;
-#ifdef MPI_PARALLEL
-  MPI_Request *req;
-#endif
-  bool bflag=true;
+  BoundaryData *pbd;
 
-  for(int n=0; n<pmb->nneighbor; n++) {
-    NeighborBlock& nb = pmb->neighbor[n];
+  if(type==FLUX_HYDRO) {
+    pbd=&bd_flcor_;
+    ns=0, ne=NHYDRO-1;
+    x1flux.InitWithShallowCopy(pmb->phydro->flux[X1DIR]);
+    x2flux.InitWithShallowCopy(pmb->phydro->flux[X2DIR]);
+    x3flux.InitWithShallowCopy(pmb->phydro->flux[X3DIR]);
+  }
+  if(RADIATION_ENABLED){
+    x1flux_rad.InitWithShallowCopy(pmb->prad->flux[X1DIR]);
+    x2flux_rad.InitWithShallowCopy(pmb->prad->flux[X2DIR]);
+    x3flux_rad.InitWithShallowCopy(pmb->prad->flux[X3DIR]);
+    // only do radiation with hydro together
+    rad_flux_flag = 1;
+    rns=0, rne=pmb->prad->n_fre_ang-1;
+  }
+
+  for(int n=0; n<nneighbor; n++) {
+    NeighborBlock& nb = neighbor[n];
     if(nb.type!=NEIGHBOR_FACE) break;
     if(nb.level==pmb->loc.level+1) {
-      switch (type) {
-        case FLUX_HYDRO:
-          ns=0, ne=NHYDRO-1;
-          x1flux.InitWithShallowCopy(pmb->phydro->flux[X1DIR]);
-          x2flux.InitWithShallowCopy(pmb->phydro->flux[X2DIR]);
-          x3flux.InitWithShallowCopy(pmb->phydro->flux[X3DIR]);
-
-          if(RADIATION_ENABLED){
-
-            x1flux_rad.InitWithShallowCopy(pmb->prad->flux[X1DIR]);
-            x2flux_rad.InitWithShallowCopy(pmb->prad->flux[X2DIR]);
-            x3flux_rad.InitWithShallowCopy(pmb->prad->flux[X3DIR]);
-            // only do radiation with hydro together
-            rad_flux_flag = 1;
-            rns=0, rne=pmb->prad->n_fre_ang-1;
-          }
-          rbuf=flcor_recv_[nb.fid][nb.fi2][nb.fi1];
-          flag=&(flcor_flag_[nb.fid][nb.fi2][nb.fi1]);
-#ifdef MPI_PARALLEL
-          if(nb.rank!=Globals::my_rank)
-            req=&(req_flcor_recv_[nb.fid][nb.fi2][nb.fi1]);
-#endif
-          break;
-        default:
-          std::stringstream msg;
-          msg << "### FATAL ERROR in ReceiveFluxCorrection" << std::endl
-              << "invalid flux correction type." << std::endl;
-          throw std::runtime_error(msg.str().c_str());
-          break;
-      }
-      if(*flag==BNDRY_COMPLETED) continue;
-      if(*flag==BNDRY_WAITING) {
+      if(pbd->flag[nb.bufid]==BNDRY_COMPLETED) continue;
+      if(pbd->flag[nb.bufid]==BNDRY_WAITING) {
         if(nb.rank==Globals::my_rank) {// on the same process
           bflag=false;
           continue;
@@ -362,18 +309,18 @@ bool BoundaryValues::ReceiveFluxCorrection(enum FluxCorrectionType type)
         else { // MPI boundary
           int test;
           MPI_Iprobe(MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&test,MPI_STATUS_IGNORE);
-          MPI_Test(req,&test,MPI_STATUS_IGNORE);
+          MPI_Test(&(pbd->req_recv[nb.bufid]),&test,MPI_STATUS_IGNORE);
           if(test==false) {
             bflag=false;
             continue;
           }
-          *flag = BNDRY_ARRIVED;
+          pbd->flag[nb.bufid] = BNDRY_ARRIVED;
         }
 #endif
       }
       // boundary arrived; apply flux correction
       int p=0;
-
+      Real *rbuf=pbd->recv[nb.bufid];
       if(nb.fid==INNER_X1 || nb.fid==OUTER_X1) {
         int is=pmb->is+(pmb->ie-pmb->is)*nb.fid+nb.fid;
         int js=pmb->js, je=pmb->je, ks=pmb->ks, ke=pmb->ke;
@@ -416,7 +363,6 @@ bool BoundaryValues::ReceiveFluxCorrection(enum FluxCorrectionType type)
           }
         }
       }
-
 
       if(rad_flux_flag > 0){
 
@@ -467,8 +413,7 @@ bool BoundaryValues::ReceiveFluxCorrection(enum FluxCorrectionType type)
 
       }// End Radiation
 
-
-      *flag = BNDRY_COMPLETED;
+      pbd->flag[nb.bufid] = BNDRY_COMPLETED;
     }
   }
 

@@ -367,8 +367,7 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &w,
 
 
 void RadIntegrator::FluxDivergence(MeshBlock *pmb, AthenaArray<Real> &ir_in1,
-                      AthenaArray<Real> &ir_in2, const IntegratorWeight wght,
-                                                   AthenaArray<Real> &ir_out)
+      AthenaArray<Real> &ir_in2, const Real wght[3], AthenaArray<Real> &ir_out)
 {
   Radiation *prad=pmb->prad;
 
@@ -439,8 +438,8 @@ void RadIntegrator::FluxDivergence(MeshBlock *pmb, AthenaArray<Real> &ir_in1,
       for(int i=is; i<=ie; ++i){
 #pragma omp simd
         for(int n=0; n<prad->n_fre_ang; ++n){
-          ir_out(k,j,i,n) = wght.a*ir_in1(k,j,i,n) + wght.b*ir_in2(k,j,i,n)
-                         - wght.c*dt*dflx(i,n)/vol(i);
+          ir_out(k,j,i,n) = wght[0]*ir_in1(k,j,i,n) + wght[1]*ir_in2(k,j,i,n)
+                         - wght[2]*dt*dflx(i,n)/vol(i);
         }
       }
 
@@ -466,5 +465,3 @@ void RadIntegrator::GetTaufactor(const Real vx, const Real vy, const Real vz,
    (*factor) = tausq;
 
 }
-
-

@@ -32,10 +32,13 @@
 #include "athena.hpp"
 #include "globals.hpp"
 #include "mesh/mesh.hpp"
-#include "parameter_input.hpp" 
+#include "parameter_input.hpp"
 #include "outputs/outputs.hpp"
 #include "outputs/io_wrapper.hpp"
 #include "utils/utils.hpp"
+#include "gravity/mggravity.hpp"
+#include "gravity/fftgravity.hpp"
+#include "fft/turbulence.hpp"
 
 // MPI/OpenMP headers
 #ifdef MPI_PARALLEL
@@ -47,7 +50,7 @@
 #endif
 
 //----------------------------------------------------------------------------------------
-//! \fn int main(int argc, char *argv[]) 
+//! \fn int main(int argc, char *argv[])
 //  \brief Athena++ main program
 
 int main(int argc, char *argv[])
@@ -79,7 +82,7 @@ int main(int argc, char *argv[])
     return(0);
   }
 
-  // Get total number of MPI processes (ranks) 
+  // Get total number of MPI processes (ranks)
   if(MPI_SUCCESS != MPI_Comm_size(MPI_COMM_WORLD, &Globals::nranks)) {
     std::cout << "### FATAL ERROR in main" << std::endl
               << "MPI_Comm_size failed." << std::endl;
@@ -189,10 +192,10 @@ int main(int argc, char *argv[])
       infile.Close();
     }
     pinput->ModifyFromCmdline(argc,argv);
-  } 
+  }
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl
-              << "memory allocation failed initializing class ParameterInput: " 
+              << "memory allocation failed initializing class ParameterInput: "
               << ba.what() << std::endl;
     if(res_flag==1) restartfile.Close();
 #ifdef MPI_PARALLEL
@@ -201,7 +204,7 @@ int main(int argc, char *argv[])
     return(0);
   }
   catch(std::exception const& ex) {
-    std::cout << ex.what() << std::endl;  // prints diagnostic message  
+    std::cout << ex.what() << std::endl;  // prints diagnostic message
     if(res_flag==1) restartfile.Close();
 #ifdef MPI_PARALLEL
     MPI_Finalize();
@@ -226,14 +229,14 @@ int main(int argc, char *argv[])
   try {
     if(res_flag==0)
       pmesh = new Mesh(pinput, mesh_flag);
-    else { 
+    else {
       pmesh = new Mesh(pinput, restartfile, mesh_flag);
       ncstart=pmesh->ncycle;
     }
   }
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl
-              << "memory allocation failed initializing class Mesh: " 
+              << "memory allocation failed initializing class Mesh: "
               << ba.what() << std::endl;
     if(res_flag==1) restartfile.Close();
 #ifdef MPI_PARALLEL
@@ -280,7 +283,7 @@ int main(int argc, char *argv[])
 
   try {
     pmesh->Initialize(res_flag, pinput);
-  } 
+  }
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl << "memory allocation failed "
               << "in problem generator " << ba.what() << std::endl;
@@ -290,7 +293,7 @@ int main(int argc, char *argv[])
     return(0);
   }
   catch(std::exception const& ex) {
-    std::cout << ex.what() << std::endl;  // prints diagnostic message 
+    std::cout << ex.what() << std::endl;  // prints diagnostic message
 #ifdef MPI_PARALLEL
     MPI_Finalize();
 #endif
@@ -305,10 +308,10 @@ int main(int argc, char *argv[])
     ChangeRunDir(prundir);
     pouts = new Outputs(pmesh, pinput);
     if(res_flag==0) pouts->MakeOutputs(pmesh,pinput);
-  } 
+  }
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl
-              << "memory allocation failed setting initial conditions: " 
+              << "memory allocation failed setting initial conditions: "
               << ba.what() << std::endl;
 #ifdef MPI_PARALLEL
     MPI_Finalize();
@@ -316,7 +319,7 @@ int main(int argc, char *argv[])
     return(0);
   }
   catch(std::exception const& ex) {
-    std::cout << ex.what() << std::endl;  // prints diagnostic message  
+    std::cout << ex.what() << std::endl;  // prints diagnostic message
 #ifdef MPI_PARALLEL
     MPI_Finalize();
 #endif
@@ -342,15 +345,26 @@ int main(int argc, char *argv[])
   double omp_start_time = omp_get_wtime();
 #endif
 
-  while ((pmesh->time < pmesh->tlim) && 
+  while ((pmesh->time < pmesh->tlim) &&
          (pmesh->nlim < 0 || pmesh->ncycle < pmesh->nlim)){
 
     if(Globals::my_rank==0) {
-      std::cout << "cycle=" << pmesh->ncycle << std::scientific <<std::setprecision(14)
-                << " time=" << pmesh->time << " dt=" << pmesh->dt <<std::endl;
+      if (pmesh->ncycle_out != 0)
+        if (pmesh->ncycle % pmesh->ncycle_out == 0) {
+          std::cout << "cycle=" << pmesh->ncycle<< std::scientific <<std::setprecision(14)
+                    << " time=" << pmesh->time << " dt=" << pmesh->dt <<std::endl;
+        }
     }
 
-    ptlist->DoTaskList(pmesh);
+    if(pmesh->turb_flag == 2) pmesh->ptrbd->Driving(); // driven turbulence
+
+    for (int step=1; step<=ptlist->nsub_steps; ++step) {
+      if(SELF_GRAVITY_ENABLED == 1) // fft (flag 0 for discrete kernel, 1 for continuous)
+        pmesh->pfgrd->Solve(step,0);
+      else if(SELF_GRAVITY_ENABLED == 2) // multigrid
+        pmesh->pmgrd->Solve(step);
+      ptlist->DoTaskListOneSubstep(pmesh, step);
+    }
 
     pmesh->ncycle++;
     pmesh->time += pmesh->dt;
@@ -362,7 +376,7 @@ int main(int argc, char *argv[])
 
     try {
       pouts->MakeOutputs(pmesh,pinput);
-    } 
+    }
     catch(std::bad_alloc& ba) {
       std::cout << "### FATAL ERROR in main" << std::endl
                 << "memory allocation failed during output: " << ba.what() <<std::endl;
@@ -372,7 +386,7 @@ int main(int argc, char *argv[])
       return(0);
     }
     catch(std::exception const& ex) {
-      std::cout << ex.what() << std::endl;  // prints diagnostic message  
+      std::cout << ex.what() << std::endl;  // prints diagnostic message
 #ifdef MPI_PARALLEL
       MPI_Finalize();
 #endif
@@ -388,12 +402,10 @@ int main(int argc, char *argv[])
   if(Globals::my_rank==0 && wtlim > 0)
     SignalHandler::CancelWallTimeAlarm();
 
-  pmesh->UserWorkAfterLoop(pinput);
-
   // make the final outputs
   try {
     pouts->MakeOutputs(pmesh,pinput,true);
-  } 
+  }
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl
               << "memory allocation failed during output: " << ba.what() <<std::endl;
@@ -403,12 +415,14 @@ int main(int argc, char *argv[])
     return(0);
   }
   catch(std::exception const& ex) {
-    std::cout << ex.what() << std::endl;  // prints diagnostic message  
+    std::cout << ex.what() << std::endl;  // prints diagnostic message
 #ifdef MPI_PARALLEL
     MPI_Finalize();
 #endif
     return(0);
   }
+
+  pmesh->UserWorkAfterLoop(pinput);
 
   // print diagnostic messages
   if(Globals::my_rank==0) {
@@ -431,8 +445,9 @@ int main(int argc, char *argv[])
     std::cout << "tlim=" << pmesh->tlim << " nlim=" << pmesh->nlim << std::endl;
 
     if(pmesh->adaptive==true) {
-      std::cout << std::endl << "Number of MeshBlocks = " << pmesh->nbtotal 
-                << "; " << pmesh->nbnew << "  created, " << pmesh->nbdel 
+
+      std::cout << std::endl << "Number of MeshBlocks = " << pmesh->nbtotal
+                << "; " << pmesh->nbnew << "  created, " << pmesh->nbdel
                 << " destroyed during this simulation." << std::endl;
     }
 
@@ -469,5 +484,5 @@ int main(int argc, char *argv[])
   MPI_Finalize();
 #endif
 
-  return(0); 
+  return(0);
 }

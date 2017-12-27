@@ -119,14 +119,14 @@ public:
 
   // ...to transform fluxes in locally flat space to global frame
   virtual void FluxToGlobal1(const int k, const int j, const int il, const int iu,
-      const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-      AthenaArray<Real> &flux) {};
+      const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {};
   virtual void FluxToGlobal2(const int k, const int j, const int il, const int iu,
-      const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-      AthenaArray<Real> &flux) {};
+      const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {};
   virtual void FluxToGlobal3(const int k, const int j, const int il, const int iu,
-      const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-      AthenaArray<Real> &flux) {};
+      const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {};
 
   // ...to raise (lower) covariant (contravariant) components of a vector
   virtual void RaiseVectorCell(Real a_0, Real a_1, Real a_2, Real a_3, int k, int j,
@@ -177,8 +177,7 @@ protected:
   AthenaArray<Real> coord_width3_k1_;
   AthenaArray<Real> coord_width3_ji1_;
   AthenaArray<Real> coord_width3_kji_;
-  AthenaArray<Real> coord_src_i1_, coord_src_i2_, coord_src_i3_, coord_src_i4_;
-  AthenaArray<Real> coord_src_j1_, coord_src_j2_, coord_src_j3_;
+  AthenaArray<Real> coord_src_j1_, coord_src_j2_;
   AthenaArray<Real> coord_src_kji_;
   AthenaArray<Real> coord_src1_i_;
   AthenaArray<Real> coord_src1_j_;
@@ -377,14 +376,14 @@ public:
 
   // ...to transform fluxes in locally flat space to global frame
   void FluxToGlobal1(const int k, const int j, const int il, const int iu,
-    const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &flux);
+    const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
   void FluxToGlobal2(const int k, const int j, const int il, const int iu,
-    const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &flux);
+    const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
   void FluxToGlobal3(const int k, const int j, const int il, const int iu,
-    const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &flux);
+    const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
 
   // for raising (lowering) covariant (contravariant) components of a vector
   void RaiseVectorCell(Real a_0, Real a_1, Real a_2, Real a_3, int k, int j, int i,
@@ -469,14 +468,14 @@ public:
 
   // ...to transform fluxes in locally flat space to global frame
   void FluxToGlobal1(const int k, const int j, const int il, const int iu,
-    const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &flux);
+    const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
   void FluxToGlobal2(const int k, const int j, const int il, const int iu,
-    const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &flux);
+    const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
   void FluxToGlobal3(const int k, const int j, const int il, const int iu,
-    const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &flux);
+    const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
 
   // for raising (lowering) covariant (contravariant) components of a vector
   void RaiseVectorCell(Real a_0, Real a_1, Real a_2, Real a_3, int k, int j, int i,
@@ -561,14 +560,14 @@ public:
 
   // ...to transform fluxes in locally flat space to global frame
   void FluxToGlobal1(const int k, const int j, const int il, const int iu,
-    const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &flux);
+    const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
   void FluxToGlobal2(const int k, const int j, const int il, const int iu,
-    const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &flux);
+    const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
   void FluxToGlobal3(const int k, const int j, const int il, const int iu,
-    const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &flux);
+    const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
 
   // for raising (lowering) covariant (contravariant) components of a vector
   void RaiseVectorCell(Real a_0, Real a_1, Real a_2, Real a_3, int k, int j, int i,
@@ -653,14 +652,14 @@ public:
 
   // ...to transform fluxes in locally flat space to global frame
   void FluxToGlobal1(const int k, const int j, const int il, const int iu,
-      const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-      AthenaArray<Real> &flux);
+      const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
   void FluxToGlobal2(const int k, const int j, const int il, const int iu,
-      const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-      AthenaArray<Real> &flux);
+      const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
   void FluxToGlobal3(const int k, const int j, const int il, const int iu,
-      const AthenaArray<Real> &cons, const AthenaArray<Real> &bx,
-      AthenaArray<Real> &flux);
+      const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
+      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez);
 
   // ...for raising (lowering) covariant (contravariant) components of a vector
   void RaiseVectorCell(Real a_0, Real a_1, Real a_2, Real a_3, int k, int j, int i,
@@ -668,5 +667,6 @@ public:
   void LowerVectorCell(Real a0, Real a1, Real a2, Real a3, int k, int j, int i,
       Real *pa_0, Real *pa_1, Real *pa_2, Real *pa_3);
 };
+
 
 #endif // COORDINATES_HPP

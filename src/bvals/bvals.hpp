@@ -21,15 +21,16 @@
 #endif
 
 // forward declarations
+class Mesh;
 class MeshBlock;
+class MeshBlockTree;
 class Hydro;
 class Field;
 class ParameterInput;
 class Radiation;
 class Coordinates;
+struct RegionSize;
 struct FaceField;
-struct NeighborBlock;
-struct PolarNeighborBlock;
 
 // identifiers for all 6 faces of a MeshBlock
 enum BoundaryFace {FACE_UNDEF=-1, INNER_X1=0, OUTER_X1=1, INNER_X2=2, OUTER_X2=3, 
@@ -37,10 +38,17 @@ enum BoundaryFace {FACE_UNDEF=-1, INNER_X1=0, OUTER_X1=1, INNER_X2=2, OUTER_X2=3
 
 // identifiers for boundary conditions
 enum BoundaryFlag {BLOCK_BNDRY=-1, BNDRY_UNDEF=0, REFLECTING_BNDRY=1, OUTFLOW_BNDRY=2,
+<<<<<<< HEAD
   USER_BNDRY=3, PERIODIC_BNDRY=4, POLAR_BNDRY=5, POLAR_BNDRY_WEDGE=6, VACUUM_BNDRY=7};
 
 // identifiers for types of neighbor blocks
 enum NeighborType {NEIGHBOR_NONE, NEIGHBOR_FACE, NEIGHBOR_EDGE, NEIGHBOR_CORNER};
+=======
+  USER_BNDRY=3, PERIODIC_BNDRY=4, POLAR_BNDRY=5, POLAR_BNDRY_WEDGE=6};
+
+// identifiers for types of neighbor blocks
+enum NeighborType {NEIGHBOR_NONE=0, NEIGHBOR_FACE=1, NEIGHBOR_EDGE=2, NEIGHBOR_CORNER=3};
+>>>>>>> master
 
 // identifiers for status of MPI boundary communications
 enum BoundaryStatus {BNDRY_WAITING, BNDRY_ARRIVED, BNDRY_COMPLETED};
@@ -48,6 +56,39 @@ enum BoundaryStatus {BNDRY_WAITING, BNDRY_ARRIVED, BNDRY_COMPLETED};
 // flags to mark which variables are reversed across polar boundary
 static bool flip_across_pole_hydro[] = {false, false, true, true, false};
 static bool flip_across_pole_field[] = {false, true, true};
+
+
+
+//----------------------------------------------------------------------------------------
+//! \struct NeighborBlock
+//  \brief neighbor rank, level, and ids
+
+typedef struct NeighborBlock {
+  int rank, level, gid, lid, ox1, ox2, ox3, fi1, fi2, bufid, eid, targetid;
+  enum NeighborType type;
+  enum BoundaryFace fid;
+  bool polar; // flag indicating boundary is across a pole
+
+  NeighborBlock() : rank(-1), level(-1), gid(-1), lid(-1), ox1(-1), ox2(-1), ox3(-1),
+    bufid(-1), targetid(-1), fi1(-1), fi2(-1), eid(-1), type(NEIGHBOR_NONE),
+    fid(FACE_UNDEF), polar(false) {};
+
+  void SetNeighbor(int irank, int ilevel, int igid, int ilid, int iox1, int iox2,
+                   int iox3, enum NeighborType itype, int ibid, int itargetid,
+                   bool ipolar, int ifi1, int ifi2);
+} NeighborBlock;
+
+//----------------------------------------------------------------------------------------
+//! \struct PolarNeighborBlock
+//  \brief Struct for describing neighbors around pole at same radius and polar angle
+
+typedef struct PolarNeighborBlock {
+  int rank;    // MPI rank of neighbor
+  int lid;     // local ID of neighbor
+  int gid;     // global ID of neighbor
+  bool north;  // flag that is true for North pole and false for South pole
+} PolarNeighborBlock;
+
 
 //! \struct NeighborType
 //  \brief data to describe MeshBlock neighbors
@@ -59,6 +100,19 @@ typedef struct NeighborIndexes {
     type=NEIGHBOR_NONE;
   }
 } NeighborIndexes;
+
+
+//! \struct BoundaryData
+//  \brief structure storing boundary information
+typedef struct BoundaryData {
+  int nbmax;
+  enum BoundaryStatus flag[56];
+  Real *send[56], *recv[56];
+#ifdef MPI_PARALLEL
+  MPI_Request req_send[56], req_recv[56];
+#endif
+} BoundaryData;
+
 
 //---------------------- prototypes for all BC functions ---------------------------------
 void ReflectInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
@@ -91,6 +145,7 @@ void PolarWedgeInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim
      FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
 void PolarWedgeOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
      FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+
 
 
 
@@ -162,17 +217,54 @@ enum BoundaryFlag GetBoundaryFlag(std::string input_string);
 
 
 //----------------------------------------------------------------------------------------
-//! \class BoundaryValues
-//  \brief BVals data and functions
 
-class BoundaryValues {
+//! \class BoundaryBase
+//  \brief Base class for all the BoundaryValues classes
+
+class BoundaryBase {
 public:
-  BoundaryValues(MeshBlock *pmb, ParameterInput *pin);
-  ~BoundaryValues();
+  BoundaryBase(Mesh *pm, LogicalLocation iloc, RegionSize isize,
+               enum BoundaryFlag *input_bcs);
+  virtual ~BoundaryBase();
 
   static NeighborIndexes ni[56];
   static int bufid[56];
+  NeighborBlock neighbor[56];
+  int nneighbor;
+  int nblevel[3][3][3];
+  LogicalLocation loc;
+  enum BoundaryFlag block_bcs[6];
+  PolarNeighborBlock *polar_neighbor_north, *polar_neighbor_south;
 
+  static unsigned int CreateBvalsMPITag(int lid, int phys, int bufid);
+  static unsigned int CreateBufferID(int ox1, int ox2, int ox3, int fi1, int fi2);
+  static int BufferID(int dim, bool multilevel);
+  static int FindBufferID(int ox1, int ox2, int ox3, int fi1, int fi2);
+
+  void SearchAndSetNeighbors(MeshBlockTree &tree, int *ranklist, int *nslist);
+
+protected:
+  static int maxneighbor_;
+  Mesh *pmy_mesh_;
+  RegionSize block_size_;
+  AthenaArray<Real> sarea_[2];
+
+private:
+  static bool called_;
+};
+
+//----------------------------------------------------------------------------------------
+
+//! \class BoundaryValues
+//  \brief BVals data and functions
+
+class BoundaryValues : public BoundaryBase {
+public:
+  BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs);
+  ~BoundaryValues();
+
+  void InitBoundaryData(BoundaryData &bd, enum BoundaryType type);
+  void DestroyBoundaryData(BoundaryData &bd);
   void Initialize(void);
   void CheckBoundary(void);
   void StartReceivingForInit(bool cons_and_field);
@@ -211,6 +303,7 @@ public:
   void PolarSingleCellCentered(AthenaArray<Real> &dst, int ns, int ne);
   void PolarSingleRad(AthenaArray<Real> &dst_rad);
 
+
   int LoadFieldBoundaryBufferSameLevel(FaceField &src, Real *buf,
                                        const NeighborBlock& nb);
   int LoadFieldBoundaryBufferToCoarser(FaceField &src, Real *buf,
@@ -224,6 +317,9 @@ public:
   bool ReceiveFieldBoundaryBuffers(FaceField &dst);
   void ReceiveFieldBoundaryBuffersWithWait(FaceField &dst);
   void PolarSingleField(FaceField &dst);
+
+  void PolarAxisFieldAverage(FaceField &dst);
+
 
   void SendFluxCorrection(enum FluxCorrectionType type);
   bool ReceiveFluxCorrection(enum FluxCorrectionType type);
@@ -242,32 +338,20 @@ public:
 
 private:
   MeshBlock *pmy_block_;  // ptr to MeshBlock containing this BVals
-
   int nface_, nedge_;
   bool edge_flag_[12];
   int nedge_fine_[12];
   bool firsttime_;
 
-  enum BoundaryStatus hydro_flag_[56], field_flag_[56];
-  enum BoundaryStatus flcor_flag_[6][2][2];
-  enum BoundaryStatus emfcor_flag_[48];
+  BoundaryData bd_hydro_, bd_field_, bd_flcor_, bd_emfcor_;
   enum BoundaryStatus *emf_north_flag_;
   enum BoundaryStatus *emf_south_flag_;
-  Real *hydro_send_[56],  *hydro_recv_[56];
-  Real *field_send_[56],  *field_recv_[56];
-  Real *flcor_send_[6],   *flcor_recv_[6][2][2];
-  Real *emfcor_send_[48], *emfcor_recv_[48];
   Real **emf_north_send_, **emf_north_recv_;
   Real **emf_south_send_, **emf_south_recv_;
-  AthenaArray<Real> sarea_[2];
   AthenaArray<Real> exc_, rad_exc_;
   int num_north_polar_blocks_, num_south_polar_blocks_;
 
 #ifdef MPI_PARALLEL
-  MPI_Request req_hydro_send_[56],  req_hydro_recv_[56];
-  MPI_Request req_field_send_[56],  req_field_recv_[56];
-  MPI_Request req_flcor_send_[6],   req_flcor_recv_[6][2][2];
-  MPI_Request req_emfcor_send_[48], req_emfcor_recv_[48];
   MPI_Request *req_emf_north_send_, *req_emf_north_recv_;
   MPI_Request *req_emf_south_send_, *req_emf_south_recv_;
 #endif
@@ -275,13 +359,9 @@ private:
   BValFunc_t BoundaryFunction_[6];
   RadBValFunc_t RadBoundaryFunction_[6]; // Function Pointer for radiation
 
+
   // temporary
   friend class Mesh;
 };
-
-unsigned int CreateBvalsMPITag(int lid, int phys, int bufid);
-unsigned int CreateBufferID(int ox1, int ox2, int ox3, int fi1, int fi2);
-int BufferID(int dim, bool multilevel);
-int FindBufferID(int ox1, int ox2, int ox3, int fi1, int fi2, int bmax);
 
 #endif // BOUNDARY_VALUES_HPP

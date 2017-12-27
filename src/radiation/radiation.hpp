@@ -39,7 +39,7 @@ public:
   Radiation(MeshBlock *pmb, ParameterInput *pin);
   ~Radiation();
     
-  AthenaArray<Real> ir, ir1; // radiation specific intensity
+  AthenaArray<Real> ir, ir1, ir2; // radiation specific intensity
   AthenaArray<Real> rad_mom; // frequency integrated radiation moments
   AthenaArray<Real> rad_mom_cm; // co-moving frame Er, Frx, Fry, Frz
   AthenaArray<Real> sigma_s, sigma_a, sigma_ae; //   opacity

@@ -131,6 +131,7 @@ MeshRefinement::~MeshRefinement()
     coarse_b_.x3f.DeleteAthenaArray();
     coarse_bcc_.DeleteAthenaArray();
   }
+  delete pcoarsec;
 }
 
 //----------------------------------------------------------------------------------------
@@ -266,6 +267,7 @@ void MeshRefinement::RestrictCellCenteredValues(const AthenaArray<Real> &fine,
   }// End RAD
 }
 
+
 //----------------------------------------------------------------------------------------
 //! \fn void MeshRefinement::RestrictFieldX1(const AthenaArray<Real> &fine
 //      AthenaArray<Real> &coarse, int csi, int cei, int csj, int cej, int csk, int cek)
@@ -341,15 +343,25 @@ void MeshRefinement::RestrictFieldX2(const AthenaArray<Real> &fine,
       int k=(ck-pmb->cks)*2+pmb->ks;
       for (int cj=csj; cj<=cej; cj++) {
         int j=(cj-pmb->cjs)*2+pmb->js;
-        pco->Face2Area(k,   j,  si, ei, sarea_x2_[0][0]);
-        pco->Face2Area(k+1, j,  si, ei, sarea_x2_[1][0]);
+        bool pole = pco->IsPole(j);
+        if (not pole) {
+          pco->Face2Area(k,   j,  si, ei, sarea_x2_[0][0]);
+          pco->Face2Area(k+1, j,  si, ei, sarea_x2_[1][0]);
+        } else {
+          for (int ci = csi; ci <= cei; ++ci) {
+            int i = (ci - pmb->cis) * 2 + pmb->is;
+            sarea_x2_[0][0](i) = pco->dx1f(i);
+            sarea_x2_[1][0](i) = pco->dx1f(i);
+          }
+        }
         for (int ci=csi; ci<=cei; ci++) {
           int i=(ci-pmb->cis)*2+pmb->is;
           Real tarea=sarea_x2_[0][0](i)+sarea_x2_[0][0](i+1)+
                      sarea_x2_[1][0](i)+sarea_x2_[1][0](i+1);
-          coarse(ck,cj,ci)=
-            (fine(k  ,j,i)*sarea_x2_[0][0](i)+fine(k  ,j,i+1)*sarea_x2_[0][0](i+1)
-            +fine(k+1,j,i)*sarea_x2_[1][0](i)+fine(k+1,j,i+1)*sarea_x2_[1][0](i+1))/tarea;
+          coarse(ck,cj,ci) =
+              (fine(k  ,j,i)*sarea_x2_[0][0](i)+fine(k  ,j,i+1)*sarea_x2_[0][0](i+1)
+              +fine(k+1,j,i)*sarea_x2_[1][0](i)+fine(k+1,j,i+1)*sarea_x2_[1][0](i+1))
+              /tarea;
         }
       }
     }
@@ -358,7 +370,15 @@ void MeshRefinement::RestrictFieldX2(const AthenaArray<Real> &fine,
     int k=pmb->ks;
     for (int cj=csj; cj<=cej; cj++) {
       int j=(cj-pmb->cjs)*2+pmb->js;
-      pco->Face2Area(k, j, si, ei, sarea_x2_[0][0]);
+      bool pole = pco->IsPole(j);
+      if (not pole) {
+        pco->Face2Area(k, j, si, ei, sarea_x2_[0][0]);
+      } else {
+        for (int ci = csi; ci <= cei; ++ci) {
+          int i = (ci - pmb->cis) * 2 + pmb->is;
+          sarea_x2_[0][0](i) = pco->dx1f(i);
+        }
+      }
       for (int ci=csi; ci<=cei; ci++) {
         int i=(ci-pmb->cis)*2+pmb->is;
         Real tarea=sarea_x2_[0][0](i)+sarea_x2_[0][0](i+1);
@@ -633,7 +653,6 @@ void MeshRefinement::ProlongateCellCenteredValues(const AthenaArray<Real> &coars
             Real dx1fp= fx1p-x1c;
             for(int n=sn; n<=en; n++) {
               Real ccval=coarse(k,j,i,n);
-
               // calculate 3D gradients using the minmod limiter
               Real gx1m = (ccval-coarse(k,j,i-1,n))/dx1m;
               Real gx1p = (coarse(k,j,i+1,n)-ccval)/dx1p;
@@ -1125,7 +1144,7 @@ void MeshRefinement::ProlongateInternalField(FaceField &fine,
     }
   }
   else if(pmb->block_size.nx2 > 1) {
-    int k=pmb->cks, fk=pmb->ks;
+    int fk=pmb->ks;
     for(int j=sj; j<=ej; j++) {
       int fj=(j-pmb->cjs)*2+pmb->js;
       pco->Face1Area(fk,   fj,   fsi, fei+1, sarea_x1_[0][0]);
@@ -1203,7 +1222,7 @@ void MeshRefinement::CheckRefinementCondition(void)
       for(int k=ks; k<=ke; k++) {
         for(int j=js; j<=je; j++) {
           for(int i=-1; i<=1; i++)
-            if(pmb->nblevel[k+1][j+1][i+1]>pmb->loc.level) ec++;
+            if(pmb->pbval->nblevel[k+1][j+1][i+1]>pmb->loc.level) ec++;
         }
       }
       if(ec>0) refine_flag_=0;

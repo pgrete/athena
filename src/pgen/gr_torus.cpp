@@ -287,7 +287,10 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         // perturbations
         Real rr = r * sin_vartheta;
         Real z = r * cos_vartheta;
-        Real amp_rel = pert_amp * std::sin(pert_kr*rr) * std::cos(pert_kz*z);
+        Real amp_rel = 0.0;
+        if (in_torus) {
+          amp_rel = pert_amp * std::sin(pert_kr*rr) * std::cos(pert_kz*z);
+        }
         Real amp_abs = amp_rel * uu3;
         Real pert_uur = rr/r * amp_abs;
         Real pert_uutheta = cos_theta/r * amp_abs;
@@ -441,10 +444,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
                 Real rho_cutoff = std::max(rho-potential_cutoff, 0.0);
                 Real a_varphi = std::pow(r_vals[p], potential_r_pow)
                     * std::pow(rho_cutoff, potential_rho_pow);
-                Real dvarphi_dtheta =
-                    -sin_psi * SQR(sin_varphi) / (SQR(sin_theta) * sin_phi);
-                Real dvarphi_dphi = SQR(sin_varphi) / SQR(sin_phi)
-                    * (cos_psi - sin_psi * cos_theta * cos_phi / sin_theta);
+                Real dvarphi_dtheta = -sin_psi * sin_phi / SQR(sin_vartheta);
+                Real dvarphi_dphi = sin_theta / SQR(sin_vartheta)
+                    * (cos_psi * sin_theta - sin_psi * cos_theta * cos_phi);
                 switch (p) {
                   case 0:
                     a_theta_0(k,j,i) = dvarphi_dtheta * a_varphi;
@@ -865,16 +867,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
             } else {
               Real ut, uphi;
               CalculateVelocityInTorus(r, sin_theta, &ut, &uphi);
-              Real sin_sq_theta = SQR(sin_theta);
-              Real cos_sq_theta = 1.0 - sin_sq_theta;
-              Real sigma = SQR(r) + SQR(a) * cos_sq_theta;
-              Real bt = -2.0*m*a*r * SQR(sin_theta) / sigma * bbr * ut;
               Real br = 1.0/ut * bbr;
               Real btheta = 1.0/ut * bbtheta;
               Real u0, u1, u2, u3;
               TransformVector(ut, 0.0, 0.0, uphi, r, theta, phi, &u0, &u1, &u2, &u3);
               Real b0, b1, b2, b3;
-              TransformVector(bt, br, btheta, 0.0, r, theta, phi, &b0, &b1, &b2, &b3);
+              TransformVector(0.0, br, btheta, 0.0, r, theta, phi, &b0, &b1, &b2, &b3);
               pfield->b.x1f(k,j,i) = (b1 * u0 - b0 * u1) * normalization;
             }
           }
@@ -900,16 +898,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
             } else {
               Real ut, uphi;
               CalculateVelocityInTorus(r, sin_theta, &ut, &uphi);
-              Real sin_sq_theta = SQR(sin_theta);
-              Real cos_sq_theta = 1.0 - sin_sq_theta;
-              Real sigma = SQR(r) + SQR(a) * cos_sq_theta;
-              Real bt = -2.0*m*a*r * SQR(sin_theta) / sigma * bbr * ut;
               Real br = 1.0/ut * bbr;
               Real btheta = 1.0/ut * bbtheta;
               Real u0, u1, u2, u3;
               TransformVector(ut, 0.0, 0.0, uphi, r, theta, phi, &u0, &u1, &u2, &u3);
               Real b0, b1, b2, b3;
-              TransformVector(bt, br, btheta, 0.0, r, theta, phi, &b0, &b1, &b2, &b3);
+              TransformVector(0.0, br, btheta, 0.0, r, theta, phi, &b0, &b1, &b2, &b3);
               pfield->b.x2f(k,j,i) = (b2 * u0 - b0 * u2) * normalization;
             }
           }
@@ -973,16 +967,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
               Real ut, uphi;
               Real sin_theta = std::sin(theta);
               CalculateVelocityInTorus(r, sin_theta, &ut, &uphi);
-              Real sin_sq_theta = SQR(sin_theta);
-              Real cos_sq_theta = 1.0 - sin_sq_theta;
-              Real sigma = SQR(r) + SQR(a) * cos_sq_theta;
-              Real bt = -2.0*m*a*r * SQR(sin_theta) / sigma * bbr * ut;
               Real br = 1.0/ut * bbr;
               Real btheta = 1.0/ut * bbtheta;
               Real u0, u1, u2, u3;
               TransformVector(ut, 0.0, 0.0, uphi, r, theta, phi, &u0, &u1, &u2, &u3);
               Real b0, b1, b2, b3;
-              TransformVector(bt, br, btheta, 0.0, r, theta, phi, &b0, &b1, &b2, &b3);
+              TransformVector(0.0, br, btheta, 0.0, r, theta, phi, &b0, &b1, &b2, &b3);
               pfield->b.x1f(k,j,i) = (b1 * u0 - b0 * u1) * normalization;
             }
           }
@@ -1033,16 +1023,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
               Real ut, uphi;
               Real sin_theta = std::sin(theta);
               CalculateVelocityInTorus(r, sin_theta, &ut, &uphi);
-              Real sin_sq_theta = SQR(sin_theta);
-              Real cos_sq_theta = 1.0 - sin_sq_theta;
-              Real sigma = SQR(r) + SQR(a) * cos_sq_theta;
-              Real bt = -2.0*m*a*r * SQR(sin_theta) / sigma * bbr * ut;
               Real br = 1.0/ut * bbr;
               Real btheta = 1.0/ut * bbtheta;
               Real u0, u1, u2, u3;
               TransformVector(ut, 0.0, 0.0, uphi, r, theta, phi, &u0, &u1, &u2, &u3);
               Real b0, b1, b2, b3;
-              TransformVector(bt, br, btheta, 0.0, r, theta, phi, &b0, &b1, &b2, &b3);
+              TransformVector(0.0, br, btheta, 0.0, r, theta, phi, &b0, &b1, &b2, &b3);
               pfield->b.x2f(k,j,i) = (b2 * u0 - b0 * u2) * normalization;
             }
           }
@@ -1144,7 +1130,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
             bbtheta = -1.0/det * (a_phi_3(k,j,i+1)-a_phi_3(k,j,i))/delta_r;
             bbphi = 1.0/det * (a_theta_3(k,j,i+1)-a_theta_3(k,j,i))/delta_r;
             if (det == 0.0 or (bbr == 0.0 and bbtheta == 0.0 and bbphi == 0.0)) {
-              pfield->b.x1f(k,j,i) = 0.0;
+              pfield->b.x2f(k,j,i) = 0.0;
             } else {
               Real ut, ur, utheta, uphi;
               CalculateVelocityInTiltedTorus(r, theta, phi, &ut, &ur, &utheta, &uphi);
@@ -1193,7 +1179,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
             bbtheta = -1.0/det * (a_phi_2(k,j,i+1)-a_phi_2(k,j,i))/delta_r;
             bbphi = 1.0/det * (a_theta_2(k,j,i+1)-a_theta_2(k,j,i))/delta_r;
             if (det == 0.0 or (bbr == 0.0 and bbtheta == 0.0 and bbphi == 0.0)) {
-              pfield->b.x1f(k,j,i) = 0.0;
+              pfield->b.x3f(k,j,i) = 0.0;
             } else {
               Real ut, ur, utheta, uphi;
               CalculateVelocityInTiltedTorus(r, theta, phi, &ut, &ur, &utheta, &uphi);
@@ -1669,12 +1655,12 @@ static void CalculateVelocityInTiltedTorus(Real r, Real theta, Real phi, Real *p
   *pu0 = u0_tilt;
   *pu1 = u1_tilt;
   if (psi != 0.0) {
-    Real dtheta_dvartheta = (cos_psi * sin_vartheta + sin_psi * cos_vartheta * cos_varphi)
-        / std::abs(sin_theta);
-    Real dtheta_dvarphi = -sin_psi * sin_vartheta * sin_varphi / std::abs(sin_theta);
-    Real dphi_dvartheta = sin_psi * SQR(sin_phi) / (SQR(sin_vartheta) * sin_varphi);
-    Real dphi_dvarphi = SQR(sin_phi) / SQR(sin_varphi)
-        * (cos_psi + sin_psi * cos_vartheta * cos_varphi / sin_vartheta);
+    Real dtheta_dvartheta =
+        (cos_psi * sin_vartheta + sin_psi * cos_vartheta * cos_varphi) / sin_theta;
+    Real dtheta_dvarphi = -sin_psi * sin_vartheta * sin_varphi / sin_theta;
+    Real dphi_dvartheta = sin_psi * sin_varphi / SQR(sin_theta);
+    Real dphi_dvarphi = sin_vartheta / SQR(sin_theta)
+        * (cos_psi * sin_vartheta + sin_psi * cos_vartheta * cos_varphi);
     *pu2 = dtheta_dvartheta * u2_tilt + dtheta_dvarphi * u3_tilt;
     *pu3 = dphi_dvartheta * u2_tilt + dphi_dvarphi * u3_tilt;
   } else {
@@ -1860,10 +1846,10 @@ static bool CalculateBeta(Real r_m, Real r_c, Real r_p, Real theta_m, Real theta
   if (field_config != "vertical") {
     for (int p = 0; p < 7; ++p) {
       if (psi != 0.0) {
-        Real dvarphi_dtheta =
-            -sin_psi * SQR(sin_varphi_vals[p]) / (SQR(sin_theta_vals[p]) * sin_phi_vals[p]);
-        Real dvarphi_dphi = SQR(sin_varphi_vals[p]) / SQR(sin_phi_vals[p])
-            * (cos_psi - sin_psi * cos_theta_vals[p] * cos_phi_vals[p] / sin_theta_vals[p]);
+        Real dvarphi_dtheta = -sin_psi * sin_phi_vals[p] / SQR(sin_vartheta_vals[p]);
+        Real dvarphi_dphi = sin_theta_vals[p] / SQR(sin_vartheta_vals[p])
+            * (cos_psi * sin_theta_vals[p]
+            - sin_psi * cos_theta_vals[p] * cos_phi_vals[p]);
         a_theta_vals[p] = dvarphi_dtheta * a_varphi_vals[p];
         a_phi_vals[p] = dvarphi_dphi * a_varphi_vals[p];
       } else {

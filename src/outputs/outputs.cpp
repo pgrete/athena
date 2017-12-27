@@ -64,6 +64,7 @@
 #include "../hydro/hydro.hpp"
 #include "../field/field.hpp"
 #include "../radiation/radiation.hpp"
+#include "../gravity/gravity.hpp"
 #include "../coordinates/coordinates.hpp" // Coordinates
 #include "outputs.hpp"
 
@@ -304,6 +305,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
   Hydro *phyd = pmb->phydro;
   Field *pfld = pmb->pfield;
   Radiation *prad = pmb->prad;
+  Gravity *pgrav = pmb->pgrav;
   num_vars_ = 0;
   OutputData *pod;
 
@@ -453,6 +455,20 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
     AppendOutputDataNode(pod);
     num_vars_++;
   }
+
+  if (SELF_GRAVITY_ENABLED) {
+    if (output_params.variable.compare("phi") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Phi";
+      pod->data.InitWithShallowSlice(pgrav->phi,4,0,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+  } // endif (SELF_GRAVITY_ENABLED)
+
 
   if (MAGNETIC_FIELDS_ENABLED) {
     // vector of cell-centered magnetic field
@@ -739,6 +755,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
 
   }// End (RADIATION_ENABLED)
 
+
   if (output_params.variable.compare(0, 3, "uov") == 0
    || output_params.variable.compare(0, 12, "user_out_var") == 0) {
     int iv, ns=0, ne=pmb->nuser_out_var-1;
@@ -855,35 +872,35 @@ void OutputType::ClearOutputData()
 
 void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag)
 {
-  OutputType* ptype = pfirst_type_;
-  MeshBlock *pmb;
 
+  MeshBlock *pmb;
   //calculate radiation quantities for dump
   // Only need to do once for all output type
-  
   if(RADIATION_ENABLED){
-  
     pmb=pm->pblock;
     while(pmb != NULL){
-     
      // Calculate Com-moving moments and grey opacity for dump
       pmb->prad->CalculateComMoment();
-
       pmb=pmb->next;
     }
   }
 
-
+  bool first=true;
+  OutputType* ptype = pfirst_type_;
   while (ptype != NULL) {
     if ((pm->time == pm->start_time) ||
         (pm->time >= ptype->output_params.next_time) ||
         (pm->time >= pm->tlim) ||
         (wtflag==true && ptype->output_params.file_type=="rst")) {
-
+      if(first && ptype->output_params.file_type!="hst") {
+        pm->ApplyUserWorkBeforeOutput(pin);
+        first=false;
+      }
       ptype->WriteOutputFile(pm, pin, wtflag);
     }
     ptype = ptype->pnext_type; // move to next OutputType in list
   }
+
 
 }
 
@@ -1010,7 +1027,7 @@ bool OutputType::SliceOutputData(MeshBlock *pmb, int dim)
     }
 
     ReplaceOutputDataNode(pdata,pnew);
-    pdata = pdata->pnext;
+    pdata = pnew->pnext;
   }
  
   // modify array indices
@@ -1034,7 +1051,6 @@ bool OutputType::SliceOutputData(MeshBlock *pmb, int dim)
 
 void OutputType::SumOutputData(MeshBlock* pmb, int dim)
 {
-  AthenaArray<Real> *psum;
   std::stringstream str;
 
   // For each node in OutputData linked list, sum arrays containing output data  
@@ -1049,7 +1065,6 @@ void OutputType::SumOutputData(MeshBlock* pmb, int dim)
     int nx3 = pdata->data.GetDim3();
     int nx2 = pdata->data.GetDim2();
     int nx1 = pdata->data.GetDim1();
-    psum = new AthenaArray<Real>;
 
     // Loop over variables and dimensions, sum over specified dimension
     if (dim == 3) {

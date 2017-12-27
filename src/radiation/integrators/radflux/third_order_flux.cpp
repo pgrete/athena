@@ -210,6 +210,7 @@ void RadIntegrator::ThirdOrderFluxX2(Coordinates *pco, const int kl, const int k
   dph.NewAthenaArray(ncells1,tot_ang);
   dph_jp1.NewAthenaArray(ncells1,tot_ang);
   qplus.NewAthenaArray(ncells1,tot_ang);
+  qplus_j1.NewAthenaArray(ncells1,tot_ang);
   qminus.NewAthenaArray(ncells1,tot_ang);
   dqf_plus.NewAthenaArray(ncells1,tot_ang);
   dqf_minus.NewAthenaArray(ncells1,tot_ang);
@@ -377,15 +378,29 @@ void RadIntegrator::ThirdOrderFluxX2(Coordinates *pco, const int kl, const int k
 // Convert limited cell-centered values to interface-centered L/R Riemann states
 // both L/R values defined over [jl,ju]
 
-      for (int i=il; i<=iu; ++i) {
-        for(int n=0; n<tot_ang;++n){
-          if(vel(k,j,i,n) > 0.0){
-            flx(k,j,i,n) += qplus(i-1,n) * vel(k,j,i,n);
-          }else{
-            flx(k,j,i,n) += qminus(i,n) * vel(k,j,i,n);
+      //store qplus for next cycle
+      if(j==jl-1){
+        for (int i=il; i<=iu; ++i) {
+          for(int n=0; n<tot_ang;++n){
+            qplus_j1(i,n) = qplus(i,n);
           }
         }
-      }// end i
+      }else{
+        for (int i=il; i<=iu; ++i) {
+          for(int n=0; n<tot_ang;++n){
+            if(vel(k,j,i,n) > 0.0){
+              flx(k,j,i,n) += qplus_j1(i,n) * vel(k,j,i,n);
+            }else{
+              flx(k,j,i,n) += qminus(i,n) * vel(k,j,i,n);
+            }
+          }
+        }
+        for (int i=il; i<=iu; ++i) {
+          for(int n=0; n<tot_ang;++n){
+            qplus_j1(i,n) = qplus(i,n);
+          }
+        }
+      }
 
       // Copy 1D temporary arrays for next value of j unless j-loop finished
       if (j < ju) {
@@ -403,6 +418,7 @@ void RadIntegrator::ThirdOrderFluxX2(Coordinates *pco, const int kl, const int k
   dph.DeleteAthenaArray();
   dph_jp1.DeleteAthenaArray();
   qplus.DeleteAthenaArray();
+  qplus_j1.DeleteAthenaArray();
   qminus.DeleteAthenaArray();
   dqf_plus.DeleteAthenaArray();
   dqf_minus.DeleteAthenaArray();
@@ -431,6 +447,7 @@ void RadIntegrator::ThirdOrderFluxX3(Coordinates *pco, const int kl, const int k
   dph.NewAthenaArray(ncells1,tot_ang);
   dph_kp1.NewAthenaArray(ncells1,tot_ang);
   qplus.NewAthenaArray(ncells1,tot_ang);
+  qplus_k1.NewAthenaArray(ncells1,tot_ang);
   qminus.NewAthenaArray(ncells1,tot_ang);
   dqf_plus.NewAthenaArray(ncells1,tot_ang);
   dqf_minus.NewAthenaArray(ncells1,tot_ang);
@@ -600,16 +617,28 @@ void RadIntegrator::ThirdOrderFluxX3(Coordinates *pco, const int kl, const int k
 // Convert limited cell-centered values to interface-centered L/R Riemann states
 // both L/R values defined over [jl,ju]
 
-      for (int i=il; i<=iu; ++i) {
-        for(int n=0; n<tot_ang;++n){
-          if(vel(k,j,i,n) > 0.0){
-            flx(k,j,i,n) += qplus(i-1,n) * vel(k,j,i,n);
-          }else{
-            flx(k,j,i,n) += qminus(i,n) * vel(k,j,i,n);
+      if(k==kl-1){
+        for (int i=il; i<=iu; ++i) {
+          for(int n=0; n<tot_ang;++n){
+            qplus_k1(i,n) = qplus(i,n);
+          }
+        }
+      }else{
+        for (int i=il; i<=iu; ++i) {
+          for(int n=0; n<tot_ang;++n){
+            if(vel(k,j,i,n) > 0.0){
+              flx(k,j,i,n) += qplus_k1(i,n) * vel(k,j,i,n);
+            }else{
+              flx(k,j,i,n) += qminus(i,n) * vel(k,j,i,n);
+            }
+          }
+        }
+        for (int i=il; i<=iu; ++i) {
+          for(int n=0; n<tot_ang;++n){
+            qplus_k1(i,n) = qplus(i,n);
           }
         }
       }
-
       // Copy 1D temporary arrays for next value of k unless k-loop finished
       if (k < ku) {
         for (int i=il; i<=iu; ++i) {
@@ -625,6 +654,7 @@ void RadIntegrator::ThirdOrderFluxX3(Coordinates *pco, const int kl, const int k
   dph.DeleteAthenaArray();
   dph_kp1.DeleteAthenaArray();
   qplus.DeleteAthenaArray();
+  qplus_k1.DeleteAthenaArray();
   qminus.DeleteAthenaArray();
   dqf_plus.DeleteAthenaArray();
   dqf_minus.DeleteAthenaArray();

@@ -134,17 +134,17 @@ def main(n,input_base,output_base,quantities=None,leveln=None,xdmf=1):
         f.write('</Domain>\n')
         f.write('</Xdmf>')
 
-quantities=['rho','vel1','vel2','vel3','B1','B2','B3','Er']
+quantities=['rho','Er','vel1','Bcc1','Bcc2','Bcc3','press']
 
-ni=4576
-no=4866
+ni=1822
+no=1822
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 nprocs = comm.Get_size()
 
-for i in range(ni,no+1,nprocs*10):
-  file_num=i+rank*10
+for i in range(ni,no+1,nprocs):
+  file_num=i+rank
   print file_num, rank
   main(file_num,'disk.out1.','vis.',quantities)
 

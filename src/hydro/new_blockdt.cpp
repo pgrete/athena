@@ -21,6 +21,7 @@
 #include "../field/field.hpp"
 #include "../radiation/radiation.hpp" // speed of light
 
+
 // MPI/OpenMP header
 #ifdef MPI_PARALLEL
 #include <mpi.h>
@@ -32,7 +33,7 @@
 
 //----------------------------------------------------------------------------------------
 // \!fn Real Hydro::NewBlockTimeStep(void)
-// \brief calculate the minimum timestep within a MeshBlock 
+// \brief calculate the minimum timestep within a MeshBlock
 
 Real Hydro::NewBlockTimeStep(void)
 {
@@ -78,7 +79,7 @@ Real Hydro::NewBlockTimeStep(void)
       pmb->pcoord->CenterWidth2(k,j,is,ie,dt2);
       pmb->pcoord->CenterWidth3(k,j,is,ie,dt3);
       if(!RELATIVISTIC_DYNAMICS) {
-//#pragma simd
+#pragma ivdep
         for (int i=is; i<=ie; ++i){
           wi[IDN]=w(IDN,k,j,i);
           wi[IVX]=w(IVX,k,j,i);
@@ -102,12 +103,15 @@ Real Hydro::NewBlockTimeStep(void)
             speed=std::max(cspeed, (fabs(wi[IVY]) + cf));
             dt2(i) /= speed;
 
+
             wi[IBY] = bcc(IB1,k,j,i);
             wi[IBZ] = bcc(IB2,k,j,i);
             bx = bcc(IB3,k,j,i) + fabs(b_x3f(k,j,i)-bcc(IB3,k,j,i));
             cf = pmb->peos->FastMagnetosonicSpeed(wi,bx);
+
             speed=std::max(cspeed, (fabs(wi[IVZ]) + cf));
             dt3(i) /= speed;
+
 
           } else {
 
@@ -119,6 +123,7 @@ Real Hydro::NewBlockTimeStep(void)
             dt2(i) /= speed2;
             dt3(i) /= speed3;
 
+
           }
         }
       }
@@ -128,7 +133,7 @@ Real Hydro::NewBlockTimeStep(void)
         Real& dt_1 = dt1(i);
         pthread_min_dt[tid] = std::min(pthread_min_dt[tid],dt_1);
       }
-    
+
       // if grid is 2D/3D, compute minimum of (v2 +/- C)
       if (pmb->block_size.nx2 > 1) {
         for (int i=is; i<=ie; ++i){

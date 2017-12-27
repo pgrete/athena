@@ -88,7 +88,7 @@ private:
 
 template<typename T>
 AthenaArray<T>::AthenaArray()
-  : pdata_(0), nx1_(0), nx2_(0), nx3_(0), nx4_(0), nx5_(0), scopy_(true)
+  : pdata_(NULL), nx1_(0), nx2_(0), nx3_(0), nx4_(0), nx5_(0), scopy_(true)
 {
 }
 
@@ -115,6 +115,7 @@ AthenaArray<T>::AthenaArray(const AthenaArray<T>& src) {
     for (std::size_t i=0; i<size; ++i) {
       pdata_[i] = src.pdata_[i]; // copy data (not just addresses!) into new memory
     } 
+    scopy_=false;
   }
 }
 
@@ -128,6 +129,7 @@ AthenaArray<T> &AthenaArray<T>::operator= (const AthenaArray<T> &src) {
     for (std::size_t i=0; i<size; ++i) {
       this->pdata_[i] = src.pdata_[i]; // copy data (not just addresses!)
     } 
+    scopy_=false;
   }
   return *this;
 }
@@ -290,6 +292,7 @@ void AthenaArray<T>::DeleteAthenaArray()
     pdata_ = NULL;
   } else {
     delete[] pdata_;
+    pdata_ = NULL;
     scopy_ = true;
   }
 } 
