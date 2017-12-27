@@ -67,7 +67,7 @@ void NeighborBlock::SetNeighbor(int irank, int ilevel, int igid, int ilid,
 //                                 enum BoundaryFlag *input_bcs)
 //  \brief constructor of BoundaryBase
 BoundaryBase::BoundaryBase(Mesh *pm, LogicalLocation iloc, RegionSize isize,
-                           enum BoundaryFlag *input_bcs)
+            enum BoundaryFlag *input_bcs, enum BoundaryFlag *input_rad_bcs)
 {
   loc=iloc;
   block_size_=isize;
@@ -80,8 +80,10 @@ BoundaryBase::BoundaryBase(Mesh *pm, LogicalLocation iloc, RegionSize isize,
     called_=true;
   }
 
-  for(int i=0; i<6; i++)
+  for(int i=0; i<6; i++){
     block_bcs[i]=input_bcs[i];
+    block_rad_bcs[i] = input_rad_bcs[i];
+  }
   if (block_bcs[INNER_X2] == POLAR_BNDRY
    || block_bcs[INNER_X2] == POLAR_BNDRY_WEDGE) {
     int level = loc.level - pmy_mesh_->root_level;

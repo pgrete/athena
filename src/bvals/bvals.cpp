@@ -40,8 +40,9 @@
 // BoundaryValues constructor - sets functions for the appropriate
 // boundary conditions at each of the 6 dirs of a MeshBlock
 
-BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
- : BoundaryBase(pmb->pmy_mesh, pmb->loc, pmb->block_size, input_bcs)
+BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs,
+                                               enum BoundaryFlag *input_rad_bcs)
+ : BoundaryBase(pmb->pmy_mesh, pmb->loc, pmb->block_size, input_bcs, input_rad_bcs)
 {
   pmy_block_=pmb;
   for(int i=0; i<6; i++){
@@ -98,7 +99,7 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
 
   // Radiation boundary
   if(RADIATION_ENABLED){
-    switch(pmb->block_rad_bcs[INNER_X1]){
+    switch(block_rad_bcs[INNER_X1]){
       case REFLECTING_BNDRY:
         RadBoundaryFunction_[INNER_X1] = RadReflectInnerX1;
         break;
@@ -113,18 +114,18 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
         RadBoundaryFunction_[INNER_X1] = NULL;
         break;
       case USER_BNDRY: // user-enrolled BCs
-        RadBoundaryFunction_[INNER_X1] = pmb->pmy_mesh->RadBoundaryFunction_[INNER_X1];
+        RadBoundaryFunction_[INNER_X1] = pmy_mesh_->RadBoundaryFunction_[INNER_X1];
         break;
       default:
         std::stringstream msg;
         msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
-          << "Flag ix1_rad_bc=" << pmb->block_rad_bcs[INNER_X1] << " not valid"
+          << "Flag ix1_rad_bc=" << block_rad_bcs[INNER_X1] << " not valid"
           << std::endl;
         throw std::runtime_error(msg.str().c_str());
     }
 
   // Outer x1
-    switch(pmb->block_rad_bcs[OUTER_X1]){
+    switch(block_rad_bcs[OUTER_X1]){
       case REFLECTING_BNDRY:
         RadBoundaryFunction_[OUTER_X1] = RadReflectOuterX1;
         break;
@@ -139,12 +140,12 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
         RadBoundaryFunction_[OUTER_X1] = NULL;
         break;
       case USER_BNDRY: // user-enrolled BCs
-        RadBoundaryFunction_[OUTER_X1] = pmb->pmy_mesh->RadBoundaryFunction_[OUTER_X1];
+        RadBoundaryFunction_[OUTER_X1] = pmy_mesh_->RadBoundaryFunction_[OUTER_X1];
         break;
       default:
         std::stringstream msg;
         msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
-          << "Flag ox1_rad_bc=" << pmb->block_rad_bcs[OUTER_X1] << " not valid"
+          << "Flag ox1_rad_bc=" << block_rad_bcs[OUTER_X1] << " not valid"
           << std::endl;
         throw std::runtime_error(msg.str().c_str());
     }
@@ -206,7 +207,7 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
     }
 
     if(RADIATION_ENABLED){
-      switch(pmb->block_rad_bcs[INNER_X2]){
+      switch(block_rad_bcs[INNER_X2]){
         case REFLECTING_BNDRY:
           RadBoundaryFunction_[INNER_X2] = RadReflectInnerX2;
           break;
@@ -223,18 +224,18 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
           break;
         case USER_BNDRY: // user-enrolled BCs
           RadBoundaryFunction_[INNER_X2]
-                              = pmb->pmy_mesh->RadBoundaryFunction_[INNER_X2];
+                              = pmy_mesh_->RadBoundaryFunction_[INNER_X2];
           break;
         default:
           std::stringstream msg;
           msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
-            << "Flag ix2_rad_bc=" << pmb->block_rad_bcs[INNER_X2] << " not valid"
+            << "Flag ix2_rad_bc=" << block_rad_bcs[INNER_X2] << " not valid"
             << std::endl;
           throw std::runtime_error(msg.str().c_str());
        }
 
     // Outer x2
-      switch(pmb->block_rad_bcs[OUTER_X2]){
+      switch(block_rad_bcs[OUTER_X2]){
         case REFLECTING_BNDRY:
           RadBoundaryFunction_[OUTER_X2] = RadReflectOuterX2;
           break;
@@ -251,12 +252,12 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
           break;
         case USER_BNDRY: // user-enrolled BCs
           RadBoundaryFunction_[OUTER_X2]
-                              = pmb->pmy_mesh->RadBoundaryFunction_[OUTER_X2];
+                              = pmy_mesh_->RadBoundaryFunction_[OUTER_X2];
           break;
         default:
           std::stringstream msg;
           msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
-            << "Flag ox2_rad_bc=" << pmb->block_rad_bcs[OUTER_X2] << " not valid"
+            << "Flag ox2_rad_bc=" << block_rad_bcs[OUTER_X2] << " not valid"
             << std::endl;
           throw std::runtime_error(msg.str().c_str());
       }
@@ -311,7 +312,7 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
     }
 
     if(RADIATION_ENABLED){
-      switch(pmb->block_rad_bcs[INNER_X3]){
+      switch(block_rad_bcs[INNER_X3]){
         case REFLECTING_BNDRY:
           RadBoundaryFunction_[INNER_X3] = RadReflectInnerX3;
           break;
@@ -327,18 +328,18 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
           break;
         case USER_BNDRY: // user-enrolled BCs
           RadBoundaryFunction_[INNER_X3]
-                               = pmb->pmy_mesh->RadBoundaryFunction_[INNER_X3];
+                               = pmy_mesh_->RadBoundaryFunction_[INNER_X3];
           break;
         default:
           std::stringstream msg;
           msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
-            << "Flag ix3_rad_bc=" << pmb->block_rad_bcs[INNER_X3] << " not valid"
+            << "Flag ix3_rad_bc=" << block_rad_bcs[INNER_X3] << " not valid"
             << std::endl;
           throw std::runtime_error(msg.str().c_str());
        }
 
     // Outer x3
-      switch(pmb->block_rad_bcs[OUTER_X3]){
+      switch(block_rad_bcs[OUTER_X3]){
         case REFLECTING_BNDRY:
           RadBoundaryFunction_[OUTER_X3] = RadReflectOuterX3;
           break;
@@ -354,12 +355,12 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
           break;
         case USER_BNDRY: // user-enrolled BCs
           RadBoundaryFunction_[OUTER_X3]
-                              = pmb->pmy_mesh->RadBoundaryFunction_[OUTER_X3];
+                              = pmy_mesh_->RadBoundaryFunction_[OUTER_X3];
           break;
         default:
           std::stringstream msg;
           msg << "### FATAL ERROR in RadBoundaryValues constructor" << std::endl
-            << "Flag ox3_rad_bc=" << pmb->block_rad_bcs[OUTER_X3] << " not valid"
+            << "Flag ox3_rad_bc=" << block_rad_bcs[OUTER_X3] << " not valid"
             << std::endl;
           throw std::runtime_error(msg.str().c_str());
       }
@@ -467,8 +468,8 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs)
        exc_.NewAthenaArray(pmb->ke+NGHOST+2);
 
   if(RADIATION_ENABLED){
-    if(pmb->loc.level == pmb->pmy_mesh->root_level &&
-       pmy_mesh->nrbx3 == 1 &&
+    if(pmb->loc.level == pmy_mesh_->root_level &&
+       pmy_mesh_->nrbx3 == 1 &&
        (block_rad_bcs[INNER_X2]==POLAR_BNDRY||block_rad_bcs[OUTER_X2]==POLAR_BNDRY||
         block_rad_bcs[INNER_X2]==POLAR_BNDRY_WEDGE||
         block_rad_bcs[OUTER_X2]==POLAR_BNDRY_WEDGE))
@@ -538,8 +539,8 @@ BoundaryValues::~BoundaryValues()
        exc_.DeleteAthenaArray();
 
   if(RADIATION_ENABLED){
-    if(pmb->loc.level == pmy_mesh->root_level &&
-       pmy_mesh->nrbx3 == 1 &&
+    if(pmb->loc.level == pmy_mesh_->root_level &&
+       pmy_mesh_->nrbx3 == 1 &&
        (block_rad_bcs[INNER_X2]==POLAR_BNDRY||block_rad_bcs[OUTER_X2]==POLAR_BNDRY||
         block_rad_bcs[INNER_X2]==POLAR_BNDRY_WEDGE||
         block_rad_bcs[OUTER_X2]==POLAR_BNDRY_WEDGE))
@@ -1091,13 +1092,15 @@ void BoundaryValues::CheckBoundary(void)
     }
   }
   if(RADIATION_ENABLED){
-    if(block_rad_bcs[i]==USER_BNDRY) {
-      if(RadBoundaryFunction_[i]==NULL) {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in BoundaryValues::CheckBoundary" << std::endl
-            << "A user-defined boundary is specified but the radiation boundary"
-            << "function is not enrolled in direction " << i  << "." << std::endl;
-        throw std::runtime_error(msg.str().c_str());
+    for(int i=0; i<nface_; ++i){
+      if(block_rad_bcs[i]==USER_BNDRY) {
+        if(RadBoundaryFunction_[i]==NULL) {
+          std::stringstream msg;
+          msg << "### FATAL ERROR in BoundaryValues::CheckBoundary" << std::endl
+              << "A user-defined boundary is specified but the radiation boundary"
+              << "function is not enrolled in direction " << i  << "." << std::endl;
+          throw std::runtime_error(msg.str().c_str());
+        }
       }
     }
   }
@@ -1419,9 +1422,9 @@ void BoundaryValues::ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst,
 
     }
     if(pmb->prad->rotate_theta==1){
-      if(pco->x2v(pmb->js-1) < pmb->pmy_mesh->mesh_size.x2min)
+      if(pco->x2v(pmb->js-1) < pmy_mesh_->mesh_size.x2min)
          RotateHPi_InnerX2(pmb, pco, pdst, bis,bie, pmb->js,pmb->je, bks,bke);
-      if(pco->x2v(pmb->je+1) > pmb->pmy_mesh->mesh_size.x2max)
+      if(pco->x2v(pmb->je+1) > pmy_mesh_->mesh_size.x2max)
          RotateHPi_OuterX2(pmb, pco, pdst, bis,bie, pmb->js,pmb->je, bks,bke);
     }
   }
@@ -1442,13 +1445,13 @@ void BoundaryValues::ApplyRadPhysicalBoundaries(AthenaArray<Real> &pdst,
                                                      pmb->ks, pmb->ke);
     }
     
-    if(pco->x3v(pmb->ks-1) < pmb->pmy_mesh->mesh_size.x3min){
+    if(pco->x3v(pmb->ks-1) < pmy_mesh_->mesh_size.x3min){
       if(pmb->prad->rotate_phi==1)
         RotateHPi_InnerX3(pmb, pco, pdst,bis,bie,bjs,bje, pmb->ks, pmb->ke);
       else if(pmb->prad->rotate_phi==2)
         RotatePi_InnerX3(pmb, pco, pdst, bis,bie,bjs,bje, pmb->ks, pmb->ke);
     }
-    if(pco->x3v(pmb->ke+1) > pmb->pmy_mesh->mesh_size.x3max){
+    if(pco->x3v(pmb->ke+1) > pmy_mesh_->mesh_size.x3max){
       if(pmb->prad->rotate_phi==1)
         RotateHPi_OuterX3(pmb, pco, pdst, bis,bie,bjs,bje, pmb->ks, pmb->ke);
       else if(pmb->prad->rotate_phi==2)

@@ -42,7 +42,7 @@ class MultigridDriver;
 
 MGBoundaryValues::MGBoundaryValues(Multigrid *pmg, enum BoundaryFlag *input_bcs,
                                    MGBoundaryFunc_t *MGBoundary)
-  : BoundaryBase(pmg->pmy_driver_->pmy_mesh_, pmg->loc_, pmg->size_, input_bcs)
+  : BoundaryBase(pmg->pmy_driver_->pmy_mesh_, pmg->loc_, pmg->size_, input_bcs, NULL)
 {
   pmy_mg_=pmg;
   if(pmy_mg_->root_flag_==true) {

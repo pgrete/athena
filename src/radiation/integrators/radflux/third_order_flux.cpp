@@ -200,7 +200,7 @@ void RadIntegrator::ThirdOrderFluxX2(Coordinates *pco, const int kl, const int k
   Real qa,qb,qc,qd;
   // 1D scratch arrays
   int ncells1 = iu-il + 2*(NGHOST);
-  AthenaArray<Real> dph, dph_jp1, qplus, qminus, dqf_plus, dqf_minus;
+  AthenaArray<Real> dph, dph_jp1, qplus, qminus, dqf_plus, dqf_minus, qplus_j1;
   AthenaArray<Real> dd, dd_jm1;
   Real c1, c2, c3, c4, c5, c6;
   Real c1_jm1, c2_jm1; // only needed for the initialization of jl-2 ave slopes
@@ -437,7 +437,7 @@ void RadIntegrator::ThirdOrderFluxX3(Coordinates *pco, const int kl, const int k
   Real qa,qb,qc,qd;
   // 1D scratch arrays
   int ncells1 = iu-il + 2*(NGHOST);
-  AthenaArray<Real> dph, dph_kp1, qplus, qminus, dqf_plus, dqf_minus;
+  AthenaArray<Real> dph, dph_kp1, qplus, qminus, dqf_plus, dqf_minus, qplus_k1;
   AthenaArray<Real> dd, dd_km1;
   Real c1, c2, c3, c4, c5, c6;
   Real c1_km1, c2_km1; // only needed for the initialization of kl-2 ave slopes

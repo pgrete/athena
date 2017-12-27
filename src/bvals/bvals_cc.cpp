@@ -630,8 +630,8 @@ void BoundaryValues::ReceiveCellCenteredBoundaryBuffersWithWait(AthenaArray<Real
     PolarSingleCellCentered(dst, ns, ne);
 
   if(RADIATION_ENABLED){
-    if(pmb->block_rad_bcs[INNER_X2]==POLAR_BNDRY
-           ||  pmb->block_rad_bcs[OUTER_X2]==POLAR_BNDRY)
+    if(block_rad_bcs[INNER_X2]==POLAR_BNDRY
+           ||  block_rad_bcs[OUTER_X2]==POLAR_BNDRY)
       PolarSingleRad(dst_rad);
   }
   return;

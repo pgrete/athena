@@ -171,6 +171,7 @@ public:
   // data
   RegionSize mesh_size;
   enum BoundaryFlag mesh_bcs[6];
+  enum BoundaryFlag mesh_rad_bcs[6];
   Real start_time, tlim, cfl_number, time, dt;
   int nlim, ncycle, ncycle_out;
   int nbtotal, nbnew, nbdel;
@@ -190,7 +191,7 @@ public:
   // functions
   void Initialize(int res_flag, ParameterInput *pin);
   void SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size,
-                                 enum BoundaryFlag *block_bcs);
+              enum BoundaryFlag *block_bcs, enum BoundaryFlag *block_rad_bcs);
   void NewTimeStep(void);
   void AdaptiveMeshRefinement(ParameterInput *pin);
   unsigned int CreateAMRMPITag(int lid, int ox1, int ox2, int ox3);

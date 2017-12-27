@@ -9,7 +9,8 @@
 //  \brief prototypes of functions and class definitions for utils/*.cpp files
 
 #include <csignal>
-
+#include "../athena.hpp"
+#include "../athena_arrays.hpp"
 
 void ChangeRunDir(const char *pdir);
 double ran2(long int *idum);

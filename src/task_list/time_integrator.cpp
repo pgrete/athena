@@ -638,7 +638,14 @@ enum TaskStatus TimeIntegratorTaskList::HydroSourceTerms(MeshBlock *pmb, int ste
 enum TaskStatus TimeIntegratorTaskList::HydroSend(MeshBlock *pmb, int step)
 {
   if (step <= nsub_steps) {
-    pmb->pbval->SendCellCenteredBoundaryBuffers(pmb->phydro->u, HYDRO_CONS);
+    if(step == 1){
+      pmb->pbval->SendCellCenteredBoundaryBuffers(pmb->phydro->u, 
+                                                 pmb->prad->ir1, HYDRO_CONS);
+    }
+    else{
+      pmb->pbval->SendCellCenteredBoundaryBuffers(pmb->phydro->u, 
+                                                pmb->prad->ir, HYDRO_CONS);  
+    }
   }
   else {
     return TASK_FAIL;
@@ -664,7 +671,13 @@ enum TaskStatus TimeIntegratorTaskList::HydroReceive(MeshBlock *pmb, int step)
 {
   bool ret;
   if (step <= nsub_steps) {
-    ret=pmb->pbval->ReceiveCellCenteredBoundaryBuffers(pmb->phydro->u, HYDRO_CONS);
+    if(step == 1){
+      ret=pmb->pbval->ReceiveCellCenteredBoundaryBuffers(pmb->phydro->u, 
+                                             pmb->prad->ir1, HYDRO_CONS);
+    }else{
+      ret=pmb->pbval->ReceiveCellCenteredBoundaryBuffers(pmb->phydro->u, 
+                                             pmb->prad->ir, HYDRO_CONS);
+    }
   }
   else {
     return TASK_FAIL;
@@ -702,14 +715,19 @@ enum TaskStatus TimeIntegratorTaskList::Prolongation(MeshBlock *pmb, int step)
   Hydro *phydro=pmb->phydro;
   Field *pfield=pmb->pfield;
   BoundaryValues *pbval=pmb->pbval;
+  Radiation *prad=pmb->prad;
 
   if (step <= nsub_steps) {
     // Time at the end of step for u()
     Real time=pmb->pmy_mesh->time + pmb->step_dt[0];
     // Scaled coefficient for RHS time-advance in substep
     Real dt = (step_wghts[(step-1)].beta)*(pmb->pmy_mesh->dt);
-    pbval->ProlongateBoundaries(phydro->w,  phydro->u,  pfield->b,  pfield->bcc,
-                                time, dt);
+    if(step == 1)
+      pbval->ProlongateBoundaries(phydro->w,  phydro->u,  pfield->b,  pfield->bcc,
+                        prad->ir1, time, dt);
+    else
+      pbval->ProlongateBoundaries(phydro->w,  phydro->u,  pfield->b,  pfield->bcc,
+                        prad->ir, time, dt);      
   } else {
     return TASK_FAIL;
   }

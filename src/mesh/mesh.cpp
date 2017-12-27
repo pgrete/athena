@@ -1353,7 +1353,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pmb = pblock;
       while (pmb != NULL) {
         phydro=pmb->phydro;
-        pmb->pbval->SendCellCenteredBoundaryBuffers(phydro->w, HYDRO_PRIM);
+        pmb->pbval->SendCellCenteredBoundaryBuffers(phydro->w, prad->ir, HYDRO_PRIM);
         pmb=pmb->next;
       }
 
@@ -1363,7 +1363,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
         phydro=pmb->phydro;
         pfield=pmb->pfield;
         pbval=pmb->pbval;
-        pbval->ReceiveCellCenteredBoundaryBuffersWithWait(phydro->w, HYDRO_PRIM);
+        pbval->ReceiveCellCenteredBoundaryBuffersWithWait(phydro->w, prad->ir, HYDRO_PRIM);
         pmb->pbval->ClearBoundaryForInit(false);
         pmb=pmb->next;
       }
@@ -1377,7 +1377,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       pbval=pmb->pbval;
       if(multilevel==true)
         pbval->ProlongateBoundaries(phydro->w, phydro->u, pfield->b, pfield->bcc,
-                                    time, 0.0);
+                               prad->ir, time, 0.0);
 
       int is=pmb->is, ie=pmb->ie, js=pmb->js, je=pmb->je, ks=pmb->ks, ke=pmb->ke;
       if(pbval->nblevel[1][1][0]!=-1) is-=NGHOST;

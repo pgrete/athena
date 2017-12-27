@@ -38,17 +38,10 @@ enum BoundaryFace {FACE_UNDEF=-1, INNER_X1=0, OUTER_X1=1, INNER_X2=2, OUTER_X2=3
 
 // identifiers for boundary conditions
 enum BoundaryFlag {BLOCK_BNDRY=-1, BNDRY_UNDEF=0, REFLECTING_BNDRY=1, OUTFLOW_BNDRY=2,
-<<<<<<< HEAD
   USER_BNDRY=3, PERIODIC_BNDRY=4, POLAR_BNDRY=5, POLAR_BNDRY_WEDGE=6, VACUUM_BNDRY=7};
 
 // identifiers for types of neighbor blocks
-enum NeighborType {NEIGHBOR_NONE, NEIGHBOR_FACE, NEIGHBOR_EDGE, NEIGHBOR_CORNER};
-=======
-  USER_BNDRY=3, PERIODIC_BNDRY=4, POLAR_BNDRY=5, POLAR_BNDRY_WEDGE=6};
-
-// identifiers for types of neighbor blocks
 enum NeighborType {NEIGHBOR_NONE=0, NEIGHBOR_FACE=1, NEIGHBOR_EDGE=2, NEIGHBOR_CORNER=3};
->>>>>>> master
 
 // identifiers for status of MPI boundary communications
 enum BoundaryStatus {BNDRY_WAITING, BNDRY_ARRIVED, BNDRY_COMPLETED};
@@ -224,7 +217,7 @@ enum BoundaryFlag GetBoundaryFlag(std::string input_string);
 class BoundaryBase {
 public:
   BoundaryBase(Mesh *pm, LogicalLocation iloc, RegionSize isize,
-               enum BoundaryFlag *input_bcs);
+      enum BoundaryFlag *input_bcs, enum BoundaryFlag *input_rad_bcs);
   virtual ~BoundaryBase();
 
   static NeighborIndexes ni[56];
@@ -234,6 +227,7 @@ public:
   int nblevel[3][3][3];
   LogicalLocation loc;
   enum BoundaryFlag block_bcs[6];
+  enum BoundaryFlag block_rad_bcs[6];
   PolarNeighborBlock *polar_neighbor_north, *polar_neighbor_south;
 
   static unsigned int CreateBvalsMPITag(int lid, int phys, int bufid);
@@ -260,7 +254,8 @@ private:
 
 class BoundaryValues : public BoundaryBase {
 public:
-  BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs);
+  BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs, 
+                             enum BoundaryFlag *input_rad_bcs);
   ~BoundaryValues();
 
   void InitBoundaryData(BoundaryData &bd, enum BoundaryType type);

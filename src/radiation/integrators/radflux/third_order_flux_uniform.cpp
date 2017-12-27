@@ -211,7 +211,7 @@ void RadIntegrator::ThirdOrderFluxX2Uniform(Coordinates *pco, const int kl, cons
 
   // 1D scratch arrays
   int ncells1 = iu-il + 2*(NGHOST);
-  AthenaArray<Real> dph, dph_jp1, qplus, qminus, dqf_plus, dqf_minus, d2qf;
+  AthenaArray<Real> dph, dph_jp1, qplus, qminus, dqf_plus, dqf_minus, d2qf, qplus_j1;
   AthenaArray<Real> d2qc_jm1, d2qc, d2qc_jp1;
   dph.NewAthenaArray(ncells1,tot_ang);
   dph_jp1.NewAthenaArray(ncells1,tot_ang);
@@ -458,7 +458,7 @@ void RadIntegrator::ThirdOrderFluxX3Uniform(Coordinates *pco, const int kl, cons
 
   // 1D scratch arrays
   int ncells1 = iu-il + 2*(NGHOST);
-  AthenaArray<Real> dph, dph_kp1, qplus, qminus, dqf_plus, dqf_minus, d2qf;
+  AthenaArray<Real> dph, dph_kp1, qplus, qminus, dqf_plus, dqf_minus, d2qf, qplus_k1;
   AthenaArray<Real> d2qc_km1, d2qc, d2qc_kp1;
   dph.NewAthenaArray(ncells1,tot_ang);
   dph_kp1.NewAthenaArray(ncells1,tot_ang);

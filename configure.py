@@ -344,9 +344,8 @@ if args['cxx'] == 'icc-phi':
   makefile_options['PREPROCESSOR_FLAGS'] = ''
   makefile_options['COMPILER_FLAGS'] = '-O3 -xMIC-AVX512 -ipo -inline-forceinline'
   makefile_options['LINKER_FLAGS'] = ''
-  make  makefile_options['COMPILER_FLAGS'] = '-O3'
-  makefile_options['LINKER_FLAGS'] = ''
-  makefile_options['LIBRARY_FLAGS'] = ''file_options['LIBRARY_FLAGS'] = ''
+  makefile_options['LIBRARY_FLAGS'] = ''
+
 
 if args['cxx'] == 'clang++':
   definitions['COMPILER_CHOICE'] = 'clang++'
@@ -528,8 +527,7 @@ flog.write('  Problem generator:       ' + args['prob'] + '\n')
 flog.write('  Coordinate system:       ' + args['coord'] + '\n')
 flog.write('  Equation of state:       ' + args['eos'] + '\n')
 flog.write('  Riemann solver:          ' + args['flux'] + '\n')
-flog.write('  Reconstruction method:   ' + args['order'] + '\n')
-flog.write('  Hydro integrator:        ' + args['fint'] + '\n')
+flog.write('  Self Gravity:            ' + ('OFF' if args['grav'] == 'none' else args['grav']))
 flog.write('  Magnetic fields:         ' + ('ON' if args['b'] else 'OFF') + '\n')
 flog.write('  Special relativity:      ' + ('ON' if args['s'] else 'OFF') + '\n')
 flog.write('  General relativity:      ' + ('ON' if args['g'] else 'OFF') + '\n')
@@ -539,6 +537,7 @@ flog.write('  Linker flags:            ' + makefile_options['LINKER_FLAGS'] + ' 
     + makefile_options['LIBRARY_FLAGS'] + '\n')
 flog.write('  MPI parallelism:         ' + ('ON' if args['mpi'] else 'OFF') + '\n')
 flog.write('  OpenMP parallelism:      ' + ('ON' if args['omp'] else 'OFF') + '\n')
+flog.write('  FFT:                     ' + ('ON' if args['fft'] else 'OFF'))
 flog.write('  HDF5 output:             ' + ('ON' if args['hdf5'] else 'OFF') + '\n')
 flog.write('  Radiative Transfer:      ' + ('ON' if args['radiation'] else 'OFF') + '\n')
 flog.write('  Compiler:                ' + args['cxx'] + '\n')
