@@ -73,7 +73,6 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, const Real dt, AthenaArray<Re
 
   int is = pmb->is; int js = pmb->js; int ks = pmb->ks;
   int ie = pmb->ie; int je = pmb->je; int ke = pmb->ke;
-
  
   for(int k=ks; k<=ke; ++k){
     for(int j=js; j<=je; ++j){
@@ -102,8 +101,8 @@ void RadIntegrator::AddSourceTerms(MeshBlock *pmb, const Real dt, AthenaArray<Re
          // for first order implicit update, we need gas internal energy
          // from the beginning of the step
          if (step == 2){
-           rho = pmb->phydro->w(IDN,k,j,i);
-           tgas = std::max(pmb->phydro->w(IEN,k,j,i)/rho,prad->t_floor_);
+           rho = pmb->phydro->w1(IDN,k,j,i);
+           tgas = std::max(pmb->phydro->w1(IEN,k,j,i)/rho,prad->t_floor_);
          }
         
 

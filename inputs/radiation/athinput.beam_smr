@@ -30,6 +30,7 @@ variable   = prim
 cfl_number = 0.4       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = 100000    # cycle limit
 tlim       = 10.0      # time limit
+rad_xorder = 2
 
 <mesh>
 nx1        = 64       # Number of zones in X1-direction

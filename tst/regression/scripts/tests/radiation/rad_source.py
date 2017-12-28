@@ -74,7 +74,7 @@ def analyze():
   # check absolute error and convergence of all three waves
   if np.abs(data[dim[0]-1][9]-2.66664) > 1.0e-5 or \
             +  np.abs(data[dim[0]-1][10]-9.98833) > 1.0e-5:
-    print "error in case 1: tgas or Er",data[dim[0]-1][9],data[dim[0]-1][10]
+    print "error in case 2: tgas or Er",data[dim[0]-1][9],data[dim[0]-1][10]
     return False
 
   filename = 'bin/thermal3.hst'
@@ -91,7 +91,7 @@ def analyze():
   # check absolute error and convergence of all three waves
   if np.abs(data[dim[0]-1][9]-2.85609) > 1.0e-5 or \
             + np.abs(data[dim[0]-1][10]-13.1439) > 1.0e-4:
-    print "error in case 1: tgas or Er",data[dim[0]-1][9],data[dim[0]-1][10]
+    print "error in case 3: tgas or Er",data[dim[0]-1][9],data[dim[0]-1][10]
     return False
 
 

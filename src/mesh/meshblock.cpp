@@ -95,6 +95,39 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   // in the Hydro constructor
  
   // mesh-related objects
+  //first, determined the total number of radiation variables
+  nrad_var = 0;
+  if(RADIATION_ENABLED){
+    int nmu = pin->GetInteger("radiation","nmu");
+    int angle_flag = pin->GetOrAddInteger("radiation","angle_flag",0);
+    int nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
+    int n_ang;
+    int noct;
+    int ndim = 1;
+    if(block_size.nx2 > 1) ++ndim;
+    if(block_size.nx3 > 1) ++ndim;
+    if(ndim == 1){
+      n_ang = nmu;
+      noct = 2;
+    }else if(ndim == 2){
+      noct = 4;
+      if(angle_flag == 0){
+        n_ang = nmu * (nmu + 1)/2;
+      }else if(angle_flag == 10){
+        n_ang = nmu;
+      }      
+    }else if(ndim == 3){
+      noct = 8;
+      if(angle_flag == 0){
+        n_ang = nmu * (nmu + 1)/2;
+      }else if(angle_flag == 10){
+        n_ang = nmu * nmu/2;
+      }
+    }  
+    nrad_var = n_ang * noct * nfreq;  
+  }// end nrad_var
+
+
 
   // Boundary
   pbval  = new BoundaryValues(this, input_bcs, input_rad_bcs);

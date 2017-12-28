@@ -155,7 +155,7 @@ parser.add_argument('--hdf5_path',
 # --cxx=[name] argument
 parser.add_argument('--cxx',
     default='g++',
-    choices=['g++','icc','cray','bgxl','icc-phi','clang++'],
+    choices=['g++','icc','cray','bgxl','icc-phi','clang++','mac'],
     help='select C++ compiler')
 
 # --ccmd=[name] argument
@@ -314,7 +314,8 @@ if args['cxx'] == 'cray':
   makefile_options['LINKER_FLAGS'] = '-hwp -hpl=obj/lib'
   makefile_options['LIBRARY_FLAGS'] = '-lm'
 if args['cxx'] == 'mac':
-  definitions['COMPILER_CHOICE'] = makefile_options['COMPILER_COMMAND'] = 'g++'
+  definitions['COMPILER_CHOICE'] = 'g++'
+  definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'g++'
   makefile_options['PREPROCESSOR_FLAGS'] = ''
   makefile_options['COMPILER_FLAGS'] = '-O3'
   makefile_options['LINKER_FLAGS'] = ''
@@ -351,6 +352,9 @@ if args['cxx'] == 'clang++':
   definitions['COMPILER_CHOICE'] = 'clang++'
   definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'clang++'
   makefile_options['PREPROCESSOR_FLAGS'] = ''
+  makefile_options['LINKER_FLAGS'] = ''
+  makefile_options['LIBRARY_FLAGS'] = ''
+  makefile_options['COMPILER_FLAGS'] = ''
 
 
 # -debug argument
@@ -370,7 +374,7 @@ else:
 # -mpi argument
 if args['mpi']:
   definitions['MPI_OPTION'] = 'MPI_PARALLEL'
-  if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'icc-phi' or args['cxx'] == 'clang++':
+  if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'icc-phi' or args['cxx'] == 'clang++' or args['cxx'] == 'mac':
     definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'mpicxx'
   if args['cxx'] == 'cray':
     makefile_options['COMPILER_FLAGS'] += ' -h mpi1'
@@ -439,8 +443,8 @@ if args['hdf5']:
   if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'cray' or args['cxx'] == 'icc-phi' or args['cxx'] == 'clang++':
     makefile_options['LIBRARY_FLAGS'] += ' -lhdf5'
   if args['cxx'] == 'mac':
-     makefile_options['LIBRARY_FLAGS'] += '-L/usr/local/Cellar/hdf5/1.8.18/lib -lhdf5'
-     makefile_options['COMPILER_FLAGS'] += ' -I/usr/local/Cellar/hdf5/1.8.18/include/'
+    makefile_options['LIBRARY_FLAGS'] += '-L/usr/local/Cellar/hdf5/1.8.18/lib -lhdf5'
+    makefile_options['COMPILER_FLAGS'] += ' -I/usr/local/Cellar/hdf5/1.8.18/include/'
   if args['cxx'] == 'bgxl':
     makefile_options['PREPROCESSOR_FLAGS'] += \
         ' -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_BSD_SOURCE' \

@@ -473,7 +473,7 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs,
        (block_rad_bcs[INNER_X2]==POLAR_BNDRY||block_rad_bcs[OUTER_X2]==POLAR_BNDRY||
         block_rad_bcs[INNER_X2]==POLAR_BNDRY_WEDGE||
         block_rad_bcs[OUTER_X2]==POLAR_BNDRY_WEDGE))
-         rad_exc_.NewAthenaArray((pmb->ke+NGHOST+2)*pmb->prad->n_fre_ang);
+         rad_exc_.NewAthenaArray((pmb->ke+NGHOST+2)*pmb->nrad_var);
 
   }
 }
@@ -598,7 +598,7 @@ void BoundaryValues::InitBoundaryData(BoundaryData &bd, enum BoundaryType type)
           size=std::max(size,f2c);
         }
         int nvar=NHYDRO; // keep spatial information first
-        if(RADIATION_ENABLED) nvar += pmy_block_->prad->n_fre_ang;
+        if(RADIATION_ENABLED) nvar += pmy_block_->nrad_var;
         size*=nvar;
       }
       break;
@@ -656,7 +656,7 @@ void BoundaryValues::InitBoundaryData(BoundaryData &bd, enum BoundaryType type)
         // flux correction buffer needs to hold both hydro and radiation
         int nvar=NHYDRO;
         if(RADIATION_ENABLED)
-          nvar += pmb->prad->n_fre_ang;
+          nvar += pmb->nrad_var;
         if(BoundaryValues::ni[n].ox1!=0)
           size=(pmb->block_size.nx2+1)/2*(pmb->block_size.nx3+1)/2*nvar;
         if(BoundaryValues::ni[n].ox2!=0)
@@ -844,7 +844,7 @@ void BoundaryValues::Initialize(void)
       }
       int nvar=NHYDRO;
       if (RADIATION_ENABLED)
-        nvar += pmb->prad->n_fre_ang;
+        nvar += pmb->nrad_var;
 
       ssize*=nvar; rsize*=nvar;
       // specify the offsets in the view point of the target block: flip ox? signs

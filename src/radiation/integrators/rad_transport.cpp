@@ -154,21 +154,34 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &w,
       }
     }
     // calculate the flux
-    if(step == 1){
-      FirstOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, temp_i1_, vel_, x1flux);
-    }else{
-      SecondOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, temp_i1_, vel_, x1flux);
-//      ThirdOrderFluxX1Uniform(pco, kl, ku, jl, ju, is, ie+1, temp_i1_, vel_, x1flux);
-    }
+    if(rad_xorder_ == 2){
 
-    if(adv_flag_ > 0){
       if(step == 1){
-        FirstOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, ir, vel2_, x1flux);
+        FirstOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, temp_i1_, vel_, x1flux);
       }else{
-        SecondOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, ir, vel2_, x1flux);
-//        ThirdOrderFluxX1Uniform(pco, kl, ku, jl, ju, is, ie+1, ir, vel2_, x1flux);
+        SecondOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, temp_i1_, vel_, x1flux);
       }
 
+      if(adv_flag_ > 0){
+        if(step == 1){
+          FirstOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, ir, vel2_, x1flux);
+        }else{
+          SecondOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, ir, vel2_, x1flux);
+        }
+
+      }
+    }else if(rad_xorder_ == 3){
+      if(pmb->block_size.x1rat == 1.0){
+        ThirdOrderFluxX1Uniform(pco, kl, ku, jl, ju, is, ie+1, temp_i1_, vel_, x1flux);    
+        if(adv_flag_ > 0){
+            ThirdOrderFluxX1Uniform(pco, kl, ku, jl, ju, is, ie+1, ir, vel2_, x1flux);
+        }
+      }else{
+         ThirdOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, temp_i1_, vel_, x1flux);    
+        if(adv_flag_ > 0){
+            ThirdOrderFluxX1(pco, kl, ku, jl, ju, is, ie+1, ir, vel2_, x1flux);
+        }       
+      }
     }
     //Add second order flux correction at certain regions
     if(step == 2 && flux_correct_flag_ > 0){
@@ -233,23 +246,33 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &w,
        }// end j
      }// end k
 
-    if(step == 1){
-      FirstOrderFluxX2(pco, kl, ku, js, je+1, il, iu, temp_i1_, vel_, x2flux);
-    }else{
-      SecondOrderFluxX2(pco, kl, ku, js, je+1, il, iu, temp_i1_, vel_, x2flux);
-//      ThirdOrderFluxX2Uniform(pco, kl, ku, js, je+1, il, iu, temp_i1_, vel_, x2flux);
-    }
+      if(rad_xorder_ == 2){
+        if(step == 1){
+          FirstOrderFluxX2(pco, kl, ku, js, je+1, il, iu, temp_i1_, vel_, x2flux);
+        }else{
+          SecondOrderFluxX2(pco, kl, ku, js, je+1, il, iu, temp_i1_, vel_, x2flux);      
+        }
 
-    if(adv_flag_){
-  // calculate the flux
-      if(step == 1){
-        FirstOrderFluxX2(pco, kl, ku, js, je+1, il, iu, ir, vel2_, x2flux);
-      }else{
-        SecondOrderFluxX2(pco, kl, ku, js, je+1, il, iu, ir, vel2_, x2flux);
-//        ThirdOrderFluxX2Uniform(pco, kl, ku, js, je+1, il, iu, ir, vel2_, x2flux);
+        if(adv_flag_){
+          if(step == 1){
+            FirstOrderFluxX2(pco, kl, ku, js, je+1, il, iu, ir, vel2_, x2flux);
+          }else{
+            SecondOrderFluxX2(pco, kl, ku, js, je+1, il, iu, ir, vel2_, x2flux);
+          }
+        }
+      }else if(rad_xorder_ == 3){
+        if(pmb->block_size.x2rat == 1.0){
+          ThirdOrderFluxX2Uniform(pco, kl, ku, js, je+1, il, iu, temp_i1_, vel_, x2flux);
+          if(adv_flag_){
+            ThirdOrderFluxX2Uniform(pco, kl, ku, js, je+1, il, iu, ir, vel2_, x2flux);
+          }
+        }else{
+          ThirdOrderFluxX2(pco, kl, ku, js, je+1, il, iu, temp_i1_, vel_, x2flux);
+          if(adv_flag_){
+            ThirdOrderFluxX2(pco, kl, ku, js, je+1, il, iu, ir, vel2_, x2flux);
+          }          
+        }
       }
-
-    }
       //Add second order flux correction at certain regions
       if(step == 2 && flux_correct_flag_ > 0){
         for(int k=kl; k<=ku; ++k){
@@ -314,22 +337,32 @@ void RadIntegrator::CalculateFluxes(MeshBlock *pmb, AthenaArray<Real> &w,
          }
        }}// end j, k
         // calculate the flux
-    if(step == 1){
-      FirstOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, temp_i1_, vel_, x3flux);
-    }else{
-      SecondOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, temp_i1_, vel_, x3flux);
-//      ThirdOrderFluxX3Uniform(pco, ks, ke+1, jl, ju, il, iu, temp_i1_, vel_, x3flux);
-    }
-
-    if(adv_flag_){
-  // calculate the flux
+    if(rad_xorder_ == 2){   
       if(step == 1){
-        FirstOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, ir, vel2_, x3flux);
+        FirstOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, temp_i1_, vel_, x3flux);
       }else{
-        SecondOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, ir, vel2_, x3flux);
- //       ThirdOrderFluxX3Uniform(pco, ks, ke+1, jl, ju, il, iu, ir, vel2_, x3flux);
+        SecondOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, temp_i1_, vel_, x3flux);     
       }
 
+      if(adv_flag_){
+        if(step == 1){
+          FirstOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, ir, vel2_, x3flux);
+        }else{
+          SecondOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, ir, vel2_, x3flux);
+        }
+      }
+    }else if(rad_xorder_ == 3){
+      if(pmb->block_size.x3rat == 1.0){
+        ThirdOrderFluxX3Uniform(pco, ks, ke+1, jl, ju, il, iu, temp_i1_, vel_, x3flux);
+        if(adv_flag_){
+          ThirdOrderFluxX3Uniform(pco, ks, ke+1, jl, ju, il, iu, ir, vel2_, x3flux);
+        }
+      }else{
+        ThirdOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, temp_i1_, vel_, x3flux);
+        if(adv_flag_){
+          ThirdOrderFluxX3(pco, ks, ke+1, jl, ju, il, iu, ir, vel2_, x3flux);
+        }
+      }
     }
     //Add second order flux correction at certain regions
     if(step == 2 && flux_correct_flag_ > 0){

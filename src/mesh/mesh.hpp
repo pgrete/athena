@@ -103,6 +103,7 @@ public:
   Hydro *phydro;
   Field *pfield;
   Radiation *prad;
+  int nrad_var; // total number of radiation variables needed for boundary
   Gravity *pgrav;
   EquationOfState *peos;
 

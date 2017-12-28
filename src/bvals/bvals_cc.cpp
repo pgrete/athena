@@ -174,9 +174,10 @@ void BoundaryValues::SendCellCenteredBoundaryBuffers(AthenaArray<Real> &src,
         cbuf.InitWithShallowCopy(pmb->pmr->coarse_prim_);
     }
   }
-  if(RADIATION_ENABLED && pmb->pmy_mesh->multilevel){
+  if(RADIATION_ENABLED){
     rns=0, rne=pmb->prad->n_fre_ang-1;
-    buf_rad.InitWithShallowCopy(pmb->pmr->coarse_ir_);
+    if(pmb->pmy_mesh->multilevel)
+      buf_rad.InitWithShallowCopy(pmb->pmr->coarse_ir_);
   }
 
   for(int n=0; n<nneighbor; n++) {

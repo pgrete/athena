@@ -32,6 +32,8 @@ RadIntegrator::RadIntegrator(Radiation *prad, ParameterInput *pin)
 {
 
   pmy_rad = prad;
+
+  rad_xorder_ = pin->GetOrAddInteger("time","rad_xorder",2);
   
       // factor to separate the diffusion and advection part
   taufact_ = pin->GetOrAddInteger("radiation","taucell",5);

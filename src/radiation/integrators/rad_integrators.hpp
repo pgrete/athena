@@ -161,6 +161,7 @@ private:
 
   int flux_correct_flag_; // flag to do second order flux crrection or not.
   Real tau_limit_; // the limit of optical depth sure.
+  int rad_xorder_;
   AthenaArray<Real> x1face_area_, x2face_area_, x3face_area_;
   AthenaArray<Real> x2face_area_p1_, x3face_area_p1_;
   AthenaArray<Real> cell_volume_, cwidth2_, cwidth3_;
