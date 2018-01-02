@@ -61,7 +61,7 @@ void RadIntegrator::SecondOrderCorrectFluxX1(Coordinates *pco, const int k, cons
       if(dq2>0.0) {
         ql += dxfr*dq2*(cfl*dql+cbl*dqc)/(dql*dql+(cfl+cbl-2.0)*dq2+dqc*dqc);
       }
-      flx(k,j,i,n) += ql * vel(i,n);
+      flx(k,j,i,n) += ql * vel(k,j,i,n);
     }
     if(vel(k,j,i,n) <=0.0){
       dqr = (q(k,j,i+1,n) - q(k,j,i,  n))*dx_i;
