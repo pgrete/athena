@@ -66,6 +66,11 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   // Shallow copy to shorthands.
   AssignShorthands();
 
+  // Allocate position indices.
+  xi1.NewAthenaArray(nparmax);
+  xi2.NewAthenaArray(nparmax);
+  xi3.NewAthenaArray(nparmax);
+
   // Allocate buffers.
   nrecvmax = 1;
   nrecv = 0;
@@ -84,6 +89,11 @@ Particles::~Particles()
 
   // Delete real properties.
   realprop.DeleteAthenaArray();
+
+  // Delete position indices.
+  xi1.DeleteAthenaArray();
+  xi2.DeleteAthenaArray();
+  xi3.DeleteAthenaArray();
 
   // Delete buffers.
   irecv.DeleteAthenaArray();
@@ -233,6 +243,28 @@ void Particles::Migrate(Mesh *pm)
       pmb->ppar->FlushReceiveBuffer();
     pmb = pmb->next;
   }
+
+  // Update the position indices.
+  pmb = pm->pblock;
+  while (pmb != NULL) {
+    if (pmb->ppar->nrecv > 0)
+      pmb->ppar->GetPositionIndices();
+    pmb = pmb->next;
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::GetPositionIndices()
+//  \brief finds the position indices of each particle with respect to the local grid.
+
+void Particles::GetPositionIndices()
+{
+  // TODO: complete me
+  for (long k = 0; k < npar; ++k) {
+    xi1(k) = 0.0;
+    xi2(k) = 0.0;
+    xi3(k) = 0.0;
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -352,10 +384,13 @@ void Particles::FlushReceiveBuffer()
 {
   // Check the memory size.
   if (npar + nrecv > nparmax) {
-    nparmax += 2 * (npar + nrecv - nparmax);
-    intprop.ResizeLastDimension(nparmax);
+    nparmax += 2 * (npar + nrecv - nparmax);  // Increase maximum number of particles
+    intprop.ResizeLastDimension(nparmax);     // Increase size of property arrays
     realprop.ResizeLastDimension(nparmax);
     AssignShorthands();
+    xi1.ResizeLastDimension(nparmax);         // Increase size of index arrays
+    xi2.ResizeLastDimension(nparmax);
+    xi3.ResizeLastDimension(nparmax);
   }
 
   // Flush the receive buffers.

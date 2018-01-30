@@ -66,6 +66,9 @@ protected:
   AthenaArray<long> intprop;   // integer particle properties
   AthenaArray<Real> realprop;  // real particle properties
 
+  AthenaArray<Real> xi1, xi2, xi3;  // position indices of each particle
+                                    // in local meshblock
+
   AthenaArray<long> pid;            // shorthand for particle ID
   AthenaArray<Real> xp, yp, zp;     // shorthand for position components
   AthenaArray<Real> vpx, vpy, vpz;  // shorthand for velocity components
@@ -79,6 +82,7 @@ private:
   static void ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3);
 
   // Instance methods
+  void GetPositionIndices();
   void SendToNeighbors();
   void FlushReceiveBuffer();
 
