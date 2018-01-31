@@ -80,9 +80,15 @@ protected:
 private:
   // Class methods
   static void ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3);
+  static void GetPositionIndices(MeshBlock *pmb, long npar,
+                                 const AthenaArray<Real>& xp,
+                                 const AthenaArray<Real>& yp,
+                                 const AthenaArray<Real>& zp,
+                                 AthenaArray<Real>& xi1,
+                                 AthenaArray<Real>& xi2,
+                                 AthenaArray<Real>& xi3);
 
   // Instance methods
-  void GetPositionIndices();
   void SendToNeighbors();
   void FlushReceiveBuffer();
 

@@ -10,6 +10,7 @@
 #include <string>
 #include "../athena_arrays.hpp"
 #include "../mesh/meshblock_tree.hpp"
+#include "../coordinates/coordinates.hpp"
 #include "particles.hpp"
 
 bool Particles::initialized = false;
@@ -22,6 +23,8 @@ int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
 void _ErrorIfInitialized(const std::string& calling_function, bool initialized);
 void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3);
 void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z);
+void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
+                          Real& xi1, Real& xi2, Real& xi3);
 
 //--------------------------------------------------------------------------------------
 //! \fn Particles::Initialize()
@@ -194,6 +197,34 @@ void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
+//                                         const AthenaArray<Real>& xp,
+//                                         const AthenaArray<Real>& yp,
+//                                         const AthenaArray<Real>& zp,
+//                                         AthenaArray<Real>& xi1,
+//                                         AthenaArray<Real>& xi2,
+//                                         AthenaArray<Real>& xi3)
+//  \brief finds the position indices of each particle with respect to the local grid.
+
+void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
+                                   const AthenaArray<Real>& xp,
+                                   const AthenaArray<Real>& yp,
+                                   const AthenaArray<Real>& zp,
+                                   AthenaArray<Real>& xi1,
+                                   AthenaArray<Real>& xi2,
+                                   AthenaArray<Real>& xi3)
+{
+  for (long k = 0; k < npar; ++k) {
+    // Convert to the Mesh coordinates.
+    Real x1, x2, x3;
+    _CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
+
+    // Convert to the index space.
+    _MeshCoordsToIndices(pmb, x1, x2, x3, xi1(k), xi2(k), xi3(k));
+  }
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::Drift(Real t, Real dt)
 //  \brief updates the particle positions from t to t + dt given velocities at t.
 
@@ -240,32 +271,21 @@ void Particles::Migrate(Mesh *pm)
 
   // Flush the receive buffers.
   pmb = pm->pblock;
+  Particles *ppar;
   while (pmb != NULL) {
-    if (pmb->ppar->nrecv > 0)
-      pmb->ppar->FlushReceiveBuffer();
+    ppar = pmb->ppar;
+    if (ppar->nrecv > 0) ppar->FlushReceiveBuffer();
     pmb = pmb->next;
   }
 
   // Update the position indices.
   pmb = pm->pblock;
   while (pmb != NULL) {
-    if (pmb->ppar->nrecv > 0)
-      pmb->ppar->GetPositionIndices();
+    ppar = pmb->ppar;
+    long npar = ppar->npar;
+    if (npar > 0) GetPositionIndices(pmb, npar, ppar->xp, ppar->yp, ppar->zp,
+                                                ppar->xi1, ppar->xi2, ppar->xi3);
     pmb = pmb->next;
-  }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::GetPositionIndices()
-//  \brief finds the position indices of each particle with respect to the local grid.
-
-void Particles::GetPositionIndices()
-{
-  // TODO: complete me
-  for (long k = 0; k < npar; ++k) {
-    xi1(k) = 0.0;
-    xi2(k) = 0.0;
-    xi3(k) = 0.0;
   }
 }
 
@@ -641,6 +661,30 @@ inline void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, 
   x = x1;
   y = x2;
   z = x3;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
+//                                Real& xi1, Real& xi2, Real& xi3)
+//  \brief returns in index coordinates (xi1, xi2, xi3) with respect to the local
+//         grid of MeshBlock pmb from the physical coordinates (x1, x2, x3).
+// TODO: Currently only supports uniform mesh.
+// TODO: Generalize and move this to the Coordinates class.
+
+void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
+                          Real& xi1, Real& xi2, Real& xi3)
+{
+  // Get the meshblock info.
+  const int IS = pmb->is;
+  const int JS = pmb->js;
+  const int KS = pmb->ks;
+  const RegionSize& block_size = pmb->block_size;
+  const Coordinates *pcoord = pmb->pcoord;
+
+  // Make the conversion.
+  xi1 = IS + (x1 - block_size.x1min) / pcoord->dx1f(IS);
+  xi2 = JS + (x2 - block_size.x2min) / pcoord->dx2f(JS);
+  xi3 = KS + (x3 - block_size.x3min) / pcoord->dx3f(KS);
 }
 
 //--------------------------------------------------------------------------------------
