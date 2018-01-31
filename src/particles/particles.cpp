@@ -273,12 +273,17 @@ void Particles::GetPositionIndices()
 
 void Particles::SendToNeighbors()
 {
+  const int NX1 = pmy_block->block_size.nx1;
+  const int NX2 = pmy_block->block_size.nx2;
+  const int NX3 = pmy_block->block_size.nx3;
+  const Real X1MIN = pmy_block->block_size.x1min;
+  const Real X1MAX = pmy_block->block_size.x1max;
+  const Real X2MIN = pmy_block->block_size.x2min;
+  const Real X2MAX = pmy_block->block_size.x2max;
+  const Real X3MIN = pmy_block->block_size.x3min;
+  const Real X3MAX = pmy_block->block_size.x3max;
+
   Mesh *pm = pmy_block->pmy_mesh;
-  MeshBlock *pnmb;
-  MeshBlockTree *pnmbt;
-  Particles *pnp;
-  Real x1, x2, x3;
-  int ox1, ox2, ox3;
 
   // TODO: Currently only works for Cartesian.
   if (COORDINATE_SYSTEM != "cartesian") {
@@ -291,25 +296,23 @@ void Particles::SendToNeighbors()
 
   for (long k = 0; k < npar; ) {
     // Convert to the MeshBlock coordinates.
-    x1 = xp(k);  // Assuming they are Cartesian.
-    x2 = yp(k);
-    x3 = zp(k);
+    Real x1 = xp(k),  // Assuming they are Cartesian.
+         x2 = yp(k),
+         x3 = zp(k);
 
     // Check if a particle is outside the boundary.
-    ox1 = _CheckSide(pmy_block->block_size.nx1, x1,
-                     pmy_block->block_size.x1min, pmy_block->block_size.x1max);
-    ox2 = _CheckSide(pmy_block->block_size.nx2, x2,
-                     pmy_block->block_size.x2min, pmy_block->block_size.x2max);
-    ox3 = _CheckSide(pmy_block->block_size.nx3, x3,
-                     pmy_block->block_size.x3min, pmy_block->block_size.x3max);
+    int ox1 = _CheckSide(NX1, x1, X1MIN, X1MAX),
+        ox2 = _CheckSide(NX2, x2, X2MIN, X2MAX),
+        ox3 = _CheckSide(NX3, x3, X3MIN, X3MAX);
     if (ox1 == 0 && ox2 == 0 && ox3 == 0) {
       ++k;
       continue;
     }
 
     // Find the neighbor MeshBlock to send it to.
-    pnmbt = pm->tree.FindNeighbor(pmy_block->loc, ox1, ox2, ox3, pm->mesh_bcs,
-                                  pm->nrbx1, pm->nrbx2, pm->nrbx3, pm->root_level);
+    MeshBlockTree *pnmbt =
+        pm->tree.FindNeighbor(pmy_block->loc, ox1, ox2, ox3, pm->mesh_bcs,
+                              pm->nrbx1, pm->nrbx2, pm->nrbx3, pm->root_level);
     if (pnmbt == NULL) {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
@@ -318,6 +321,7 @@ void Particles::SendToNeighbors()
       continue;
     }
 
+    MeshBlock *pnmb;
     if (pnmbt->flag)  // Neighbor is on the same or a courser level:
       pnmb = pm->FindMeshBlock(pnmbt->gid);
     else {          // Neighbor is on a finer level:
@@ -342,7 +346,7 @@ void Particles::SendToNeighbors()
         continue;
       }
     }
-    pnp = pnmb->ppar;
+    Particles *pnp = pnmb->ppar;
 
     // Apply boundary conditions.
     ApplyBoundaryConditions(pm, x1, x2, x3);
