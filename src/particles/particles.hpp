@@ -79,7 +79,7 @@ protected:
 
 private:
   // Class methods
-  static void ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3);
+  static bool ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3);
   static void GetPositionIndices(MeshBlock *pmb, long npar,
                                  const AthenaArray<Real>& xp,
                                  const AthenaArray<Real>& yp,

@@ -27,6 +27,8 @@ void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3
 void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z);
 void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
                           Real& xi1, Real& xi2, Real& xi3);
+void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
+                          Real& x1, Real& x2, Real& x3);
 int _CheckSide(Real xi, int nx, int xi1, int xi2);
 
 //--------------------------------------------------------------------------------------
@@ -109,14 +111,17 @@ Particles::~Particles()
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
-//  \brief applies boundary conditions if (x1,x2,x3) is outside the mesh.
+//! \fn bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
+//  \brief applies boundary conditions to (x1,x2,x3) and return true if (x1,x2,x3) is
+//         outside the mesh.  Otherwise, (x1,x2,x3) is unchanged and false is returned.
 
-void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
+bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
 {
+  bool flag = false;
+
   if (pm->mesh_size.nx1 > 1) {
-    // Inner x1
     if (x1 <= pm->mesh_size.x1min) {
+      // Inner x1
       if (pm->mesh_bcs[INNER_X1] == PERIODIC_BNDRY)
         x1 += pm->mesh_size.x1max - pm->mesh_size.x1min;
       else {
@@ -126,10 +131,9 @@ void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
             << "Non-periodic boundary for inner x1 not supported. " << std::endl;
         throw std::runtime_error(msg.str().c_str());
       }
-    }
-
-    // Outer x1
-    if (x1 >= pm->mesh_size.x1max) {
+      flag = true;
+    } else if (x1 >= pm->mesh_size.x1max) {
+      // Outer x1
       if (pm->mesh_bcs[OUTER_X1] == PERIODIC_BNDRY)
         x1 -= pm->mesh_size.x1max - pm->mesh_size.x1min;
       else {
@@ -139,12 +143,13 @@ void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
             << "Non-periodic boundary for outer x1 not supported. " << std::endl;
         throw std::runtime_error(msg.str().c_str());
       }
+      flag = true;
     }
   }
 
   if (pm->mesh_size.nx2 > 1) {
-    // Inner x2
     if (x2 <= pm->mesh_size.x2min) {
+      // Inner x2
       if (pm->mesh_bcs[INNER_X2] == PERIODIC_BNDRY)
         x2 += pm->mesh_size.x2max - pm->mesh_size.x2min;
       else {
@@ -154,10 +159,9 @@ void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
             << "Non-periodic boundary for inner x2 not supported. " << std::endl;
         throw std::runtime_error(msg.str().c_str());
       }
-    }
-
-    // Outer x2
-    if (x2 >= pm->mesh_size.x2max) {
+      flag = true;
+    } else if (x2 >= pm->mesh_size.x2max) {
+      // Outer x2
       if (pm->mesh_bcs[OUTER_X2] == PERIODIC_BNDRY)
         x2 -= pm->mesh_size.x2max - pm->mesh_size.x2min;
       else {
@@ -167,12 +171,13 @@ void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
             << "Non-periodic boundary for outer x2 not supported. " << std::endl;
         throw std::runtime_error(msg.str().c_str());
       }
+      flag = true;
     }
   }
 
   if (pm->mesh_size.nx3 > 1) {
-    // Inner x3
     if (x3 <= pm->mesh_size.x3min) {
+      // Inner x3
       if (pm->mesh_bcs[INNER_X3] == PERIODIC_BNDRY)
         x3 += pm->mesh_size.x3max - pm->mesh_size.x3min;
       else {
@@ -182,10 +187,9 @@ void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
             << "Non-periodic boundary for inner x3 not supported. " << std::endl;
         throw std::runtime_error(msg.str().c_str());
       }
-    }
-
-    // Outer x3
-    if (x3 >= pm->mesh_size.x3max) {
+      flag = true;
+    } else if (x3 >= pm->mesh_size.x3max) {
+      // Outer x3
       if (pm->mesh_bcs[OUTER_X3] == PERIODIC_BNDRY)
         x3 -= pm->mesh_size.x3max - pm->mesh_size.x3min;
       else {
@@ -195,8 +199,11 @@ void Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
             << "Non-periodic boundary for outer x3 not supported. " << std::endl;
         throw std::runtime_error(msg.str().c_str());
       }
+      flag = true;
     }
   }
+
+  return flag;
 }
 
 //--------------------------------------------------------------------------------------
@@ -330,7 +337,7 @@ void Particles::SendToNeighbors()
 
     // Convert to the MeshBlock coordinates.
     Real x1, x2, x3;
-    _CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
+    _IndicesToMeshCoords(pmy_block, xi1(k), xi2(k), xi3(k), x1, x2, x3);
 
     // Find the neighbor MeshBlock to send it to.
     MeshBlockTree *pnmbt =
@@ -371,11 +378,9 @@ void Particles::SendToNeighbors()
     }
     Particles *pnp = pnmb->ppar;
 
-    // Apply boundary conditions.
-    ApplyBoundaryConditions(pm, x1, x2, x3);
-
-    // Convert back to Cartesian coordinates.
-    _MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
+    // Apply boundary conditions and convert back to Cartesian coordinates.
+    if (ApplyBoundaryConditions(pm, x1, x2, x3))
+      _MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
 
     // Check the buffer size of the target MeshBlock.
     if (pnp->nrecv >= pnp->nrecvmax) {
@@ -687,6 +692,30 @@ void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
   xi1 = IS + (x1 - block_size.x1min) / pcoord->dx1f(IS);
   xi2 = JS + (x2 - block_size.x2min) / pcoord->dx2f(JS);
   xi3 = KS + (x3 - block_size.x3min) / pcoord->dx3f(KS);
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
+//                                Real& x1, Real& x2, Real& x3)
+//  \brief returns in mesh coordinates (x1, x2, x3) from index coordinates
+//         (xi1, xi2, xi3) with respect to the local grid of MeshBlock pmb.
+// TODO: Currently only supports uniform mesh.
+// TODO: Generalize and move this to the Coordinates class.
+
+void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
+                          Real& x1, Real& x2, Real& x3)
+{
+  // Get the meshblock info.
+  const int IS = pmb->is;
+  const int JS = pmb->js;
+  const int KS = pmb->ks;
+  const RegionSize& block_size = pmb->block_size;
+  const Coordinates *pcoord = pmb->pcoord;
+
+  // Make the conversion.
+  x1 = block_size.x1min + (xi1 - IS) * pcoord->dx1f(IS);
+  x2 = block_size.x2min + (xi2 - JS) * pcoord->dx2f(JS);
+  x3 = block_size.x3min + (xi3 - KS) * pcoord->dx3f(KS);
 }
 
 //--------------------------------------------------------------------------------------
