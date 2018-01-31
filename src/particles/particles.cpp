@@ -20,6 +20,8 @@ int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
 int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
 
 void _ErrorIfInitialized(const std::string& calling_function, bool initialized);
+void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3);
+void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z);
 
 //--------------------------------------------------------------------------------------
 //! \fn Particles::Initialize()
@@ -296,9 +298,8 @@ void Particles::SendToNeighbors()
 
   for (long k = 0; k < npar; ) {
     // Convert to the MeshBlock coordinates.
-    Real x1 = xp(k),  // Assuming they are Cartesian.
-         x2 = yp(k),
-         x3 = zp(k);
+    Real x1, x2, x3;
+    _CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
 
     // Check if a particle is outside the boundary.
     int ox1 = _CheckSide(NX1, x1, X1MIN, X1MAX),
@@ -352,9 +353,7 @@ void Particles::SendToNeighbors()
     ApplyBoundaryConditions(pm, x1, x2, x3);
 
     // Convert back to Cartesian coordinates.
-    xp(k) = x1;
-    yp(k) = x2;
-    zp(k) = x3;
+    _MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
 
     // Check the buffer size of the target MeshBlock.
     if (pnp->nrecv >= pnp->nrecvmax) {
@@ -614,6 +613,34 @@ void _ErrorIfInitialized(const std::string& calling_function, bool initialized)
     msg << "### FATAL ERROR in function [" << calling_function << "]" << std::endl << "The Particles class has already been initialized. " << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void _CartesianToMeshCoords(x, y, z, x1, x2, x3)
+//  \brief returns in (x1, x2, x3) the coordinates used by the mesh from Cartesian 
+//         coordinates (x, y, z).
+// TODO: Currently only supports Cartesian to Cartensian.
+// TODO: Generalize and move this to the Coordinates class.
+
+inline void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3)
+{
+  x1 = x;
+  x2 = y;
+  x3 = z;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void _MeshCoordsToCartesian(x1, x2, x3, x, y, z)
+//  \brief returns in Cartesian coordinates (x, y, z) from (x1, x2, x3) the coordinates
+//         used by the mesh.
+// TODO: Currently only supports Cartesian to Cartensian.
+// TODO: Generalize and move this to the Coordinates class.
+
+inline void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z)
+{
+  x = x1;
+  y = x2;
+  z = x3;
 }
 
 //--------------------------------------------------------------------------------------
