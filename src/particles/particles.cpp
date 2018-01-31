@@ -13,7 +13,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "particles.hpp"
 
-// Instance variable initialization
+// Class variable initialization
 bool Particles::initialized = false;
 int Particles::nint = 0;
 int Particles::nreal = 0;
