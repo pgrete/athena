@@ -36,13 +36,13 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   }
 
   // Set the particles.
-  if (block_size.x1min <= 1.0 && 1.0 < block_size.x1max) {
+  if (block_size.x1min <= 0.0 && 0.0 < block_size.x1max) {
     ppar->npar = 1;
     ppar->pid(0) = 0;
-    ppar->xp(0) = 1.0;
+    ppar->xp(0) = 0.0;
     ppar->yp(0) = 0.0;
     ppar->zp(0) = 0.0;
-    ppar->vpx(0) = 0.0;
+    ppar->vpx(0) = 1.0;
     ppar->vpy(0) = 0.0;
     ppar->vpz(0) = 0.0;
   } else
