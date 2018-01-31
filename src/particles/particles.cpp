@@ -434,9 +434,19 @@ void Particles::FlushReceiveBuffer()
     while (k < nrecv)
       realprop(j,ip++) = rrecv(j,k++);
   }
-  npar += nrecv;
+
+  // Find their position indices.
+  AthenaArray<Real> xps, yps, zps, xi1s, xi2s, xi3s;
+  xps.InitWithShallowSlice(xp, 1, npar, nrecv);
+  yps.InitWithShallowSlice(yp, 1, npar, nrecv);
+  zps.InitWithShallowSlice(zp, 1, npar, nrecv);
+  xi1s.InitWithShallowSlice(xi1, 1, npar, nrecv);
+  xi2s.InitWithShallowSlice(xi2, 1, npar, nrecv);
+  xi3s.InitWithShallowSlice(xi3, 1, npar, nrecv);
+  GetPositionIndices(pmy_block, nrecv, xps, yps, zps, xi1s, xi2s, xi3s);
 
   // Clear the receive buffers.
+  npar += nrecv;
   nrecv = 0;
 }
 
