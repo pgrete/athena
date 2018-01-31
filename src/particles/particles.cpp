@@ -13,6 +13,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "particles.hpp"
 
+// Instance variable initialization
 bool Particles::initialized = false;
 int Particles::nint = 0;
 int Particles::nreal = 0;
@@ -20,11 +21,13 @@ int Particles::ipid = -1;
 int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
 int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
 
+// Local function prototypes
 void _ErrorIfInitialized(const std::string& calling_function, bool initialized);
 void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3);
 void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z);
 void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
                           Real& xi1, Real& xi2, Real& xi3);
+int _CheckSide(Real xi, int nx, int xi1, int xi2);
 
 //--------------------------------------------------------------------------------------
 //! \fn Particles::Initialize()
@@ -258,12 +261,22 @@ void Particles::Kick(Real t, Real dt)
 //--------------------------------------------------------------------------------------
 //! \fn void Particles::Migrate(Mesh *pm)
 //  \brief migrates particles that are outside of the MeshBlock boundary.
-int _CheckSide(int nx, Real x, Real xmin, Real xmax);
 
 void Particles::Migrate(Mesh *pm)
 {
-  // Send particles.
+  // Update the position indices.
   MeshBlock *pmb = pm->pblock;
+  Particles *ppar;
+  while (pmb != NULL) {
+    ppar = pmb->ppar;
+    long npar = ppar->npar;
+    if (npar > 0) GetPositionIndices(pmb, npar, ppar->xp, ppar->yp, ppar->zp,
+                                                ppar->xi1, ppar->xi2, ppar->xi3);
+    pmb = pmb->next;
+  }
+
+  // Send particles.
+  pmb = pm->pblock;
   while (pmb != NULL) {
     pmb->ppar->SendToNeighbors();
     pmb = pmb->next;
@@ -271,20 +284,9 @@ void Particles::Migrate(Mesh *pm)
 
   // Flush the receive buffers.
   pmb = pm->pblock;
-  Particles *ppar;
   while (pmb != NULL) {
     ppar = pmb->ppar;
     if (ppar->nrecv > 0) ppar->FlushReceiveBuffer();
-    pmb = pmb->next;
-  }
-
-  // Update the position indices.
-  pmb = pm->pblock;
-  while (pmb != NULL) {
-    ppar = pmb->ppar;
-    long npar = ppar->npar;
-    if (npar > 0) GetPositionIndices(pmb, npar, ppar->xp, ppar->yp, ppar->zp,
-                                                ppar->xi1, ppar->xi2, ppar->xi3);
     pmb = pmb->next;
   }
 }
@@ -298,12 +300,12 @@ void Particles::SendToNeighbors()
   const int NX1 = pmy_block->block_size.nx1;
   const int NX2 = pmy_block->block_size.nx2;
   const int NX3 = pmy_block->block_size.nx3;
-  const Real X1MIN = pmy_block->block_size.x1min;
-  const Real X1MAX = pmy_block->block_size.x1max;
-  const Real X2MIN = pmy_block->block_size.x2min;
-  const Real X2MAX = pmy_block->block_size.x2max;
-  const Real X3MIN = pmy_block->block_size.x3min;
-  const Real X3MAX = pmy_block->block_size.x3max;
+  const int IS = pmy_block->is;
+  const int IE = pmy_block->ie;
+  const int JS = pmy_block->js;
+  const int JE = pmy_block->je;
+  const int KS = pmy_block->ks;
+  const int KE = pmy_block->ke;
 
   Mesh *pm = pmy_block->pmy_mesh;
 
@@ -317,18 +319,18 @@ void Particles::SendToNeighbors()
   }
 
   for (long k = 0; k < npar; ) {
-    // Convert to the MeshBlock coordinates.
-    Real x1, x2, x3;
-    _CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
-
     // Check if a particle is outside the boundary.
-    int ox1 = _CheckSide(NX1, x1, X1MIN, X1MAX),
-        ox2 = _CheckSide(NX2, x2, X2MIN, X2MAX),
-        ox3 = _CheckSide(NX3, x3, X3MIN, X3MAX);
+    int ox1 = _CheckSide(xi1(k), NX1, IS, IE),
+        ox2 = _CheckSide(xi2(k), NX2, JS, JE),
+        ox3 = _CheckSide(xi3(k), NX3, KS, KE);
     if (ox1 == 0 && ox2 == 0 && ox3 == 0) {
       ++k;
       continue;
     }
+
+    // Convert to the MeshBlock coordinates.
+    Real x1, x2, x3;
+    _CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
 
     // Find the neighbor MeshBlock to send it to.
     MeshBlockTree *pnmbt =
@@ -688,15 +690,15 @@ void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn int _CheckSide(int nx, Real x, Real xmin, Real xmax)
-//  \brief returns -1 if x < xmin and nx > 1, +1 if x > xmax and nx > 1,
+//! \fn int _CheckSide(Real xi, int nx, int xi1, int xi2)
+//  \brief returns -1 if int(xi) < xi1 and nx > 1, +1 if int(xi) > xi2 and nx > 1,
 //         and 0 otherwise.
 
-inline int _CheckSide(int nx, Real x, Real xmin, Real xmax)
+inline int _CheckSide(Real xi, int nx, int xi1, int xi2)
 {
    if (nx > 1) {
-     if (x < xmin) return -1;
-     if (x > xmax) return +1;
+     if (int(xi) < xi1) return -1;
+     if (int(xi) > xi2) return +1;
    }
    return 0;
 }
