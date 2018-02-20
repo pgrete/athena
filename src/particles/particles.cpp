@@ -17,6 +17,7 @@
 bool Particles::initialized = false;
 int Particles::nint = 0;
 int Particles::nreal = 0;
+int Particles::naux = 0;
 int Particles::ipid = -1;
 int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
 int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
@@ -73,6 +74,9 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   // Allocate integer properties.
   realprop.NewAthenaArray(nreal,nparmax);
 
+  // Allocate auxiliary properties.
+  if (naux > 0) auxprop.NewAthenaArray(naux,nparmax);
+
   // Shallow copy to shorthands.
   AssignShorthands();
 
@@ -99,6 +103,9 @@ Particles::~Particles()
 
   // Delete real properties.
   realprop.DeleteAthenaArray();
+
+  // Delete auxiliary properties.
+  if (naux > 0) auxprop.DeleteAthenaArray();
 
   // Delete position indices.
   xi1.DeleteAthenaArray();
@@ -417,6 +424,7 @@ void Particles::FlushReceiveBuffer()
     nparmax += 2 * (npar + nrecv - nparmax);  // Increase maximum number of particles
     intprop.ResizeLastDimension(nparmax);     // Increase size of property arrays
     realprop.ResizeLastDimension(nparmax);
+    if (naux > 0) auxprop.ResizeLastDimension(nparmax);
     AssignShorthands();
     xi1.ResizeLastDimension(nparmax);         // Increase size of index arrays
     xi2.ResizeLastDimension(nparmax);
@@ -501,6 +509,16 @@ int Particles::AddRealProperty()
 {
   _ErrorIfInitialized("Particles::AddRealProperty", initialized);
   return nreal++;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn int Particles::AddAuxProperty()
+//  \brief adds one auxiliary property to the particles and returns the index.
+
+int Particles::AddAuxProperty()
+{
+  _ErrorIfInitialized("Particles::AddAuxProperty", initialized);
+  return naux++;
 }
 
 //--------------------------------------------------------------------------------------

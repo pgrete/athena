@@ -48,11 +48,13 @@ protected:
   // Class methods
   static int AddIntProperty();
   static int AddRealProperty();
+  static int AddAuxProperty();
   static void Migrate(Mesh *pm);
 
   // Class variables
   static bool initialized;  // whether or not the class is initialized
   static int nint, nreal;   // numbers of integer and real properties
+  static int naux;          // number of auxiliary properties
 
   static int ipid;              // index for the particle ID
   static int ixp, iyp, izp;     // indices for the position components
@@ -65,6 +67,8 @@ protected:
   // Instance variables
   AthenaArray<long> intprop;   // integer particle properties
   AthenaArray<Real> realprop;  // real particle properties
+  AthenaArray<Real> auxprop;   // auxiliary particle properties (for intermediate
+                               //     computations)
 
   AthenaArray<Real> xi1, xi2, xi3;  // position indices of each particle
                                     // in local meshblock
