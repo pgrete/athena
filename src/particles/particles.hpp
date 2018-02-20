@@ -95,6 +95,9 @@ private:
   // Instance methods
   void SendToNeighbors();
   void FlushReceiveBuffer();
+  void InterpolateMeshToParticles(
+           const AthenaArray<Real>& meshprop, const AthenaArray<int>& meshindices,
+           const AthenaArray<int>& auxindices);
 
                             // MeshBlock-to-MeshBlock communication:
   AthenaArray<long> irecv;  //   integer receive buffers

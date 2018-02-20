@@ -459,6 +459,23 @@ void Particles::FlushReceiveBuffer()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::InterpolateMeshToParticles(
+//               const AthenaArray<Real>& meshprop,
+//               const AthenaArray<int>& meshindices,
+//               const AthenaArray<int>& auxindices);
+//  \brief interpolates meshprop at specified property indices meshindices onto
+//         auxprop of particles at the corresponding property indices auxindices.
+
+void Particles::InterpolateMeshToParticles(
+         const AthenaArray<Real>& meshprop,
+         const AthenaArray<int>& meshindices,
+         const AthenaArray<int>& auxindices)
+{
+  for (long k = 0; k < npar; ++k)
+    ;
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::Update(Mesh *pm)
 //  \brief updates all particle positions and velocities from t to t + dt.
 //======================================================================================
