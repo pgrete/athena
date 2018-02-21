@@ -109,4 +109,24 @@ private:
   Real pm_dxi1, pm_dxi2, pm_dxi3;  // maximum index distance from a particle in each dir
 };
 
+//--------------------------------------------------------------------------------------
+//! \class DustParticles
+//  \brief defines the class for dust particles that interact with the gas via drag
+//         force.
+
+class DustParticles : public Particles {
+
+public:
+  // Constructor
+  DustParticles(MeshBlock *pmb, ParameterInput *pin);
+
+  // Destructor
+  ~DustParticles();
+
+private:
+  // Instance variables
+  Real mass;  // mass of each particle
+  Real taus;  // stopping time (in code units)
+};
+
 #endif
