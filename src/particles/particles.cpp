@@ -6,6 +6,7 @@
 //! \file particles.cpp
 //  \brief implements functions in particle classes
 
+#include <cmath>
 #include <sstream>
 #include <string>
 #include "../athena_arrays.hpp"
@@ -31,6 +32,10 @@ void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
 void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
                           Real& x1, Real& x2, Real& x3);
 int _CheckSide(Real xi, int nx, int xi1, int xi2);
+Real _ParticleMeshWeightFunction(Real dxi);
+
+// Particle-mesh constants.
+const Real RINF = 1;  // radius of influence
 
 //--------------------------------------------------------------------------------------
 //! \fn Particles::Initialize()
@@ -84,6 +89,11 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   xi1.NewAthenaArray(nparmax);
   xi2.NewAthenaArray(nparmax);
   xi3.NewAthenaArray(nparmax);
+
+  // Preprocess the particle-mesh method.
+  pm_dxi1 = pmb->block_size.nx1 > 1 ? RINF : 0;
+  pm_dxi2 = pmb->block_size.nx2 > 1 ? RINF : 0;
+  pm_dxi3 = pmb->block_size.nx3 > 1 ? RINF : 0;
 
   // Allocate buffers.
   nrecvmax = 1;
@@ -257,8 +267,6 @@ void Particles::Drift(Real t, Real dt)
 //--------------------------------------------------------------------------------------
 //! \fn void Particles::Kick(Real t, Real dt)
 //  \brief updates the particle velocities from t to t + dt given accelerations at t.
-
-#include <cmath>
 
 void Particles::Kick(Real t, Real dt)
 {
@@ -471,8 +479,40 @@ void Particles::InterpolateMeshToParticles(
          const AthenaArray<int>& meshindices,
          const AthenaArray<int>& auxindices)
 {
-  for (long k = 0; k < npar; ++k)
-    ;
+  // Check the index mapping.
+  int nprop = meshindices.GetSize();
+  if (nprop <= 0 || auxindices.GetSize() != nprop) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::InterpolateMeshToParticles]"
+        << std::endl
+        << "index arrays meshindices and auxindices does not match." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+    return;
+  }
+
+  // Loop over each particle.
+  for (long k = 0; k < npar; ++k) {
+    for (int i = 0; i < nprop; ++i)
+      auxprop(auxindices(i),k) = 0;
+
+    // Find the domain the particle influences.
+    int ix1s = int(xi1(k) - pm_dxi1), ix1e = int(xi1(k) + pm_dxi1);
+    int ix2s = int(xi2(k) - pm_dxi2), ix2e = int(xi2(k) + pm_dxi2);
+    int ix3s = int(xi3(k) - pm_dxi3), ix3e = int(xi3(k) + pm_dxi3);
+
+    // Weight each cell and accumulate the mesh properties onto the particles.
+    for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
+      Real w3 = _ParticleMeshWeightFunction(ix3 - xi3(k));
+      for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
+        Real w23 = w3 * _ParticleMeshWeightFunction(ix2 - xi2(k));
+        for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
+          Real weight = w23 * _ParticleMeshWeightFunction(ix1 - xi1(k));
+          for (int i = 0; i < nprop; ++i)
+            auxprop(auxindices(i),k) += weight * meshprop(meshindices(i),ix3,ix2,ix1);
+        }
+      }
+    }
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -775,4 +815,21 @@ inline int _CheckSide(Real xi, int nx, int xi1, int xi2)
      if (int(xi) > xi2) return +1;
    }
    return 0;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn Real _ParticleMeshWeightFunction(Real dxi)
+//  \brief evaluates the weight function given index distance.
+
+Real _ParticleMeshWeightFunction(Real dxi)
+{
+  if (dxi < 0) dxi = -dxi;
+
+  if (dxi < 0.5)
+    return 0.75 - dxi * dxi;
+  else if (dxi < 1.5) {
+    Real x = 1.5 - dxi;
+    return 0.5 * (x * x);
+  } else
+    return 0;
 }
