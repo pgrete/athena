@@ -66,6 +66,10 @@ ODEWrapper::ODEWrapper(Species *pspec, ParameterInput *pin) {
   long int maxsteps = pin->GetOrAddInteger("chemistry", "maxsteps", 1000);
   //maximum order
   int maxorder = pin->GetOrAddInteger("chemistry", "maxorder", 3);
+  //maximum number of error test fails
+  int maxerrtest = pin->GetOrAddInteger("chemistry", "maxerrtest", 7);
+  //maximum number of t = h+t warnings
+  int maxhnil = pin->GetOrAddInteger("chemistry", "maxhnil", 10);
   //stability limit detection
   int stldet = pin->GetOrAddInteger("chemistry", "stldet", 0);
 
@@ -113,6 +117,14 @@ ODEWrapper::ODEWrapper(Species *pspec, ParameterInput *pin) {
   //set maximum order
   flag = CVodeSetMaxOrd(cvode_mem_, maxorder);
   CheckFlag(&flag, "CVodeSetMaxOrd", 1);
+
+  //set maximum number of error test fails
+  flag = CVodeSetMaxErrTestFails(cvode_mem_, maxerrtest);
+  CheckFlag(&flag, "CVodeSetMaxErrTestFails", 1);
+
+  //set maximum number of t+h=t warnings
+  flag = CVodeSetMaxHnilWarns(cvode_mem_, maxhnil);
+  CheckFlag(&flag, "CVodeSetMaxHnilWarns", 1);
 
   //set whether enable stability limit detection
   //Only used to reduce the order of the order is larger than 3
