@@ -569,6 +569,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
     if (output_params.variable.compare("r") == 0 || 
         output_params.variable.compare("prim") == 0 ||
         output_params.variable.compare("cons") == 0) {
+#ifdef INCLUDE_CHEMISTRY
       for (int i=0; i<prad->pradintegrator->ncol; i++) {
         char vi[10];
         pod = new OutputData;
@@ -579,6 +580,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
         AppendOutputDataNode(pod);
         num_vars_++;
       }
+#endif
       for (int i=0; i<prad->nfreq; i++) {
         char vi[10];
         pod = new OutputData;
@@ -590,6 +592,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
         num_vars_++;
       }
     }
+#ifdef INCLUDE_CHEMISTRY
     //for testing six-ray. Not implemented in HDF5 output
     if (output_params.variable.compare("r_test") == 0) {
         pod = new OutputData;
@@ -641,6 +644,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb)
         AppendOutputDataNode(pod);
         num_vars_++;
     }
+#endif
   }
 
   if (SPECIES_ENABLED) {
@@ -892,7 +896,7 @@ bool OutputType::SliceOutputData(MeshBlock *pmb, int dim)
     }
 
     ReplaceOutputDataNode(pdata,pnew);
-    pdata = pdata->pnext;
+    pdata = pnew->pnext;
   }
  
   // modify array indices
