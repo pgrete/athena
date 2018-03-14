@@ -164,9 +164,8 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag)
     else if (variable.compare("r") == 0 && RADIATION_ENABLED) {
       std::strncpy(dataset_names[n_dataset++], "rad", max_name_length+1);
     }
-    if (SPECIES_ENABLED) {
-      else if (variable.compare("s") == 0) 
-        std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
+    if (SPECIES_ENABLED && variable.compare("s") == 0) {
+      std::strncpy(dataset_names[n_dataset++], "species", max_name_length+1);
     }
     else if(variable.compare(0,1,"uov") == 0
          || variable.compare(0,1,"user_out_var") == 0)
