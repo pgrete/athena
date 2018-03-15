@@ -412,6 +412,11 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
     rate = kcr_[i] * yprev[incr_[i]];
     ydotg[incr_[i]] -= rate;
     ydotg[outcr_[i]] += rate;
+//#ifdef DEBUG
+//    printf("CR, i=%d, rate=%.2e\n", i, rate);
+//    printf("ydotg_incr=%.2e, ydotg_outcr=%.2e\n",
+//            ydotg[incr_[i]], ydotg[outcr_[i]]);
+//#endif
   }
 
   //2body reactions
@@ -424,6 +429,13 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
     ydotg[in2body2_[i]] -= rate;
     ydotg[out2body1_[i]] += rate;
     ydotg[out2body2_[i]] += rate;
+//#ifdef DEBUG
+//    printf("2body, i=%d, rate=%.2e\n", i, rate);
+//    printf("ydotg_in2body1=%.2e, ydotg_in2body2=%.2e\n",
+//            ydotg[in2body1_[i]], ydotg[in2body2_[i]]);
+//    printf("ydotg_out2body1=%.2e, ydotg_out2body2=%.2e\n",
+//            ydotg[out2body1_[i]], ydotg[out2body2_[i]]);
+//#endif
   }
 
   //photo reactions
@@ -431,6 +443,11 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
     rate = kph_[i] * yprev[inph_[i]];
     ydotg[inph_[i]] -= rate;
     ydotg[outph1_[i]] += rate;
+//#ifdef DEBUG
+//    printf("photo, i=%d, rate=%.2e\n", i, rate);
+//    printf("ydotg_inph=%.2e, ydotg_outph1=%.2e\n",
+//            ydotg[inph_[i]], ydotg[outph1_[i]]);
+//#endif
   }
 
   //grain assisted reactions
@@ -438,6 +455,11 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
     rate = kgr_[i] * yprev[ingr_[i]];
     ydotg[ingr_[i]] -= rate;
     ydotg[outgr_[i]] += rate;
+//#ifdef DEBUG
+//    printf("gr, i=%d, rate=%.2e\n", i, rate);
+//    printf("ydotg_ingr=%.2e, ydotg_outgr=%.2e\n",
+//            ydotg[ingr_[i]], ydotg[outgr_[i]]);
+//#endif
   }
 
   //energy equation
@@ -448,8 +470,26 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 	for (int i=0; i<NSPECIES; i++) {
 		ydot[i] = ydotg[i];
 	}
+//#ifdef DEBUG
+//  printf("ydot: ");
+//  for (int j=0; j<NSPECIES; j++) {
+//    printf("%s: %.2e  ", species_names[j].c_str(), ydot[j]);
+//  }
+//  printf("abundances: ");
+//  for (int j=0; j<NSPECIES+ngs_; j++) {
+//    printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
+//  }
+//  printf("\n");
+//  OutputRates(stdout);
+//  printf("rad_ = ");
+//  for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
+//    printf("%.2e  ", rad_[ifreq]);
+//  }
+//  printf("\n");
+//  printf("nH_ = %.2e\n", nH_);
+//#endif
 
-  //throw error if nan, or inf, or large negative value occurs
+  //throw error if nan, or inf, or large value occurs
   for (int i=0; i<NSPECIES; i++) {
     if ( isnan(ydot[i]) || isinf(ydot[i]) ) {
       printf("ydot: ");
@@ -945,6 +985,20 @@ Real ChemNetwork::dEdt_(const Real y[NSPECIES+ngs_]) {
   dEdt = (GCR + GPE + GH2gr + GH2pump + GH2diss)
             - (LCII + LCI + LOI + LHotGas + LCOR 
                 + LH2 + LDust + LRec + LH2diss + LHIion);
+#ifdef DEBUG
+//  printf("GCR=%.2e, GPE=%.2e, GH2gr=%.2e, GH2pump=%.2e GH2diss=%.2e\n",
+//      GCR , GPE , GH2gr , GH2pump , GH2diss);
+//  printf("LCII=%.2e, LCI=%.2e, LOI=%.2e, LHotGas=%.2e, LCOR=%.2e\n",
+//      LCII , LCI , LOI , LHotGas , LCOR);
+//  printf("LH2=%.2e, LDust=%.2e, LRec=%.2e, LH2diss=%.2e, LHIion=%.2e\n",
+//      LH2 , LDust , LRec , LH2diss , LHIion);
+//  printf("T=%.2e, dEdt=%.2e, y[iE_]=%.2e, Cv=%.2e, nH=%.2e\n", T, dEdt, y[iE_],
+//      Thermo::CvCold(y[iH2_], xHe_, y[ige_]), nH_);
+//  for (int i=0; i<NSPECIES+ngs_; i++) {
+//    printf("%s: %.2e  ", species_names_all_[i].c_str(), y[i]);
+//  }
+//  printf("\n");
+#endif //debug
 	if ( isnan(dEdt) || isinf(dEdt) ) {
     if ( isnan(LCOR) || isinf(LCOR) ) {
       if (isNCOeff_LVG_ != 0) {
