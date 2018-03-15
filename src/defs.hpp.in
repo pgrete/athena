@@ -25,12 +25,6 @@
 // Riemann solver
 #define RIEMANN_SOLVER "@RSOLVER@"
 
-// spatial reconstruction algorithm
-#define RECONSTRUCTION_METHOD "@RECONSTRUCT@"
-
-// hydro time-integration algorithm
-#define HYDRO_TIME_INTEGRATOR "@HYDRO_INTEGRATOR@"
-
 // include magnetic fields? default=0 (false)
 #define MAGNETIC_FIELDS_ENABLED @MAGNETIC_FIELDS_ENABLED@
 
@@ -43,6 +37,14 @@
 // include species?  default=0 (false).
 #define SPECIES_ENABLED @SPECIES_ENABLED@
 
+// include self gravity? default=0 (false)
+#define SELF_GRAVITY_ENABLED @SELF_GRAVITY_ENABLED@
+
+// make use of FFT? default=0 (false)
+#define FFT_ENABLED @FFT_ENABLED@
+
+#define @FFT_DEFINE@
+
 // enable special or general relativity? default=0 (false)
 #define RELATIVISTIC_DYNAMICS @RELATIVISTIC_DYNAMICS@
 
@@ -51,6 +53,9 @@
 
 // enable GR frame transformations? default=0 (false)
 #define FRAME_TRANSFORMATIONS @FRAME_TRANSFORMATIONS@
+
+// floating point single precision option
+#define SINGLE_PRECISION_ENABLED @SINGLE_PRECISION_ENABLED@
 
 // MPI parallelization (MPI_PARALLEL or NOT_MPI_PARALLEL)
 #define @MPI_OPTION@
@@ -88,7 +93,7 @@
 #define NHYDRO @NHYDRO_VARIABLES@
 #define NFIELD @NFIELD_VARIABLES@
 #define NWAVE @NWAVE_VALUE@
-#define NGHOST 2
+#define NGHOST @NUMBER_GHOST_CELLS@
 #define MAX_NSTEP 4
 
 //----------------------------------------------------------------------------------------

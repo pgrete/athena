@@ -561,7 +561,7 @@ void EquationOfState::PrimitiveToConserved(const AthenaArray<Real> &prim,
   for (int k = ks; k <= ke; ++k) {
     for (int j = js; j <= je; ++j) {
       pco->CellMetric(k, j, is, ie, g_, g_inv_);
-      #pragma simd
+      #pragma omp simd
       for (int i = is; i <= ie; ++i) {
         PrimitiveToConservedSingle(prim, gamma_, bb_cc, g_, g_inv_, k, j, i, cons, pco);
       }
@@ -643,8 +643,9 @@ static void PrimitiveToConservedSingle(const AthenaArray<Real> &prim, Real gamma
 //----------------------------------------------------------------------------------------
 // Function for calculating relativistic fast wavespeeds
 // Inputs:
-//   prim: 1D array of primitive states
+//   prim: 3D array of primitive states
 //   bbx_vals: 1D array of B^x
+//   k,j: x3- and x2-indices
 //   il,iu: lower and upper x1-indices
 //   ivx: type of interface (IVX for x1, IVY for x2, IVZ for x3)
 // Outputs:
@@ -657,7 +658,7 @@ static void PrimitiveToConservedSingle(const AthenaArray<Real> &prim, Real gamma
 //   almost same function as in adiabatic_mhd_sr.cpp
 
 void EquationOfState::FastMagnetosonicSpeedsSR(const AthenaArray<Real> &prim,
-    const AthenaArray<Real> &bbx_vals, int il, int iu, int ivx,
+    const AthenaArray<Real> &bbx_vals, int k, int j, int il, int iu, int ivx,
     AthenaArray<Real> &lambdas_p, AthenaArray<Real> &lambdas_m)
 {
   // Parameters
@@ -673,20 +674,20 @@ void EquationOfState::FastMagnetosonicSpeedsSR(const AthenaArray<Real> &prim,
   const Real gamma_adi_red = gamma_adi/(gamma_adi-1.0);
 
   // Go through states
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
 
     // Extract primitives
-    const Real &rho = prim(IDN,i);
-    const Real &pgas = prim(IEN,i);
+    const Real &rho = prim(IDN,k,j,i);
+    const Real &pgas = prim(IEN,k,j,i);
     Real u[4];
-    u[1] = prim(ivx,i);
-    u[2] = prim(ivy,i);
-    u[3] = prim(ivz,i);
+    u[1] = prim(ivx,k,j,i);
+    u[2] = prim(ivy,k,j,i);
+    u[3] = prim(ivz,k,j,i);
     u[0] = std::sqrt(1.0 + SQR(u[1]) + SQR(u[2]) + SQR(u[3]));
     const Real &bbx = bbx_vals(i);
-    const Real &bby = prim(IBY,i);
-    const Real &bbz = prim(IBZ,i);
+    const Real &bby = prim(IBY,k,j,i);
+    const Real &bbz = prim(IBZ,k,j,i);
 
     // Calculate 3-velocity
     Real vx = u[1]/u[0];

@@ -34,6 +34,7 @@
 #include "../../eos/eos.hpp"
 #include "../radiation.hpp"
 #include "../../species/species.hpp"
+#include "../../bvals/bvals.hpp"
 #ifdef INCLUDE_CHEMISTRY
 #include "../../chemistry/shielding.hpp"
 #include "../../chemistry/thermo.hpp"
@@ -733,8 +734,8 @@ void RadIntegrator::CopyToOutput() {
 void RadIntegrator::SetSixRayNeighbors() {
   //assign neighbors for six-ray
   NeighborBlock* nb;
-  for(int n=0; n<pmy_mb->nneighbor; n++) {
-    nb = &pmy_mb->neighbor[n];
+  for(int n=0; n<pmy_mb->pbval->nneighbor; n++) {
+    nb = &pmy_mb->pbval->neighbor[n];
     if (nb->fid == INNER_X1) {
       pfacenb_[INNER_X1] = nb;
     } else if (nb->fid == INNER_X2) {
