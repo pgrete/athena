@@ -137,8 +137,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     for (int k=ks; k<=ke; ++k) {
       // reset loop limits for polar boundary
       int jl=js; int ju=je+1;
-      if (block_bcs[INNER_X2] == 5) jl=js+1;
-      if (block_bcs[OUTER_X2] == 5) ju=je;
+      if (pbval->block_bcs[INNER_X2] == 5) jl=js+1;
+      if (pbval->block_bcs[OUTER_X2] == 5) ju=je;
       for (int j=jl; j<=ju; ++j) {
         pcoord->Face2Area(k,j,is,ie,area);
         pcoord->Edge3Length(k,j,is,ie+1,len);
@@ -195,8 +195,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       for (int k=ks; k<=ke; ++k) {
         // reset loop limits for polar boundary
         int jl=js; int ju=je+1;
-        if (block_bcs[INNER_X2] == 5) jl=js+1;
-        if (block_bcs[OUTER_X2] == 5) ju=je;
+        if (pbval->block_bcs[INNER_X2] == 5) jl=js+1;
+        if (pbval->block_bcs[OUTER_X2] == 5) ju=je;
         for (int j=jl; j<=ju; ++j) {
           pcoord->Face2Area(k,j,is,ie,area);
           pcoord->Edge1Length(k  ,j,is,ie,len);
@@ -332,7 +332,7 @@ void LoopInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
   if (MAGNETIC_FIELDS_ENABLED) {
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=1; i<=(NGHOST); ++i) {
         b.x1f(k,j,(is-i)) = b.x1f(k,j,is);
       }
@@ -340,7 +340,7 @@ void LoopInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je+1; ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=1; i<=(NGHOST); ++i) {
         b.x2f(k,j,(is-i)) = b.x2f(k,j,is);
       }
@@ -348,7 +348,7 @@ void LoopInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
     for (int k=ks; k<=ke+1; ++k) {
     for (int j=js; j<=je; ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=1; i<=(NGHOST); ++i) {
         b.x3f(k,j,(is-i)) = b.x3f(k,j,is);
       }
@@ -381,7 +381,7 @@ void LoopOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
   if (MAGNETIC_FIELDS_ENABLED) {
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=1; i<=(NGHOST); ++i) {
         b.x1f(k,j,(ie+i+1)) = b.x1f(k,j,(ie+1));
       }
@@ -389,7 +389,7 @@ void LoopOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
     for (int k=ks; k<=ke; ++k) { 
     for (int j=js; j<=je+1; ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=1; i<=(NGHOST); ++i) {
         b.x2f(k,j,(ie+i)) = b.x2f(k,j,ie);
       }
@@ -397,7 +397,7 @@ void LoopOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
     for (int k=ks; k<=ke+1; ++k) {
     for (int j=js; j<=je; ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=1; i<=(NGHOST); ++i) {
         b.x3f(k,j,(ie+i)) = b.x3f(k,j,ie);
       }
@@ -430,7 +430,7 @@ void LoopInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
   if (MAGNETIC_FIELDS_ENABLED) {
     for (int k=ks; k<=ke; ++k) {
     for (int j=1; j<=(NGHOST); ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=is; i<=ie+1; ++i) {
         b.x1f(k,(js-j),i) = b.x1f(k,js,i);
       }
@@ -438,7 +438,7 @@ void LoopInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
     for (int k=ks; k<=ke; ++k) {
     for (int j=1; j<=(NGHOST); ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=is; i<=ie; ++i) {
         b.x2f(k,(js-j),i) = b.x2f(k,js,i);
       }
@@ -446,7 +446,7 @@ void LoopInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
     for (int k=ks; k<=ke+1; ++k) {
     for (int j=1; j<=(NGHOST); ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=is; i<=ie; ++i) {
         b.x3f(k,(js-j),i) = b.x3f(k,js,i);
       }
@@ -479,7 +479,7 @@ void LoopOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
   if (MAGNETIC_FIELDS_ENABLED) {
     for (int k=ks; k<=ke; ++k) {
     for (int j=1; j<=(NGHOST); ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=is; i<=ie+1; ++i) {
         b.x1f(k,(je+j  ),i) = b.x1f(k,(je  ),i);
       }
@@ -487,7 +487,7 @@ void LoopOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
     for (int k=ks; k<=ke; ++k) {
     for (int j=1; j<=(NGHOST); ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=is; i<=ie; ++i) {
         b.x2f(k,(je+j+1),i) = b.x2f(k,(je+1),i);
       }
@@ -495,7 +495,7 @@ void LoopOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 
     for (int k=ks; k<=ke+1; ++k) {
     for (int j=1; j<=(NGHOST); ++j) {
-#pragma simd
+#pragma omp simd
       for (int i=is; i<=ie; ++i) {
         b.x3f(k,(je+j  ),i) = b.x3f(k,(je  ),i);
       }

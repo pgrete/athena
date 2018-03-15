@@ -171,18 +171,18 @@ void RadIntegrator::UpdateRadiation(int direction) {
         pmy_rad->ir(k, j, i, iph_CO * pmy_rad->nang) *= 
           fs_CO;
         //debug
-#ifdef DEBUG
-        if (dens > 5.) {
-          printf("RadIntegrator: nH=%.2e, temp=%.2e, cs=%.2e, Lshield=%.2e, NCO=%.2e, NH2=%.2e",
-                 dens, temp, cs, Lshield, NCO, NH2);
-          printf(", mui=%.2e, yH2=%.2e, ye=%.2e\n",mu_i, yH2, ye);
-        }
-        if (isnan(fs_CO) ) {
-          printf("RadIntegrator::UpdateRadJeans(): fs_CO=nan, Lshield=%.2e\n", Lshield);
-          printf("press=%.2e, dens=%.2e, temp=%.2e, cs=%.2e, CO=%.2e, NCO=%.2e, NH2=%.2e\n",
-                  press, dens, temp, cs, pmy_mb->pspec->s(iCO, k, j, i), NCO, NH2);
-        }
-#endif
+//#ifdef DEBUG
+//        if (dens > 5.) {
+//          printf("RadIntegrator: nH=%.2e, temp=%.2e, cs=%.2e, Lshield=%.2e, NCO=%.2e, NH2=%.2e",
+//                 dens, temp, cs, Lshield, NCO, NH2);
+//          printf(", mui=%.2e, yH2=%.2e, ye=%.2e\n",mu_i, yH2, ye);
+//        }
+//        if (isnan(fs_CO) ) {
+//          printf("RadIntegrator::UpdateRadJeans(): fs_CO=nan, Lshield=%.2e\n", Lshield);
+//          printf("press=%.2e, dens=%.2e, temp=%.2e, cs=%.2e, CO=%.2e, NCO=%.2e, NH2=%.2e\n",
+//                  press, dens, temp, cs, pmy_mb->pspec->s(iCO, k, j, i), NCO, NH2);
+//        }
+//#endif
 
         //GPE 
         pmy_rad->ir(k, j, i, iPE * pmy_rad->nang) = rad_G0_

@@ -44,17 +44,13 @@ EquationOfState::~EquationOfState()
 
 void EquationOfState::ConservedToPrimitive(AthenaArray<Real> &cons,
   const AthenaArray<Real> &prim_old, const FaceField &b, AthenaArray<Real> &prim,
-  AthenaArray<Real> &bcc, Coordinates *pco, int is, int ie, int js, int je, int ks, int ke)
+  AthenaArray<Real> &bcc, Coordinates *pco, int is,int ie, int js,int je, int ks,int ke)
 {
   Real gm1 = GetGamma() - 1.0;
 
-  int nthreads = pmy_block_->pmy_mesh->GetNumMeshThreads();
-#pragma omp parallel default(shared) num_threads(nthreads)
-{
   for (int k=ks; k<=ke; ++k){
-#pragma omp for schedule(dynamic)
   for (int j=js; j<=je; ++j){
-#pragma simd
+#pragma omp simd
     for (int i=is; i<=ie; ++i){
       Real& u_d  = cons(IDN,k,j,i);
       Real& u_m1 = cons(IM1,k,j,i);
@@ -85,7 +81,6 @@ void EquationOfState::ConservedToPrimitive(AthenaArray<Real> &cons,
       w_p = (w_p > pressure_floor_) ?  w_p : pressure_floor_;
     }
   }}
-}
 
   return;
 }
@@ -103,13 +98,11 @@ void EquationOfState::PrimitiveToConserved(const AthenaArray<Real> &prim,
 {
   Real igm1 = 1.0/(GetGamma() - 1.0);
 
-  int nthreads = pmy_block_->pmy_mesh->GetNumMeshThreads();
-#pragma omp parallel default(shared) num_threads(nthreads)
-{
+  #pragma omp simd
   for (int k=ks; k<=ke; ++k){
-#pragma omp for schedule(dynamic)
   for (int j=js; j<=je; ++j){
-#pragma simd
+    //#pragma omp simd
+    #pragma novector
     for (int i=is; i<=ie; ++i){
       Real& u_d  = cons(IDN,k,j,i);
       Real& u_m1 = cons(IM1,k,j,i);
@@ -130,7 +123,7 @@ void EquationOfState::PrimitiveToConserved(const AthenaArray<Real> &prim,
       u_e = w_p*igm1 + 0.5*w_d*(SQR(w_vx) + SQR(w_vy) + SQR(w_vz));
     }
   }}
-}
+
   return;
 }
 
