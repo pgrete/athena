@@ -15,10 +15,10 @@ def prepare():
       prob='read_vtk',
       chemistry='gow16', 
       radiation='loc_jeans',
-      cvode_path='/usr/local',
-      cxx="g++"
-      #cvode_path='/home/munan/install',
-      #cxx="icc"
+      #cvode_path='/usr/local',
+      #cxx="g++"
+      cvode_path='/home/munan/install',
+      cxx="icc"
       )
   athena.make()
 
