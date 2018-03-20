@@ -65,8 +65,8 @@ void Particles::Initialize()
 
 Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 {
-  // Initialize the class if first called.
-  if (!initialized) Particles::Initialize();
+  // Initialize the class when first called.
+  if (!initialized) Initialize();
 
   // Point to the calling MeshBlock.
   pmy_block = pmb;

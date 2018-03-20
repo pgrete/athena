@@ -61,8 +61,9 @@ protected:
   static int ivpx, ivpy, ivpz;  // indices for the velocity components
 
   // Instance methods
-  void AssignShorthands();  // Needs to be called everytime
-                            // intprop & realprop are resized
+  virtual void AssignShorthands();  // Needs to be called everytime
+                                    // intprop, realprop, & auxprop are resized
+                                    // Be sure to call back when derived.
 
   // Instance variables
   AthenaArray<long> intprop;   // integer particle properties
@@ -117,6 +118,9 @@ private:
 class DustParticles : public Particles {
 
 public:
+  // Class methods
+  static void Initialize();
+
   // Constructor
   DustParticles(MeshBlock *pmb, ParameterInput *pin);
 
@@ -124,9 +128,18 @@ public:
   ~DustParticles();
 
 private:
+  // Class variables
+  static bool initialized;   // whether or not the class is initialized
+  static int iux, iuy, iuz;  // indices for the gas velocity
+
+  // Instance methods.
+  void AssignShorthands();
+
   // Instance variables
   Real mass;  // mass of each particle
   Real taus;  // stopping time (in code units)
+
+  AthenaArray<Real> ux, uy, uz;  // shorthand for gas velocity components
 };
 
 #endif
