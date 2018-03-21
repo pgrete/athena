@@ -27,7 +27,7 @@ friend class MeshBlock;  // Make writing initial conditions possible.
 public:
   // Class methods
   static void Initialize();
-  static void Update(Mesh *pm);  // master integrator
+  static void Integrate(Mesh *pm);  // master integrator
   static void FormattedTableOutput(Mesh *pm, OutputParameters op); 
 
   // Constructor

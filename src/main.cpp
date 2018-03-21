@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
     }
 
     // TODO: Move this to the task list.
-    if (PARTICLES) Particles::Update(pmesh);
+    if (PARTICLES) Particles::Integrate(pmesh);
 
     pmesh->ncycle++;
     pmesh->time += pmesh->dt;

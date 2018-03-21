@@ -530,11 +530,11 @@ void Particles::InterpolateMeshToParticles(
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::Update(Mesh *pm)
+//! \fn void Particles::Integrate(Mesh *pm)
 //  \brief updates all particle positions and velocities from t to t + dt.
 //======================================================================================
 
-void Particles::Update(Mesh *pm)
+void Particles::Integrate(Mesh *pm)
 {
   MeshBlock *pmb = pm->pblock;
   Real dth = 0.5 * pm->dt;
