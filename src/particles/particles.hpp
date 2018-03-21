@@ -66,6 +66,9 @@ protected:
                                     // intprop, realprop, & auxprop are resized
                                     // Be sure to call back when derived.
   virtual void AddAcceleration(Real t, Real dt) = 0;
+  void InterpolateMeshToParticles(
+           const AthenaArray<Real>& meshprop, const AthenaArray<int>& meshindices,
+           const AthenaArray<int>& auxindices);
 
   // Instance variables
   AthenaArray<long> intprop;   // integer particle properties
@@ -99,9 +102,6 @@ private:
   // Instance methods
   void SendToNeighbors();
   void FlushReceiveBuffer();
-  void InterpolateMeshToParticles(
-           const AthenaArray<Real>& meshprop, const AthenaArray<int>& meshindices,
-           const AthenaArray<int>& auxindices);
 
   // MeshBlock-to-MeshBlock communication:
   AthenaArray<long> irecv;  //   integer receive buffers
@@ -134,6 +134,8 @@ private:
   // Class variables
   static bool initialized;   // whether or not the class is initialized
   static int iux, iuy, iuz;  // indices for the gas velocity
+  static AthenaArray<int> pm_meshindices, pm_auxindices;
+                             // Array of indices for particle-mesh mapping
 
   // Instance methods.
   void AssignShorthands();
