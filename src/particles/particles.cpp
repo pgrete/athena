@@ -283,6 +283,9 @@ void Particles::Kick(Real t, Real dt)
     apz(k) = 0;
   }
 
+  // Add acceleration to the particles.
+  AddAcceleration(t, dt);
+
   // Kick the particles.
   for (long k = 0; k < npar; ++k) {
     vpx(k) += dt * apx(k);

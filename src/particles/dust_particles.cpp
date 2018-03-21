@@ -65,3 +65,11 @@ void DustParticles::AssignShorthands()
   uy.InitWithShallowSlice(auxprop, 2, iuy, 1);
   uz.InitWithShallowSlice(auxprop, 2, iuz, 1);
 }
+
+//--------------------------------------------------------------------------------------
+//! \fn void DustParticles::AddAcceleration()
+//  \brief adds acceleration to particles.
+
+void DustParticles::AddAcceleration(Real t, Real dt)
+{
+}

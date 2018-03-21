@@ -65,6 +65,7 @@ protected:
   virtual void AssignShorthands();  // Needs to be called everytime
                                     // intprop, realprop, & auxprop are resized
                                     // Be sure to call back when derived.
+  virtual void AddAcceleration(Real t, Real dt) = 0;
 
   // Instance variables
   AthenaArray<long> intprop;   // integer particle properties
@@ -136,6 +137,7 @@ private:
 
   // Instance methods.
   void AssignShorthands();
+  void AddAcceleration(Real t, Real dt);
 
   // Instance variables
   Real mass;  // mass of each particle

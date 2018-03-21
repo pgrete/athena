@@ -36,7 +36,7 @@ class Coordinates;
 class Reconstruction;
 class Hydro;
 class Field;
-class Particles;
+class DustParticles;
 class Gravity;
 class GravityDriver;
 class AthenaFFT;
@@ -93,7 +93,7 @@ public:
   // physics-related objects
   Hydro *phydro;
   Field *pfield;
-  Particles *ppar;
+  DustParticles *ppar;
   Gravity *pgrav;
   EquationOfState *peos;
 
