@@ -22,6 +22,7 @@ int Particles::naux = 0;
 int Particles::ipid = -1;
 int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
 int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
+int Particles::iapx = -1, Particles::iapy = -1, Particles::iapz = -1;
 
 // Local function prototypes
 void _ErrorIfInitialized(const std::string& calling_function, bool initialized);
@@ -55,6 +56,11 @@ void Particles::Initialize()
   ivpx = AddRealProperty();
   ivpy = AddRealProperty();
   ivpz = AddRealProperty();
+
+  // Add particle acceleration.
+  iapx = AddAuxProperty();
+  iapy = AddAuxProperty();
+  iapz = AddAuxProperty();
 
   initialized = true;
 }
@@ -270,13 +276,18 @@ void Particles::Drift(Real t, Real dt)
 
 void Particles::Kick(Real t, Real dt)
 {
-  Real a1 = 0.0, a2 = 0.0, a3 = 0.0;  // TODO: might need to be put inside the loop for
-                                      // vectorization.
-
+  // Initialize the acceleration of the particles.
   for (long k = 0; k < npar; ++k) {
-    vpx(k) += dt * a1;
-    vpy(k) += dt * a2;
-    vpz(k) += dt * a3;
+    apx(k) = 0;
+    apy(k) = 0;
+    apz(k) = 0;
+  }
+
+  // Kick the particles.
+  for (long k = 0; k < npar; ++k) {
+    vpx(k) += dt * apx(k);
+    vpy(k) += dt * apy(k);
+    vpz(k) += dt * apz(k);
   }
 }
 
@@ -591,6 +602,9 @@ void Particles::AssignShorthands()
   vpx.InitWithShallowSlice(realprop, 2, ivpx, 1);
   vpy.InitWithShallowSlice(realprop, 2, ivpy, 1);
   vpz.InitWithShallowSlice(realprop, 2, ivpz, 1);
+  apx.InitWithShallowSlice(auxprop, 2, iapx, 1);
+  apy.InitWithShallowSlice(auxprop, 2, iapy, 1);
+  apz.InitWithShallowSlice(auxprop, 2, iapz, 1);
 }
 
 //--------------------------------------------------------------------------------------

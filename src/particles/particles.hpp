@@ -59,6 +59,7 @@ protected:
   static int ipid;              // index for the particle ID
   static int ixp, iyp, izp;     // indices for the position components
   static int ivpx, ivpy, ivpz;  // indices for the velocity components
+  static int iapx, iapy, iapz;  // indices for the acceleration compoenents
 
   // Instance methods
   virtual void AssignShorthands();  // Needs to be called everytime
@@ -74,9 +75,10 @@ protected:
   AthenaArray<Real> xi1, xi2, xi3;  // position indices of each particle
                                     // in local meshblock
 
-  AthenaArray<long> pid;            // shorthand for particle ID
-  AthenaArray<Real> xp, yp, zp;     // shorthand for position components
-  AthenaArray<Real> vpx, vpy, vpz;  // shorthand for velocity components
+  AthenaArray<long> pid;            // shorthands for particle ID
+  AthenaArray<Real> xp, yp, zp;     // shorthands for position components
+  AthenaArray<Real> vpx, vpy, vpz;  // shorthands for velocity components
+  AthenaArray<Real> apx, apy, apz;  // shorthands for acceleration components
 
   long npar;             // number of particles
   long nparmax;          // maximum number of particles per meshblock
