@@ -530,36 +530,39 @@ void Particles::InterpolateMeshToParticles(
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::Integrate(Mesh *pm)
+//! \fn void Particles::Integrate(Mesh *pm, int step)
 //  \brief updates all particle positions and velocities from t to t + dt.
 //======================================================================================
 
-void Particles::Integrate(Mesh *pm)
+void Particles::Integrate(Mesh *pm, int step)
 {
   MeshBlock *pmb = pm->pblock;
   Real dth = 0.5 * pm->dt;
 
-  // Drift particles.
-  while (pmb != NULL) {
-    pmb->ppar->Drift(pm->time, dth);
-    pmb = pmb->next;
-  }
-  Migrate(pm);
+  if (step == 1) {
+    // Drift particles.
+    while (pmb != NULL) {
+      pmb->ppar->Drift(pm->time, dth);
+      pmb = pmb->next;
+    }
+    Migrate(pm);
 
-  // Kick particles.
-  pmb = pm->pblock;
-  while (pmb != NULL) {
-    pmb->ppar->Kick(pm->time, pm->dt);
-    pmb = pmb->next;
-  }
+  } else if (step == 2) {
+    // Kick particles.
+    pmb = pm->pblock;
+    while (pmb != NULL) {
+      pmb->ppar->Kick(pm->time, pm->dt);
+      pmb = pmb->next;
+    }
 
-  // Drift particles.
-  pmb = pm->pblock;
-  while (pmb != NULL) {
-    pmb->ppar->Drift(pm->time + dth, dth);
-    pmb = pmb->next;
+    // Drift particles.
+    pmb = pm->pblock;
+    while (pmb != NULL) {
+      pmb->ppar->Drift(pm->time + dth, dth);
+      pmb = pmb->next;
+    }
+    Migrate(pm);
   }
-  Migrate(pm);
 }
 
 //--------------------------------------------------------------------------------------

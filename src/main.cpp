@@ -349,10 +349,9 @@ int main(int argc, char *argv[])
       if(SELF_GRAVITY_ENABLED == 2) // multigrid
         pmesh->pgrd->Solve(step);
       ptlist->DoTaskListOneSubstep(pmesh, step);
+      // TODO: Move this to the task list.
+      if (PARTICLES) Particles::Integrate(pmesh, step);
     }
-
-    // TODO: Move this to the task list.
-    if (PARTICLES) Particles::Integrate(pmesh);
 
     pmesh->ncycle++;
     pmesh->time += pmesh->dt;
