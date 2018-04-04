@@ -55,7 +55,7 @@ DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
   mass = pin->GetOrAddInteger("particles", "mass", 1);
 
   // Define stopping time.
-  taus = pin->GetOrAddInteger("particles", "taus", 1);
+  taus = pin->GetOrAddInteger("particles", "taus", 0.0);
 }
 
 //--------------------------------------------------------------------------------------
@@ -88,18 +88,18 @@ void DustParticles::AddAcceleration(Real t, Real dt)
   InterpolateMeshToParticles(pmy_block->phydro->w, pm_meshindices, pm_auxindices);
 
   // Add drag force to particles.
-  if (taus == 0.0) {
-    for (long k = 0; k < npar; ++k) {
-      vpx(k) = ux(k);
-      vpy(k) = uy(k);
-      vpz(k) = uz(k);
-    }
-  } else {
+  if (taus > 0.0) {
     Real taus1 = 1.0 / taus;
     for (long k = 0; k < npar; ++k) {
       apx(k) += taus1 * (ux(k) - vpx(k));
       apy(k) += taus1 * (uy(k) - vpy(k));
       apz(k) += taus1 * (uz(k) - vpz(k));
+    }
+  } else if (taus == 0.0) {
+    for (long k = 0; k < npar; ++k) {
+      vpx(k) = ux(k);
+      vpy(k) = uy(k);
+      vpz(k) = uz(k);
     }
   }
 }
