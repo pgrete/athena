@@ -50,6 +50,9 @@ void DustParticles::Initialize()
 DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
   : Particles(pmb, pin)
 {
+  // Assign shorthands (need to do this for every constructor of a derived class)
+  AssignShorthands();
+
   // Define mass.
   mass = pin->GetOrAddInteger("particles", "mass", 1);
 
