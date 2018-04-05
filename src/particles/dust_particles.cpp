@@ -23,22 +23,24 @@ void DustParticles::Initialize()
   // Initialize first the parent class.
   if (!Particles::initialized) Particles::Initialize();
 
-  // Add gas velocity at each particle.
-  iux = AddAuxProperty();
-  iuy = AddAuxProperty();
-  iuz = AddAuxProperty();
+  if (!initialized) {
+    // Add gas velocity at each particle.
+    iux = AddAuxProperty();
+    iuy = AddAuxProperty();
+    iuz = AddAuxProperty();
 
-  // Assign indice mapping for particle-mesh.
-  pm_meshindices.NewAthenaArray(3);
-  pm_auxindices.NewAthenaArray(3);
-  pm_meshindices(0) = IVX;
-  pm_meshindices(1) = IVY;
-  pm_meshindices(2) = IVZ;
-  pm_auxindices(0) = iux;
-  pm_auxindices(1) = iuy;
-  pm_auxindices(2) = iuz;
+    // Assign indice mapping for particle-mesh.
+    pm_meshindices.NewAthenaArray(3);
+    pm_auxindices.NewAthenaArray(3);
+    pm_meshindices(0) = IVX;
+    pm_meshindices(1) = IVY;
+    pm_meshindices(2) = IVZ;
+    pm_auxindices(0) = iux;
+    pm_auxindices(1) = iuy;
+    pm_auxindices(2) = iuz;
 
-  initialized = true;
+    initialized = true;
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -48,9 +50,6 @@ void DustParticles::Initialize()
 DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
   : Particles(pmb, pin)
 {
-  // Initialize the class when first called.
-  if (!initialized) Initialize();
-
   // Define mass.
   mass = pin->GetOrAddInteger("particles", "mass", 1);
 

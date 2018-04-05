@@ -25,7 +25,6 @@ int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
 int Particles::iapx = -1, Particles::iapy = -1, Particles::iapz = -1;
 
 // Local function prototypes
-void _ErrorIfInitialized(const std::string& calling_function, bool initialized);
 void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3);
 void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z);
 void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
@@ -44,25 +43,27 @@ const Real RINF = 1;  // radius of influence
 
 void Particles::Initialize()
 {
-  // Add particle ID.
-  ipid = AddIntProperty();
+  if (!initialized) {
+    // Add particle ID.
+    ipid = AddIntProperty();
 
-  // Add particle position.
-  ixp = AddRealProperty();
-  iyp = AddRealProperty();
-  izp = AddRealProperty();
+    // Add particle position.
+    ixp = AddRealProperty();
+    iyp = AddRealProperty();
+    izp = AddRealProperty();
 
-  // Add particle velocity.
-  ivpx = AddRealProperty();
-  ivpy = AddRealProperty();
-  ivpz = AddRealProperty();
+    // Add particle velocity.
+    ivpx = AddRealProperty();
+    ivpy = AddRealProperty();
+    ivpz = AddRealProperty();
 
-  // Add particle acceleration.
-  iapx = AddAuxProperty();
-  iapy = AddAuxProperty();
-  iapz = AddAuxProperty();
+    // Add particle acceleration.
+    iapx = AddAuxProperty();
+    iapy = AddAuxProperty();
+    iapz = AddAuxProperty();
 
-  initialized = true;
+    initialized = true;
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -71,9 +72,6 @@ void Particles::Initialize()
 
 Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 {
-  // Initialize the class when first called.
-  if (!initialized) Initialize();
-
   // Point to the calling MeshBlock.
   pmy_block = pmb;
   nparmax = pin->GetOrAddInteger("particles", "nparmax", 1);
