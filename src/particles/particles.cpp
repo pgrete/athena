@@ -571,7 +571,6 @@ void Particles::Integrate(Mesh *pm, int step)
 
 int Particles::AddIntProperty()
 {
-  _ErrorIfInitialized("Particles::AddIntProperty", initialized);
   return nint++;
 }
 
@@ -581,7 +580,6 @@ int Particles::AddIntProperty()
 
 int Particles::AddRealProperty()
 {
-  _ErrorIfInitialized("Particles::AddRealProperty", initialized);
   return nreal++;
 }
 
@@ -591,7 +589,6 @@ int Particles::AddRealProperty()
 
 int Particles::AddAuxProperty()
 {
-  _ErrorIfInitialized("Particles::AddAuxProperty", initialized);
   return naux++;
 }
 
@@ -730,20 +727,6 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
     os.close();
     fname.str("");
     pmb = pmb->next;
-  }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void _ErrorIfInitialized(const string& calling_function)
-//  \brief throws an error when the class has already been initialized.
-
-void _ErrorIfInitialized(const std::string& calling_function, bool initialized)
-{
-  if (initialized)
-  {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [" << calling_function << "]" << std::endl << "The Particles class has already been initialized. " << std::endl;
-    throw std::runtime_error(msg.str().c_str());
   }
 }
 
