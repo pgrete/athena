@@ -386,7 +386,9 @@ void Particles::SendToNeighbors()
       for (int i = 0; flag && i < 2; ++i)
         for (int j = 0; flag && j < 2; ++j)
           for (int k = 0; flag && k < 2; ++k) {
-            pnmb = pm->FindMeshBlock(pnmbt->pleaf[i][j][k]->gid);
+            int gid = pnmbt->pleaf[i][j][k]->gid;
+            if (gid < 0) continue;
+            pnmb = pm->FindMeshBlock(gid);
             flag = false;
             if (pm->mesh_size.nx1 > 1)
               flag = flag || x1 < pnmb->block_size.x1min || x1 > pnmb->block_size.x1max;
