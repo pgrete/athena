@@ -709,7 +709,7 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
           << '.' << "par.tab";
 
     // Open the file for write.
-    os.open(fname.str());
+    os.open(fname.str().data());
     if (!os.is_open()) {
       msg << "### FATAL ERROR in function [Particles::FormattedTableOutput]"
           << std::endl << "Output file '" << fname.str() << "' could not be opened"
