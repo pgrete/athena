@@ -717,6 +717,9 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
       throw std::runtime_error(msg.str().c_str());
     }
 
+    // Write the time.
+    os << "# Athena++ particle data at time = " << pm->time << std::endl;
+
     // Write the particle data in the meshblock.
     for (long k = 0; k < ppar->npar; ++k)
       os << ppar->pid(k) << "  "
