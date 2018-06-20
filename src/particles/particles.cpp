@@ -23,6 +23,8 @@ int Particles::ipid = -1;
 int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
 int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
 int Particles::iapx = -1, Particles::iapy = -1, Particles::iapz = -1;
+int Particles::ixp0 = -1, Particles::iyp0 = -1, Particles::izp0 = -1;
+int Particles::ivpx0 = -1, Particles::ivpy0 = -1, Particles::ivpz0 = -1;
 
 // Local function prototypes
 void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3);
@@ -61,6 +63,16 @@ void Particles::Initialize()
     iapx = AddAuxProperty();
     iapy = AddAuxProperty();
     iapz = AddAuxProperty();
+
+    // Add old particle position.
+    ixp0 = AddAuxProperty();
+    iyp0 = AddAuxProperty();
+    izp0 = AddAuxProperty();
+
+    // Add old particle velocity.
+    ivpx0 = AddAuxProperty();
+    ivpy0 = AddAuxProperty();
+    ivpz0 = AddAuxProperty();
 
     initialized = true;
   }
@@ -599,15 +611,23 @@ int Particles::AddAuxProperty()
 void Particles::AssignShorthands()
 {
   pid.InitWithShallowSlice(intprop, 2, ipid, 1);
+
   xp.InitWithShallowSlice(realprop, 2, ixp, 1);
   yp.InitWithShallowSlice(realprop, 2, iyp, 1);
   zp.InitWithShallowSlice(realprop, 2, izp, 1);
   vpx.InitWithShallowSlice(realprop, 2, ivpx, 1);
   vpy.InitWithShallowSlice(realprop, 2, ivpy, 1);
   vpz.InitWithShallowSlice(realprop, 2, ivpz, 1);
+
   apx.InitWithShallowSlice(auxprop, 2, iapx, 1);
   apy.InitWithShallowSlice(auxprop, 2, iapy, 1);
   apz.InitWithShallowSlice(auxprop, 2, iapz, 1);
+  xp0.InitWithShallowSlice(auxprop, 2, ixp0, 1);
+  yp0.InitWithShallowSlice(auxprop, 2, iyp0, 1);
+  zp0.InitWithShallowSlice(auxprop, 2, izp0, 1);
+  vpx0.InitWithShallowSlice(auxprop, 2, ivpx0, 1);
+  vpy0.InitWithShallowSlice(auxprop, 2, ivpy0, 1);
+  vpz0.InitWithShallowSlice(auxprop, 2, ivpz0, 1);
 }
 
 //--------------------------------------------------------------------------------------

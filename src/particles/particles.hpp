@@ -56,10 +56,13 @@ protected:
   static int nint, nreal;   // numbers of integer and real properties
   static int naux;          // number of auxiliary properties
 
-  static int ipid;              // index for the particle ID
-  static int ixp, iyp, izp;     // indices for the position components
-  static int ivpx, ivpy, ivpz;  // indices for the velocity components
-  static int iapx, iapy, iapz;  // indices for the acceleration compoenents
+  static int ipid;                 // index for the particle ID
+  static int ixp, iyp, izp;        // indices for the position components
+  static int ivpx, ivpy, ivpz;     // indices for the velocity components
+
+  static int iapx, iapy, iapz;     // indices for the acceleration compoenents
+  static int ixp0, iyp0, izp0;     // indices for beginning position components
+  static int ivpx0, ivpy0, ivpz0;  // indices for beginning velocity components
 
   // Instance methods
   virtual void AssignShorthands();  // Needs to be called everytime
@@ -82,7 +85,10 @@ protected:
   AthenaArray<long> pid;            // shorthands for particle ID
   AthenaArray<Real> xp, yp, zp;     // shorthands for position components
   AthenaArray<Real> vpx, vpy, vpz;  // shorthands for velocity components
-  AthenaArray<Real> apx, apy, apz;  // shorthands for acceleration components
+
+  AthenaArray<Real> apx, apy, apz;     // shorthands for acceleration components
+  AthenaArray<Real> xp0, yp0, zp0;     // shorthands for beginning position components
+  AthenaArray<Real> vpx0, vpy0, vpz0;  // shorthands for beginning velocity components
 
   long npar;             // number of particles
   long nparmax;          // maximum number of particles per meshblock
