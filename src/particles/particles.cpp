@@ -268,43 +268,6 @@ void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::Drift(Real t, Real dt)
-//  \brief updates the particle positions from t to t + dt given velocities at t.
-
-void Particles::Drift(Real t, Real dt)
-{
-  for (long k = 0; k < npar; ++k) {
-    xp(k) += dt * vpx(k);
-    yp(k) += dt * vpy(k);
-    zp(k) += dt * vpz(k);
-  }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::Kick(Real t, Real dt)
-//  \brief updates the particle velocities from t to t + dt given accelerations at t.
-
-void Particles::Kick(Real t, Real dt)
-{
-  // Initialize the acceleration of the particles.
-  for (long k = 0; k < npar; ++k) {
-    apx(k) = 0;
-    apy(k) = 0;
-    apz(k) = 0;
-  }
-
-  // Add acceleration to the particles.
-  AddAcceleration(t, dt);
-
-  // Kick the particles.
-  for (long k = 0; k < npar; ++k) {
-    vpx(k) += dt * apx(k);
-    vpy(k) += dt * apy(k);
-    vpz(k) += dt * apz(k);
-  }
-}
-
-//--------------------------------------------------------------------------------------
 //! \fn void Particles::Migrate(Mesh *pm)
 //  \brief migrates particles that are outside of the MeshBlock boundary.
 
@@ -335,6 +298,48 @@ void Particles::Migrate(Mesh *pm)
     if (ppar->nrecv > 0) ppar->FlushReceiveBuffer();
     pmb = pmb->next;
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::EulerStep(Real t, Real dt)
+//  \brief evolves the particle positions and velocities by one Euler step.
+
+void Particles::EulerStep(Real t, Real dt)
+{
+  // Get the accelerations.
+  for (long k = 0; k < npar; ++k) {
+    apx(k) = 0.0;
+    apy(k) = 0.0;
+    apz(k) = 0.0;
+  }
+  AddAcceleration(t, dt);
+
+  // Update the positions and velocities **from the beginning of the time step**.
+  for (long k = 0; k < npar; ++k) {
+    xp(k) = xp0(k) + dt * vpx(k);
+    yp(k) = yp0(k) + dt * vpy(k);
+    zp(k) = zp0(k) + dt * vpz(k);
+    vpx(k) = vpx0(k) + dt * apx(k);
+    vpy(k) = vpy0(k) + dt * apy(k);
+    vpz(k) = vpz0(k) + dt * apz(k);
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::SaveStatus()
+//  \brief saves the current positions and velocities for later use.
+
+void Particles::SaveStatus()
+{
+  // Save current positions.
+  xp0 = xp;
+  yp0 = yp;
+  zp0 = zp;
+
+  // Save current velocities.
+  vpx0 = vpx;
+  vpy0 = vpy;
+  vpz0 = vpz;
 }
 
 //--------------------------------------------------------------------------------------
@@ -549,28 +554,20 @@ void Particles::InterpolateMeshToParticles(
 void Particles::Integrate(Mesh *pm, int step)
 {
   MeshBlock *pmb = pm->pblock;
-  Real dth = 0.5 * pm->dt;
 
   if (step == 1) {
-    // Drift particles.
+    Real t = pm->time, dt = 0.5 * pm->dt;
     while (pmb != NULL) {
-      pmb->ppar->Drift(pm->time, dth);
+      pmb->ppar->SaveStatus();
+      pmb->ppar->EulerStep(t, dt);
       pmb = pmb->next;
     }
     Migrate(pm);
 
   } else if (step == 2) {
-    // Kick particles.
-    pmb = pm->pblock;
+    Real t = pm->time + 0.5 * pm->dt, dt = pm->dt;
     while (pmb != NULL) {
-      pmb->ppar->Kick(pm->time, pm->dt);
-      pmb = pmb->next;
-    }
-
-    // Drift particles.
-    pmb = pm->pblock;
-    while (pmb != NULL) {
-      pmb->ppar->Drift(pm->time + dth, dth);
+      pmb->ppar->EulerStep(t, dt);
       pmb = pmb->next;
     }
     Migrate(pm);

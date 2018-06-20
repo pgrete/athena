@@ -37,9 +37,6 @@ public:
   ~Particles();
 
   // Instance methods
-  void Drift(Real t, Real dt);
-  void Kick(Real t, Real dt);
-
   size_t GetSizeInBytes();
   void ReadRestart(char *mbdata, int &os);
   void WriteRestart(char *&pdata);
@@ -106,8 +103,10 @@ private:
                                  AthenaArray<Real>& xi3);
 
   // Instance methods
-  void SendToNeighbors();
+  void EulerStep(Real t, Real dt);
   void FlushReceiveBuffer();
+  void SaveStatus();
+  void SendToNeighbors();
 
   // MeshBlock-to-MeshBlock communication:
   AthenaArray<long> irecv;  //   integer receive buffers
