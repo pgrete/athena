@@ -735,6 +735,7 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
     }
 
     // Write the time.
+    os << std::setprecision(18);
     os << "# Athena++ particle data at time = " << pm->time << std::endl;
 
     // Write the particle data in the meshblock.
