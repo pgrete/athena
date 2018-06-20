@@ -3,8 +3,8 @@
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
 // Licensed under the 3-clause BSD License, see LICENSE file for details
 //======================================================================================
-//! \file particle-gas.cpp
-//  \brief tests the implementation of particles.
+//! \file one_particle.cpp
+//  \brief tests one particle.
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -35,16 +35,34 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     }
   }
 
-  // Set the particles.
-  if (block_size.x1min <= 0.0 && 0.0 < block_size.x1max) {
+  // Get the position and velocity of the particle.
+  Real xp0, yp0, zp0, vpx0, vpy0, vpz0;
+  xp0 = pin->GetOrAddReal("problem", "xp0", 0.0);
+  yp0 = pin->GetOrAddReal("problem", "yp0", 0.0);
+  zp0 = pin->GetOrAddReal("problem", "zp0", 0.0);
+  vpx0 = pin->GetOrAddReal("problem", "vpx0", 0.0);
+  vpy0 = pin->GetOrAddReal("problem", "vpy0", 0.0);
+  vpz0 = pin->GetOrAddReal("problem", "vpz0", 0.0);
+
+  // Check if the particle is in the meshblock.
+  bool flag = true;
+  if (block_size.nx1 > 1)
+    flag = flag && block_size.x1min <= xp0 && xp0 < block_size.x1max;
+  if (block_size.nx2 > 1)
+    flag = flag && block_size.x2min <= yp0 && yp0 < block_size.x2max;
+  if (block_size.nx3 > 1)
+    flag = flag && block_size.x3min <= zp0 && zp0 < block_size.x3max;
+
+  // Assign the particle, if any.
+  if (flag) {
     ppar->npar = 1;
     ppar->pid(0) = 0;
-    ppar->xp(0) = 0.0;
-    ppar->yp(0) = 0.0;
-    ppar->zp(0) = 0.0;
-    ppar->vpx(0) = 1.0;
-    ppar->vpy(0) = 0.0;
-    ppar->vpz(0) = 0.0;
+    ppar->xp(0) = xp0;
+    ppar->yp(0) = yp0;
+    ppar->zp(0) = zp0;
+    ppar->vpx(0) = vpx0;
+    ppar->vpy(0) = vpy0;
+    ppar->vpz(0) = vpz0;
   } else
     ppar->npar = 0;
 }
