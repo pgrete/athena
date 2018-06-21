@@ -22,14 +22,20 @@
 
 void MeshBlock::ProblemGenerator(ParameterInput *pin)
 {
+  // Get the (uniform) velocity of the gas.
+  Real ux0, uy0, uz0;
+  ux0 = pin->GetOrAddReal("problem", "ux0", 0.0);
+  uy0 = pin->GetOrAddReal("problem", "uy0", 0.0);
+  uz0 = pin->GetOrAddReal("problem", "uz0", 0.0);
+
   // Set a uniform, steady gas.
   for (int k = ks; k <= ke; ++k) {
     for (int j = js; j <= je; ++j) {
       for (int i = is; i <= ie; ++i) {
         phydro->u(IDN,k,j,i) = 1.0;
-        phydro->u(IM1,k,j,i) = 0.0;
-        phydro->u(IM2,k,j,i) = 0.0;
-        phydro->u(IM3,k,j,i) = 0.0;
+        phydro->u(IM1,k,j,i) = ux0;
+        phydro->u(IM2,k,j,i) = uy0;
+        phydro->u(IM3,k,j,i) = uz0;
         phydro->u(IEN,k,j,i) = 1.0 / (peos->GetGamma() - 1.0);
       }
     }
