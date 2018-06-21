@@ -22,7 +22,6 @@ int Particles::naux = 0;
 int Particles::ipid = -1;
 int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
 int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
-int Particles::iapx = -1, Particles::iapy = -1, Particles::iapz = -1;
 int Particles::ixp0 = -1, Particles::iyp0 = -1, Particles::izp0 = -1;
 int Particles::ivpx0 = -1, Particles::ivpy0 = -1, Particles::ivpz0 = -1;
 
@@ -58,11 +57,6 @@ void Particles::Initialize()
     ivpx = AddRealProperty();
     ivpy = AddRealProperty();
     ivpz = AddRealProperty();
-
-    // Add particle acceleration.
-    iapx = AddAuxProperty();
-    iapy = AddAuxProperty();
-    iapz = AddAuxProperty();
 
     // Add old particle position.
     ixp0 = AddAuxProperty();
@@ -106,6 +100,11 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   xi2.NewAthenaArray(nparmax);
   xi3.NewAthenaArray(nparmax);
 
+  // Allocate acceleration.
+  apx.NewAthenaArray(nparmax);
+  apy.NewAthenaArray(nparmax);
+  apz.NewAthenaArray(nparmax);
+
   // Preprocess the particle-mesh method.
   pm_dxi1 = pmb->block_size.nx1 > 1 ? RINF : 0;
   pm_dxi2 = pmb->block_size.nx2 > 1 ? RINF : 0;
@@ -137,6 +136,11 @@ Particles::~Particles()
   xi1.DeleteAthenaArray();
   xi2.DeleteAthenaArray();
   xi3.DeleteAthenaArray();
+
+  // Delete acceleration.
+  apx.DeleteAthenaArray();
+  apy.DeleteAthenaArray();
+  apz.DeleteAthenaArray();
 
   // Delete buffers.
   irecv.DeleteAthenaArray();
@@ -462,14 +466,24 @@ void Particles::FlushReceiveBuffer()
 {
   // Check the memory size.
   if (npar + nprecv > nparmax) {
-    nparmax += 2 * (npar + nprecv - nparmax);  // Increase maximum number of particles
-    intprop.ResizeLastDimension(nparmax);     // Increase size of property arrays
+    // Increase maximum number of particles allowed.
+    nparmax += 2 * (npar + nprecv - nparmax);
+
+    // Increase size of property arrays
+    intprop.ResizeLastDimension(nparmax);
     realprop.ResizeLastDimension(nparmax);
     if (naux > 0) auxprop.ResizeLastDimension(nparmax);
+
+    // Reassign the shorthands.
     AssignShorthands();
-    xi1.ResizeLastDimension(nparmax);         // Increase size of index arrays
+
+    // Increase size of local arrays.
+    xi1.ResizeLastDimension(nparmax);
     xi2.ResizeLastDimension(nparmax);
     xi3.ResizeLastDimension(nparmax);
+    apx.ResizeLastDimension(nparmax);
+    apy.ResizeLastDimension(nparmax);
+    apz.ResizeLastDimension(nparmax);
   }
 
   // Flush the receive buffers.
@@ -617,9 +631,6 @@ void Particles::AssignShorthands()
   vpy.InitWithShallowSlice(realprop, 2, ivpy, 1);
   vpz.InitWithShallowSlice(realprop, 2, ivpz, 1);
 
-  apx.InitWithShallowSlice(auxprop, 2, iapx, 1);
-  apy.InitWithShallowSlice(auxprop, 2, iapy, 1);
-  apz.InitWithShallowSlice(auxprop, 2, iapz, 1);
   xp0.InitWithShallowSlice(auxprop, 2, ixp0, 1);
   yp0.InitWithShallowSlice(auxprop, 2, iyp0, 1);
   zp0.InitWithShallowSlice(auxprop, 2, izp0, 1);

@@ -57,7 +57,6 @@ protected:
   static int ixp, iyp, izp;        // indices for the position components
   static int ivpx, ivpy, ivpz;     // indices for the velocity components
 
-  static int iapx, iapy, iapz;     // indices for the acceleration compoenents
   static int ixp0, iyp0, izp0;     // indices for beginning position components
   static int ivpx0, ivpy0, ivpz0;  // indices for beginning velocity components
 
@@ -78,12 +77,12 @@ protected:
 
   AthenaArray<Real> xi1, xi2, xi3;  // position indices of each particle
                                     // in local meshblock
+  AthenaArray<Real> apx, apy, apz;  // acceleration components
 
   AthenaArray<long> pid;            // shorthands for particle ID
   AthenaArray<Real> xp, yp, zp;     // shorthands for position components
   AthenaArray<Real> vpx, vpy, vpz;  // shorthands for velocity components
 
-  AthenaArray<Real> apx, apy, apz;     // shorthands for acceleration components
   AthenaArray<Real> xp0, yp0, zp0;     // shorthands for beginning position components
   AthenaArray<Real> vpx0, vpy0, vpz0;  // shorthands for beginning velocity components
 
