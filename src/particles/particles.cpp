@@ -525,6 +525,10 @@ void Particles::InterpolateMeshToParticles(
          const AthenaArray<int>& meshindices,
          const AthenaArray<int>& auxindices)
 {
+  const bool X1 = pmy_block->block_size.nx1 > 1;
+  const bool X2 = pmy_block->block_size.nx2 > 1;
+  const bool X3 = pmy_block->block_size.nx3 > 1;
+
   // Check the index mapping.
   int nprop = meshindices.GetSize();
   if (nprop <= 0 || auxindices.GetSize() != nprop) {
@@ -548,11 +552,11 @@ void Particles::InterpolateMeshToParticles(
 
     // Weight each cell and accumulate the mesh properties onto the particles.
     for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
-      Real w3 = _ParticleMeshWeightFunction(ix3 - xi3(k));
+      Real w3 = X3 ? _ParticleMeshWeightFunction(ix3 - xi3(k)) : 1.0;
       for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
-        Real w23 = w3 * _ParticleMeshWeightFunction(ix2 - xi2(k));
+        Real w23 = w3 * (X2 ? _ParticleMeshWeightFunction(ix2 - xi2(k)) : 1.0);
         for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
-          Real weight = w23 * _ParticleMeshWeightFunction(ix1 - xi1(k));
+          Real weight = w23 * (X1 ? _ParticleMeshWeightFunction(ix1 - xi1(k)) : 1.0);
           for (int i = 0; i < nprop; ++i)
             auxprop(auxindices(i),k) += weight * meshprop(meshindices(i),ix3,ix2,ix1);
         }
@@ -810,9 +814,12 @@ void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
   const Coordinates *pcoord = pmb->pcoord;
 
   // Make the conversion.
-  xi1 = IS + (x1 - block_size.x1min) / pcoord->dx1f(IS);
-  xi2 = JS + (x2 - block_size.x2min) / pcoord->dx2f(JS);
-  xi3 = KS + (x3 - block_size.x3min) / pcoord->dx3f(KS);
+  xi1 = (pmb->block_size.nx1 > 1) ?
+            IS + (x1 - block_size.x1min) / pcoord->dx1f(IS) : IS;
+  xi2 = (pmb->block_size.nx2 > 1) ?
+            JS + (x2 - block_size.x2min) / pcoord->dx2f(JS) : JS;
+  xi3 = (pmb->block_size.nx3 > 1) ?
+            KS + (x3 - block_size.x3min) / pcoord->dx3f(KS) : KS;
 }
 
 //--------------------------------------------------------------------------------------
@@ -834,9 +841,12 @@ void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
   const Coordinates *pcoord = pmb->pcoord;
 
   // Make the conversion.
-  x1 = block_size.x1min + (xi1 - IS) * pcoord->dx1f(IS);
-  x2 = block_size.x2min + (xi2 - JS) * pcoord->dx2f(JS);
-  x3 = block_size.x3min + (xi3 - KS) * pcoord->dx3f(KS);
+  x1 = (pmb->block_size.nx1 > 1) ?
+           block_size.x1min + (xi1 - IS) * pcoord->dx1f(IS) : pcoord->x1v(IS);
+  x2 = (pmb->block_size.nx2 > 1) ?
+           block_size.x2min + (xi2 - JS) * pcoord->dx2f(JS) : pcoord->x2v(JS);
+  x3 = (pmb->block_size.nx3 > 1) ?
+           block_size.x3min + (xi3 - KS) * pcoord->dx3f(KS) : pcoord->x3v(KS);
 }
 
 //--------------------------------------------------------------------------------------
