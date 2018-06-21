@@ -112,10 +112,10 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   pm_dxi3 = pmb->block_size.nx3 > 1 ? RINF : 0;
 
   // Allocate buffers.
-  nrecvmax = 1;
-  nrecv = 0;
-  irecv.NewAthenaArray(nint,nrecvmax);
-  rrecv.NewAthenaArray(nreal,nrecvmax);
+  nprecvmax = 1;
+  nprecv = 0;
+  irecv.NewAthenaArray(nint,nprecvmax);
+  rrecv.NewAthenaArray(nreal,nprecvmax);
 }
 
 //--------------------------------------------------------------------------------------
@@ -295,7 +295,7 @@ void Particles::Migrate(Mesh *pm)
   pmb = pm->pblock;
   while (pmb != NULL) {
     ppar = pmb->ppar;
-    if (ppar->nrecv > 0) ppar->FlushReceiveBuffer();
+    if (ppar->nprecv > 0) ppar->FlushReceiveBuffer();
     pmb = pmb->next;
   }
 }
@@ -429,18 +429,18 @@ void Particles::SendToNeighbors()
       _MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
 
     // Check the buffer size of the target MeshBlock.
-    if (pnp->nrecv >= pnp->nrecvmax) {
-      pnp->nrecvmax *= 2;
-      pnp->irecv.ResizeLastDimension(pnp->nrecvmax);
-      pnp->rrecv.ResizeLastDimension(pnp->nrecvmax);
+    if (pnp->nprecv >= pnp->nprecvmax) {
+      pnp->nprecvmax *= 2;
+      pnp->irecv.ResizeLastDimension(pnp->nprecvmax);
+      pnp->rrecv.ResizeLastDimension(pnp->nprecvmax);
     }
 
     // Copy the properties of the particle to the neighbor.
     for (int j = 0; j < nint; ++j)
-      pnp->irecv(j,pnp->nrecv) = intprop(j,k);
+      pnp->irecv(j,pnp->nprecv) = intprop(j,k);
     for (int j = 0; j < nreal; ++j)
-      pnp->rrecv(j,pnp->nrecv) = realprop(j,k);
-    ++pnp->nrecv;
+      pnp->rrecv(j,pnp->nprecv) = realprop(j,k);
+    ++pnp->nprecv;
 
     // Pop the particle from the current MeshBlock.
     if (--npar != k) {
@@ -459,8 +459,8 @@ void Particles::SendToNeighbors()
 void Particles::FlushReceiveBuffer()
 {
   // Check the memory size.
-  if (npar + nrecv > nparmax) {
-    nparmax += 2 * (npar + nrecv - nparmax);  // Increase maximum number of particles
+  if (npar + nprecv > nparmax) {
+    nparmax += 2 * (npar + nprecv - nparmax);  // Increase maximum number of particles
     intprop.ResizeLastDimension(nparmax);     // Increase size of property arrays
     realprop.ResizeLastDimension(nparmax);
     if (naux > 0) auxprop.ResizeLastDimension(nparmax);
@@ -473,28 +473,28 @@ void Particles::FlushReceiveBuffer()
   // Flush the receive buffers.
   for (int j = 0; j < nint; ++j) {
     long ip = npar, k = 0;
-    while (k < nrecv)
+    while (k < nprecv)
       intprop(j,ip++) = irecv(j,k++);
   }
   for (int j = 0; j < nreal; ++j) {
     long ip = npar, k = 0;
-    while (k < nrecv)
+    while (k < nprecv)
       realprop(j,ip++) = rrecv(j,k++);
   }
 
   // Find their position indices.
   AthenaArray<Real> xps, yps, zps, xi1s, xi2s, xi3s;
-  xps.InitWithShallowSlice(xp, 1, npar, nrecv);
-  yps.InitWithShallowSlice(yp, 1, npar, nrecv);
-  zps.InitWithShallowSlice(zp, 1, npar, nrecv);
-  xi1s.InitWithShallowSlice(xi1, 1, npar, nrecv);
-  xi2s.InitWithShallowSlice(xi2, 1, npar, nrecv);
-  xi3s.InitWithShallowSlice(xi3, 1, npar, nrecv);
-  GetPositionIndices(pmy_block, nrecv, xps, yps, zps, xi1s, xi2s, xi3s);
+  xps.InitWithShallowSlice(xp, 1, npar, nprecv);
+  yps.InitWithShallowSlice(yp, 1, npar, nprecv);
+  zps.InitWithShallowSlice(zp, 1, npar, nprecv);
+  xi1s.InitWithShallowSlice(xi1, 1, npar, nprecv);
+  xi2s.InitWithShallowSlice(xi2, 1, npar, nprecv);
+  xi3s.InitWithShallowSlice(xi3, 1, npar, nprecv);
+  GetPositionIndices(pmy_block, nprecv, xps, yps, zps, xi1s, xi2s, xi3s);
 
   // Clear the receive buffers.
-  npar += nrecv;
-  nrecv = 0;
+  npar += nprecv;
+  nprecv = 0;
 }
 
 //--------------------------------------------------------------------------------------

@@ -109,10 +109,10 @@ private:
   void SendToNeighbors();
 
   // MeshBlock-to-MeshBlock communication:
-  AthenaArray<long> irecv;  //   integer receive buffers
-  AthenaArray<Real> rrecv;  //   real receive buffers
-  int nrecvmax;             //   maximum number of particles per receive buffer
-  int nrecv;                //   actual number of particles per receive buffer
+  AthenaArray<long> irecv;  // integer receive buffers
+  AthenaArray<Real> rrecv;  // real receive buffers
+  int nprecvmax;            // maximum number of particles per receive buffer
+  int nprecv;               // actual number of particles per receive buffer
 
   // Particle-mesh related properties:
   Real pm_dxi1, pm_dxi2, pm_dxi3;  // maximum index distance from a particle in each dir
