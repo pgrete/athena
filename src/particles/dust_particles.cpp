@@ -57,7 +57,7 @@ DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
   mass = pin->GetOrAddInteger("particles", "mass", 1);
 
   // Define stopping time.
-  taus = pin->GetOrAddInteger("particles", "taus", 0.0);
+  taus = pin->GetOrAddReal("particles", "taus", 0.0);
 }
 
 //--------------------------------------------------------------------------------------
