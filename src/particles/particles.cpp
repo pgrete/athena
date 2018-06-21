@@ -115,7 +115,7 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   nprecvmax = 1;
   nprecv = 0;
   irecv.NewAthenaArray(nint,nprecvmax);
-  rrecv.NewAthenaArray(nreal,nprecvmax);
+  rrecv.NewAthenaArray(nreal+naux,nprecvmax);
 }
 
 //--------------------------------------------------------------------------------------
@@ -440,6 +440,8 @@ void Particles::SendToNeighbors()
       pnp->irecv(j,pnp->nprecv) = intprop(j,k);
     for (int j = 0; j < nreal; ++j)
       pnp->rrecv(j,pnp->nprecv) = realprop(j,k);
+    for (int i = nreal, j = 0; j < naux; ++i, ++j)
+      pnp->rrecv(i,pnp->nprecv) = auxprop(j,k);
     ++pnp->nprecv;
 
     // Pop the particle from the current MeshBlock.
@@ -471,16 +473,15 @@ void Particles::FlushReceiveBuffer()
   }
 
   // Flush the receive buffers.
-  for (int j = 0; j < nint; ++j) {
-    long ip = npar, k = 0;
-    while (k < nprecv)
-      intprop(j,ip++) = irecv(j,k++);
-  }
-  for (int j = 0; j < nreal; ++j) {
-    long ip = npar, k = 0;
-    while (k < nprecv)
-      realprop(j,ip++) = rrecv(j,k++);
-  }
+  for (int j = 0; j < nint; ++j)
+    for (long ip = npar, k = 0; k < nprecv; ++ip, ++k)
+      intprop(j,ip) = irecv(j,k);
+  for (int j = 0; j < nreal; ++j)
+    for (long ip = npar, k = 0; k < nprecv; ++ip, ++k)
+      realprop(j,ip) = rrecv(j,k);
+  for (int i = nreal, j = 0; j < naux; ++i, ++j)
+    for (long ip = npar, k = 0; k < nprecv; ++ip, ++k)
+      auxprop(j,ip) = rrecv(i,k);
 
   // Find their position indices.
   AthenaArray<Real> xps, yps, zps, xi1s, xi2s, xi3s;
