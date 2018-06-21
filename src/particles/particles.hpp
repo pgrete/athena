@@ -29,6 +29,7 @@ public:
   static void Initialize();
   static void Integrate(Mesh *pm, int step);  // master integrator
   static void FormattedTableOutput(Mesh *pm, OutputParameters op); 
+  static void Migrate(Mesh *pm);
 
   // Constructor
   Particles(MeshBlock *pmb, ParameterInput *pin);
@@ -46,7 +47,6 @@ protected:
   static int AddIntProperty();
   static int AddRealProperty();
   static int AddAuxProperty();
-  static void Migrate(Mesh *pm);
 
   // Class variables
   static bool initialized;  // whether or not the class is initialized

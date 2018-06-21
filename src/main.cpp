@@ -282,6 +282,8 @@ int main(int argc, char *argv[])
 
   try {
     pmesh->Initialize(res_flag, pinput);
+    // TODO: Straighten out initialization of particles.
+    if (PARTICLES) Particles::Migrate(pmesh);
   } 
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl << "memory allocation failed "
