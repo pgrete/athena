@@ -552,11 +552,12 @@ void Particles::InterpolateMeshToParticles(
 
     // Weight each cell and accumulate the mesh properties onto the particles.
     for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
-      Real w3 = X3 ? _ParticleMeshWeightFunction(ix3 - xi3(k)) : 1.0;
+      Real w3 = X3 ? _ParticleMeshWeightFunction(ix3 - xi3(k) + 0.5) : 1.0;
       for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
-        Real w23 = w3 * (X2 ? _ParticleMeshWeightFunction(ix2 - xi2(k)) : 1.0);
+        Real w23 = w3 * (X2 ? _ParticleMeshWeightFunction(ix2 - xi2(k) + 0.5) : 1.0);
         for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
-          Real weight = w23 * (X1 ? _ParticleMeshWeightFunction(ix1 - xi1(k)) : 1.0);
+          Real weight = w23 *
+              (X1 ? _ParticleMeshWeightFunction(ix1 - xi1(k) + 0.5) : 1.0);
           for (int i = 0; i < nprop; ++i)
             auxprop(auxindices(i),k) += weight * meshprop(meshindices(i),ix3,ix2,ix1);
         }
@@ -873,9 +874,11 @@ Real _ParticleMeshWeightFunction(Real dxi)
 
   if (dxi < 0.5)
     return 0.75 - dxi * dxi;
-  else if (dxi < 1.5) {
-    Real x = 1.5 - dxi;
-    return 0.5 * (x * x);
-  } else
-    return 0;
+
+  if (dxi < 1.5) {
+    dxi = 1.5 - dxi;
+    return 0.5 * (dxi * dxi);
+  }
+
+  return 0;
 }
