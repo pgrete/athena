@@ -47,11 +47,13 @@ protected:
   static int AddIntProperty();
   static int AddRealProperty();
   static int AddAuxProperty();
+  static int AddWorkingArray();
 
   // Class variables
   static bool initialized;  // whether or not the class is initialized
   static int nint, nreal;   // numbers of integer and real properties
   static int naux;          // number of auxiliary properties
+  static int nwork;         // number of working arrays
 
   static int ipid;                 // index for the particle ID
   static int ixp, iyp, izp;        // indices for the position components
@@ -59,6 +61,9 @@ protected:
 
   static int ixp0, iyp0, izp0;     // indices for beginning position components
   static int ivpx0, ivpy0, ivpz0;  // indices for beginning velocity components
+
+  static int ixi1, ixi2, ixi3;     // indices for position indices
+  static int iapx, iapy, iapz;     // indices for acceleration components
 
   // Instance methods
   virtual void AssignShorthands();  // Needs to be called everytime
@@ -72,8 +77,9 @@ protected:
   // Instance variables
   AthenaArray<long> intprop;   // integer particle properties
   AthenaArray<Real> realprop;  // real particle properties
-  AthenaArray<Real> auxprop;   // auxiliary particle properties (for intermediate
-                               //     computations)
+  AthenaArray<Real> auxprop;   // auxiliary particle properties (communicated when
+                               //   particles moving to another meshblock)
+  AthenaArray<Real> work;      // working arrays (not communicated)
 
   AthenaArray<Real> xi1, xi2, xi3;  // position indices of each particle
                                     // in local meshblock

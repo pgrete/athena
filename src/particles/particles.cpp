@@ -19,11 +19,14 @@ bool Particles::initialized = false;
 int Particles::nint = 0;
 int Particles::nreal = 0;
 int Particles::naux = 0;
+int Particles::nwork = 0;
 int Particles::ipid = -1;
 int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
 int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
 int Particles::ixp0 = -1, Particles::iyp0 = -1, Particles::izp0 = -1;
 int Particles::ivpx0 = -1, Particles::ivpy0 = -1, Particles::ivpz0 = -1;
+int Particles::ixi1 = -1, Particles::ixi2 = -1, Particles::ixi3 = -1;
+int Particles::iapx = -1, Particles::iapy = -1, Particles::iapz = -1;
 
 // Local function prototypes
 void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3);
@@ -68,6 +71,16 @@ void Particles::Initialize()
     ivpy0 = AddAuxProperty();
     ivpz0 = AddAuxProperty();
 
+    // Add particle position indices.
+    ixi1 = AddWorkingArray();
+    ixi2 = AddWorkingArray();
+    ixi3 = AddWorkingArray();
+
+    // Add acceleration components.
+    iapx = AddWorkingArray();
+    iapy = AddWorkingArray();
+    iapz = AddWorkingArray();
+
     initialized = true;
   }
 }
@@ -92,18 +105,11 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   // Allocate auxiliary properties.
   if (naux > 0) auxprop.NewAthenaArray(naux,nparmax);
 
+  // Allocate working arrays.
+  if (nwork > 0) work.NewAthenaArray(nwork,nparmax);
+
   // Shallow copy to shorthands.
   AssignShorthands();
-
-  // Allocate position indices.
-  xi1.NewAthenaArray(nparmax);
-  xi2.NewAthenaArray(nparmax);
-  xi3.NewAthenaArray(nparmax);
-
-  // Allocate acceleration.
-  apx.NewAthenaArray(nparmax);
-  apy.NewAthenaArray(nparmax);
-  apz.NewAthenaArray(nparmax);
 
   // Preprocess the particle-mesh method.
   pm_dxi1 = pmb->block_size.nx1 > 1 ? RINF : 0;
@@ -473,17 +479,10 @@ void Particles::FlushReceiveBuffer()
     intprop.ResizeLastDimension(nparmax);
     realprop.ResizeLastDimension(nparmax);
     if (naux > 0) auxprop.ResizeLastDimension(nparmax);
+    if (nwork > 0) work.ResizeLastDimension(nparmax);
 
     // Reassign the shorthands.
     AssignShorthands();
-
-    // Increase size of local arrays.
-    xi1.ResizeLastDimension(nparmax);
-    xi2.ResizeLastDimension(nparmax);
-    xi3.ResizeLastDimension(nparmax);
-    apx.ResizeLastDimension(nparmax);
-    apy.ResizeLastDimension(nparmax);
-    apz.ResizeLastDimension(nparmax);
   }
 
   // Flush the receive buffers.
@@ -622,6 +621,15 @@ int Particles::AddAuxProperty()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn int Particles::AddWorkingArray()
+//  \brief adds one working array to the particles and returns the index.
+
+int Particles::AddWorkingArray()
+{
+  return nwork++;
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::AssignShorthands()
 //  \brief assigns shorthands by shallow coping slices of the data.
 
@@ -642,6 +650,13 @@ void Particles::AssignShorthands()
   vpx0.InitWithShallowSlice(auxprop, 2, ivpx0, 1);
   vpy0.InitWithShallowSlice(auxprop, 2, ivpy0, 1);
   vpz0.InitWithShallowSlice(auxprop, 2, ivpz0, 1);
+
+  xi1.InitWithShallowSlice(work, 2, ixi1, 1);
+  xi2.InitWithShallowSlice(work, 2, ixi2, 1);
+  xi3.InitWithShallowSlice(work, 2, ixi3, 1);
+  apx.InitWithShallowSlice(work, 2, iapx, 1);
+  apy.InitWithShallowSlice(work, 2, iapy, 1);
+  apz.InitWithShallowSlice(work, 2, iapz, 1);
 }
 
 //--------------------------------------------------------------------------------------
