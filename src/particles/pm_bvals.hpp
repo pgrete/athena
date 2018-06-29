@@ -11,9 +11,12 @@
 #include "../bvals/bvals.hpp"
 #include "../mesh/mesh.hpp"
 
+// Define the number of ghost cells needed.
+const int NGPM = 1;
+
 //--------------------------------------------------------------------------------------
 //! \class ParticleMeshBoundaryValues
-//  \brief BoundaryValues class for particle-mesh methods
+//  \brief defines BoundaryValues class for particle-mesh methods
 
 class ParticleMeshBoundaryValues : public BoundaryBase {
 
@@ -21,5 +24,9 @@ public:
   // Constructor and destructor
   ParticleMeshBoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs);
   ~ParticleMeshBoundaryValues();
+
+private:
+  // Instance Variables
+  BoundaryData bd_;  // boundary data
 
 };

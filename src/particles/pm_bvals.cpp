@@ -19,6 +19,20 @@ ParticleMeshBoundaryValues::ParticleMeshBoundaryValues(
     MeshBlock *pmb, enum BoundaryFlag *input_bcs)
  : BoundaryBase(pmb->pmy_mesh, pmb->loc, pmb->block_size, input_bcs)
 {
+  // Initialize boundary data.
+  bd_.nbmax = maxneighbor_;
+
+  for (int n = 0; n < bd_.nbmax; n++) {
+    bd_.flag[n] = BNDRY_WAITING;
+    bd_.send[n] = NULL;
+    bd_.recv[n] = NULL;
+
+    int size = ((ni[n].ox1 == 0) ? pmb->block_size.nx1 : NGPM) *
+               ((ni[n].ox2 == 0) ? pmb->block_size.nx2 : NGPM) *
+               ((ni[n].ox3 == 0) ? pmb->block_size.nx3 : NGPM);
+    bd_.send[n] = new Real [size];
+    bd_.recv[n] = new Real [size];
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -27,4 +41,9 @@ ParticleMeshBoundaryValues::ParticleMeshBoundaryValues(
 
 ParticleMeshBoundaryValues::~ParticleMeshBoundaryValues()
 {
+  // Destroy boundary data.
+  for (int n = 0; n < bd_.nbmax; n++) {
+    delete [] bd_.send[n];
+    delete [] bd_.recv[n];
+  }
 }
