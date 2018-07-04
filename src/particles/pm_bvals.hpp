@@ -30,5 +30,6 @@ private:
   // Instance Variables
   MeshBlock *pmy_block_;  // ptr to my meshblock
   BoundaryData bd_;       // boundary data
+  int nval_;              // number of values to be communicated
 
 };

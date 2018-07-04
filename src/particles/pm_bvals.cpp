@@ -19,8 +19,9 @@ ParticleMeshBoundaryValues::ParticleMeshBoundaryValues(int nval,
     MeshBlock *pmb, enum BoundaryFlag *input_bcs)
  : BoundaryBase(pmb->pmy_mesh, pmb->loc, pmb->block_size, input_bcs)
 {
-  // Save the meshblock.
+  // Save the inputs.
   pmy_block_ = pmb;
+  nval_ = nval;
 
   // Initialize boundary data.
   bd_.nbmax = maxneighbor_;
