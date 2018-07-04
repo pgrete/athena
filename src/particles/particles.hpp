@@ -51,9 +51,9 @@ protected:
 
   // Class variables
   static bool initialized;  // whether or not the class is initialized
-  static int nint, nreal;   // numbers of integer and real properties
-  static int naux;          // number of auxiliary properties
-  static int nwork;         // number of working arrays
+  static int nint, nreal;   // numbers of integer and real particle properties
+  static int naux;          // number of auxiliary particle properties
+  static int nwork;         // number of working arrays for particles
 
   static int ipid;                 // index for the particle ID
   static int ixp, iyp, izp;        // indices for the position components
@@ -75,22 +75,21 @@ protected:
            const AthenaArray<int>& auxindices);
 
   // Instance variables
-  AthenaArray<long> intprop;   // integer particle properties
-  AthenaArray<Real> realprop;  // real particle properties
-  AthenaArray<Real> auxprop;   // auxiliary particle properties (communicated when
-                               //   particles moving to another meshblock)
-  AthenaArray<Real> work;      // working arrays (not communicated)
+                               // Data attached to the particles:
+  AthenaArray<long> intprop;   //   integer properties
+  AthenaArray<Real> realprop;  //   real properties
+  AthenaArray<Real> auxprop;   //   auxiliary properties (communicated when
+                               //     particles moving to another meshblock)
+  AthenaArray<Real> work;      //   working arrays (not communicated)
 
-  AthenaArray<Real> xi1, xi2, xi3;  // position indices of each particle
-                                    // in local meshblock
-  AthenaArray<Real> apx, apy, apz;  // acceleration components
-
-  AthenaArray<long> pid;            // shorthands for particle ID
-  AthenaArray<Real> xp, yp, zp;     // shorthands for position components
-  AthenaArray<Real> vpx, vpy, vpz;  // shorthands for velocity components
-
-  AthenaArray<Real> xp0, yp0, zp0;     // shorthands for beginning position components
-  AthenaArray<Real> vpx0, vpy0, vpz0;  // shorthands for beginning velocity components
+                                       // Shorthands:
+  AthenaArray<long> pid;               //   particle ID
+  AthenaArray<Real> xp, yp, zp;        //   position
+  AthenaArray<Real> vpx, vpy, vpz;     //   velocity
+  AthenaArray<Real> xi1, xi2, xi3;     //   position indices in local meshblock
+  AthenaArray<Real> apx, apy, apz;     //   acceleration
+  AthenaArray<Real> xp0, yp0, zp0;     //   beginning position
+  AthenaArray<Real> vpx0, vpy0, vpz0;  //   beginning velocity
 
   long npar;             // number of particles
   long nparmax;          // maximum number of particles per meshblock
