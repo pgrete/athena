@@ -28,6 +28,7 @@ public:
 
 private:
   // Instance Variables
-  BoundaryData bd_;  // boundary data
+  MeshBlock *pmy_block_;  // ptr to my meshblock
+  BoundaryData bd_;       // boundary data
 
 };
