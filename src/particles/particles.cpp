@@ -20,6 +20,7 @@ int Particles::nint = 0;
 int Particles::nreal = 0;
 int Particles::naux = 0;
 int Particles::nwork = 0;
+int Particles::nmeshaux = 0;
 int Particles::ipid = -1;
 int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
 int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
@@ -37,9 +38,6 @@ void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
                           Real& x1, Real& x2, Real& x3);
 int _CheckSide(Real xi, int nx, int xi1, int xi2);
 Real _ParticleMeshWeightFunction(Real dxi);
-
-// Particle-mesh constants.
-const Real RINF = 1;  // radius of influence
 
 //--------------------------------------------------------------------------------------
 //! \fn Particles::Initialize()
@@ -93,6 +91,7 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 {
   // Point to the calling MeshBlock.
   pmy_block = pmb;
+  RegionSize block_size = pmb->block_size;
   nparmax = pin->GetOrAddInteger("particles", "nparmax", 1);
   npar = 0;
 
@@ -108,13 +107,21 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   // Allocate working arrays.
   if (nwork > 0) work.NewAthenaArray(nwork,nparmax);
 
+  // Allocate mesh auxiliaries.
+  if (nmeshaux > 0) {
+    int ncells1 = (block_size.nx1 > 1) ? block_size.nx1 + 2 * NGPM : 1;
+    int ncells2 = (block_size.nx2 > 1) ? block_size.nx2 + 2 * NGPM : 1;
+    int ncells3 = (block_size.nx3 > 1) ? block_size.nx3 + 2 * NGPM : 1;
+    meshaux.NewAthenaArray(nmeshaux,ncells3,ncells2,ncells1);
+  }
+
   // Shallow copy to shorthands.
   AssignShorthands();
 
   // Preprocess the particle-mesh method.
-  pm_dxi1 = pmb->block_size.nx1 > 1 ? RINF : 0;
-  pm_dxi2 = pmb->block_size.nx2 > 1 ? RINF : 0;
-  pm_dxi3 = pmb->block_size.nx3 > 1 ? RINF : 0;
+  pm_dxi1 = (block_size.nx1 > 1) ? RINF : 0;
+  pm_dxi2 = (block_size.nx2 > 1) ? RINF : 0;
+  pm_dxi3 = (block_size.nx3 > 1) ? RINF : 0;
 
   // Allocate buffers.
   nprecvmax = 1;
@@ -138,15 +145,11 @@ Particles::~Particles()
   // Delete auxiliary properties.
   if (naux > 0) auxprop.DeleteAthenaArray();
 
-  // Delete position indices.
-  xi1.DeleteAthenaArray();
-  xi2.DeleteAthenaArray();
-  xi3.DeleteAthenaArray();
+  // Delete working arrays.
+  if (nwork > 0) work.DeleteAthenaArray();
 
-  // Delete acceleration.
-  apx.DeleteAthenaArray();
-  apy.DeleteAthenaArray();
-  apz.DeleteAthenaArray();
+  // Delete mesh auxiliaries.
+  if (nmeshaux > 0) meshaux.DeleteAthenaArray();
 
   // Delete buffers.
   irecv.DeleteAthenaArray();
@@ -627,6 +630,15 @@ int Particles::AddAuxProperty()
 int Particles::AddWorkingArray()
 {
   return nwork++;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn int Particles::AddMeshAux()
+//  \brief adds one auxiliary to the mesh and returns the index.
+
+int Particles::AddMeshAux()
+{
+  return nmeshaux++;
 }
 
 //--------------------------------------------------------------------------------------

@@ -11,8 +11,9 @@
 #include "../bvals/bvals.hpp"
 #include "../mesh/mesh.hpp"
 
-// Define the number of ghost cells needed.
-const int NGPM = 1;
+// Particle-mesh constants.
+const Real RINF = 1;  // radius of influence
+const int NGPM = 1;   // number of ghost cells needed.
 
 //--------------------------------------------------------------------------------------
 //! \class ParticleMeshBoundaryValues
@@ -22,7 +23,7 @@ class ParticleMeshBoundaryValues : public BoundaryBase {
 
 public:
   // Constructor and destructor
-  ParticleMeshBoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs);
+  ParticleMeshBoundaryValues(int nval, MeshBlock *pmb, enum BoundaryFlag *input_bcs);
   ~ParticleMeshBoundaryValues();
 
 private:

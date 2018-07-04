@@ -15,7 +15,7 @@
 //          MeshBlock *pmb, enum BoundaryFlag *input_bcs)
 //  \brief constructs a new ParticleMeshBoundaryValues instance.
 
-ParticleMeshBoundaryValues::ParticleMeshBoundaryValues(
+ParticleMeshBoundaryValues::ParticleMeshBoundaryValues(int nval,
     MeshBlock *pmb, enum BoundaryFlag *input_bcs)
  : BoundaryBase(pmb->pmy_mesh, pmb->loc, pmb->block_size, input_bcs)
 {
@@ -29,7 +29,7 @@ ParticleMeshBoundaryValues::ParticleMeshBoundaryValues(
 
     int size = ((ni[n].ox1 == 0) ? pmb->block_size.nx1 : NGPM) *
                ((ni[n].ox2 == 0) ? pmb->block_size.nx2 : NGPM) *
-               ((ni[n].ox3 == 0) ? pmb->block_size.nx3 : NGPM);
+               ((ni[n].ox3 == 0) ? pmb->block_size.nx3 : NGPM) * nval;
     bd_.send[n] = new Real [size];
     bd_.recv[n] = new Real [size];
   }

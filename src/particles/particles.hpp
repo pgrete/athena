@@ -13,6 +13,7 @@
 #include "../athena_arrays.hpp"
 #include "../mesh/mesh.hpp"
 #include "../outputs/outputs.hpp"
+#include "pm_bvals.hpp"
 
 class ParameterInput;
 
@@ -48,12 +49,14 @@ protected:
   static int AddRealProperty();
   static int AddAuxProperty();
   static int AddWorkingArray();
+  static int AddMeshAux();
 
   // Class variables
   static bool initialized;  // whether or not the class is initialized
   static int nint, nreal;   // numbers of integer and real particle properties
   static int naux;          // number of auxiliary particle properties
   static int nwork;         // number of working arrays for particles
+  static int nmeshaux;      // number of auxiliaries attached to mesh cells
 
   static int ipid;                 // index for the particle ID
   static int ixp, iyp, izp;        // indices for the position components
@@ -81,6 +84,8 @@ protected:
   AthenaArray<Real> auxprop;   //   auxiliary properties (communicated when
                                //     particles moving to another meshblock)
   AthenaArray<Real> work;      //   working arrays (not communicated)
+
+  AthenaArray<Real> meshaux;  // mesh auxiliaries
 
                                        // Shorthands:
   AthenaArray<long> pid;               //   particle ID
