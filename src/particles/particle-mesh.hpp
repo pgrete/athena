@@ -42,5 +42,6 @@ private:
 
   // Instance methods
   int LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb);
+  void AddBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb);
 
 };

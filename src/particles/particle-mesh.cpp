@@ -132,6 +132,29 @@ int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::AddBoundaryBufferSameLevel(
+//              Real *buf, const NeighborBlock& nb)
+//  \brief Add boundary buffers from a neighbor block to mesh.
+
+void ParticleMesh::AddBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb)
+{
+  // Determine the chunk of the block to be added to.
+  int si = (nb.ox1 > 0) ? (ie_ - NGPM + 1) : is_,
+      ei = (nb.ox1 < 0) ? (is_ + NGPM - 1) : ie_,
+      sj = (nb.ox2 > 0) ? (je_ - NGPM + 1) : js_,
+      ej = (nb.ox2 < 0) ? (js_ + NGPM - 1) : je_,
+      sk = (nb.ox3 > 0) ? (ke_ - NGPM + 1) : ks_,
+      ek = (nb.ox3 < 0) ? (ks_ + NGPM - 1) : ke_;
+
+  // Add the data to the mesh.
+  for (int n = 0; n < nmeshaux_; ++n)
+    for (int k = sk; k <= ek; ++k)
+      for (int j = sj; j <= ej; ++j)
+        for (int i = si; i <= ei; ++i)
+          meshaux_(n,k,j,i) += *buf++;
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::SendBoundary()
 //  \brief Send boundary values to neighboring blocks.
 
