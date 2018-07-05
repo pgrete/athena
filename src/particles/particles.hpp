@@ -85,7 +85,7 @@ protected:
                                //     particles moving to another meshblock)
   AthenaArray<Real> work;      //   working arrays (not communicated)
 
-  AthenaArray<Real> meshaux;  // mesh auxiliaries
+  ParticleMesh *ppm;  // ptr to particle-mesh
 
                                        // Shorthands:
   AthenaArray<long> pid;               //   particle ID

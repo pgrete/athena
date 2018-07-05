@@ -108,12 +108,7 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   if (nwork > 0) work.NewAthenaArray(nwork,nparmax);
 
   // Allocate mesh auxiliaries.
-  if (nmeshaux > 0) {
-    int ncells1 = (block_size.nx1 > 1) ? block_size.nx1 + 2 * NGPM : 1;
-    int ncells2 = (block_size.nx2 > 1) ? block_size.nx2 + 2 * NGPM : 1;
-    int ncells3 = (block_size.nx3 > 1) ? block_size.nx3 + 2 * NGPM : 1;
-    meshaux.NewAthenaArray(nmeshaux,ncells3,ncells2,ncells1);
-  }
+  if (nmeshaux > 0) ppm = new ParticleMesh(nmeshaux, pmb);
 
   // Shallow copy to shorthands.
   AssignShorthands();
@@ -149,7 +144,7 @@ Particles::~Particles()
   if (nwork > 0) work.DeleteAthenaArray();
 
   // Delete mesh auxiliaries.
-  if (nmeshaux > 0) meshaux.DeleteAthenaArray();
+  if (nmeshaux > 0) delete ppm;
 
   // Delete buffers.
   irecv.DeleteAthenaArray();
