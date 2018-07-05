@@ -29,12 +29,15 @@ public:
 
 private:
   // Instance Variables
-  AthenaArray<Real> meshaux;         // auxiliaries to the meshblock
+  AthenaArray<Real> meshaux_;        // auxiliaries to the meshblock
   int nmeshaux_;                     // number of auxiliaries to the meshblock
   int is_, ie_, js_, je_, ks_, ke_;  // beginning and ending indices
 
   MeshBlock *pmb_;         // ptr to my meshblock
   BoundaryValues *pbval_;  // ptr to my BoundaryValues
   BoundaryData bd_;        // boundary data
+
+  // Instance methods
+  int LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb);
 
 };

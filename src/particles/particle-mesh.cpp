@@ -9,6 +9,7 @@
 
 // Athena++ classes headers
 #include "../athena.hpp"
+#include "../utils/buffer_utils.hpp"
 #include "particle-mesh.hpp"
 
 //--------------------------------------------------------------------------------------
@@ -52,7 +53,7 @@ ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
     ks_ = ke_ = 0;
 
   // Allocate the block for particle-mesh.
-  meshaux.NewAthenaArray(nmeshaux, ncells3, ncells2, ncells1);
+  meshaux_.NewAthenaArray(nmeshaux, ncells3, ncells2, ncells1);
 
   // Find the number of neighbors.
   bd_.nbmax = BoundaryBase::BufferID(dim, pmb->pmy_mesh->multilevel);
@@ -72,17 +73,57 @@ ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn ParticleMeshBoundaryValues::~ParticleMeshBoundaryValues()
-//  \brief destructs a ParticleMeshBoundaryValues instance.
+//! \fn ParticleMesh::~ParticleMesh()
+//  \brief destructs a ParticleMesh instance.
 
 ParticleMesh::~ParticleMesh()
 {
   // Destroy the particle meshblock.
-  meshaux.DeleteAthenaArray();
+  meshaux_.DeleteAthenaArray();
 
   // Destroy boundary data.
   for (int n = 0; n < bd_.nbmax; n++) {
     delete [] bd_.send[n];
     delete [] bd_.recv[n];
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn int ParticleMesh::LoadBoundaryBufferSameLevel(
+//              Real *buf, const NeighborBlock& nb)
+//  \brief Fill boundary buffers for sending to a block on the same level
+
+int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb)
+{
+  // Determine the chunk of the block to be communicated.
+  int si = is_, sj = js_, sk = ks_, ei = ie_, ej = je_, ek = ke_;
+
+  if (nb.ox1 > 0) {
+    si = ie_ + 1;
+    ei += NGPM;
+  } else if (nb.ox1 < 0) {
+    si -= NGPM;
+    ei = is_ - 1;
+  }
+
+  if (nb.ox2 > 0) {
+    sj = je_ + 1;
+    ej += NGPM;
+  } else if (nb.ox2 < 0) {
+    sj -= NGPM;
+    ej = js_ - 1;
+  }
+
+  if (nb.ox3 > 0) {
+    sk = ke_ + 1;
+    ek += NGPM;
+  } else if (nb.ox3 < 0) {
+    sk -= NGPM;
+    ek = ks_ - 1;
+  }
+
+  // Load the data to the buffer.
+  int p = 0;
+  BufferUtility::Pack4DData(meshaux_, buf, 0, nmeshaux_ - 1, si, ei, sj, ej, sk, ek, p);
+  return p;
 }
