@@ -27,12 +27,11 @@ class ParticleMesh {
 
 public:
   // Constructor and destructor
-  ParticleMesh(int nmeshaux, MeshBlock *pmb);
+  ParticleMesh(Particles *ppar, int nmeshaux);
   ~ParticleMesh();
 
   // Instance methods
-  void InterpolateMeshToParticles(
-           Particles *ppar, const AthenaArray<int>& auxindices,
+  void InterpolateMeshToParticles(const AthenaArray<int>& auxindices,
            const AthenaArray<Real>& meshprop, const AthenaArray<int>& meshindices);
   void SendBoundary();
   void ReceiveBoundary();
@@ -46,6 +45,7 @@ private:
   bool active1_, active2_, active3_;  // active dimensions
   Real dxi1_, dxi2_, dxi3_;           // range of influence from a particle cloud
 
+  Particles *ppar_;        // ptr to my Particle instance
   MeshBlock *pmb_;         // ptr to my meshblock
   BoundaryValues *pbval_;  // ptr to my BoundaryValues
   BoundaryData bd_;        // boundary data

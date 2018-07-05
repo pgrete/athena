@@ -107,7 +107,7 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   if (nwork > 0) work.NewAthenaArray(nwork,nparmax);
 
   // Allocate mesh auxiliaries.
-  ppm = new ParticleMesh(nmeshaux, pmb);
+  ppm = new ParticleMesh(this, nmeshaux);
 
   // Shallow copy to shorthands.
   AssignShorthands();

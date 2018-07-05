@@ -21,18 +21,19 @@
 Real _ParticleMeshWeightFunction(Real dxi);
 
 //--------------------------------------------------------------------------------------
-//! \fn ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
+//! \fn ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
 //  \brief constructs a new ParticleMesh instance.
 
-ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
+ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
 {
-  // Save the inputs.
-  pmb_ = pmb;
-  pbval_ = pmb->pbval;
+  // Save some inputs.
+  ppar_ = ppar;
+  pmb_ = ppar->pmy_block;
+  pbval_ = pmb_->pbval;
   nmeshaux_ = nmeshaux;
 
   // Determine active dimensions.
-  RegionSize block_size = pmb->block_size;
+  RegionSize block_size = pmb_->block_size;
   active1_ = block_size.nx1 > 1;
   active2_ = block_size.nx2 > 1;
   active3_ = block_size.nx3 > 1;
@@ -73,7 +74,7 @@ ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
   meshaux_.NewAthenaArray(nmeshaux, ncells3, ncells2, ncells1);
 
   // Find the number of neighbors.
-  bd_.nbmax = BoundaryBase::BufferID(dim, pmb->pmy_mesh->multilevel);
+  bd_.nbmax = BoundaryBase::BufferID(dim, pmb_->pmy_mesh->multilevel);
 
   // Initialize boundary data.
   for (int n = 0; n < bd_.nbmax; n++) {
@@ -107,7 +108,6 @@ ParticleMesh::~ParticleMesh()
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::InterpolateMeshToParticles(
-//               Particles *ppar,
 //               const AthenaArray<int>& auxindices,
 //               const AthenaArray<Real>& meshprop,
 //               const AthenaArray<int>& meshindices)
@@ -115,7 +115,6 @@ ParticleMesh::~ParticleMesh()
 //         auxprop of particles at the corresponding property indices auxindices.
 
 void ParticleMesh::InterpolateMeshToParticles(
-         Particles *ppar,
          const AthenaArray<int>& auxindices,
          const AthenaArray<Real>& meshprop,
          const AthenaArray<int>& meshindices)
@@ -132,12 +131,12 @@ void ParticleMesh::InterpolateMeshToParticles(
   }
 
   // Loop over each particle.
-  for (long k = 0; k < ppar->npar; ++k) {
+  for (long k = 0; k < ppar_->npar; ++k) {
     for (int i = 0; i < nprop; ++i)
-      ppar->auxprop(auxindices(i),k) = 0;
+      ppar_->auxprop(auxindices(i),k) = 0;
 
     // Find the domain the particle influences.
-    Real xi1 = ppar->xi1(k), xi2 = ppar->xi2(k), xi3 = ppar->xi3(k);
+    Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
     int ix1s = int(xi1 - dxi1_), ix1e = int(xi1 + dxi1_);
     int ix2s = int(xi2 - dxi2_), ix2e = int(xi2 + dxi2_);
     int ix3s = int(xi3 - dxi3_), ix3e = int(xi3 + dxi3_);
@@ -154,7 +153,7 @@ void ParticleMesh::InterpolateMeshToParticles(
                                     _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
 
           for (int i = 0; i < nprop; ++i)
-            ppar->auxprop(auxindices(i),k) +=
+            ppar_->auxprop(auxindices(i),k) +=
                 weight * meshprop(meshindices(i),ix3,ix2,ix1);
         }
       }
