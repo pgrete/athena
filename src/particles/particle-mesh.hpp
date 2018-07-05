@@ -29,6 +29,7 @@ public:
 
   // Instance methods
   void SendBoundary();
+  void ReceiveBoundary();
 
 private:
   // Instance Variables

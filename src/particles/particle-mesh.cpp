@@ -179,3 +179,22 @@ void ParticleMesh::SendBoundary()
     }
   }
 }
+
+//--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::ReceiveBoundary()
+//  \brief Receive boundary values from neighboring blocks and add to my block.
+
+void ParticleMesh::ReceiveBoundary()
+{
+  int mylevel = pmb_->loc.level;
+
+  for (int n = 0; n < pbval_->nneighbor; n++) {
+    NeighborBlock& nb = pbval_->neighbor[n];
+    if (bd_.flag[nb.bufid] == BNDRY_COMPLETED) continue;
+
+    if (nb.level == mylevel)
+      AddBoundaryBufferSameLevel(bd_.recv[nb.bufid], nb);
+
+    bd_.flag[nb.bufid] = BNDRY_COMPLETED;
+  }
+}
