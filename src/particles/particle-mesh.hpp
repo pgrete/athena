@@ -3,11 +3,12 @@
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
 // Licensed under the 3-clause BSD License, see LICENSE file for details
 //======================================================================================
-//! \file pm_bvals.hpp
-//  \brief defines ParticleMeshBoundaryValues class used for communication between
-//         meshblocks needed by particle-mesh methods.
+//! \file particle-mesh.hpp
+//  \brief defines ParticleMesh class used for communication between meshblocks needed 
+//         by particle-mesh methods.
 
 // Athena++ classes headers
+#include "../athena_arrays.hpp"
 #include "../bvals/bvals.hpp"
 #include "../mesh/mesh.hpp"
 
@@ -16,20 +17,24 @@ const Real RINF = 1;  // radius of influence
 const int NGPM = 1;   // number of ghost cells needed.
 
 //--------------------------------------------------------------------------------------
-//! \class ParticleMeshBoundaryValues
-//  \brief defines BoundaryValues class for particle-mesh methods
+//! \class ParticleMesh
+//  \brief defines the class for particle-mesh methods
 
-class ParticleMeshBoundaryValues : public BoundaryBase {
+class ParticleMesh {
 
 public:
   // Constructor and destructor
-  ParticleMeshBoundaryValues(int nval, MeshBlock *pmb, enum BoundaryFlag *input_bcs);
-  ~ParticleMeshBoundaryValues();
+  ParticleMesh(int nmeshaux, MeshBlock *pmb);
+  ~ParticleMesh();
 
 private:
   // Instance Variables
-  MeshBlock *pmy_block_;  // ptr to my meshblock
-  BoundaryData bd_;       // boundary data
-  int nval_;              // number of values to be communicated
+  AthenaArray<Real> meshaux;         // auxiliaries to the meshblock
+  int nmeshaux_;                     // number of auxiliaries to the meshblock
+  int is_, ie_, js_, je_, ks_, ke_;  // beginning and ending indices
+
+  MeshBlock *pmb_;         // ptr to my meshblock
+  BoundaryValues *pbval_;  // ptr to my BoundaryValues
+  BoundaryData bd_;        // boundary data
 
 };

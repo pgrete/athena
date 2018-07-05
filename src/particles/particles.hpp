@@ -13,7 +13,7 @@
 #include "../athena_arrays.hpp"
 #include "../mesh/mesh.hpp"
 #include "../outputs/outputs.hpp"
-#include "pm_bvals.hpp"
+#include "particle-mesh.hpp"
 
 class ParameterInput;
 
