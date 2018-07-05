@@ -7,15 +7,18 @@
 //  \brief implements ParticleMeshBoundaryValues class used for communication between
 //         meshblocks needed by particle-mesh methods.
 
+// Standard library
+#include <cstring>
+
 // Athena++ classes headers
 #include "../athena.hpp"
+#include "../globals.hpp"
 #include "../utils/buffer_utils.hpp"
-#include "particle-mesh.hpp"
+#include "particles.hpp"
 
 //--------------------------------------------------------------------------------------
-//! \fn ParticleMeshBoundaryValues::ParticleMeshBoundaryValues(
-//          MeshBlock *pmb, enum BoundaryFlag *input_bcs)
-//  \brief constructs a new ParticleMeshBoundaryValues instance.
+//! \fn ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
+//  \brief constructs a new ParticleMesh instance.
 
 ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
 {
@@ -126,4 +129,30 @@ int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb
   int p = 0;
   BufferUtility::Pack4DData(meshaux_, buf, 0, nmeshaux_ - 1, si, ei, sj, ej, sk, ek, p);
   return p;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::SendBoundary()
+//  \brief Send boundary values to neighboring blocks.
+
+void ParticleMesh::SendBoundary()
+{
+  int mylevel = pmb_->loc.level;
+
+  for (int n = 0; n < pbval_->nneighbor; n++) {
+    NeighborBlock& nb = pbval_->neighbor[n];
+
+    // Load boundary values to send buffer.
+    int ssize;
+    if (nb.level == mylevel)
+      ssize = LoadBoundaryBufferSameLevel(bd_.send[nb.bufid], nb);
+
+    // Receive boundary values from neighboring blocks.
+    if (nb.rank == Globals::my_rank) {
+      MeshBlock *pnb = pmb_->pmy_mesh->FindMeshBlock(nb.gid);
+      BoundaryData *ptarget = &(pnb->ppar->ppm->bd_);
+      std::memcpy(ptarget->recv[nb.targetid], bd_.send[nb.bufid], ssize*sizeof(Real));
+      ptarget->flag[nb.targetid] = BNDRY_ARRIVED;
+    }
+  }
 }

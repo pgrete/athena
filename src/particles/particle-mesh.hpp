@@ -27,6 +27,9 @@ public:
   ParticleMesh(int nmeshaux, MeshBlock *pmb);
   ~ParticleMesh();
 
+  // Instance methods
+  void SendBoundary();
+
 private:
   // Instance Variables
   AthenaArray<Real> meshaux_;        // auxiliaries to the meshblock

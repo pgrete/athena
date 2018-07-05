@@ -24,6 +24,7 @@ class ParameterInput;
 class Particles {
 
 friend class MeshBlock;  // Make writing initial conditions possible.
+friend class ParticleMesh;
 
 public:
   // Class methods
