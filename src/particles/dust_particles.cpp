@@ -87,7 +87,8 @@ void DustParticles::AssignShorthands()
 void DustParticles::AddAcceleration(Real t, Real dt)
 {
   // Interpolate gas velocity onto particles.
-  InterpolateMeshToParticles(pmy_block->phydro->w1, pm_meshindices, pm_auxindices);
+  ppm->InterpolateMeshToParticles(this, pm_auxindices,
+                                  pmy_block->phydro->w1, pm_meshindices);
 
   // Add drag force to particles.
   if (taus > 0.0) {

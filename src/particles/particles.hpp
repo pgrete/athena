@@ -74,9 +74,6 @@ protected:
                                     // intprop, realprop, & auxprop are resized
                                     // Be sure to call back when derived.
   virtual void AddAcceleration(Real t, Real dt) = 0;
-  void InterpolateMeshToParticles(
-           const AthenaArray<Real>& meshprop, const AthenaArray<int>& meshindices,
-           const AthenaArray<int>& auxindices);
 
   // Instance variables
                                // Data attached to the particles:
@@ -123,9 +120,6 @@ private:
   AthenaArray<Real> rrecv;  // real receive buffers
   int nprecvmax;            // maximum number of particles per receive buffer
   int nprecv;               // actual number of particles per receive buffer
-
-  // Particle-mesh related properties:
-  Real pm_dxi1, pm_dxi2, pm_dxi3;  // maximum index distance from a particle in each dir
 };
 
 //--------------------------------------------------------------------------------------

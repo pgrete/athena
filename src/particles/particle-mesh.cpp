@@ -3,18 +3,22 @@
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
 // Licensed under the 3-clause BSD License, see LICENSE file for details
 //======================================================================================
-//! \file pm_bvals.cpp
-//  \brief implements ParticleMeshBoundaryValues class used for communication between
-//         meshblocks needed by particle-mesh methods.
+//! \file particle-mesh.cpp
+//  \brief implements ParticleMesh class used for operations involved in particle-mesh 
+//         methods.
 
 // Standard library
 #include <cstring>
+#include <sstream>
 
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../globals.hpp"
 #include "../utils/buffer_utils.hpp"
 #include "particles.hpp"
+
+// Local function prototypes.
+Real _ParticleMeshWeightFunction(Real dxi);
 
 //--------------------------------------------------------------------------------------
 //! \fn ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
@@ -27,11 +31,21 @@ ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
   pbval_ = pmb->pbval;
   nmeshaux_ = nmeshaux;
 
-  // Determine the dimensions of the block needed.
+  // Determine active dimensions.
   RegionSize block_size = pmb->block_size;
+  active1_ = block_size.nx1 > 1;
+  active2_ = block_size.nx2 > 1;
+  active3_ = block_size.nx3 > 1;
+
+  // Determine the range of a particle cloud.
+  dxi1_ = active1_ ? RINF : 0;
+  dxi2_ = active2_ ? RINF : 0;
+  dxi3_ = active3_ ? RINF : 0;
+
+  // Determine the dimensions of the block for boundary communication.
   int dim = 0, ncells1 = 1, ncells2 = 1, ncells3 = 1;
 
-  if (block_size.nx1 > 1) {
+  if (active1_) {
     ++dim;
     is_ = NGPM;
     ie_ = NGPM + block_size.nx1 - 1;
@@ -39,7 +53,7 @@ ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
   } else
     is_ = ie_ = 0;
 
-  if (block_size.nx2 > 1) {
+  if (active2_) {
     ++dim;
     js_ = NGPM;
     je_ = NGPM + block_size.nx2 - 1;
@@ -47,7 +61,7 @@ ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
   } else
     js_ = je_ = 0;
 
-  if (block_size.nx3 > 1) {
+  if (active3_) {
     ++dim;
     ks_ = NGPM;
     ke_ = NGPM + block_size.nx3 - 1;
@@ -67,9 +81,9 @@ ParticleMesh::ParticleMesh(int nmeshaux, MeshBlock *pmb)
     bd_.send[n] = NULL;
     bd_.recv[n] = NULL;
 
-    int size = ((pbval_->ni[n].ox1 == 0) ? pmb->block_size.nx1 : NGPM) *
-               ((pbval_->ni[n].ox2 == 0) ? pmb->block_size.nx2 : NGPM) *
-               ((pbval_->ni[n].ox3 == 0) ? pmb->block_size.nx3 : NGPM) * nmeshaux;
+    int size = ((pbval_->ni[n].ox1 == 0) ? block_size.nx1 : NGPM) *
+               ((pbval_->ni[n].ox2 == 0) ? block_size.nx2 : NGPM) *
+               ((pbval_->ni[n].ox3 == 0) ? block_size.nx3 : NGPM) * nmeshaux;
     bd_.send[n] = new Real [size];
     bd_.recv[n] = new Real [size];
   }
@@ -88,6 +102,63 @@ ParticleMesh::~ParticleMesh()
   for (int n = 0; n < bd_.nbmax; n++) {
     delete [] bd_.send[n];
     delete [] bd_.recv[n];
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::InterpolateMeshToParticles(
+//               Particles *ppar,
+//               const AthenaArray<int>& auxindices,
+//               const AthenaArray<Real>& meshprop,
+//               const AthenaArray<int>& meshindices)
+//  \brief interpolates meshprop at specified property indices meshindices onto
+//         auxprop of particles at the corresponding property indices auxindices.
+
+void ParticleMesh::InterpolateMeshToParticles(
+         Particles *ppar,
+         const AthenaArray<int>& auxindices,
+         const AthenaArray<Real>& meshprop,
+         const AthenaArray<int>& meshindices)
+{
+  // Check the index mapping.
+  int nprop = meshindices.GetSize();
+  if (nprop <= 0 || auxindices.GetSize() != nprop) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::InterpolateMeshToParticles]"
+        << std::endl
+        << "index arrays meshindices and auxindices does not match." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+    return;
+  }
+
+  // Loop over each particle.
+  for (long k = 0; k < ppar->npar; ++k) {
+    for (int i = 0; i < nprop; ++i)
+      ppar->auxprop(auxindices(i),k) = 0;
+
+    // Find the domain the particle influences.
+    Real xi1 = ppar->xi1(k), xi2 = ppar->xi2(k), xi3 = ppar->xi3(k);
+    int ix1s = int(xi1 - dxi1_), ix1e = int(xi1 + dxi1_);
+    int ix2s = int(xi2 - dxi2_), ix2e = int(xi2 + dxi2_);
+    int ix3s = int(xi3 - dxi3_), ix3e = int(xi3 + dxi3_);
+
+    // Weight each cell and accumulate the mesh properties onto the particles.
+    for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
+      Real w3 = active3_ ? _ParticleMeshWeightFunction(ix3 + 0.5 - xi3) : 1.0;
+
+      for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
+        Real w23 = w3 * (active2_ ? _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
+
+        for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
+          Real weight = w23 * (active1_ ?
+                                    _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+
+          for (int i = 0; i < nprop; ++i)
+            ppar->auxprop(auxindices(i),k) +=
+                weight * meshprop(meshindices(i),ix3,ix2,ix1);
+        }
+      }
+    }
   }
 }
 
@@ -197,4 +268,23 @@ void ParticleMesh::ReceiveBoundary()
 
     bd_.flag[nb.bufid] = BNDRY_COMPLETED;
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn Real _ParticleMeshWeightFunction(Real dxi)
+//  \brief evaluates the weight function given index distance.
+
+Real _ParticleMeshWeightFunction(Real dxi)
+{
+  if (dxi < 0) dxi = -dxi;
+
+  if (dxi < 0.5)
+    return 0.75 - dxi * dxi;
+
+  if (dxi < 1.5) {
+    dxi = 1.5 - dxi;
+    return 0.5 * (dxi * dxi);
+  }
+
+  return 0;
 }

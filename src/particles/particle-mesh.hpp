@@ -16,6 +16,9 @@
 const Real RINF = 1;  // radius of influence
 const int NGPM = 1;   // number of ghost cells needed.
 
+// Forward declaration
+class Particles;
+
 //--------------------------------------------------------------------------------------
 //! \class ParticleMesh
 //  \brief defines the class for particle-mesh methods
@@ -28,6 +31,9 @@ public:
   ~ParticleMesh();
 
   // Instance methods
+  void InterpolateMeshToParticles(
+           Particles *ppar, const AthenaArray<int>& auxindices,
+           const AthenaArray<Real>& meshprop, const AthenaArray<int>& meshindices);
   void SendBoundary();
   void ReceiveBoundary();
 
@@ -36,6 +42,9 @@ private:
   AthenaArray<Real> meshaux_;        // auxiliaries to the meshblock
   int nmeshaux_;                     // number of auxiliaries to the meshblock
   int is_, ie_, js_, je_, ks_, ke_;  // beginning and ending indices
+
+  bool active1_, active2_, active3_;  // active dimensions
+  Real dxi1_, dxi2_, dxi3_;           // range of influence from a particle cloud
 
   MeshBlock *pmb_;         // ptr to my meshblock
   BoundaryValues *pbval_;  // ptr to my BoundaryValues
