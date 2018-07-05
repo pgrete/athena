@@ -20,6 +20,9 @@
 // Local function prototypes.
 Real _ParticleMeshWeightFunction(Real dxi);
 
+// Local constants.
+const int OFFSET = NGHOST - NGPM;  // offset between meshblock and meshaux
+
 //--------------------------------------------------------------------------------------
 //! \fn ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
 //  \brief constructs a new ParticleMesh instance.
@@ -44,13 +47,13 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
   dxi3_ = active3_ ? RINF : 0;
 
   // Determine the dimensions of the block for boundary communication.
-  int dim = 0, ncells1 = 1, ncells2 = 1, ncells3 = 1;
+  int dim = 0, nx1 = 1, nx2 = 1, nx3 = 1;
 
   if (active1_) {
     ++dim;
     is_ = NGPM;
     ie_ = NGPM + block_size.nx1 - 1;
-    ncells1 = block_size.nx1 + 2 * NGPM;
+    nx1 = block_size.nx1 + 2 * NGPM;
   } else
     is_ = ie_ = 0;
 
@@ -58,7 +61,7 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
     ++dim;
     js_ = NGPM;
     je_ = NGPM + block_size.nx2 - 1;
-    ncells2 = block_size.nx2 + 2 * NGPM;
+    nx2 = block_size.nx2 + 2 * NGPM;
   } else
     js_ = je_ = 0;
 
@@ -66,12 +69,13 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
     ++dim;
     ks_ = NGPM;
     ke_ = NGPM + block_size.nx3 - 1;
-    ncells3 = block_size.nx3 + 2 * NGPM;
+    nx3 = block_size.nx3 + 2 * NGPM;
   } else
     ks_ = ke_ = 0;
 
   // Allocate the block for particle-mesh.
-  meshaux_.NewAthenaArray(nmeshaux, ncells3, ncells2, ncells1);
+  meshaux_.NewAthenaArray(nmeshaux, nx3, nx2, nx1);
+  ncells_ = nx1 * nx2 * nx3;
 
   // Find the number of neighbors.
   bd_.nbmax = BoundaryBase::BufferID(dim, pmb_->pmy_mesh->multilevel);
@@ -159,6 +163,74 @@ void ParticleMesh::InterpolateMeshToParticles(
       }
     }
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::AssignParticlesToMeshAux(
+//               const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
+//               const AthenaArray<int>& imeshaux)
+//  \brief assigns par (realprop, auxprop, or work in Particles class) at specified
+//         indices ipar onto meshaux at the corresponding indices imeshaux.
+
+void ParticleMesh::AssignParticlesToMeshAux(
+         const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
+         const AthenaArray<int>& imeshaux)
+{
+  // Check the index mapping.
+  int nprop = ipar.GetSize();
+  if (nprop <= 0 || imeshaux.GetSize() != nprop) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::AssignParticlesToMeshAux]"
+        << std::endl
+        << "index arrays ipar and imeshaux does not match." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+    return;
+  }
+
+  // Zero out meshaux.
+  for (int n = 0; n < nprop; ++n) {
+    Real* pdata = &meshaux_(imeshaux(n));
+    for (int i = 0; i < ncells_; ++i)
+      *pdata++ = 0.0;
+  }
+
+  // Allocate working array.
+  AthenaArray<Real> p;
+  p.NewAthenaArray(nprop);
+
+  for (long k = 0; k < ppar_->npar; ++k) {
+    // Find the domain the particle influences.
+    Real xi1 = ppar_->xi1(k) - (active1_ ? OFFSET : 0),
+         xi2 = ppar_->xi2(k) - (active2_ ? OFFSET : 0),
+         xi3 = ppar_->xi3(k) - (active3_ ? OFFSET : 0);
+    int ix1s = int(xi1 - dxi1_), ix1e = int(xi1 + dxi1_);
+    int ix2s = int(xi2 - dxi2_), ix2e = int(xi2 + dxi2_);
+    int ix3s = int(xi3 - dxi3_), ix3e = int(xi3 + dxi3_);
+
+    // Copy the particle properties.
+    for (int n = 0; n < nprop; ++n)
+      p(n) = par(ipar(n),k);
+
+    // Weight each cell and accumulate particle property onto meshaux.
+    for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
+      Real w3 = active3_ ? _ParticleMeshWeightFunction(ix3 + 0.5 - xi3) : 1.0;
+
+      for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
+        Real w23 = w3 * (active2_ ? _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
+
+        for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
+          Real weight = w23 * (active1_ ?
+                                    _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+
+          for (int n = 0; n < nprop; ++n)
+            meshaux_(imeshaux(n),ix3,ix2,ix1) += weight * p(n);
+        }
+      }
+    }
+  }
+
+  // Release working array.
+  p.DeleteAthenaArray();
 }
 
 //--------------------------------------------------------------------------------------
