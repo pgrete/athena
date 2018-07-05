@@ -14,6 +14,7 @@
 // Athena++ classes headers
 #include "../athena.hpp"
 #include "../globals.hpp"
+#include "../coordinates/coordinates.hpp"
 #include "../utils/buffer_utils.hpp"
 #include "particles.hpp"
 
@@ -231,6 +232,41 @@ void ParticleMesh::AssignParticlesToMeshAux(
 
   // Release working array.
   p.DeleteAthenaArray();
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
+//               const AthenaArray<int>& imeshaux, const AthenaArray<int>& imeshblock)
+//  \brief deposits data in meshaux at specified indices imeshaux to meshblock u at the
+//         corresponding indices imeshblock, divided by cell volume.
+
+void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
+         const AthenaArray<int>& imeshaux, const AthenaArray<int>& imeshblock)
+{
+  // Check the index mapping.
+  const int nprop = imeshaux.GetSize();
+  if (nprop <= 0 || imeshblock.GetSize() != nprop) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::AssignParticlesToMeshAux]"
+        << std::endl
+        << "index arrays ipar and imeshaux does not match." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+    return;
+  }
+
+  // Get the meshblock indices.
+  const int is = pmb_->is, js = pmb_->js, ks = pmb_->ks;
+  Coordinates *pc = pmb_->pcoord;
+
+  // Add meshaux to meshblock.
+  for (int n = 0; n < nprop; ++n) {
+    int ima = imeshaux(n), imb = imeshblock(n);
+
+    for (int ka = ks_, kb = ks; ka <= ke_; ++ka, ++kb)
+      for (int ja = js_, jb = js; ja <= je_; ++ja, ++jb)
+        for (int ia = is_, ib = is; ia <= ie_; ++ia, ++ib)
+          u(imb,kb,jb,ib) += meshaux_(ima,ka,ja,ia) / pc->GetCellVolume(kb,jb,ib);
+  }
 }
 
 //--------------------------------------------------------------------------------------

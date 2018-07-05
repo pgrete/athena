@@ -36,6 +36,8 @@ public:
   void AssignParticlesToMeshAux(
            const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
            const AthenaArray<int>& imeshaux);
+  void DepositMeshAux(AthenaArray<Real>& u,
+           const AthenaArray<int>& imeshaux, const AthenaArray<int>& imeshblock);
   void SendBoundary();
   void ReceiveBoundary();
 
