@@ -97,6 +97,7 @@ protected:
   long npar;             // number of particles
   long nparmax;          // maximum number of particles per meshblock
   MeshBlock* pmy_block;  // MeshBlock pointer
+  Mesh* pmy_mesh;        // Mesh pointer
 
 private:
   // Class methods

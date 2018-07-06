@@ -6,9 +6,13 @@
 //! \file particles.cpp
 //  \brief implements functions in particle classes
 
+// C++ Standard Libraries
 #include <cmath>
 #include <sstream>
 #include <string>
+
+// Athena++ headers
+#include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../mesh/meshblock_tree.hpp"
 #include "../coordinates/coordinates.hpp"
@@ -90,7 +94,7 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 {
   // Point to the calling MeshBlock.
   pmy_block = pmb;
-  RegionSize block_size = pmb->block_size;
+  pmy_mesh = pmb->pmy_mesh;
   nparmax = pin->GetOrAddInteger("particles", "nparmax", 1);
   npar = 0;
 
