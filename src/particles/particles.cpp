@@ -274,36 +274,30 @@ void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::Migrate(Mesh *pm)
-//  \brief migrates particles that are outside of the MeshBlock boundary.
+//! \fn void Particles::SendParticlesAndMesh()
+//  \brief send particles and meshaux near boundaries to neighbors.
 
-void Particles::Migrate(Mesh *pm)
+void Particles::SendParticlesAndMesh()
 {
-  // Update the position indices.
-  MeshBlock *pmb = pm->pblock;
-  Particles *ppar;
-  while (pmb != NULL) {
-    ppar = pmb->ppar;
-    long npar = ppar->npar;
-    if (npar > 0) GetPositionIndices(pmb, npar, ppar->xp, ppar->yp, ppar->zp,
-                                                ppar->xi1, ppar->xi2, ppar->xi3);
-    pmb = pmb->next;
-  }
-
   // Send particles.
-  pmb = pm->pblock;
-  while (pmb != NULL) {
-    pmb->ppar->SendToNeighbors();
-    pmb = pmb->next;
+  if (npar > 0) {
+    GetPositionIndices(pmy_block, npar, xp, yp, zp, xi1, xi2, xi3);
+    SendToNeighbors();
   }
 
-  // Flush the receive buffers.
-  pmb = pm->pblock;
-  while (pmb != NULL) {
-    ppar = pmb->ppar;
-    if (ppar->nprecv > 0) ppar->FlushReceiveBuffer();
-    pmb = pmb->next;
-  }
+  // TODO: Send MeshAux.
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::ReceiveParticlesAndMesh()
+//  \brief receives particles and meshaux near boundaries from neighbors.
+
+void Particles::ReceiveParticlesAndMesh()
+{
+  // Flush Particles receive buffer.
+  if (nprecv > 0) FlushReceiveBuffer();
+
+  // TODO: flush ParticleMesh receive buffers.
 }
 
 //--------------------------------------------------------------------------------------
@@ -508,30 +502,22 @@ void Particles::FlushReceiveBuffer()
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::Integrate(Mesh *pm, int step)
+//! \fn void Particles::Integrate(int step)
 //  \brief updates all particle positions and velocities from t to t + dt.
 //======================================================================================
 
-void Particles::Integrate(Mesh *pm, int step)
+void Particles::Integrate(int step)
 {
-  MeshBlock *pmb = pm->pblock;
+  switch (step) {
 
-  if (step == 1) {
-    Real t = pm->time, dt = 0.5 * pm->dt;
-    while (pmb != NULL) {
-      pmb->ppar->SaveStatus();
-      pmb->ppar->EulerStep(t, dt);
-      pmb = pmb->next;
-    }
-    Migrate(pm);
+  case 1:
+    SaveStatus();
+    EulerStep(pmy_mesh->time, 0.5 * pmy_mesh->dt);
+    break;
 
-  } else if (step == 2) {
-    Real t = pm->time + 0.5 * pm->dt, dt = pm->dt;
-    while (pmb != NULL) {
-      pmb->ppar->EulerStep(t, dt);
-      pmb = pmb->next;
-    }
-    Migrate(pm);
+  case 2:
+    EulerStep(pmy_mesh->time + 0.5 * pmy_mesh->dt, pmy_mesh->dt);
+    break;
   }
 }
 

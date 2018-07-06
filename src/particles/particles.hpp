@@ -29,9 +29,7 @@ friend class ParticleMesh;
 public:
   // Class methods
   static void Initialize();
-  static void Integrate(Mesh *pm, int step);  // master integrator
   static void FormattedTableOutput(Mesh *pm, OutputParameters op); 
-  static void Migrate(Mesh *pm);
 
   // Constructor
   Particles(MeshBlock *pmb, ParameterInput *pin);
@@ -40,6 +38,10 @@ public:
   ~Particles();
 
   // Instance methods
+  void Integrate(int step);
+  void SendParticlesAndMesh();
+  void ReceiveParticlesAndMesh();
+
   size_t GetSizeInBytes();
   void ReadRestart(char *mbdata, int &os);
   void WriteRestart(char *&pdata);
@@ -76,6 +78,9 @@ protected:
   virtual void AddAcceleration(Real t, Real dt) = 0;
 
   // Instance variables
+  long npar;     // number of particles
+  long nparmax;  // maximum number of particles per meshblock
+
                                // Data attached to the particles:
   AthenaArray<long> intprop;   //   integer properties
   AthenaArray<Real> realprop;  //   real properties
@@ -94,8 +99,6 @@ protected:
   AthenaArray<Real> xp0, yp0, zp0;     //   beginning position
   AthenaArray<Real> vpx0, vpy0, vpz0;  //   beginning velocity
 
-  long npar;             // number of particles
-  long nparmax;          // maximum number of particles per meshblock
   MeshBlock* pmy_block;  // MeshBlock pointer
   Mesh* pmy_mesh;        // Mesh pointer
 

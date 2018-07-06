@@ -283,7 +283,18 @@ int main(int argc, char *argv[])
   try {
     pmesh->Initialize(res_flag, pinput);
     // TODO: Straighten out initialization of particles.
-    if (PARTICLES) Particles::Migrate(pmesh);
+    if (PARTICLES) {
+      MeshBlock *pmb = pmesh->pblock;
+      while (pmb != NULL) {
+        pmb->ppar->SendParticlesAndMesh();
+        pmb = pmb->next;
+      }
+      pmb = pmesh->pblock;
+      while (pmb != NULL) {
+        pmb->ppar->ReceiveParticlesAndMesh();
+        pmb = pmb->next;
+      }
+    }
   } 
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl << "memory allocation failed "
@@ -352,7 +363,23 @@ int main(int argc, char *argv[])
         pmesh->pgrd->Solve(step);
       ptlist->DoTaskListOneSubstep(pmesh, step);
       // TODO: Move this to the task list.
-      if (PARTICLES) Particles::Integrate(pmesh, step);
+      if (PARTICLES) {
+        MeshBlock *pmb = pmesh->pblock;
+        while (pmb != NULL) {
+          pmb->ppar->Integrate(step);
+          pmb = pmb->next;
+        }
+        pmb = pmesh->pblock;
+        while (pmb != NULL) {
+          pmb->ppar->SendParticlesAndMesh();
+          pmb = pmb->next;
+        }
+        pmb = pmesh->pblock;
+        while (pmb != NULL) {
+          pmb->ppar->ReceiveParticlesAndMesh();
+          pmb = pmb->next;
+        }
+      }
     }
 
     pmesh->ncycle++;
