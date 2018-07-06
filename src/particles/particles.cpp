@@ -331,15 +331,17 @@ void Particles::EulerStep(Real t, Real dt)
 
 void Particles::SaveStatus()
 {
-  // Save current positions.
-  xp0 = xp;
-  yp0 = yp;
-  zp0 = zp;
+  for (long k = 0; k < npar; ++k) {
+    // Save current positions.
+    xp0(k) = xp(k);
+    yp0(k) = yp(k);
+    zp0(k) = zp(k);
 
-  // Save current velocities.
-  vpx0 = vpx;
-  vpy0 = vpy;
-  vpz0 = vpz;
+    // Save current velocities.
+    vpx0(k) = vpx(k);
+    vpy0(k) = vpy(k);
+    vpz0(k) = vpz(k);
+  }
 }
 
 //--------------------------------------------------------------------------------------
