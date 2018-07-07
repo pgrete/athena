@@ -16,6 +16,7 @@
 #include "../athena_arrays.hpp"
 #include "../mesh/meshblock_tree.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../hydro/hydro.hpp"
 #include "particles.hpp"
 
 // Class variable initialization
@@ -301,10 +302,10 @@ void Particles::ReceiveParticlesAndMesh()
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::EulerStep(Real t, Real dt)
+//! \fn void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 //  \brief evolves the particle positions and velocities by one Euler step.
 
-void Particles::EulerStep(Real t, Real dt)
+void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 {
   // Get the accelerations.
   for (long k = 0; k < npar; ++k) {
@@ -312,7 +313,7 @@ void Particles::EulerStep(Real t, Real dt)
     apy(k) = 0.0;
     apz(k) = 0.0;
   }
-  AddAcceleration(t, dt);
+  AddAcceleration(t, dt, meshsrc);
 
   // Update the positions and velocities **from the beginning of the time step**.
   for (long k = 0; k < npar; ++k) {
@@ -514,11 +515,11 @@ void Particles::Integrate(int step)
 
   case 1:
     SaveStatus();
-    EulerStep(pmy_mesh->time, 0.5 * pmy_mesh->dt);
+    EulerStep(pmy_mesh->time, 0.5 * pmy_mesh->dt, pmy_block->phydro->w);
     break;
 
   case 2:
-    EulerStep(pmy_mesh->time + 0.5 * pmy_mesh->dt, pmy_mesh->dt);
+    EulerStep(pmy_mesh->time + 0.5 * pmy_mesh->dt, pmy_mesh->dt, pmy_block->phydro->w1);
     break;
   }
 }

@@ -131,6 +131,10 @@ public:
   enum TaskStatus GravReceive(MeshBlock *pmb, int step);
   enum TaskStatus GravSolve(MeshBlock *pmb, int step);
   enum TaskStatus GravFluxCorrection(MeshBlock *pmb, int step);
+
+  enum TaskStatus ParticlesIntegrate(MeshBlock *pmb, int step);
+  enum TaskStatus ParticlesSend(MeshBlock *pmb, int step);
+  enum TaskStatus ParticlesReceive(MeshBlock *pmb, int step);
 };
 
 
@@ -194,6 +198,16 @@ namespace HydroIntegratorTaskNames {
   const uint64_t SEND_GRAV=1LL<<42;
   const uint64_t RECV_GRAV=1LL<<43;
   const uint64_t CORR_GFLX=1LL<<44;
+
+#if PARTICLES
+  const uint64_t INT_PAR=1LL<<45;
+  const uint64_t SEND_PM=1LL<<46;
+  const uint64_t RECV_PM=1LL<<47;
+#else
+  const uint64_t INT_PAR=NONE;
+  const uint64_t SEND_PM=NONE;
+  const uint64_t RECV_PM=NONE;
+#endif
 };
 
 #endif // TASK_LIST_HPP

@@ -362,24 +362,6 @@ int main(int argc, char *argv[])
       if(SELF_GRAVITY_ENABLED == 2) // multigrid
         pmesh->pgrd->Solve(step);
       ptlist->DoTaskListOneSubstep(pmesh, step);
-      // TODO: Move this to the task list.
-      if (PARTICLES) {
-        MeshBlock *pmb = pmesh->pblock;
-        while (pmb != NULL) {
-          pmb->ppar->Integrate(step);
-          pmb = pmb->next;
-        }
-        pmb = pmesh->pblock;
-        while (pmb != NULL) {
-          pmb->ppar->SendParticlesAndMesh();
-          pmb = pmb->next;
-        }
-        pmb = pmesh->pblock;
-        while (pmb != NULL) {
-          pmb->ppar->ReceiveParticlesAndMesh();
-          pmb = pmb->next;
-        }
-      }
     }
 
     pmesh->ncycle++;

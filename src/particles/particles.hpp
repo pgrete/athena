@@ -75,7 +75,7 @@ protected:
   virtual void AssignShorthands();  // Needs to be called everytime
                                     // intprop, realprop, & auxprop are resized
                                     // Be sure to call back when derived.
-  virtual void AddAcceleration(Real t, Real dt) = 0;
+  virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) = 0;
 
   // Instance variables
   long npar;     // number of particles
@@ -114,7 +114,7 @@ private:
                                  AthenaArray<Real>& xi3);
 
   // Instance methods
-  void EulerStep(Real t, Real dt);
+  void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void FlushReceiveBuffer();
   void SaveStatus();
   void SendToNeighbors();
@@ -152,7 +152,7 @@ private:
 
   // Instance methods.
   void AssignShorthands();
-  void AddAcceleration(Real t, Real dt);
+  void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc);
 
   // Instance variables
   Real mass;  // mass of each particle

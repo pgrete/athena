@@ -24,6 +24,7 @@
 #include "../gravity/gravity.hpp"
 #include "../eos/eos.hpp"
 #include "../hydro/srcterms/hydro_srcterms.hpp"
+#include "../particles/particles.hpp"
 
 //----------------------------------------------------------------------------------------
 //  TimeIntegratorTaskList constructor
@@ -91,20 +92,27 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm)
       AddTimeIntegratorTask(RECV_FLD,START_ALLRECV);
     }
 
+    // evolve particles
+    if (PARTICLES) {
+      AddTimeIntegratorTask(INT_PAR, NONE);
+      AddTimeIntegratorTask(SEND_PM, INT_PAR);
+      AddTimeIntegratorTask(RECV_PM, SEND_PM);
+    }
+
     // prolongate, compute new primitives
     if (MAGNETIC_FIELDS_ENABLED) { // MHD
       if(pm->multilevel==true) { // SMR or AMR
-        AddTimeIntegratorTask(PROLONG, (SEND_HYD|RECV_HYD|SEND_FLD|RECV_FLD));
+        AddTimeIntegratorTask(PROLONG, (SEND_HYD|RECV_HYD|SEND_FLD|RECV_FLD|RECV_PM));
         AddTimeIntegratorTask(CON2PRIM,PROLONG);
       } else {
-        AddTimeIntegratorTask(CON2PRIM,(INT_HYD|RECV_HYD|INT_FLD|RECV_FLD));
+        AddTimeIntegratorTask(CON2PRIM,(INT_HYD|RECV_HYD|INT_FLD|RECV_FLD|RECV_PM));
       }
     } else {  // HYDRO
       if(pm->multilevel==true) { // SMR or AMR
-        AddTimeIntegratorTask(PROLONG,(SEND_HYD|RECV_HYD));
+        AddTimeIntegratorTask(PROLONG,(SEND_HYD|RECV_HYD|RECV_PM));
         AddTimeIntegratorTask(CON2PRIM,PROLONG);
       } else {
-        AddTimeIntegratorTask(CON2PRIM,(INT_HYD|RECV_HYD));
+        AddTimeIntegratorTask(CON2PRIM,(INT_HYD|RECV_HYD|RECV_PM));
       }
     }
 
@@ -276,6 +284,21 @@ void TimeIntegratorTaskList::AddTimeIntegratorTask(uint64_t id, uint64_t dep)
         (&TimeIntegratorTaskList::GravFluxCorrection);
       break;
 
+    case (INT_PAR):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::ParticlesIntegrate);
+      break;
+    case (SEND_PM):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::ParticlesSend);
+      break;
+    case (RECV_PM):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::ParticlesReceive);
+      break;
 
     default:
       std::stringstream msg;
@@ -519,6 +542,31 @@ enum TaskStatus TimeIntegratorTaskList::FieldReceive(MeshBlock *pmb, int step)
   } else {
     return TASK_FAIL;
   }
+}
+
+//--------------------------------------------------------------------------------------
+// Functions to manage particles
+
+enum TaskStatus TimeIntegratorTaskList::ParticlesIntegrate(MeshBlock *pmb, int step)
+{
+  if (integrator == "vl2") {
+    pmb->ppar->Integrate(step);
+    return TASK_NEXT;
+  }
+
+  return TASK_FAIL;
+}
+
+enum TaskStatus TimeIntegratorTaskList::ParticlesSend(MeshBlock *pmb, int step)
+{
+  pmb->ppar->SendParticlesAndMesh();
+  return TASK_SUCCESS;
+}
+
+enum TaskStatus TimeIntegratorTaskList::ParticlesReceive(MeshBlock *pmb, int step)
+{
+  pmb->ppar->ReceiveParticlesAndMesh();
+  return TASK_SUCCESS;
 }
 
 //----------------------------------------------------------------------------------------
