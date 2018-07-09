@@ -11,8 +11,8 @@
 
 // Class variable initialization
 bool DustParticles::initialized = false;
-int DustParticles::iux = -1, DustParticles::iuy = -1, DustParticles::iuz = -1;
-AthenaArray<int> DustParticles::pm_meshindices, DustParticles::pm_auxindices;
+int DustParticles::iwx = -1, DustParticles::iwy = -1, DustParticles::iwz = -1;
+AthenaArray<int> DustParticles::imeshsrc, DustParticles::iwork;
 
 //--------------------------------------------------------------------------------------
 //! \fn DustParticles::Initialize()
@@ -25,19 +25,19 @@ void DustParticles::Initialize()
 
   if (!initialized) {
     // Add gas velocity at each particle.
-    iux = AddAuxProperty();
-    iuy = AddAuxProperty();
-    iuz = AddAuxProperty();
+    iwx = AddWorkingArray();
+    iwy = AddWorkingArray();
+    iwz = AddWorkingArray();
 
     // Assign indice mapping for particle-mesh.
-    pm_meshindices.NewAthenaArray(3);
-    pm_auxindices.NewAthenaArray(3);
-    pm_meshindices(0) = IVX;
-    pm_meshindices(1) = IVY;
-    pm_meshindices(2) = IVZ;
-    pm_auxindices(0) = iux;
-    pm_auxindices(1) = iuy;
-    pm_auxindices(2) = iuz;
+    imeshsrc.NewAthenaArray(3);
+    iwork.NewAthenaArray(3);
+    imeshsrc(0) = IVX;
+    imeshsrc(1) = IVY;
+    imeshsrc(2) = IVZ;
+    iwork(0) = iwx;
+    iwork(1) = iwy;
+    iwork(2) = iwz;
 
     initialized = true;
   }
@@ -75,9 +75,9 @@ DustParticles::~DustParticles()
 void DustParticles::AssignShorthands()
 {
   Particles::AssignShorthands();
-  ux.InitWithShallowSlice(auxprop, 2, iux, 1);
-  uy.InitWithShallowSlice(auxprop, 2, iuy, 1);
-  uz.InitWithShallowSlice(auxprop, 2, iuz, 1);
+  wx.InitWithShallowSlice(work, 2, iwx, 1);
+  wy.InitWithShallowSlice(work, 2, iwy, 1);
+  wz.InitWithShallowSlice(work, 2, iwz, 1);
 }
 
 //--------------------------------------------------------------------------------------
@@ -87,21 +87,21 @@ void DustParticles::AssignShorthands()
 void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 {
   // Interpolate gas velocity onto particles.
-  ppm->InterpolateMeshToParticles(meshsrc, pm_meshindices, auxprop, pm_auxindices);
+  ppm->InterpolateMeshToParticles(meshsrc, imeshsrc, work, iwork);
 
   // Add drag force to particles.
   if (taus > 0.0) {
     Real taus1 = 1.0 / taus;
     for (long k = 0; k < npar; ++k) {
-      apx(k) += taus1 * (ux(k) - vpx(k));
-      apy(k) += taus1 * (uy(k) - vpy(k));
-      apz(k) += taus1 * (uz(k) - vpz(k));
+      apx(k) += taus1 * (wx(k) - vpx(k));
+      apy(k) += taus1 * (wy(k) - vpy(k));
+      apz(k) += taus1 * (wz(k) - vpz(k));
     }
   } else if (taus == 0.0) {
     for (long k = 0; k < npar; ++k) {
-      vpx(k) = ux(k);
-      vpy(k) = uy(k);
-      vpz(k) = uz(k);
+      vpx(k) = wx(k);
+      vpy(k) = wy(k);
+      vpz(k) = wz(k);
     }
   }
 }

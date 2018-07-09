@@ -148,8 +148,8 @@ public:
 private:
   // Class variables
   static bool initialized;   // whether or not the class is initialized
-  static int iux, iuy, iuz;  // indices for the gas velocity
-  static AthenaArray<int> pm_meshindices, pm_auxindices;
+  static int iwx, iwy, iwz;  // indices for working arrays
+  static AthenaArray<int> imeshsrc, iwork;
                              // Array of indices for particle-mesh mapping
 
   // Instance methods.
@@ -160,7 +160,7 @@ private:
   Real mass;  // mass of each particle
   Real taus;  // stopping time (in code units)
 
-  AthenaArray<Real> ux, uy, uz;  // shorthand for gas velocity components
+  AthenaArray<Real> wx, wy, wz;  // shorthand for working arrays
 };
 
 #endif
