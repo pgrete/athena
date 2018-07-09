@@ -286,12 +286,12 @@ int main(int argc, char *argv[])
     if (PARTICLES) {
       MeshBlock *pmb = pmesh->pblock;
       while (pmb != NULL) {
-        pmb->ppar->SendParticlesAndMesh();
+        pmb->ppar->SendParticlesAndMesh(0);
         pmb = pmb->next;
       }
       pmb = pmesh->pblock;
       while (pmb != NULL) {
-        pmb->ppar->ReceiveParticlesAndMesh();
+        pmb->ppar->ReceiveParticlesAndMesh(0);
         pmb = pmb->next;
       }
     }

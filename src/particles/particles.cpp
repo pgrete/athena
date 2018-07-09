@@ -275,10 +275,10 @@ void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::SendParticlesAndMesh()
+//! \fn void Particles::SendParticlesAndMesh(int step)
 //  \brief send particles and meshaux near boundaries to neighbors.
 
-void Particles::SendParticlesAndMesh()
+void Particles::SendParticlesAndMesh(int step)
 {
   // Send particles.
   if (npar > 0) {
@@ -286,19 +286,32 @@ void Particles::SendParticlesAndMesh()
     SendToNeighbors();
   }
 
-  // TODO: Send MeshAux.
+  // Send MeshAux boundary.
+  if (step > 0 && nmeshaux > 0)
+    ppm->SendBoundary();
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::ReceiveParticlesAndMesh()
+//! \fn void Particles::ReceiveParticlesAndMesh(int step)
 //  \brief receives particles and meshaux near boundaries from neighbors.
 
-void Particles::ReceiveParticlesAndMesh()
+void Particles::ReceiveParticlesAndMesh(int step)
 {
   // Flush Particles receive buffer.
   if (nprecv > 0) FlushReceiveBuffer();
 
-  // TODO: flush ParticleMesh receive buffers.
+  // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
+  if (nmeshaux > 0) {
+    ppm->ReceiveBoundary();
+    switch (step) {
+    case 1:
+      DepositToMesh(pmy_block->phydro->u1);
+      break;
+    case 2:
+      DepositToMesh(pmy_block->phydro->u);
+      break;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -511,17 +524,25 @@ void Particles::FlushReceiveBuffer()
 
 void Particles::Integrate(int step)
 {
+  Real t, dt;
+
   switch (step) {
 
   case 1:
+    t = pmy_mesh->time;
+    dt = 0.5 * pmy_mesh->dt;
     SaveStatus();
-    EulerStep(pmy_mesh->time, 0.5 * pmy_mesh->dt, pmy_block->phydro->w);
+    EulerStep(t, dt, pmy_block->phydro->w);
     break;
 
   case 2:
-    EulerStep(pmy_mesh->time + 0.5 * pmy_mesh->dt, pmy_mesh->dt, pmy_block->phydro->w1);
+    t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
+    dt = pmy_mesh->dt;
+    EulerStep(t, dt, pmy_block->phydro->w1);
     break;
   }
+
+  ReactToMesh(t, dt);
 }
 
 //--------------------------------------------------------------------------------------

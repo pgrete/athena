@@ -559,13 +559,13 @@ enum TaskStatus TimeIntegratorTaskList::ParticlesIntegrate(MeshBlock *pmb, int s
 
 enum TaskStatus TimeIntegratorTaskList::ParticlesSend(MeshBlock *pmb, int step)
 {
-  pmb->ppar->SendParticlesAndMesh();
+  pmb->ppar->SendParticlesAndMesh(step);
   return TASK_SUCCESS;
 }
 
 enum TaskStatus TimeIntegratorTaskList::ParticlesReceive(MeshBlock *pmb, int step)
 {
-  pmb->ppar->ReceiveParticlesAndMesh();
+  pmb->ppar->ReceiveParticlesAndMesh(step);
   return TASK_SUCCESS;
 }
 

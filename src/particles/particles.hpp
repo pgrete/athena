@@ -39,8 +39,8 @@ public:
 
   // Instance methods
   void Integrate(int step);
-  void SendParticlesAndMesh();
-  void ReceiveParticlesAndMesh();
+  void SendParticlesAndMesh(int step);
+  void ReceiveParticlesAndMesh(int step);
 
   size_t GetSizeInBytes();
   void ReadRestart(char *mbdata, int &os);
@@ -75,7 +75,9 @@ protected:
   virtual void AssignShorthands();  // Needs to be called everytime
                                     // intprop, realprop, & auxprop are resized
                                     // Be sure to call back when derived.
-  virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) = 0;
+  virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
+  virtual void ReactToMesh(Real t, Real dt) {}
+  virtual void DepositToMesh(AthenaArray<Real>& meshdst) const {}
 
   // Instance variables
   long npar;     // number of particles
