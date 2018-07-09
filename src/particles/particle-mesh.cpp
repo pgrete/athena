@@ -113,33 +113,36 @@ ParticleMesh::~ParticleMesh()
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::InterpolateMeshToParticles(
-//               const AthenaArray<int>& auxindices,
-//               const AthenaArray<Real>& meshprop,
-//               const AthenaArray<int>& meshindices)
-//  \brief interpolates meshprop at specified property indices meshindices onto
-//         auxprop of particles at the corresponding property indices auxindices.
+//               const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
+//               AthenaArray<Real>& par, const AthenaArray<int>& ipar)
+//  \brief interpolates meshsrc at specified indices imeshsrc onto particle array par
+//         (realprop, auxprop, or work in Particles class) at the corresponding indices
+//         ipar.
 
 void ParticleMesh::InterpolateMeshToParticles(
-         const AthenaArray<int>& auxindices,
-         const AthenaArray<Real>& meshprop,
-         const AthenaArray<int>& meshindices)
+         const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
+         AthenaArray<Real>& par, const AthenaArray<int>& ipar)
 {
   // Check the index mapping.
-  int nprop = meshindices.GetSize();
-  if (nprop <= 0 || auxindices.GetSize() != nprop) {
+  int nprop = imeshsrc.GetSize();
+  if (nprop <= 0 || ipar.GetSize() != nprop) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Particles::InterpolateMeshToParticles]"
         << std::endl
-        << "index arrays meshindices and auxindices does not match." << std::endl;
+        << "index arrays imeshsrc and ipar do not match." << std::endl;
     throw std::runtime_error(msg.str().c_str());
     return;
   }
 
+  // Zero out the particle arrays.
+  for (int n = 0; n < nprop; ++n) {
+    Real* pdata = &par(ipar(n));
+    for (long k = 0; k < ppar_->npar; ++k)
+      *pdata++ = 0.0;
+  }
+
   // Loop over each particle.
   for (long k = 0; k < ppar_->npar; ++k) {
-    for (int i = 0; i < nprop; ++i)
-      ppar_->auxprop(auxindices(i),k) = 0;
-
     // Find the domain the particle influences.
     Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
     int ix1s = int(xi1 - dxi1_), ix1e = int(xi1 + dxi1_);
@@ -157,9 +160,8 @@ void ParticleMesh::InterpolateMeshToParticles(
           Real weight = w23 * (active1_ ?
                                     _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
 
-          for (int i = 0; i < nprop; ++i)
-            ppar_->auxprop(auxindices(i),k) +=
-                weight * meshprop(meshindices(i),ix3,ix2,ix1);
+          for (int n = 0; n < nprop; ++n)
+            par(ipar(n),k) += weight * meshsrc(imeshsrc(n),ix3,ix2,ix1);
         }
       }
     }

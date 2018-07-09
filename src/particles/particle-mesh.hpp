@@ -31,8 +31,9 @@ public:
   ~ParticleMesh();
 
   // Instance methods
-  void InterpolateMeshToParticles(const AthenaArray<int>& auxindices,
-           const AthenaArray<Real>& meshprop, const AthenaArray<int>& meshindices);
+  void InterpolateMeshToParticles(
+           const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
+           AthenaArray<Real>& par, const AthenaArray<int>& ipar);
   void AssignParticlesToMeshAux(
            const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
            const AthenaArray<int>& imeshaux);

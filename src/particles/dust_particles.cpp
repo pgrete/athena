@@ -87,7 +87,7 @@ void DustParticles::AssignShorthands()
 void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 {
   // Interpolate gas velocity onto particles.
-  ppm->InterpolateMeshToParticles(pm_auxindices, meshsrc, pm_meshindices);
+  ppm->InterpolateMeshToParticles(meshsrc, pm_meshindices, auxprop, pm_auxindices);
 
   // Add drag force to particles.
   if (taus > 0.0) {
