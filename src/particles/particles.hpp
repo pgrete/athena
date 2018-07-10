@@ -152,14 +152,14 @@ private:
   static AthenaArray<int> imeshsrc, iwork;
                              // Array of indices for particle-mesh mapping
 
+  static Real mass;  // mass of each particle
+  static Real taus;  // stopping time (in code units)
+
   // Instance methods.
   void AssignShorthands();
   void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc);
 
   // Instance variables
-  Real mass;  // mass of each particle
-  Real taus;  // stopping time (in code units)
-
   AthenaArray<Real> wx, wy, wz;  // shorthand for working arrays
 };
 

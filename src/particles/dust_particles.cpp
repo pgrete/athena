@@ -14,6 +14,8 @@ bool DustParticles::initialized = false;
 int DustParticles::iwx = -1, DustParticles::iwy = -1, DustParticles::iwz = -1;
 AthenaArray<int> DustParticles::imeshsrc, DustParticles::iwork;
 
+Real DustParticles::mass = 1.0, DustParticles::taus = 0.0;
+
 //--------------------------------------------------------------------------------------
 //! \fn DustParticles::Initialize()
 //  \brief initializes the class.
@@ -39,6 +41,12 @@ void DustParticles::Initialize(ParameterInput *pin)
     iwork(1) = iwy;
     iwork(2) = iwz;
 
+    // Define mass.
+    mass = pin->GetOrAddReal("particles", "mass", 1.0);
+
+    // Define stopping time.
+    taus = pin->GetOrAddReal("particles", "taus", 0.0);
+
     initialized = true;
   }
 }
@@ -52,12 +60,6 @@ DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
 {
   // Assign shorthands (need to do this for every constructor of a derived class)
   AssignShorthands();
-
-  // Define mass.
-  mass = pin->GetOrAddInteger("particles", "mass", 1);
-
-  // Define stopping time.
-  taus = pin->GetOrAddReal("particles", "taus", 0.0);
 }
 
 //--------------------------------------------------------------------------------------
