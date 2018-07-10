@@ -76,7 +76,7 @@ protected:
                                     // intprop, realprop, & auxprop are resized
                                     // Be sure to call back when derived.
   virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
-  virtual void ReactToMesh(Real t, Real dt) {}
+  virtual void ReactToMeshAux(Real t, Real dt) {}
   virtual void DepositToMesh(AthenaArray<Real>& meshdst) const {}
 
   // Instance variables

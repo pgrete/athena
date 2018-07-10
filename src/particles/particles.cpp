@@ -542,7 +542,7 @@ void Particles::Integrate(int step)
     break;
   }
 
-  ReactToMesh(t, dt);
+  ReactToMeshAux(t, dt);
 }
 
 //--------------------------------------------------------------------------------------
