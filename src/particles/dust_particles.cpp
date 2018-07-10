@@ -14,6 +14,7 @@ bool DustParticles::initialized = false;
 int DustParticles::iwx = -1, DustParticles::iwy = -1, DustParticles::iwz = -1;
 AthenaArray<int> DustParticles::imeshsrc, DustParticles::iwork;
 
+bool DustParticles::backreaction = false;
 Real DustParticles::mass = 1.0, DustParticles::taus = 0.0;
 
 //--------------------------------------------------------------------------------------
@@ -46,6 +47,10 @@ void DustParticles::Initialize(ParameterInput *pin)
 
     // Define stopping time.
     taus = pin->GetOrAddReal("particles", "taus", 0.0);
+
+    // Turn on/off back reaction.
+    backreaction = pin->GetOrAddBoolean("particles", "backreaction", false);
+    if (taus == 0.0) backreaction = false;
 
     initialized = true;
   }

@@ -152,8 +152,9 @@ private:
   static AthenaArray<int> imeshsrc, iwork;
                              // Array of indices for particle-mesh mapping
 
-  static Real mass;  // mass of each particle
-  static Real taus;  // stopping time (in code units)
+  static bool backreaction;  // on/off of back reaction
+  static Real mass;          // mass of each particle
+  static Real taus;          // stopping time (in code units)
 
   // Instance methods.
   void AssignShorthands();
