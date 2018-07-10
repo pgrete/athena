@@ -149,7 +149,7 @@ private:
   // Class variables
   static bool initialized;   // whether or not the class is initialized
   static int iwx, iwy, iwz;  // indices for working arrays
-  static AthenaArray<int> imeshsrc, iwork;
+  static AthenaArray<int> imeshsrc, imeshdst, iwork, imeshaux;
                              // Array of indices for particle-mesh mapping
 
   static bool backreaction;  // on/off of back reaction
@@ -159,6 +159,8 @@ private:
   // Instance methods.
   void AssignShorthands();
   void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc);
+  void ReactToMeshAux(Real t, Real dt);
+  void DepositToMesh(AthenaArray<Real>& meshdst) const;
 
   // Instance variables
   AthenaArray<Real> wx, wy, wz;  // shorthand for working arrays

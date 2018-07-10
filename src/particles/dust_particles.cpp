@@ -6,13 +6,15 @@
 //! \file dust_particles.cpp
 //  \brief implements functions in the DustParticles class
 
+// Athena++ headers
+#include "../athena.hpp"
 #include "particles.hpp"
-#include "../hydro/hydro.hpp"
 
 // Class variable initialization
 bool DustParticles::initialized = false;
 int DustParticles::iwx = -1, DustParticles::iwy = -1, DustParticles::iwz = -1;
-AthenaArray<int> DustParticles::imeshsrc, DustParticles::iwork;
+AthenaArray<int> DustParticles::imeshsrc, DustParticles::imeshdst,
+                 DustParticles::iwork, DustParticles::imeshaux;
 
 bool DustParticles::backreaction = false;
 Real DustParticles::mass = 1.0, DustParticles::taus = 0.0;
@@ -51,6 +53,16 @@ void DustParticles::Initialize(ParameterInput *pin)
     // Turn on/off back reaction.
     backreaction = pin->GetOrAddBoolean("particles", "backreaction", false);
     if (taus == 0.0) backreaction = false;
+    if (backreaction) {
+      imeshaux.NewAthenaArray(3);
+      imeshdst.NewAthenaArray(3);
+      imeshaux(0) = AddMeshAux();
+      imeshaux(1) = AddMeshAux();
+      imeshaux(2) = AddMeshAux();
+      imeshdst(0) = IM1;
+      imeshdst(1) = IM2;
+      imeshdst(2) = IM3;
+    }
 
     initialized = true;
   }
@@ -114,4 +126,30 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
       vpz(k) = wz(k);
     }
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void DustParticles::ReactToMeshAux(Real t, Real dt)
+//  \brief Add back reaction to meshaux.
+
+void DustParticles::ReactToMeshAux(Real t, Real dt)
+{
+  if (backreaction) {
+    for (long k = 0; k < npar; ++k){
+      wx(k) *= mass;
+      wy(k) *= mass;
+      wz(k) *= mass;
+    }
+    ppm->AssignParticlesToMeshAux(work, iwork, imeshaux);
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void DustParticles::DepositToMesh(AthenaArray<Real>& meshdst) const
+//  \brief Deposits meshaux to Mesh.
+
+void DustParticles::DepositToMesh(AthenaArray<Real>& meshdst) const
+{
+  if (backreaction)
+    ppm->DepositMeshAux(meshdst, imeshaux, imeshdst);
 }
