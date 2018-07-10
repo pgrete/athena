@@ -479,9 +479,10 @@ else:
 # -mpi argument
 if args['mpi']:
   definitions['MPI_OPTION'] = 'MPI_PARALLEL'
-  if args['cxx'] == 'g++' or args['cxx'] == 'icc' or args['cxx'] == 'icc-phi' \
-      or args['cxx'] == 'clang++':
+  if args['cxx'] == 'g++' or args['cxx'] == 'clang++':
     definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'mpicxx'
+  if args['cxx'] == 'icc' or args['cxx'] == 'icc-phi':
+    definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'mpiicpc'
   if args['cxx'] == 'cray':
     makefile_options['COMPILER_FLAGS'] += ' -h mpi1'
   if args['cxx'] == 'bgxl':
