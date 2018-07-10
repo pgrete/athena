@@ -136,7 +136,7 @@ void ParticleMesh::InterpolateMeshToParticles(
 
   // Zero out the particle arrays.
   for (int n = 0; n < nprop; ++n) {
-    Real* pdata = &par(ipar(n));
+    Real* pdata = &par(ipar(n),0);
     for (long k = 0; k < ppar_->npar; ++k)
       *pdata++ = 0.0;
   }
@@ -192,7 +192,7 @@ void ParticleMesh::AssignParticlesToMeshAux(
 
   // Zero out meshaux.
   for (int n = 0; n < nprop; ++n) {
-    Real* pdata = &meshaux_(imeshaux(n));
+    Real* pdata = &meshaux_(imeshaux(n),0,0,0);
     for (int i = 0; i < ncells_; ++i)
       *pdata++ = 0.0;
   }
