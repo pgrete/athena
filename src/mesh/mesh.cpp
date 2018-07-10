@@ -25,6 +25,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "../hydro/hydro.hpp" 
 #include "../field/field.hpp"
+#include "../particles/particles.hpp"
 #include "../multigrid/multigrid.hpp"
 #include "../gravity/gravity.hpp"
 #include "../gravity/mggravity.hpp"
@@ -478,6 +479,9 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test)
 //  if(SELF_GRAVITY_ENABLED==2 && ...) // independent allocation
 //    gflag=2;
 
+  // Initialize Particles class
+  if (PARTICLES) DustParticles::Initialize(pin);
+
   // create MeshBlock list for this process
   int nbs=nslist[Globals::my_rank];
   int nbe=nbs+nblist[Globals::my_rank]-1;
@@ -783,6 +787,9 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test)
   if(SELF_GRAVITY_ENABLED) gflag=1;
 //  if(SELF_GRAVITY_ENABLED==2 && ...) // independent allocation
 //    gflag=2;
+
+  // Initialize Particles class
+  if (PARTICLES) DustParticles::Initialize(pin);
 
   // allocate data buffer
   int nb=nblist[Globals::my_rank];
@@ -1190,6 +1197,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
   Hydro *phydro;
   Field *pfield;
   Gravity *pgrav;
+  DustParticles *ppar;
   BoundaryValues *pbval;
   std::stringstream msg;
   int inb=nbtotal;
@@ -1202,6 +1210,22 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
         pmb->ProblemGenerator(pin);
         pmb->pbval->CheckBoundary();
         pmb=pmb->next;
+      }
+    }
+
+    // TODO: initialize particles in a more flexible way.
+    if (PARTICLES) {
+      pmb = pblock;
+      while (pmb != NULL) {
+        ppar = pmb->ppar;
+        ppar->SendParticlesAndMesh(0);
+        pmb = pmb->next;
+      }
+      pmb = pblock;
+      while (pmb != NULL) {
+        ppar = pmb->ppar;
+        ppar->ReceiveParticlesAndMesh(0);
+        pmb = pmb->next;
       }
     }
 

@@ -44,10 +44,10 @@ void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
 int _CheckSide(Real xi, int nx, int xi1, int xi2);
 
 //--------------------------------------------------------------------------------------
-//! \fn Particles::Initialize()
+//! \fn Particles::Initialize(ParameterInput *pin)
 //  \brief initializes the class.
 
-void Particles::Initialize()
+void Particles::Initialize(ParameterInput *pin)
 {
   if (!initialized) {
     // Add particle ID.

@@ -18,10 +18,10 @@ AthenaArray<int> DustParticles::imeshsrc, DustParticles::iwork;
 //! \fn DustParticles::Initialize()
 //  \brief initializes the class.
 
-void DustParticles::Initialize()
+void DustParticles::Initialize(ParameterInput *pin)
 {
   // Initialize first the parent class.
-  if (!Particles::initialized) Particles::Initialize();
+  if (!Particles::initialized) Particles::Initialize(pin);
 
   if (!initialized) {
     // Add gas velocity at each particle.

@@ -282,19 +282,6 @@ int main(int argc, char *argv[])
 
   try {
     pmesh->Initialize(res_flag, pinput);
-    // TODO: Straighten out initialization of particles.
-    if (PARTICLES) {
-      MeshBlock *pmb = pmesh->pblock;
-      while (pmb != NULL) {
-        pmb->ppar->SendParticlesAndMesh(0);
-        pmb = pmb->next;
-      }
-      pmb = pmesh->pblock;
-      while (pmb != NULL) {
-        pmb->ppar->ReceiveParticlesAndMesh(0);
-        pmb = pmb->next;
-      }
-    }
   } 
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl << "memory allocation failed "

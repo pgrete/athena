@@ -28,7 +28,7 @@ friend class ParticleMesh;
 
 public:
   // Class methods
-  static void Initialize();
+  static void Initialize(ParameterInput *pin);
   static void FormattedTableOutput(Mesh *pm, OutputParameters op); 
 
   // Constructor
@@ -137,7 +137,7 @@ class DustParticles : public Particles {
 
 public:
   // Class methods
-  static void Initialize();
+  static void Initialize(ParameterInput *pin);
 
   // Constructor
   DustParticles(MeshBlock *pmb, ParameterInput *pin);

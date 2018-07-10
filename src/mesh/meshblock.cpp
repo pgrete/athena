@@ -105,10 +105,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
   if (SELF_GRAVITY_ENABLED) pgrav = new Gravity(this, pin);
-  if (PARTICLES) {
-    DustParticles::Initialize();
-    ppar = new DustParticles(this, pin);
-  }
+  if (PARTICLES) ppar = new DustParticles(this, pin);
 
   // Reconstruction
   precon = new Reconstruction(this, pin);
@@ -201,10 +198,7 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   if (MAGNETIC_FIELDS_ENABLED) pfield = new Field(this, pin);
   peos = new EquationOfState(this, pin);
   if (SELF_GRAVITY_ENABLED) pgrav = new Gravity(this, pin);
-  if (PARTICLES) {
-    DustParticles::Initialize();
-    ppar = new DustParticles(this, pin);
-  }
+  if (PARTICLES) ppar = new DustParticles(this, pin);
 
   precon = new Reconstruction(this, pin);
 
