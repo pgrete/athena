@@ -100,9 +100,12 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
   if (taus > 0.0) {
     Real taus1 = 1.0 / taus;
     for (long k = 0; k < npar; ++k) {
-      apx(k) += taus1 * (wx(k) - vpx(k));
-      apy(k) += taus1 * (wy(k) - vpy(k));
-      apz(k) += taus1 * (wz(k) - vpz(k));
+      wx(k) = taus1 * (vpx(k) - wx(k));
+      wy(k) = taus1 * (vpy(k) - wy(k));
+      wz(k) = taus1 * (vpz(k) - wz(k));
+      apx(k) -= wx(k);
+      apy(k) -= wy(k);
+      apz(k) -= wz(k);
     }
   } else if (taus == 0.0) {
     for (long k = 0; k < npar; ++k) {
