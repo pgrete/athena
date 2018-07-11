@@ -135,6 +135,8 @@ private:
 
 class DustParticles : public Particles {
 
+friend class MeshBlock;
+
 public:
   // Class methods
   static void Initialize(ParameterInput *pin);
@@ -145,16 +147,17 @@ public:
   // Destructor
   ~DustParticles();
 
+protected:
+  static bool backreaction;  // on/off of back reaction
+  static Real mass;          // mass of each particle
+  static Real taus;          // stopping time (in code units)
+
 private:
   // Class variables
   static bool initialized;   // whether or not the class is initialized
   static int iwx, iwy, iwz;  // indices for working arrays
   static AthenaArray<int> imeshsrc, imeshdst, iwork, imeshaux;
                              // Array of indices for particle-mesh mapping
-
-  static bool backreaction;  // on/off of back reaction
-  static Real mass;          // mass of each particle
-  static Real taus;          // stopping time (in code units)
 
   // Instance methods.
   void AssignShorthands();
