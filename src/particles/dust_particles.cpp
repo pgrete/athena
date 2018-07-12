@@ -135,10 +135,11 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
 void DustParticles::ReactToMeshAux(Real t, Real dt)
 {
   if (backreaction) {
+    Real c = dt * mass;
     for (long k = 0; k < npar; ++k){
-      wx(k) *= mass;
-      wy(k) *= mass;
-      wz(k) *= mass;
+      wx(k) *= c;
+      wy(k) *= c;
+      wz(k) *= c;
     }
     ppm->AssignParticlesToMeshAux(work, iwork, imeshaux);
   }
