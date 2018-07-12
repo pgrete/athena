@@ -444,6 +444,13 @@ void Particles::SendToNeighbors()
     if (ApplyBoundaryConditions(pm, x1, x2, x3))
       _MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
 
+    // No need to send if back to the same block.
+    if (pnmb == pmy_block) {
+      _MeshCoordsToIndices(pmy_block, x1, x2, x3, xi1(k), xi2(k), xi3(k));
+      ++k;
+      continue;
+    }
+
     // Check the buffer size of the target MeshBlock.
     if (pnp->nprecv >= pnp->nprecvmax) {
       pnp->nprecvmax *= 2;
