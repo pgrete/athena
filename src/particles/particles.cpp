@@ -462,10 +462,15 @@ void Particles::SendToNeighbors()
 
     // Pop the particle from the current MeshBlock.
     if (--npar != k) {
+      xi1(k) = xi1(npar);
+      xi2(k) = xi2(npar);
+      xi3(k) = xi3(npar);
       for (int j = 0; j < nint; ++j)
         intprop(j,k) = intprop(j,npar);
       for (int j = 0; j < nreal; ++j)
         realprop(j,k) = realprop(j,npar);
+      for (int j = 0; j < naux; ++j)
+        auxprop(j,k) = auxprop(j,npar);
     }
   }
 }
