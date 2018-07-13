@@ -167,6 +167,10 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test)
     throw std::runtime_error(msg.str().c_str());
   }
 
+  mesh_size.x1len = mesh_size.x1max - mesh_size.x1min;
+  mesh_size.x2len = mesh_size.x2max - mesh_size.x2min;
+  mesh_size.x3len = mesh_size.x3max - mesh_size.x3min;
+
   // read ratios of grid cell size in each direction
   block_size.x1rat = mesh_size.x1rat = pin->GetOrAddReal("mesh","x1rat",1.0);
   block_size.x2rat = mesh_size.x2rat = pin->GetOrAddReal("mesh","x2rat",1.0);
@@ -1480,6 +1484,7 @@ void Mesh::SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size
     block_size.x1max=MeshGenerator_[X1DIR](rx,mesh_size);
     block_bcs[OUTER_X1]=BLOCK_BNDRY;
   }
+  block_size.x1len = block_size.x1max - block_size.x1min;
 
   // calculate physical block size, x2
   if(mesh_size.nx2 == 1) {
@@ -1508,6 +1513,7 @@ void Mesh::SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size
       block_bcs[OUTER_X2]=BLOCK_BNDRY;
     }
   }
+  block_size.x2len = block_size.x2max - block_size.x2min;
 
   // calculate physical block size, x3
   if(mesh_size.nx3 == 1) {
@@ -1536,6 +1542,7 @@ void Mesh::SetBlockSizeAndBoundaries(LogicalLocation loc, RegionSize &block_size
       block_bcs[OUTER_X3]=BLOCK_BNDRY;
     }
   }
+  block_size.x3len = block_size.x3max - block_size.x3min;
   return;
 }
 

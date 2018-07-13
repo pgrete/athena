@@ -52,6 +52,7 @@ typedef struct LogicalLocation {
 typedef struct RegionSize {
   Real x1min, x2min, x3min;
   Real x1max, x2max, x3max;
+  Real x1len, x2len, x3len;
   Real x1rat, x2rat, x3rat; // ratio of x(i)/x(i-1)
   int nx1, nx2, nx3;        // number of active cells (not including ghost zones)
 } RegionSize;
