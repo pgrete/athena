@@ -151,20 +151,27 @@ Particles::~Particles()
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
-//  \brief applies boundary conditions to (x1,x2,x3) and return true if (x1,x2,x3) is
-//         outside the mesh.  Otherwise, (x1,x2,x3) is unchanged and false is returned.
+//! \fn void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
+//  \brief applies boundary conditions to particle k and returns its updated mesh
+//         coordinates (x1,x2,x3).
 
-bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
+void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
 {
   bool flag = false;
+  RegionSize& mesh_size = pmy_mesh->mesh_size;
 
-  if (pm->mesh_size.nx1 > 1) {
-    if (x1 <= pm->mesh_size.x1min) {
+  // Find the mesh coordinates.
+  Real x10, x20, x30;
+  _IndicesToMeshCoords(pmy_block, xi1(k), xi2(k), xi3(k), x1, x2, x3);
+  _CartesianToMeshCoords(xp0(k), yp0(k), zp0(k), x10, x20, x30);
+
+  if (mesh_size.nx1 > 1) {
+    if (x1 < mesh_size.x1min) {
       // Inner x1
-      if (pm->mesh_bcs[INNER_X1] == PERIODIC_BNDRY)
-        x1 += pm->mesh_size.x1max - pm->mesh_size.x1min;
-      else {
+      if (pmy_mesh->mesh_bcs[INNER_X1] == PERIODIC_BNDRY) {
+        x1 += mesh_size.x1len;
+        x10 += mesh_size.x1len;
+      } else {
         std::stringstream msg;
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
@@ -172,11 +179,12 @@ bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
         throw std::runtime_error(msg.str().c_str());
       }
       flag = true;
-    } else if (x1 >= pm->mesh_size.x1max) {
+    } else if (x1 >= mesh_size.x1max) {
       // Outer x1
-      if (pm->mesh_bcs[OUTER_X1] == PERIODIC_BNDRY)
-        x1 -= pm->mesh_size.x1max - pm->mesh_size.x1min;
-      else {
+      if (pmy_mesh->mesh_bcs[OUTER_X1] == PERIODIC_BNDRY) {
+        x1 -= mesh_size.x1len;
+        x10 -= mesh_size.x1len;
+      } else {
         std::stringstream msg;
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
@@ -187,12 +195,13 @@ bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
     }
   }
 
-  if (pm->mesh_size.nx2 > 1) {
-    if (x2 <= pm->mesh_size.x2min) {
+  if (mesh_size.nx2 > 1) {
+    if (x2 < mesh_size.x2min) {
       // Inner x2
-      if (pm->mesh_bcs[INNER_X2] == PERIODIC_BNDRY)
-        x2 += pm->mesh_size.x2max - pm->mesh_size.x2min;
-      else {
+      if (pmy_mesh->mesh_bcs[INNER_X2] == PERIODIC_BNDRY) {
+        x2 += mesh_size.x2len;
+        x20 += mesh_size.x2len;
+      } else {
         std::stringstream msg;
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
@@ -200,11 +209,12 @@ bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
         throw std::runtime_error(msg.str().c_str());
       }
       flag = true;
-    } else if (x2 >= pm->mesh_size.x2max) {
+    } else if (x2 >= mesh_size.x2max) {
       // Outer x2
-      if (pm->mesh_bcs[OUTER_X2] == PERIODIC_BNDRY)
-        x2 -= pm->mesh_size.x2max - pm->mesh_size.x2min;
-      else {
+      if (pmy_mesh->mesh_bcs[OUTER_X2] == PERIODIC_BNDRY) {
+        x2 -= mesh_size.x2len;
+        x20 -= mesh_size.x2len;
+      } else {
         std::stringstream msg;
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
@@ -215,12 +225,13 @@ bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
     }
   }
 
-  if (pm->mesh_size.nx3 > 1) {
-    if (x3 <= pm->mesh_size.x3min) {
+  if (mesh_size.nx3 > 1) {
+    if (x3 < mesh_size.x3min) {
       // Inner x3
-      if (pm->mesh_bcs[INNER_X3] == PERIODIC_BNDRY)
-        x3 += pm->mesh_size.x3max - pm->mesh_size.x3min;
-      else {
+      if (pmy_mesh->mesh_bcs[INNER_X3] == PERIODIC_BNDRY) {
+        x3 += mesh_size.x3len;
+        x30 += mesh_size.x3len;
+      } else {
         std::stringstream msg;
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
@@ -228,11 +239,12 @@ bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
         throw std::runtime_error(msg.str().c_str());
       }
       flag = true;
-    } else if (x3 >= pm->mesh_size.x3max) {
+    } else if (x3 >= mesh_size.x3max) {
       // Outer x3
-      if (pm->mesh_bcs[OUTER_X3] == PERIODIC_BNDRY)
-        x3 -= pm->mesh_size.x3max - pm->mesh_size.x3min;
-      else {
+      if (pmy_mesh->mesh_bcs[OUTER_X3] == PERIODIC_BNDRY) {
+        x3 -= mesh_size.x3len;
+        x30 -= mesh_size.x3len;
+      } else {
         std::stringstream msg;
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
@@ -243,7 +255,10 @@ bool Particles::ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3)
     }
   }
 
-  return flag;
+  if (flag) {
+    _MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
+    _MeshCoordsToCartesian(x10, x20, x30, xp0(k), yp0(k), zp0(k));
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -395,9 +410,9 @@ void Particles::SendToNeighbors()
       continue;
     }
 
-    // Convert to the MeshBlock coordinates.
+    // Apply boundary conditions and find the mesh coordinates.
     Real x1, x2, x3;
-    _IndicesToMeshCoords(pmy_block, xi1(k), xi2(k), xi3(k), x1, x2, x3);
+    ApplyBoundaryConditions(k, x1, x2, x3);
 
     // Find the neighbor MeshBlock to send it to.
     MeshBlockTree *pnmbt =
@@ -439,10 +454,6 @@ void Particles::SendToNeighbors()
       }
     }
     Particles *pnp = pnmb->ppar;
-
-    // Apply boundary conditions and convert back to Cartesian coordinates.
-    if (ApplyBoundaryConditions(pm, x1, x2, x3))
-      _MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
 
     // No need to send if back to the same block.
     if (pnmb == pmy_block) {

@@ -106,7 +106,6 @@ protected:
 
 private:
   // Class methods
-  static bool ApplyBoundaryConditions(Mesh *pm, Real &x1, Real &x2, Real &x3);
   static void GetPositionIndices(MeshBlock *pmb, long npar,
                                  const AthenaArray<Real>& xp,
                                  const AthenaArray<Real>& yp,
@@ -116,6 +115,7 @@ private:
                                  AthenaArray<Real>& xi3);
 
   // Instance methods
+  void ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3);
   void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void FlushReceiveBuffer();
   void SaveStatus();
