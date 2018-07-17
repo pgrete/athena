@@ -28,13 +28,13 @@ const int OFFSET = NGHOST - NGPM;  // offset between meshblock and meshaux
 //! \fn ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
 //  \brief constructs a new ParticleMesh instance.
 
-ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
+ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
 {
   // Save some inputs.
   ppar_ = ppar;
   pmb_ = ppar->pmy_block;
   pbval_ = pmb_->pbval;
-  nmeshaux_ = nmeshaux;
+  nmeshaux = nmeshaux_;
 
   // Determine active dimensions.
   RegionSize block_size = pmb_->block_size;
@@ -52,31 +52,31 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
 
   if (active1_) {
     ++dim;
-    is_ = NGPM;
-    ie_ = NGPM + block_size.nx1 - 1;
+    is = NGPM;
+    ie = NGPM + block_size.nx1 - 1;
     nx1 = block_size.nx1 + 2 * NGPM;
   } else
-    is_ = ie_ = 0;
+    is = ie = 0;
 
   if (active2_) {
     ++dim;
-    js_ = NGPM;
-    je_ = NGPM + block_size.nx2 - 1;
+    js = NGPM;
+    je = NGPM + block_size.nx2 - 1;
     nx2 = block_size.nx2 + 2 * NGPM;
   } else
-    js_ = je_ = 0;
+    js = je = 0;
 
   if (active3_) {
     ++dim;
-    ks_ = NGPM;
-    ke_ = NGPM + block_size.nx3 - 1;
+    ks = NGPM;
+    ke = NGPM + block_size.nx3 - 1;
     nx3 = block_size.nx3 + 2 * NGPM;
   } else
-    ks_ = ke_ = 0;
+    ks = ke = 0;
 
   // Allocate the block for particle-mesh.
-  meshaux_.NewAthenaArray(nmeshaux, nx3, nx2, nx1);
-  ncells_ = nx1 * nx2 * nx3;
+  meshaux.NewAthenaArray(nmeshaux, nx3, nx2, nx1);
+  ncells = nx1 * nx2 * nx3;
 
   // Find the number of neighbors.
   bd_.nbmax = BoundaryBase::BufferID(dim, pmb_->pmy_mesh->multilevel);
@@ -102,7 +102,7 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
 ParticleMesh::~ParticleMesh()
 {
   // Destroy the particle meshblock.
-  meshaux_.DeleteAthenaArray();
+  meshaux.DeleteAthenaArray();
 
   // Destroy boundary data.
   for (int n = 0; n < bd_.nbmax; n++) {
@@ -192,8 +192,8 @@ void ParticleMesh::AssignParticlesToMeshAux(
 
   // Zero out meshaux.
   for (int n = 0; n < nprop; ++n) {
-    Real* pdata = &meshaux_(imeshaux(n),0,0,0);
-    for (int i = 0; i < ncells_; ++i)
+    Real* pdata = &meshaux(imeshaux(n),0,0,0);
+    for (int i = 0; i < ncells; ++i)
       *pdata++ = 0.0;
   }
 
@@ -226,7 +226,7 @@ void ParticleMesh::AssignParticlesToMeshAux(
                                     _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
 
           for (int n = 0; n < nprop; ++n)
-            meshaux_(imeshaux(n),ix3,ix2,ix1) += weight * p(n);
+            meshaux(imeshaux(n),ix3,ix2,ix1) += weight * p(n);
         }
       }
     }
@@ -256,18 +256,15 @@ void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
     return;
   }
 
-  // Get the meshblock indices.
-  const int is = pmb_->is, js = pmb_->js, ks = pmb_->ks;
-  Coordinates *pc = pmb_->pcoord;
-
   // Add meshaux to meshblock.
+  Coordinates *pc = pmb_->pcoord;
   for (int n = 0; n < nprop; ++n) {
     int ima = imeshaux(n), imb = imeshblock(n);
 
-    for (int ka = ks_, kb = ks; ka <= ke_; ++ka, ++kb)
-      for (int ja = js_, jb = js; ja <= je_; ++ja, ++jb)
-        for (int ia = is_, ib = is; ia <= ie_; ++ia, ++ib)
-          u(imb,kb,jb,ib) += meshaux_(ima,ka,ja,ia) / pc->GetCellVolume(kb,jb,ib);
+    for (int ka = ks, kb = pmb_->ks; ka <= ke; ++ka, ++kb)
+      for (int ja = js, jb = pmb_->js; ja <= je; ++ja, ++jb)
+        for (int ia = is, ib = pmb_->is; ia <= ie; ++ia, ++ib)
+          u(imb,kb,jb,ib) += meshaux(ima,ka,ja,ia) / pc->GetCellVolume(kb,jb,ib);
   }
 }
 
@@ -279,35 +276,35 @@ void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
 int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb)
 {
   // Determine the chunk of the block to be communicated.
-  int si = is_, sj = js_, sk = ks_, ei = ie_, ej = je_, ek = ke_;
+  int si = is, sj = js, sk = ks, ei = ie, ej = je, ek = ke;
 
   if (nb.ox1 > 0) {
-    si = ie_ + 1;
+    si = ie + 1;
     ei += NGPM;
   } else if (nb.ox1 < 0) {
     si -= NGPM;
-    ei = is_ - 1;
+    ei = is - 1;
   }
 
   if (nb.ox2 > 0) {
-    sj = je_ + 1;
+    sj = je + 1;
     ej += NGPM;
   } else if (nb.ox2 < 0) {
     sj -= NGPM;
-    ej = js_ - 1;
+    ej = js - 1;
   }
 
   if (nb.ox3 > 0) {
-    sk = ke_ + 1;
+    sk = ke + 1;
     ek += NGPM;
   } else if (nb.ox3 < 0) {
     sk -= NGPM;
-    ek = ks_ - 1;
+    ek = ks - 1;
   }
 
   // Load the data to the buffer.
   int p = 0;
-  BufferUtility::Pack4DData(meshaux_, buf, 0, nmeshaux_ - 1, si, ei, sj, ej, sk, ek, p);
+  BufferUtility::Pack4DData(meshaux, buf, 0, nmeshaux - 1, si, ei, sj, ej, sk, ek, p);
   return p;
 }
 
@@ -319,19 +316,19 @@ int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb
 void ParticleMesh::AddBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb)
 {
   // Determine the chunk of the block to be added to.
-  int si = (nb.ox1 > 0) ? (ie_ - NGPM + 1) : is_,
-      ei = (nb.ox1 < 0) ? (is_ + NGPM - 1) : ie_,
-      sj = (nb.ox2 > 0) ? (je_ - NGPM + 1) : js_,
-      ej = (nb.ox2 < 0) ? (js_ + NGPM - 1) : je_,
-      sk = (nb.ox3 > 0) ? (ke_ - NGPM + 1) : ks_,
-      ek = (nb.ox3 < 0) ? (ks_ + NGPM - 1) : ke_;
+  int si = (nb.ox1 > 0) ? (ie - NGPM + 1) : is,
+      ei = (nb.ox1 < 0) ? (is + NGPM - 1) : ie,
+      sj = (nb.ox2 > 0) ? (je - NGPM + 1) : js,
+      ej = (nb.ox2 < 0) ? (js + NGPM - 1) : je,
+      sk = (nb.ox3 > 0) ? (ke - NGPM + 1) : ks,
+      ek = (nb.ox3 < 0) ? (ks + NGPM - 1) : ke;
 
   // Add the data to the mesh.
-  for (int n = 0; n < nmeshaux_; ++n)
+  for (int n = 0; n < nmeshaux; ++n)
     for (int k = sk; k <= ek; ++k)
       for (int j = sj; j <= ej; ++j)
         for (int i = si; i <= ei; ++i)
-          meshaux_(n,k,j,i) += *buf++;
+          meshaux(n,k,j,i) += *buf++;
 }
 
 //--------------------------------------------------------------------------------------

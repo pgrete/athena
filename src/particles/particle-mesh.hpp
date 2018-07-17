@@ -25,6 +25,8 @@ class Particles;
 
 class ParticleMesh {
 
+friend class Particles;
+
 public:
   // Constructor and destructor
   ParticleMesh(Particles *ppar, int nmeshaux);
@@ -42,13 +44,15 @@ public:
   void SendBoundary();
   void ReceiveBoundary();
 
+protected:
+  // Instance Variables
+  AthenaArray<Real> meshaux;   // auxiliaries to the meshblock
+  int nmeshaux;                // number of auxiliaries to the meshblock
+  int is, ie, js, je, ks, ke;  // beginning and ending indices
+  int ncells;                  // number of cells in meshaux
+
 private:
   // Instance Variables
-  AthenaArray<Real> meshaux_;        // auxiliaries to the meshblock
-  int nmeshaux_;                     // number of auxiliaries to the meshblock
-  int is_, ie_, js_, je_, ks_, ke_;  // beginning and ending indices
-  int ncells_;                       // number of cells in meshaux
-
   bool active1_, active2_, active3_;  // active dimensions
   Real dxi1_, dxi2_, dxi3_;           // range of influence from a particle cloud
 
