@@ -318,12 +318,22 @@ void Particles::ReceiveParticlesAndMesh(int step)
   // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
   if (nmeshaux > 0) {
     ppm->ReceiveBoundary();
+
+    Hydro *phydro = pmy_block->phydro;
+    Real t, dt;
+
     switch (step) {
+
     case 1:
-      DepositToMesh(pmy_block->phydro->u1);
+      t = pmy_mesh->time;
+      dt = 0.5 * pmy_mesh->dt;
+      DepositToMesh(t, dt, phydro->u, phydro->u1);
       break;
+
     case 2:
-      DepositToMesh(pmy_block->phydro->u);
+      t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
+      dt = pmy_mesh->dt;
+      DepositToMesh(t, dt, phydro->u1, phydro->u);
       break;
     }
   }
@@ -556,16 +566,16 @@ void Particles::Integrate(int step)
     dt = 0.5 * pmy_mesh->dt;
     SaveStatus();
     EulerStep(t, dt, pmy_block->phydro->w);
+    ReactToMeshAux(t, dt, pmy_block->phydro->w);
     break;
 
   case 2:
     t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
     dt = pmy_mesh->dt;
     EulerStep(t, dt, pmy_block->phydro->w1);
+    ReactToMeshAux(t, dt, pmy_block->phydro->w1);
     break;
   }
-
-  ReactToMeshAux(t, dt);
 }
 
 //--------------------------------------------------------------------------------------

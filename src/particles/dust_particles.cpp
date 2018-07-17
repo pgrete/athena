@@ -129,10 +129,11 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void DustParticles::ReactToMeshAux(Real t, Real dt)
+//! \fn void DustParticles::ReactToMeshAux(Real t, Real dt,
+//                                         const AthenaArray<Real>& meshsrc)
 //  \brief Add back reaction to meshaux.
 
-void DustParticles::ReactToMeshAux(Real t, Real dt)
+void DustParticles::ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 {
   if (backreaction) {
     Real c = dt * mass;
@@ -146,10 +147,12 @@ void DustParticles::ReactToMeshAux(Real t, Real dt)
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void DustParticles::DepositToMesh(AthenaArray<Real>& meshdst) const
+//! \fn void DustParticles::DepositToMesh(Real t, Real dt,
+//               const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst);
 //  \brief Deposits meshaux to Mesh.
 
-void DustParticles::DepositToMesh(AthenaArray<Real>& meshdst) const
+void DustParticles::DepositToMesh(
+         Real t, Real dt, const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst)
 {
   if (backreaction)
     ppm->DepositMeshAux(meshdst, imeshaux, imeshdst);

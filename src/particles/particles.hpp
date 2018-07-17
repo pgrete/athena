@@ -76,8 +76,9 @@ protected:
                                     // intprop, realprop, & auxprop are resized
                                     // Be sure to call back when derived.
   virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
-  virtual void ReactToMeshAux(Real t, Real dt) {}
-  virtual void DepositToMesh(AthenaArray<Real>& meshdst) const {}
+  virtual void ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
+  virtual void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
+                             AthenaArray<Real>& meshdst) {}
 
   // Instance variables
   long npar;     // number of particles
@@ -162,8 +163,9 @@ private:
   // Instance methods.
   void AssignShorthands();
   void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc);
-  void ReactToMeshAux(Real t, Real dt);
-  void DepositToMesh(AthenaArray<Real>& meshdst) const;
+  void ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc);
+  void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
+                     AthenaArray<Real>& meshdst);
 
   // Instance variables
   AthenaArray<Real> wx, wy, wz;  // shorthand for working arrays
