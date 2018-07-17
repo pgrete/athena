@@ -237,6 +237,104 @@ void ParticleMesh::AssignParticlesToMeshAux(
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::InterpolateMeshAndAssignParticles(
+//               const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
+//               AthenaArray<Real>& pardst, const AthenaArray<int>& ipardst,
+//               const AthenaArray<Real>& parsrc, const AthenaArray<int>& iparsrc,
+//               const AthenaArray<int>& imeshaux)
+//  \brief interpolates meshsrc at specified indices imeshsrc onto particle array pardst
+//         the corresponding indices ipardst, and assigns parsrc at specified indices
+//         iparsrc onto meshaux at the corresponding indices imeshaux.  The arrays
+//         parsrc and pardst can be realprop, auxprop, or work in Particles class.
+
+void ParticleMesh::InterpolateMeshAndAssignParticles(
+         const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
+         AthenaArray<Real>& pardst, const AthenaArray<int>& ipardst,
+         const AthenaArray<Real>& parsrc, const AthenaArray<int>& iparsrc,
+         const AthenaArray<int>& imeshaux)
+{
+  // Check the index mapping.
+  int nmeshsrc = imeshsrc.GetSize();
+  if (nmeshsrc <= 0 || ipardst.GetSize() != nmeshsrc) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::InterpolateMeshAndAssignParticles]"
+        << std::endl
+        << "index arrays imeshsrc and ipardst do not match." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+    return;
+  }
+
+  int nmeshdst = imeshaux.GetSize();
+  if (nmeshdst <= 0 || iparsrc.GetSize() != nmeshdst) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::InterpolateMeshAndAssignParticles]"
+        << std::endl
+        << "index arrays imeshaux and iparsrc do not match." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+    return;
+  }
+
+  // Zero out the destination particle arrays.
+  for (int n = 0; n < nmeshsrc; ++n) {
+    Real* pdata = &pardst(ipardst(n),0);
+    for (long k = 0; k < ppar_->npar; ++k)
+      *pdata++ = 0.0;
+  }
+
+  // Zero out meshaux.
+  for (int n = 0; n < nmeshdst; ++n) {
+    Real* pdata = &meshaux(imeshaux(n),0,0,0);
+    for (int i = 0; i < ncells; ++i)
+      *pdata++ = 0.0;
+  }
+
+  // Allocate working array.
+  AthenaArray<Real> p;
+  p.NewAthenaArray(nmeshdst);
+
+  // Loop over each particle.
+  for (long k = 0; k < ppar_->npar; ++k) {
+    // Find the domain the particle influences.
+    Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
+    int imb1s = int(xi1 - dxi1_), imb1e = int(xi1 + dxi1_);
+    int imb2s = int(xi2 - dxi2_), imb2e = int(xi2 + dxi2_);
+    int imb3s = int(xi3 - dxi3_), imb3e = int(xi3 + dxi3_);
+    int ima1s = imb1s - (active1_ ? OFFSET : 0);
+    int ima2s = imb2s - (active2_ ? OFFSET : 0);
+    int ima3s = imb3s - (active3_ ? OFFSET : 0);
+
+    // Copy the particle properties.
+    for (int n = 0; n < nmeshdst; ++n)
+      p(n) = parsrc(iparsrc(n),k);
+
+    // Weigh each cell.
+    for (int imb3 = imb3s, ima3 = ima3s; imb3 <= imb3e; ++imb3, ++ima3) {
+      Real w3 = active3_ ? _ParticleMeshWeightFunction(imb3 + 0.5 - xi3) : 1.0;
+
+      for (int imb2 = imb2s, ima2 = ima2s; imb2 <= imb2e; ++imb2, ++ima2) {
+        Real w23 = w3 * (active2_ ? _ParticleMeshWeightFunction(imb2 + 0.5 - xi2) : 1.0);
+
+        for (int imb1 = imb1s, ima1 = ima1s; imb1 <= imb1e; ++imb1, ++ima1) {
+          Real weight = w23 * (active1_ ?
+                                    _ParticleMeshWeightFunction(imb1 + 0.5 - xi1) : 1.0);
+
+          // Interpolate mesh to particles.
+          for (int n = 0; n < nmeshsrc; ++n)
+            pardst(ipardst(n),k) += weight * meshsrc(imeshsrc(n),imb3,imb2,imb1);
+
+          // Assign particles to meshaux.
+          for (int n = 0; n < nmeshdst; ++n)
+            meshaux(imeshaux(n),ima3,ima2,ima1) += weight * p(n);
+        }
+      }
+    }
+  }
+
+  // Release working array.
+  p.DeleteAthenaArray();
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
 //               const AthenaArray<int>& imeshaux, const AthenaArray<int>& imeshblock)
 //  \brief deposits data in meshaux at specified indices imeshaux to meshblock u at the

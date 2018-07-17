@@ -26,6 +26,7 @@ class Particles;
 class ParticleMesh {
 
 friend class Particles;
+friend class DustParticles;
 
 public:
   // Constructor and destructor
@@ -38,6 +39,11 @@ public:
            AthenaArray<Real>& par, const AthenaArray<int>& ipar);
   void AssignParticlesToMeshAux(
            const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
+           const AthenaArray<int>& imeshaux);
+  void InterpolateMeshAndAssignParticles(
+           const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
+           AthenaArray<Real>& pardst, const AthenaArray<int>& ipardst,
+           const AthenaArray<Real>& parsrc, const AthenaArray<int>& iparsrc,
            const AthenaArray<int>& imeshaux);
   void DepositMeshAux(AthenaArray<Real>& u,
            const AthenaArray<int>& imeshaux, const AthenaArray<int>& imeshblock);
