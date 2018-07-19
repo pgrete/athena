@@ -33,6 +33,7 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
   // Save some inputs.
   ppar_ = ppar;
   pmb_ = ppar->pmy_block;
+  pmesh_ = pmb_->pmy_mesh;
   pbval_ = pmb_->pbval;
   nmeshaux = nmeshaux_;
 
@@ -79,7 +80,7 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
   ncells = nx1 * nx2 * nx3;
 
   // Find the number of neighbors.
-  bd_.nbmax = BoundaryBase::BufferID(dim, pmb_->pmy_mesh->multilevel);
+  bd_.nbmax = BoundaryBase::BufferID(dim, pmesh_->multilevel);
 
   // Initialize boundary data.
   for (int n = 0; n < bd_.nbmax; n++) {
@@ -234,6 +235,10 @@ void ParticleMesh::AssignParticlesToMeshAux(
 
   // Release working array.
   p.DeleteAthenaArray();
+
+  // Treat neighbors of different levels.
+  if (pmesh_->multilevel)
+    AssignParticlesToDifferentLevels(par, ipar, imeshaux);
 }
 
 //--------------------------------------------------------------------------------------
@@ -332,6 +337,10 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 
   // Release working array.
   p.DeleteAthenaArray();
+
+  // Treat neighbors of different levels.
+  if (pmesh_->multilevel)
+    AssignParticlesToDifferentLevels(parsrc, iparsrc, imeshaux);
 }
 
 //--------------------------------------------------------------------------------------
@@ -364,6 +373,20 @@ void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
         for (int ia = is, ib = pmb_->is; ia <= ie; ++ia, ++ib)
           u(imb,kb,jb,ib) += meshaux(ima,ka,ja,ia) / pc->GetCellVolume(kb,jb,ib);
   }
+}
+
+
+//--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::AssignParticlesToDifferentLevels(
+//               const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
+//               const AthenaArray<int>& imeshaux)
+//  \brief assigns particles to neighbors of different levels.  The parameters are the
+//         same as those in ParticleMesh::AssignParticlesToMeshAux().
+
+void ParticleMesh::AssignParticlesToDifferentLevels(
+         const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
+         const AthenaArray<int>& imeshaux)
+{
 }
 
 //--------------------------------------------------------------------------------------

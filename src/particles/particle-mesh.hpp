@@ -63,11 +63,15 @@ private:
   Real dxi1_, dxi2_, dxi3_;           // range of influence from a particle cloud
 
   Particles *ppar_;        // ptr to my Particles instance
-  MeshBlock *pmb_;         // ptr to my meshblock
+  MeshBlock *pmb_;         // ptr to my MeshBlock
+  Mesh *pmesh_;            // ptr to my Mesh
   BoundaryValues *pbval_;  // ptr to my BoundaryValues
   BoundaryData bd_;        // boundary data
 
   // Instance methods
+  void AssignParticlesToDifferentLevels(
+           const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
+           const AthenaArray<int>& imeshaux);
   int LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb);
   void AddBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb);
 
