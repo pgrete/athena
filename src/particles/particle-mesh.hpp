@@ -33,6 +33,13 @@ public:
   ParticleMesh(Particles *ppar, int nmeshaux);
   ~ParticleMesh();
 
+protected:
+  // Instance Variables
+  AthenaArray<Real> meshaux;   // auxiliaries to the meshblock
+  int nmeshaux;                // number of auxiliaries to the meshblock
+  int is, ie, js, je, ks, ke;  // beginning and ending indices
+  int ncells;                  // number of cells in meshaux
+
   // Instance methods
   void InterpolateMeshToParticles(
            const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
@@ -50,19 +57,12 @@ public:
   void SendBoundary();
   void ReceiveBoundary();
 
-protected:
-  // Instance Variables
-  AthenaArray<Real> meshaux;   // auxiliaries to the meshblock
-  int nmeshaux;                // number of auxiliaries to the meshblock
-  int is, ie, js, je, ks, ke;  // beginning and ending indices
-  int ncells;                  // number of cells in meshaux
-
 private:
   // Instance Variables
   bool active1_, active2_, active3_;  // active dimensions
   Real dxi1_, dxi2_, dxi3_;           // range of influence from a particle cloud
 
-  Particles *ppar_;        // ptr to my Particle instance
+  Particles *ppar_;        // ptr to my Particles instance
   MeshBlock *pmb_;         // ptr to my meshblock
   BoundaryValues *pbval_;  // ptr to my BoundaryValues
   BoundaryData bd_;        // boundary data
