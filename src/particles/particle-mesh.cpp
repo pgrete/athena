@@ -38,7 +38,7 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
   nmeshaux = nmeshaux_;
 
   // Determine active dimensions.
-  RegionSize block_size = pmb_->block_size;
+  RegionSize& block_size = pmb_->block_size;
   active1_ = block_size.nx1 > 1;
   active2_ = block_size.nx2 > 1;
   active3_ = block_size.nx3 > 1;
@@ -79,7 +79,7 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
   meshaux.NewAthenaArray(nmeshaux, nx3, nx2, nx1);
   ncells = nx1 * nx2 * nx3;
 
-  // Find the number of neighbors.
+  // Find the maximum number of neighbors.
   bd_.nbmax = BoundaryBase::BufferID(dim, pmesh_->multilevel);
 
   // Initialize boundary data.
@@ -94,6 +94,9 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
     bd_.send[n] = new Real [size];
     bd_.recv[n] = new Real [size];
   }
+
+  // Set the boundary attributes.
+  SetBoundaryAttributes();
 }
 
 //--------------------------------------------------------------------------------------
@@ -375,6 +378,189 @@ void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
   }
 }
 
+
+//--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::SetBoundaryAttributes()
+//  \brief initializes or reinitializes attributes for each boundary.
+
+void ParticleMesh::SetBoundaryAttributes()
+{
+  const RegionSize& block_size = pmb_->block_size;
+  const Real xi1mid = (pmb_->is + pmb_->ie + 1) / 2,
+             xi2mid = (pmb_->js + pmb_->je + 1) / 2,
+             xi3mid = (pmb_->ks + pmb_->ke + 1) / 2;
+  const int mylevel = pmb_->loc.level;
+  const int myfx1 = int(pbval_->loc.lx1 & 1L),
+            myfx2 = int(pbval_->loc.lx2 & 1L),
+            myfx3 = int(pbval_->loc.lx3 & 1L);
+  const int nx1h = active1_ ? block_size.nx1 / 2 + NGPM : 1,
+            nx2h = active2_ ? block_size.nx2 / 2 + NGPM : 1,
+            nx3h = active3_ ? block_size.nx3 / 2 + NGPM : 1;
+
+  // Loop over each neighbor block.
+  for (int n = 0; n < pbval_->nneighbor; ++n) {
+    NeighborBlock& nb = pbval_->neighbor[n];
+
+    // Find the index domain of the meshblock.
+    Real xi1min = pmb_->is, xi1max = pmb_->ie + 1,
+         xi2min = pmb_->js, xi2max = pmb_->je + 1,
+         xi3min = pmb_->ks, xi3max = pmb_->ke + 1;
+    Real xi1_0 = xi1min, xi2_0 = xi2min, xi3_0 = xi3min;
+
+    // Find the radius of influence needed from the neighbor block.
+    Real dxi;
+    if (nb.level > mylevel)
+      dxi = 0.5 * RINF;
+    else if (nb.level < mylevel)
+      dxi = 2 * RINF;
+    else
+      dxi = RINF;
+
+    // Consider the normal directions.
+    if (nb.ox1 > 0) {
+      xi1min = xi1max - dxi;
+      xi1_0 = xi1max;
+    } else if (nb.ox1 < 0) {
+      xi1max = xi1min + dxi;
+      xi1_0 = xi1min - dxi;
+    }
+
+    if (nb.ox2 > 0) {
+      xi2min = xi2max - dxi;
+      xi2_0 = xi2max;
+    } else if (nb.ox2 < 0) {
+      xi2max = xi2min + dxi;
+      xi2_0 = xi2min - dxi;
+    }
+
+    if (nb.ox3 > 0) {
+      xi3min = xi3max - dxi;
+      xi3_0 = xi3max;
+    } else if (nb.ox3 < 0) {
+      xi3max = xi3min + dxi;
+      xi3_0 = xi3min - dxi;
+    }
+
+    // Consider the transverse directions.
+    if (nb.level > mylevel) {  // Neighbor block is at a finer level.
+      if (nb.type == NEIGHBOR_FACE) {
+        if (nb.ox1 != 0) {
+          if (active2_) {
+            if (nb.fi1) {
+              xi2min = xi2mid - dxi;
+              xi2_0 = xi2mid;
+            } else
+              xi2max = xi2mid + dxi;
+          }
+          if (active3_) {
+            if (nb.fi2) {
+              xi3min = xi3mid - dxi; 
+              xi3_0 = xi3mid;
+            } else
+              xi3max = xi3mid + dxi;
+          }
+        } else if (nb.ox2 != 0) {
+          if (active1_) {
+            if (nb.fi1) {
+              xi1min = xi1mid - dxi; 
+              xi1_0 = xi1mid;
+            } else
+              xi1max = xi1mid + dxi;
+          }
+          if (active3_) {
+            if (nb.fi2) {
+              xi3min = xi3mid - dxi;
+              xi3_0 = xi3mid;
+            } else
+              xi3max = xi3mid + dxi;
+          }
+        } else {
+          if (active1_) {
+            if (nb.fi1) {
+              xi1min = xi1mid - dxi;
+              xi1_0 = xi1mid;
+            } else
+              xi1max = xi1mid + dxi;
+          }
+          if (active2_) {
+            if (nb.fi2) {
+              xi2min = xi2mid - dxi;
+              xi2_0 = xi2mid;
+            } else
+              xi2max = xi2mid + dxi;
+          }
+        }
+      } else if (nb.type == NEIGHBOR_EDGE) {
+        if (nb.ox1 == 0) {
+          if (active1_) {
+            if (nb.fi1) {
+              xi1min = xi1mid - dxi;
+              xi1_0 = xi1mid;
+            } else
+              xi1max = xi1mid + dxi;
+          }
+        } else if (nb.ox2 == 0) {
+          if (active2_) {
+            if (nb.fi1) {
+              xi2min = xi2mid - dxi;
+              xi2_0 = xi2mid;
+            } else
+              xi2max = xi2mid + dxi;
+          }
+        } else
+          if (active3_) {
+            if (nb.fi1) {
+              xi3min = xi3mid - dxi;
+              xi3_0 = xi3mid;
+            } else
+              xi3max = xi3mid + dxi;
+          }
+      }
+    } else if (nb.level < mylevel) {  // Neighbor block is at a coarser level.
+      if (nb.type == NEIGHBOR_FACE) {
+        if (nb.ox1 != 0) {
+          if (active2_ && myfx2) xi2_0 = xi2mid - dxi;
+          if (active3_ && myfx3) xi3_0 = xi3mid - dxi;
+        } else if (nb.ox2 != 0) {
+          if (active1_ && myfx1) xi1_0 = xi1mid - dxi;
+          if (active3_ && myfx3) xi3_0 = xi3mid - dxi;
+        } else {
+          if (active1_ && myfx1) xi1_0 = xi1mid - dxi;
+          if (active2_ && myfx2) xi2_0 = xi2mid - dxi;
+        }
+      } else if (nb.type == NEIGHBOR_EDGE) {
+        if (nb.ox1 == 0) {
+          if (active1_ && myfx1) xi1_0 = xi1mid - dxi;
+        } else if (nb.ox2 == 0) {
+          if (active2_ && myfx2) xi2_0 = xi2mid - dxi;
+        } else
+          if (active3_ && myfx3) xi3_0 = xi3mid - dxi;
+      }
+    }
+
+    // Set the domain that influences the ghost block.
+    BoundaryAttributes& ba = ba_[n];
+    ba.xi1min = xi1min;  ba.xi1max = xi1max;
+    ba.xi2min = xi2min;  ba.xi2max = xi2max;
+    ba.xi3min = xi3min;  ba.xi3max = xi3max;
+
+    // Set the origin of the ghost block.
+    ba.xi1_0 = xi1_0;
+    ba.xi2_0 = xi2_0;
+    ba.xi3_0 = xi3_0;
+
+    // Set the dimensions of the ghost block.
+    if (nb.level < mylevel) {
+      ba.ngx1 = (nb.ox1 == 0) ? nx1h : NGPM;
+      ba.ngx2 = (nb.ox2 == 0) ? nx2h : NGPM;
+      ba.ngx3 = (nb.ox3 == 0) ? nx3h : NGPM;
+    } else {
+      ba.ngx1 = (nb.ox1 == 0) ? block_size.nx1 : NGPM;
+      ba.ngx2 = (nb.ox2 == 0) ? block_size.nx2 : NGPM;
+      ba.ngx3 = (nb.ox3 == 0) ? block_size.nx3 : NGPM;
+    }
+  }
+}
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::AssignParticlesToDifferentLevels(

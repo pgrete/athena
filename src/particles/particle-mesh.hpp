@@ -61,17 +61,26 @@ protected:
   void ReceiveBoundary();
 
 private:
+  typedef struct BoundaryAttributes {
+    Real xi1min, xi1max, xi2min, xi2max, xi3min, xi3max;
+                               // domain that influences the ghost block
+    Real xi1_0, xi2_0, xi3_0;  // origin of the ghost block wrt to the local meshblock
+    int ngx1, ngx2, ngx3;      // dimensions of the ghost block
+  } BoundaryAttributes;
+
   // Instance Variables
   bool active1_, active2_, active3_;  // active dimensions
   Real dxi1_, dxi2_, dxi3_;           // range of influence from a particle cloud
 
-  Particles *ppar_;        // ptr to my Particles instance
-  MeshBlock *pmb_;         // ptr to my MeshBlock
-  Mesh *pmesh_;            // ptr to my Mesh
-  BoundaryValues *pbval_;  // ptr to my BoundaryValues
-  BoundaryData bd_;        // boundary data
+  Particles *ppar_;            // ptr to my Particles instance
+  MeshBlock *pmb_;             // ptr to my MeshBlock
+  Mesh *pmesh_;                // ptr to my Mesh
+  BoundaryValues *pbval_;      // ptr to my BoundaryValues
+  BoundaryData bd_;            // boundary data
+  BoundaryAttributes ba_[56];  // ghost block attributes
 
   // Instance methods
+  void SetBoundaryAttributes();
   void AssignParticlesToDifferentLevels(
            const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
            const AthenaArray<int>& imeshaux);
