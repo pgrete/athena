@@ -66,6 +66,7 @@ private:
                                // domain that influences the ghost block
     Real xi1_0, xi2_0, xi3_0;  // origin of the ghost block wrt to the local meshblock
     int ngx1, ngx2, ngx3;      // dimensions of the ghost block
+    int ngtot;                 // total number of cells in the ghost block
   } BoundaryAttributes;
 
   // Instance Variables
