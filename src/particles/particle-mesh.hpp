@@ -7,6 +7,9 @@
 //  \brief defines ParticleMesh class used for communication between meshblocks needed 
 //         by particle-mesh methods.
 
+// C++ standard library
+#include <cmath>
+
 // Athena++ classes headers
 #include "../athena_arrays.hpp"
 #include "../bvals/bvals.hpp"
@@ -14,7 +17,7 @@
 
 // Particle-mesh constants.
 const Real RINF = 1;  // radius of influence
-const int NGPM = 1;   // number of ghost cells needed.
+const int NGPM = int(std::ceil(RINF));   // number of ghost cells needed.
 
 // Forward declaration
 class Particles;

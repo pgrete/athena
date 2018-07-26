@@ -470,10 +470,12 @@ void ParticleMesh::SendBoundary()
 
     // Receive boundary values from neighboring blocks.
     if (nb.rank == Globals::my_rank) {
-      MeshBlock *pnb = pmb_->pmy_mesh->FindMeshBlock(nb.gid);
-      BoundaryData *ptarget = &(pnb->ppar->ppm->bd_);
-      std::memcpy(ptarget->recv[nb.targetid], bd_.send[nb.bufid], ssize*sizeof(Real));
-      ptarget->flag[nb.targetid] = BNDRY_ARRIVED;
+      if (nb.level == mylevel) {
+        MeshBlock *pnb = pmb_->pmy_mesh->FindMeshBlock(nb.gid);
+        BoundaryData *ptarget = &(pnb->ppar->ppm->bd_);
+        std::memcpy(ptarget->recv[nb.targetid], bd_.send[nb.bufid], ssize*sizeof(Real));
+        ptarget->flag[nb.targetid] = BNDRY_ARRIVED;
+      }
     }
   }
 }
