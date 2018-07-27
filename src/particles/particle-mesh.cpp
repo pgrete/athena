@@ -575,6 +575,104 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
          const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
          const AthenaArray<int>& imeshaux)
 {
+  const int mylevel = pmb_->loc.level;
+
+  // Check the index mapping.
+  int nprop = ipar.GetSize();
+  if (nprop <= 0 || imeshaux.GetSize() != nprop) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::AssignParticlesToDifferentLevels]"
+        << std::endl
+        << "index arrays ipar and imeshaux does not match." << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+    return;
+  }
+
+  // Find neighbor blocks that are on a different level.
+  for (int i = 0; i < pbval_->nneighbor; ++i) {
+    NeighborBlock& nb = pbval_->neighbor[i];
+    if (nb.level == mylevel) continue;
+
+    // Identify the buffer for assignment.
+    Real *pbuf = NULL;
+    BoundaryData *pnbd = NULL;
+    if (nb.rank == Globals::my_rank) {
+      pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
+      pbuf = pnbd->recv[nb.targetid];
+    } else
+      pbuf = bd_.send[nb.bufid];
+
+    // Zero out the buffer.
+    Real *buf = pbuf;
+    BoundaryAttributes& ba = ba_[i];
+    for (int j = 0; j < ba.ngtot; ++j, buf += nmeshaux)
+      for (int n = 0; n < nprop; ++n)
+        *(buf + imeshaux(n)) = 0.0;
+
+    // Prepare for pointer operations.
+    int ngx12 = nmeshaux * ba.ngx12, ngx1 = nmeshaux * ba.ngx1;
+
+    // Find particles that influences the neighbor block.
+    for (long k = 0; k < ppar_->npar; ++k) {
+      Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
+      if ((active1_ && (xi1 <= ba.xi1min || xi1 >= ba.xi1max)) ||
+          (active2_ && (xi2 <= ba.xi2min || xi2 >= ba.xi2max)) ||
+          (active3_ && (xi3 <= ba.xi3min || xi3 >= ba.xi3max))) continue;
+
+      // Shift and scale the position index of the particle.
+      xi1 -= ba.xi1_0;
+      xi2 -= ba.xi2_0;
+      xi3 -= ba.xi3_0;
+      if (nb.level > mylevel) {
+        xi1 *= 2;
+        xi2 *= 2;
+        xi3 *= 2;
+      } else {
+        xi1 /= 2;
+        xi2 /= 2;
+        xi3 /= 2;
+      }
+
+      // Find the region of the ghost block to assign the particle to.
+      int ix1s = std::max(int(xi1 - dxi1_), 0),
+          ix1e = std::min(int(xi1 + dxi1_), ba.ngx1-1),
+          ix2s = std::max(int(xi2 - dxi2_), 0),
+          ix2e = std::min(int(xi2 + dxi2_), ba.ngx2-1),
+          ix3s = std::max(int(xi3 - dxi3_), 0),
+          ix3e = std::min(int(xi3 + dxi3_), ba.ngx3-1);
+
+      // Stack the properties of the particle.
+      Real prop[nprop];
+      for (int n = 0; n < nprop; ++n)
+        prop[n] = par(ipar(n),k);
+
+      // Assign the particle.
+      buf = pbuf + (ix3s - 1) * ngx12 + (ix2s - 1) * ngx1 + (ix1s - 1) * nmeshaux;
+      for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
+        Real w3 = active3_ ? _ParticleMeshWeightFunction(ix3 + 0.5 - xi3) : 1.0;
+        buf += ngx12;
+
+        for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
+          Real w23 = w3 * (active2_ ?
+                         _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
+          buf += ngx1;
+
+          for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
+            Real weight = w23 * (active1_ ?
+                         _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+            buf += nmeshaux;
+
+            for (int n = 0; n < nprop; ++n)
+              *(buf + imeshaux(n)) += weight * prop[n];
+          }
+        }
+      }
+    }
+
+    // Set the boundary flag.
+    if (nb.rank == Globals::my_rank)
+      pnbd->flag[nb.targetid] = BNDRY_ARRIVED;
+  }
 }
 
 //--------------------------------------------------------------------------------------
