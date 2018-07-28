@@ -406,6 +406,7 @@ void ParticleMesh::SetBoundaryAttributes()
          xi2min = pmb_->js, xi2max = pmb_->je + 1,
          xi3min = pmb_->ks, xi3max = pmb_->ke + 1;
     Real xi1_0 = xi1min, xi2_0 = xi2min, xi3_0 = xi3min;
+    int irs = is, ire = ie, jrs = js, jre = je, krs = ks, kre = ke;
 
     // Find the radius of influence needed from the neighbor block.
     Real dxi;
@@ -420,25 +421,31 @@ void ParticleMesh::SetBoundaryAttributes()
     if (nb.ox1 > 0) {
       xi1min = xi1max - dxi;
       xi1_0 = xi1max;
+      irs = ie - NGPM + 1;
     } else if (nb.ox1 < 0) {
       xi1max = xi1min + dxi;
       xi1_0 = xi1min - dxi;
+      ire = is + NGPM - 1;
     }
 
     if (nb.ox2 > 0) {
       xi2min = xi2max - dxi;
       xi2_0 = xi2max;
+      jrs = je - NGPM + 1;
     } else if (nb.ox2 < 0) {
       xi2max = xi2min + dxi;
       xi2_0 = xi2min - dxi;
+      jre = js + NGPM - 1;
     }
 
     if (nb.ox3 > 0) {
       xi3min = xi3max - dxi;
       xi3_0 = xi3max;
+      krs = ke - NGPM + 1;
     } else if (nb.ox3 < 0) {
       xi3max = xi3min + dxi;
       xi3_0 = xi3min - dxi;
+      kre = ks + NGPM - 1;
     }
 
     // Consider the transverse directions.
@@ -561,6 +568,11 @@ void ParticleMesh::SetBoundaryAttributes()
     }
     ba.ngx12 = ba.ngx1 * ba.ngx2;
     ba.ngtot = ba.ngx12 * ba.ngx3;
+
+    // Set the indices in meshaux to receive the boundary buffer.
+    ba.irs = irs;  ba.ire = ire;
+    ba.jrs = jrs;  ba.jre = jre;
+    ba.krs = krs;  ba.kre = kre;
   }
 }
 

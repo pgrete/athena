@@ -68,6 +68,9 @@ private:
     int ngx1, ngx2, ngx3;      // dimensions of the ghost block
     int ngx12;                 // total number of cells in x1-x2 plane of the ghost block
     int ngtot;                 // total number of cells in the ghost block
+    int irs, ire, jrs, jre, krs, kre;
+                               // beginning and ending indices in meshaux to receive the
+                               // boundary buffer
   } BoundaryAttributes;
 
   // Instance Variables
