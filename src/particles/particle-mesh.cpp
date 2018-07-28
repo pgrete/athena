@@ -749,18 +749,14 @@ void ParticleMesh::SendBoundary()
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
 
-    // Load boundary values to send buffer.
-    int ssize;
-    if (nb.level == mylevel)
-      ssize = LoadBoundaryBufferSameLevel(bd_.send[nb.bufid], nb);
-
-    // Receive boundary values from neighboring blocks.
-    if (nb.rank == Globals::my_rank) {
-      if (nb.level == mylevel) {
-        BoundaryData *ptarget = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
-        std::memcpy(ptarget->recv[nb.targetid], bd_.send[nb.bufid], ssize*sizeof(Real));
-        ptarget->flag[nb.targetid] = BNDRY_ARRIVED;
-      }
+    // Load boundary values.
+    if (nb.level == mylevel) {
+      if (nb.rank == Globals::my_rank) {
+        BoundaryData *pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
+        LoadBoundaryBufferSameLevel(pnbd->recv[nb.targetid], nb);
+        pnbd->flag[nb.targetid] = BNDRY_ARRIVED;
+      } else
+        LoadBoundaryBufferSameLevel(bd_.send[nb.bufid], nb);
     }
   }
 }
