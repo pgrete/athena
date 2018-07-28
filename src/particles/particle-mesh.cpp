@@ -456,45 +456,63 @@ void ParticleMesh::SetBoundaryAttributes()
             if (nb.fi1) {
               xi2min = xi2mid - dxi;
               xi2_0 = xi2mid;
-            } else
+              jrs = je - nx2h + 1;
+            } else {
               xi2max = xi2mid + dxi;
+              jre = js + nx2h - 1;
+            }
           }
           if (active3_) {
             if (nb.fi2) {
               xi3min = xi3mid - dxi; 
               xi3_0 = xi3mid;
-            } else
+              krs = ke - nx3h + 1;
+            } else {
               xi3max = xi3mid + dxi;
+              kre = ks + nx3h - 1;
+            }
           }
         } else if (nb.ox2 != 0) {
           if (active1_) {
             if (nb.fi1) {
               xi1min = xi1mid - dxi; 
               xi1_0 = xi1mid;
-            } else
+              irs = ie - nx1h + 1;
+            } else {
               xi1max = xi1mid + dxi;
+              ire = is + nx1h - 1;
+            }
           }
           if (active3_) {
             if (nb.fi2) {
               xi3min = xi3mid - dxi;
               xi3_0 = xi3mid;
-            } else
+              krs = ke - nx3h + 1;
+            } else {
               xi3max = xi3mid + dxi;
+              kre = ks + nx3h - 1;
+            }
           }
         } else {
           if (active1_) {
             if (nb.fi1) {
               xi1min = xi1mid - dxi;
               xi1_0 = xi1mid;
-            } else
+              irs = ie - nx1h + 1;
+            } else {
               xi1max = xi1mid + dxi;
+              ire = is + nx1h - 1;
+            }
           }
           if (active2_) {
             if (nb.fi2) {
               xi2min = xi2mid - dxi;
               xi2_0 = xi2mid;
-            } else
+              jrs = je - nx2h + 1;
+            } else {
               xi2max = xi2mid + dxi;
+              jre = js + nx2h - 1;
+            }
           }
         }
       } else if (nb.type == NEIGHBOR_EDGE) {
@@ -503,24 +521,33 @@ void ParticleMesh::SetBoundaryAttributes()
             if (nb.fi1) {
               xi1min = xi1mid - dxi;
               xi1_0 = xi1mid;
-            } else
+              irs = ie - nx1h + 1;
+            } else {
               xi1max = xi1mid + dxi;
+              ire = is + nx1h - 1;
+            }
           }
         } else if (nb.ox2 == 0) {
           if (active2_) {
             if (nb.fi1) {
               xi2min = xi2mid - dxi;
               xi2_0 = xi2mid;
-            } else
+              jrs = je - nx2h + 1;
+            } else {
               xi2max = xi2mid + dxi;
+              jre = js + nx2h - 1;
+            }
           }
         } else
           if (active3_) {
             if (nb.fi1) {
               xi3min = xi3mid - dxi;
               xi3_0 = xi3mid;
-            } else
+              krs = ke - nx3h + 1;
+            } else {
               xi3max = xi3mid + dxi;
+              kre = ks + nx3h - 1;
+            }
           }
       }
     } else if (nb.level < mylevel) {  // Neighbor block is at a coarser level.
