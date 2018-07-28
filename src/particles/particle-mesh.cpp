@@ -755,13 +755,12 @@ int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void ParticleMesh::AddBoundaryBufferSameLevel(
-//               Real *buf, const BoundaryAttributes& ba)
-//  \brief Add boundary buffers from a neighbor block to mesh.
+//! \fn void ParticleMesh::AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba)
+//  \brief Add boundary buffer from a neighbor block to meshaux.
 
-void ParticleMesh::AddBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba)
+void ParticleMesh::AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba)
 {
-  // Add the data to the mesh.
+  // Add the data to the meshaux.
   for (int n = 0; n < nmeshaux; ++n)
     for (int k = ba.krs; k <= ba.kre; ++k)
       for (int j = ba.jrs; j <= ba.jre; ++j)
@@ -798,15 +797,11 @@ void ParticleMesh::SendBoundary()
 
 void ParticleMesh::ReceiveBoundary()
 {
-  int mylevel = pmb_->loc.level;
-
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
     if (bd_.flag[nb.bufid] == BNDRY_COMPLETED) continue;
 
-    if (nb.level == mylevel)
-      AddBoundaryBufferSameLevel(bd_.recv[nb.bufid], ba_[n]);
-
+    AddBoundaryBuffer(bd_.recv[nb.bufid], ba_[n]);
     bd_.flag[nb.bufid] = BNDRY_COMPLETED;
   }
 }

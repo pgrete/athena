@@ -90,6 +90,6 @@ private:
            const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
            const AthenaArray<int>& imeshaux);
   int LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb);
-  void AddBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba);
+  void AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba);
 
 };
