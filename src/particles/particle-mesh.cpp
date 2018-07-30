@@ -553,22 +553,22 @@ void ParticleMesh::SetBoundaryAttributes()
     } else if (nb.level < mylevel) {  // Neighbor block is at a coarser level.
       if (nb.type == NEIGHBOR_FACE) {
         if (nb.ox1 != 0) {
-          if (active2_ && myfx2) xi2_0 = xi2mid - dxi;
-          if (active3_ && myfx3) xi3_0 = xi3mid - dxi;
+          if (active2_ && myfx2) xi2_0 = xi2min - dxi;
+          if (active3_ && myfx3) xi3_0 = xi3min - dxi;
         } else if (nb.ox2 != 0) {
-          if (active1_ && myfx1) xi1_0 = xi1mid - dxi;
-          if (active3_ && myfx3) xi3_0 = xi3mid - dxi;
+          if (active1_ && myfx1) xi1_0 = xi1min - dxi;
+          if (active3_ && myfx3) xi3_0 = xi3min - dxi;
         } else {
-          if (active1_ && myfx1) xi1_0 = xi1mid - dxi;
-          if (active2_ && myfx2) xi2_0 = xi2mid - dxi;
+          if (active1_ && myfx1) xi1_0 = xi1min - dxi;
+          if (active2_ && myfx2) xi2_0 = xi2min - dxi;
         }
       } else if (nb.type == NEIGHBOR_EDGE) {
         if (nb.ox1 == 0) {
-          if (active1_ && myfx1) xi1_0 = xi1mid - dxi;
+          if (active1_ && myfx1) xi1_0 = xi1min - dxi;
         } else if (nb.ox2 == 0) {
-          if (active2_ && myfx2) xi2_0 = xi2mid - dxi;
+          if (active2_ && myfx2) xi2_0 = xi2min - dxi;
         } else
-          if (active3_ && myfx3) xi3_0 = xi3mid - dxi;
+          if (active3_ && myfx3) xi3_0 = xi3min - dxi;
       }
     }
 
