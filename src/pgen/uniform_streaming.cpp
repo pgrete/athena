@@ -51,54 +51,82 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   vpy0 = pin->GetOrAddReal("problem", "vpy0", 0.0);
   vpz0 = pin->GetOrAddReal("problem", "vpz0", 0.0);
 
-  // Find the mass of each particle.
-  long npar = 1;
-  Real dvol = 1.0;
+  // Find the total number of particles in each direction.
+  RegionSize& mesh_size = pmy_mesh->mesh_size;
+  long npx1, npx2, npx3;
+  if (pmy_mesh->multilevel) {
+    npx1 = (block_size.nx1 > 1) ? pin->GetInteger("problem", "npx1") : 1;
+    npx2 = (block_size.nx2 > 1) ? pin->GetInteger("problem", "npx2") : 1;
+    npx3 = (block_size.nx3 > 1) ? pin->GetInteger("problem", "npx3") : 1;
+  } else {
+    npx1 = mesh_size.nx1;
+    npx2 = mesh_size.nx2;
+    npx3 = mesh_size.nx3;
+  }
+
+  // Find the mass of each particle and the distance between adjacent particles.
+  Real vol = 1.0;
+  Real dx1 = 0.0, dx2 = 0.0, dx3 = 0.0, length;
+
+  length = mesh_size.x1max - mesh_size.x1min;
+  dx1 = length / npx1;
+  if (block_size.nx1 > 1) vol *= length;
+
+  length = mesh_size.x2max - mesh_size.x2min;
+  dx2 = length / npx2;
+  if (block_size.nx2 > 1) vol *= length;
+
+  length = mesh_size.x3max - mesh_size.x3min;
+  dx3 = length / npx3;
+  if (block_size.nx3 > 1) vol *= length;
+
+  ppar->mass = dtog * vol / (npx1 * npx2 * npx3);
+
+  // Find the local number of particles and their beginning index.
+  long ix1 = 0, ix2 = 0, ix3 = 0;
+  long npx1_loc = 1, npx2_loc = 1, npx3_loc = 1;
   if (block_size.nx1 > 1) {
-    npar *= block_size.nx1;
-    dvol *= block_size.x1max - block_size.x1min;
+    ix1 = lround((block_size.x1min - mesh_size.x1min) / dx1);
+    npx1_loc = lround((block_size.x1max - block_size.x1min) / dx1);
   }
   if (block_size.nx2 > 1) {
-    npar *= block_size.nx2;
-    dvol *= block_size.x2max - block_size.x2min;
+    ix2 = lround((block_size.x2min - mesh_size.x2min) / dx2);
+    npx2_loc = lround((block_size.x2max - block_size.x2min) / dx2);
   }
   if (block_size.nx3 > 1) {
-    npar *= block_size.nx3;
-    dvol *= block_size.x3max - block_size.x3min;
+    ix3 = lround((block_size.x3min - mesh_size.x3min) / dx3);
+    npx3_loc = lround((block_size.x3max - block_size.x3min) / dx3);
   }
-  ppar->mass = dtog * dvol / npar;
 
   // Check the memory allocation.
-  if (npar > ppar->nparmax) {
+  if (npx1_loc * npx2_loc * npx3_loc > ppar->nparmax) {
     std::ostringstream msg;
     msg << "### FATAL ERROR in function [MeshBlock::ProblemGenerator]" << std::endl
-        << "ncells = " << npar << " > nparmax = " << ppar->nparmax << std::endl;
+        << "nparmax is too small" << std::endl;
     throw std::runtime_error(msg.str().c_str());
     return;
   }
 
   // Assign the particles.
-  long ipar = 0, ipbase = gid * npar;
-  for (int k = ks; k <= ke; ++k)
-    for (int j = js; j <= je; ++j)
-      for (int i = is; i <= ie; ++i) {
-        ppar->xp(ipar) = pcoord->x1v(i);
-        ppar->yp(ipar) = pcoord->x2v(j);
-        ppar->zp(ipar) = pcoord->x3v(k);
+  long ipar = 0, id = ix1 + npx1 * (ix2 + npx2 * ix3);
+  for (int k = 0; k < npx3_loc; ++k) {
+    Real zp1 = block_size.x3min + (k + 0.5) * dx3;
+    for (int j = 0; j < npx2_loc; ++j) {
+      Real yp1 = block_size.x2min + (j + 0.5) * dx2;
+      for (int i = 0; i < npx1_loc; ++i) {
+        Real xp1 = block_size.x1min + (i + 0.5) * dx1;
+        ppar->xp(ipar) = xp1;
+        ppar->yp(ipar) = yp1;
+        ppar->zp(ipar) = zp1;
         ppar->vpx(ipar) = vpx0;
         ppar->vpy(ipar) = vpy0;
         ppar->vpz(ipar) = vpz0;
-        ppar->pid(ipar) = ipbase + ipar;
+        ppar->pid(ipar) = id++;
         ++ipar;
       }
-
-  if (ipar != npar) {
-    std::ostringstream msg;
-    msg << "### FATAL ERROR in function [MeshBlock::ProblemGenerator]" << std::endl
-        << "index error" << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-    return;
+      id += npx1 - npx1_loc;
+    }
+    id += npx1 * (npx2 - npx2_loc);
   }
-
-  ppar->npar = npar;
+  ppar->npar = ipar;
 }
