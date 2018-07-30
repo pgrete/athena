@@ -633,23 +633,22 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
     if (nb.level == mylevel) continue;
 
     // Identify the buffer for assignment.
-    Real *pbuf = NULL;
+    Real *pbuf0 = NULL;
     BoundaryData *pnbd = NULL;
     if (nb.rank == Globals::my_rank) {
       pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
-      pbuf = pnbd->recv[nb.targetid];
+      pbuf0 = pnbd->recv[nb.targetid];
     } else
-      pbuf = bd_.send[nb.bufid];
+      pbuf0 = bd_.send[nb.bufid];
 
     // Zero out the buffer.
-    Real *buf = pbuf;
+    Real *pbuf[nprop], *buf[nprop];
     BoundaryAttributes& ba = ba_[i];
-    for (int j = 0; j < ba.ngtot; ++j, buf += nmeshaux)
-      for (int n = 0; n < nprop; ++n)
-        *(buf + imeshaux(n)) = 0.0;
-
-    // Prepare for pointer operations.
-    int ngx12 = nmeshaux * ba.ngx12, ngx1 = nmeshaux * ba.ngx1;
+    for (int n = 0; n < nprop; ++n) {
+      buf[n] = pbuf[n] = pbuf0 + imeshaux(n) * ba.ngtot;
+      for (int j = 0; j < ba.ngtot; ++j)
+        *buf[n]++ = 0.0;
+    }
 
     // Find particles that influences the neighbor block.
     for (long k = 0; k < ppar_->npar; ++k) {
@@ -680,31 +679,38 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
           ix3s = std::max(int(xi3 - dxi3_), 0),
           ix3e = std::min(int(xi3 + dxi3_), ba.ngx3-1);
 
-      // Stack the properties of the particle.
+      // Stack the properties of the particle and set the pointers to the buffer.
       Real prop[nprop];
-      for (int n = 0; n < nprop; ++n)
+      long dbuf1 = ix1s + ba.ngx1 * (ix2s + ba.ngx2 * ix3s),
+           dbuf2 = ba.ngx1 - ix1e + ix1s - 1,
+           dbuf3 = ba.ngx1 * (ba.ngx2 - ix2e + ix2s - 1);
+      for (int n = 0; n < nprop; ++n) {
         prop[n] = par(ipar(n),k);
+        buf[n] = pbuf[n] + dbuf1;
+      }
 
       // Assign the particle.
-      buf = pbuf + (ix3s - 1) * ngx12 + (ix2s - 1) * ngx1 + (ix1s - 1) * nmeshaux;
       for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
         Real w3 = active3_ ? _ParticleMeshWeightFunction(ix3 + 0.5 - xi3) : 1.0;
-        buf += ngx12;
 
         for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
           Real w23 = w3 * (active2_ ?
                          _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
-          buf += ngx1;
 
           for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
             Real weight = w23 * (active1_ ?
                          _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
-            buf += nmeshaux;
 
             for (int n = 0; n < nprop; ++n)
-              *(buf + imeshaux(n)) += weight * prop[n];
+              *buf[n]++ += weight * prop[n];
           }
+
+          for (int n = 0; n < nprop; ++n)
+            buf[n] += dbuf2;
         }
+
+        for (int n = 0; n < nprop; ++n)
+          buf[n] += dbuf3;
       }
     }
 
