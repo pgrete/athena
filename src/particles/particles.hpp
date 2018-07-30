@@ -155,21 +155,20 @@ protected:
 
 private:
   // Class variables
-  static bool initialized;      // whether or not the class is initialized
-  static int iwx, iwy, iwz;     // indices for working arrays
-  static int idpx, idpy, idpz;  // indices for momentum change
-  static AthenaArray<int> imeshsrc, iwork, irealprop, imeshaux, imeshdst;
-                                // Array of indices for particle-mesh mapping
+  static bool initialized;   // whether or not the class is initialized
+  static int iwx, iwy, iwz;  // indices for working arrays
+  static AthenaArray<int> imeshsrc, imeshdst, iwork, imeshaux;
+                             // Array of indices for particle-mesh mapping
 
   // Instance methods.
   void AssignShorthands();
   void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc);
+  void ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
                      AthenaArray<Real>& meshdst);
 
   // Instance variables
-  AthenaArray<Real> wx, wy, wz;     // shorthand for working arrays
-  AthenaArray<Real> dpx, dpy, dpz;  // shorthand for momentum change
+  AthenaArray<Real> wx, wy, wz;  // shorthand for working arrays
 };
 
 #endif
