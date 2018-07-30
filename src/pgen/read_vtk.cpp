@@ -98,9 +98,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   AthenaArray<float> data; //temporary array to store data;
   AthenaArray<Real> b; //needed for PrimitiveToConserved()
   if (isjoinedvtk != 0) {
+#ifdef DEBUG
+    printf("Joined vtk file. data size = (%d, %d, %d)\n", 
+           Nz_mesh, Ny_mesh, Nx_mesh);
+#endif
     data.NewAthenaArray(Nz_mesh, Ny_mesh, Nx_mesh);
     b.NewAthenaArray(Nz_mesh, Ny_mesh, Nx_mesh);
   } else {
+#ifdef DEBUG
+    printf("Unjoined vtk file. data size = (%d, %d, %d)\n", 
+           Nz, Ny, Nx);
+#endif
     data.NewAthenaArray(Nz, Ny, Nx);
     b.NewAthenaArray(Nz, Ny, Nx);
   }
@@ -133,12 +141,23 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     for(int i = 0; i < scaler_fields.size(); ++i) {
       if (scaler_fields[i] == "density") {
         if (Globals::my_rank == 0) {
+#ifdef DEBUG
+          printf("Process 0: start to read density.\n");
+#endif
           readvtk(this, vtkfile, "density", 0, data, isjoinedvtk);
         }
 #ifdef MPI_PARALLEL
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("Start to MPI broadcast density.\n");
+#endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
             MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("End MPI brocast density.\n");
 #endif
+#endif //MPI_PARALLEL
         for (int k=ks; k<=ke; ++k) {
           for (int j=js; j<=je; ++j) {
             for (int i=is; i<=ie; ++i) {
@@ -148,12 +167,23 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         }
       } else if (scaler_fields[i] == "pressure") {
         if (Globals::my_rank == 0) {
+#ifdef DEBUG
+          printf("Process 0: Start to read pressure.\n");
+#endif
           readvtk(this, vtkfile, "pressure", 0, data, isjoinedvtk);
         }
 #ifdef MPI_PARALLEL
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("Start to MPI broadcast pressure.\n");
+#endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
             MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("End MPI brocast pressure.\n");
 #endif
+#endif //MPI_PARRLLEL
         for (int k=ks; k<=ke; ++k) {
           for (int j=js; j<=je; ++j) {
             for (int i=is; i<=ie; ++i) {
@@ -172,12 +202,23 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
       if (vector_fields[i] == "velocity") {
         //vx
         if (Globals::my_rank == 0) {
+#ifdef DEBUG
+          printf("Process 0: Start to read velocity.\n");
+#endif
           readvtk(this, vtkfile, "velocity", 0, data,isjoinedvtk);
         }
 #ifdef MPI_PARALLEL
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("Start to MPI broadcast velocity 0.\n");
+#endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
             MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("End MPI brocast velocity 0.\n");
 #endif
+#endif //MPI_PARRLLEL
         for (int k=ks; k<=ke; ++k) {
           for (int j=js; j<=je; ++j) {
             for (int i=is; i<=ie; ++i) {
@@ -190,9 +231,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           readvtk(this, vtkfile, "velocity", 1, data,isjoinedvtk);
         }
 #ifdef MPI_PARALLEL
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("Start to MPI broadcast velocity 1.\n");
+#endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
             MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("End MPI brocast velocity 1.\n");
 #endif
+#endif //MPI_PARRLLEL
         for (int k=ks; k<=ke; ++k) {
           for (int j=js; j<=je; ++j) {
             for (int i=is; i<=ie; ++i) {
@@ -205,9 +254,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
           readvtk(this, vtkfile, "velocity", 2, data,isjoinedvtk);
         }
 #ifdef MPI_PARALLEL
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("Start to MPI broadcast velocity 2.\n");
+#endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
             MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+#ifdef DEBUG
+        MPI_Barrier(MPI_COMM_WORLD);
+        printf("End MPI brocast velocity 2.\n");
 #endif
+#endif //MPI_PARRLLEL
         for (int k=ks; k<=ke; ++k) {
           for (int j=js; j<=je; ++j) {
             for (int i=is; i<=ie; ++i) {
