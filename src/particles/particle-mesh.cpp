@@ -139,10 +139,11 @@ void ParticleMesh::InterpolateMeshToParticles(
   }
 
   // Zero out the particle arrays.
+  Real *pp[nprop];
   for (int n = 0; n < nprop; ++n) {
-    Real* pdata = &par(ipar(n),0);
+    Real *p = pp[n] = &par(ipar(n),0);
     for (long k = 0; k < ppar_->npar; ++k)
-      *pdata++ = 0.0;
+      *p++ = 0.0;
   }
 
   // Loop over each particle.
@@ -165,10 +166,12 @@ void ParticleMesh::InterpolateMeshToParticles(
                                     _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
 
           for (int n = 0; n < nprop; ++n)
-            par(ipar(n),k) += weight * meshsrc(imeshsrc(n),ix3,ix2,ix1);
+            *pp[n] += weight * meshsrc(imeshsrc(n),ix3,ix2,ix1);
         }
       }
     }
+    for (int n = 0; n < nprop; ++n)
+      ++pp[n];
   }
 }
 
