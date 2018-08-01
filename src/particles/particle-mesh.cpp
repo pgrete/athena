@@ -49,13 +49,14 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
   dxi3_ = active3_ ? RINF : 0;
 
   // Determine the dimensions of the block for boundary communication.
-  int dim = 0, nx1 = 1, nx2 = 1, nx3 = 1;
+  int dim = 0;
+  nx1_ = nx2_ = nx3_ = 1;
 
   if (active1_) {
     ++dim;
     is = NGPM;
     ie = NGPM + block_size.nx1 - 1;
-    nx1 = block_size.nx1 + 2 * NGPM;
+    nx1_ = block_size.nx1 + 2 * NGPM;
   } else
     is = ie = 0;
 
@@ -63,7 +64,7 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
     ++dim;
     js = NGPM;
     je = NGPM + block_size.nx2 - 1;
-    nx2 = block_size.nx2 + 2 * NGPM;
+    nx2_ = block_size.nx2 + 2 * NGPM;
   } else
     js = je = 0;
 
@@ -71,13 +72,13 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
     ++dim;
     ks = NGPM;
     ke = NGPM + block_size.nx3 - 1;
-    nx3 = block_size.nx3 + 2 * NGPM;
+    nx3_ = block_size.nx3 + 2 * NGPM;
   } else
     ks = ke = 0;
 
   // Allocate the block for particle-mesh.
-  meshaux.NewAthenaArray(nmeshaux, nx3, nx2, nx1);
-  ncells = nx1 * nx2 * nx3;
+  meshaux.NewAthenaArray(nmeshaux, nx3_, nx2_, nx1_);
+  ncells_ = nx1_ * nx2_ * nx3_;
 
   // Find the maximum number of neighbors.
   bd_.nbmax = BoundaryBase::BufferID(dim, pmesh_->multilevel);
@@ -200,7 +201,7 @@ void ParticleMesh::AssignParticlesToMeshAux(
   // Zero out meshaux.
   for (int n = 0; n < nprop; ++n) {
     Real* pdata = &meshaux(imeshaux(n),0,0,0);
-    for (int i = 0; i < ncells; ++i)
+    for (int i = 0; i < ncells_; ++i)
       *pdata++ = 0.0;
   }
 
@@ -295,7 +296,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
   // Zero out meshaux.
   for (int n = 0; n < nmeshdst; ++n) {
     Real* pdata = &meshaux(imeshaux(n),0,0,0);
-    for (int i = 0; i < ncells; ++i)
+    for (int i = 0; i < ncells_; ++i)
       *pdata++ = 0.0;
   }
 

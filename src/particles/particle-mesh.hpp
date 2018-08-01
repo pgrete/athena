@@ -41,7 +41,6 @@ protected:
   AthenaArray<Real> meshaux;   // auxiliaries to the meshblock
   int nmeshaux;                // number of auxiliaries to the meshblock
   int is, ie, js, je, ks, ke;  // beginning and ending indices
-  int ncells;                  // number of cells in meshaux
 
   // Instance methods
   void InterpolateMeshToParticles(
@@ -75,6 +74,8 @@ private:
   // Instance Variables
   bool active1_, active2_, active3_;  // active dimensions
   Real dxi1_, dxi2_, dxi3_;           // range of influence from a particle cloud
+  int nx1_, nx2_, nx3_;               // number of cells in meshaux in each dimension
+  int ncells_;                        // total number of cells in meshaux
 
   Particles *ppar_;            // ptr to my Particles instance
   MeshBlock *pmb_;             // ptr to my MeshBlock
