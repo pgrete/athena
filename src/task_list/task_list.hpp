@@ -199,15 +199,9 @@ namespace HydroIntegratorTaskNames {
   const uint64_t RECV_GRAV=1LL<<43;
   const uint64_t CORR_GFLX=1LL<<44;
 
-#if PARTICLES
   const uint64_t INT_PAR=1LL<<45;
   const uint64_t SEND_PM=1LL<<46;
   const uint64_t RECV_PM=1LL<<47;
-#else
-  const uint64_t INT_PAR=NONE;
-  const uint64_t SEND_PM=NONE;
-  const uint64_t RECV_PM=NONE;
-#endif
 };
 
 #endif // TASK_LIST_HPP
