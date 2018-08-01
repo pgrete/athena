@@ -199,16 +199,14 @@ void ParticleMesh::AssignParticlesToMeshAux(
   }
 
   // Zero out meshaux.
+  Real *pm0[nprop];
   for (int n = 0; n < nprop; ++n) {
-    Real* pdata = &meshaux(imeshaux(n),0,0,0);
+    Real *p = pm0[n] = &meshaux(imeshaux(n),0,0,0);
     for (int i = 0; i < ncells_; ++i)
-      *pdata++ = 0.0;
+      *p++ = 0.0;
   }
 
-  // Allocate working array.
-  AthenaArray<Real> p;
-  p.NewAthenaArray(nprop);
-
+  // Loop over each particle.
   for (long k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
     Real xi1 = ppar_->xi1(k) - (active1_ ? OFFSET : 0),
@@ -218,9 +216,15 @@ void ParticleMesh::AssignParticlesToMeshAux(
     int ix2s = int(xi2 - dxi2_), ix2e = int(xi2 + dxi2_);
     int ix3s = int(xi3 - dxi3_), ix3e = int(xi3 + dxi3_);
 
-    // Copy the particle properties.
-    for (int n = 0; n < nprop; ++n)
-      p(n) = par(ipar(n),k);
+    // Prepare for pointer operations.
+    int dpm1 = ix1s + nx1_ * (ix2s + nx2_ * ix3s),
+        dpm2 = nx1_ - ix1e + ix1s - 1,
+        dpm3 = nx1_ * (nx2_ - ix2e + ix2s - 1);
+    Real p[nprop], *pm[nprop];
+    for (int n = 0; n < nprop; ++n) {
+      p[n] = par(ipar(n),k);
+      pm[n] = pm0[n] + dpm1;
+    }
 
     // Weight each cell and accumulate particle property onto meshaux.
     for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
@@ -234,14 +238,15 @@ void ParticleMesh::AssignParticlesToMeshAux(
                                     _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
 
           for (int n = 0; n < nprop; ++n)
-            meshaux(imeshaux(n),ix3,ix2,ix1) += weight * p(n);
+            *pm[n]++ += weight * p[n];
         }
+        for (int n = 0; n < nprop; ++n)
+          pm[n] += dpm2;
       }
+      for (int n = 0; n < nprop; ++n)
+        pm[n] += dpm3;
     }
   }
-
-  // Release working array.
-  p.DeleteAthenaArray();
 
   // Treat neighbors of different levels.
   if (pmesh_->multilevel)
