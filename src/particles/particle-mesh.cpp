@@ -401,12 +401,13 @@ void ParticleMesh::SetBoundaryAttributes()
   for (int n = 0; n < pbval_->nneighbor; ++n) {
     NeighborBlock& nb = pbval_->neighbor[n];
 
-    // Find the index domain of the meshblock.
+    // Find the index domain.
     Real xi1min = pmb_->is, xi1max = pmb_->ie + 1,
          xi2min = pmb_->js, xi2max = pmb_->je + 1,
          xi3min = pmb_->ks, xi3max = pmb_->ke + 1;
     Real xi1_0 = xi1min, xi2_0 = xi2min, xi3_0 = xi3min;
     int irs = is, ire = ie, jrs = js, jre = je, krs = ks, kre = ke;
+    int iss = is, ise = ie, jss = js, jse = je, kss = ks, kse = ke;
 
     // Find the radius of influence needed from the neighbor block.
     Real dxi;
@@ -422,30 +423,42 @@ void ParticleMesh::SetBoundaryAttributes()
       xi1min = xi1max - dxi;
       xi1_0 = xi1max;
       irs = ie - NGPM + 1;
+      iss = ie + 1;
+      ise += NGPM;
     } else if (nb.ox1 < 0) {
       xi1max = xi1min + dxi;
       xi1_0 = xi1min - dxi;
       ire = is + NGPM - 1;
+      iss -= NGPM;
+      ise = is - 1;
     }
 
     if (nb.ox2 > 0) {
       xi2min = xi2max - dxi;
       xi2_0 = xi2max;
       jrs = je - NGPM + 1;
+      jss = je + 1;
+      jse += NGPM;
     } else if (nb.ox2 < 0) {
       xi2max = xi2min + dxi;
       xi2_0 = xi2min - dxi;
       jre = js + NGPM - 1;
+      jss -= NGPM;
+      jse = js - 1;
     }
 
     if (nb.ox3 > 0) {
       xi3min = xi3max - dxi;
       xi3_0 = xi3max;
       krs = ke - NGPM + 1;
+      kss = ke + 1;
+      kse += NGPM;
     } else if (nb.ox3 < 0) {
       xi3max = xi3min + dxi;
       xi3_0 = xi3min - dxi;
       kre = ks + NGPM - 1;
+      kss -= NGPM;
+      kse = ks - 1;
     }
 
     // Consider the transverse directions.
@@ -596,10 +609,14 @@ void ParticleMesh::SetBoundaryAttributes()
     ba.ngx12 = ba.ngx1 * ba.ngx2;
     ba.ngtot = ba.ngx12 * ba.ngx3;
 
-    // Set the indices in meshaux to receive the boundary buffer.
+    // Set the indices in meshaux to send and receive.
     ba.irs = irs;  ba.ire = ire;
     ba.jrs = jrs;  ba.jre = jre;
     ba.krs = krs;  ba.kre = kre;
+
+    ba.iss = iss;  ba.ise = ise;
+    ba.jss = jss;  ba.jse = jse;
+    ba.kss = kss;  ba.kse = kse;
   }
 }
 
@@ -722,41 +739,14 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
 
 //--------------------------------------------------------------------------------------
 //! \fn int ParticleMesh::LoadBoundaryBufferSameLevel(
-//              Real *buf, const NeighborBlock& nb)
+//                            Real *buf, const BoundaryAttributes& ba)
 //  \brief Fill boundary buffers for sending to a block on the same level
 
-int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb)
+int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba)
 {
-  // Determine the chunk of the block to be communicated.
-  int si = is, sj = js, sk = ks, ei = ie, ej = je, ek = ke;
-
-  if (nb.ox1 > 0) {
-    si = ie + 1;
-    ei += NGPM;
-  } else if (nb.ox1 < 0) {
-    si -= NGPM;
-    ei = is - 1;
-  }
-
-  if (nb.ox2 > 0) {
-    sj = je + 1;
-    ej += NGPM;
-  } else if (nb.ox2 < 0) {
-    sj -= NGPM;
-    ej = js - 1;
-  }
-
-  if (nb.ox3 > 0) {
-    sk = ke + 1;
-    ek += NGPM;
-  } else if (nb.ox3 < 0) {
-    sk -= NGPM;
-    ek = ks - 1;
-  }
-
-  // Load the data to the buffer.
   int p = 0;
-  BufferUtility::Pack4DData(meshaux, buf, 0, nmeshaux - 1, si, ei, sj, ej, sk, ek, p);
+  BufferUtility::Pack4DData(meshaux, buf, 0, nmeshaux - 1,
+                            ba.iss, ba.ise, ba.jss, ba.jse, ba.kss, ba.kse, p);
   return p;
 }
 
@@ -789,10 +779,10 @@ void ParticleMesh::SendBoundary()
     if (nb.level == mylevel) {
       if (nb.rank == Globals::my_rank) {
         BoundaryData *pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
-        LoadBoundaryBufferSameLevel(pnbd->recv[nb.targetid], nb);
+        LoadBoundaryBufferSameLevel(pnbd->recv[nb.targetid], ba_[n]);
         pnbd->flag[nb.targetid] = BNDRY_ARRIVED;
       } else
-        LoadBoundaryBufferSameLevel(bd_.send[nb.bufid], nb);
+        LoadBoundaryBufferSameLevel(bd_.send[nb.bufid], ba_[n]);
     }
   }
 }

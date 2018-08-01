@@ -68,9 +68,8 @@ private:
     int ngx1, ngx2, ngx3;      // dimensions of the ghost block
     int ngx12;                 // total number of cells in x1-x2 plane of the ghost block
     int ngtot;                 // total number of cells in the ghost block
-    int irs, ire, jrs, jre, krs, kre;
-                               // beginning and ending indices in meshaux to receive the
-                               // boundary buffer
+    int irs, ire, jrs, jre, krs, kre;  // beginning/ending indices in meshaux to receive
+    int iss, ise, jss, jse, kss, kse;  // beginning/ending indices in meshaux to send
   } BoundaryAttributes;
 
   // Instance Variables
@@ -89,7 +88,6 @@ private:
   void AssignParticlesToDifferentLevels(
            const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
            const AthenaArray<int>& imeshaux);
-  int LoadBoundaryBufferSameLevel(Real *buf, const NeighborBlock& nb);
+  int LoadBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba);
   void AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba);
-
 };
