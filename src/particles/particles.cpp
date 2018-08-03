@@ -125,8 +125,8 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   // Allocate buffers.
   nprecvmax = 1;
   nprecv = 0;
-  irecv.NewAthenaArray(nint,nprecvmax);
-  rrecv.NewAthenaArray(nreal+naux,nprecvmax);
+  irecv = new long [nprecvmax * nint];
+  rrecv = new Real [nprecvmax * (nreal + naux)];
 }
 
 //--------------------------------------------------------------------------------------
@@ -151,8 +151,8 @@ Particles::~Particles()
   delete ppm;
 
   // Delete buffers.
-  irecv.DeleteAthenaArray();
-  rrecv.DeleteAthenaArray();
+  delete [] irecv;
+  delete [] rrecv;
 }
 
 //--------------------------------------------------------------------------------------
@@ -478,19 +478,18 @@ void Particles::SendToNeighbors()
     }
 
     // Check the buffer size of the target MeshBlock.
-    if (pnp->nprecv >= pnp->nprecvmax) {
-      pnp->nprecvmax *= 2;
-      pnp->irecv.ResizeLastDimension(pnp->nprecvmax);
-      pnp->rrecv.ResizeLastDimension(pnp->nprecvmax);
-    }
+    if (pnp->nprecv >= pnp->nprecvmax)
+      pnp->FlushReceiveBuffer();
 
     // Copy the properties of the particle to the neighbor.
+    long *pi = pnp->irecv + nint * pnp->nprecv;
     for (int j = 0; j < nint; ++j)
-      pnp->irecv(j,pnp->nprecv) = intprop(j,k);
+      *pi++ = intprop(j,k);
+    Real *pr = pnp->rrecv + (nreal + naux) * pnp->nprecv;
     for (int j = 0; j < nreal; ++j)
-      pnp->rrecv(j,pnp->nprecv) = realprop(j,k);
-    for (int i = nreal, j = 0; j < naux; ++i, ++j)
-      pnp->rrecv(i,pnp->nprecv) = auxprop(j,k);
+      *pr++ = realprop(j,k);
+    for (int j = 0; j < naux; ++j)
+      *pr++ = auxprop(j,k);
     ++pnp->nprecv;
 
     // Pop the particle from the current MeshBlock.
@@ -530,15 +529,16 @@ void Particles::FlushReceiveBuffer()
   }
 
   // Flush the receive buffers.
-  for (int j = 0; j < nint; ++j)
-    for (long ip = npar, k = 0; k < nprecv; ++ip, ++k)
-      intprop(j,ip) = irecv(j,k);
-  for (int j = 0; j < nreal; ++j)
-    for (long ip = npar, k = 0; k < nprecv; ++ip, ++k)
-      realprop(j,ip) = rrecv(j,k);
-  for (int i = nreal, j = 0; j < naux; ++i, ++j)
-    for (long ip = npar, k = 0; k < nprecv; ++ip, ++k)
-      auxprop(j,ip) = rrecv(i,k);
+  long *pi = irecv;
+  Real *pr = rrecv;
+  for (long k = npar; k < npar + nprecv; ++k) {
+    for (int j = 0; j < nint; ++j)
+      intprop(j,k) = *pi++;
+    for (int j = 0; j < nreal; ++j)
+      realprop(j,k) = *pr++;
+    for (int j = 0; j < naux; ++j)
+      auxprop(j,k) = *pr++;
+  }
 
   // Find their position indices.
   AthenaArray<Real> xps, yps, zps, xi1s, xi2s, xi3s;

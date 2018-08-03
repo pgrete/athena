@@ -126,10 +126,10 @@ private:
   bool active1_, active2_, active3_;  // active dimensions
 
   // MeshBlock-to-MeshBlock communication:
-  AthenaArray<long> irecv;  // integer receive buffers
-  AthenaArray<Real> rrecv;  // real receive buffers
-  int nprecvmax;            // maximum number of particles per receive buffer
-  int nprecv;               // actual number of particles per receive buffer
+  long *irecv;    // integer receive buffer
+  Real *rrecv;    // real receive buffer
+  int nprecvmax;  // maximum number of particles per receive buffer
+  int nprecv;     // actual number of particles per receive buffer
 };
 
 //--------------------------------------------------------------------------------------
