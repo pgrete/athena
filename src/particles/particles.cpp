@@ -478,8 +478,10 @@ void Particles::SendToNeighbors()
     }
 
     // Check the buffer size of the target MeshBlock.
-    if (pnp->nprecv >= pnp->nprecvmax)
+    if (pnp->nprecv >= pnp->nprecvmax) {
       pnp->FlushReceiveBuffer();
+      pnp->DoubleReceiveBuffer();
+    }
 
     // Copy the properties of the particle to the neighbor.
     long *pi = pnp->irecv + nint * pnp->nprecv;
@@ -552,6 +554,20 @@ void Particles::FlushReceiveBuffer()
 
   // Clear the receive buffers.
   npar += nprecv;
+  nprecv = 0;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::DoubleReceiveBuffer()
+//  \brief doubles the receive buffer; any content in the buffer will be lost.
+
+void Particles::DoubleReceiveBuffer()
+{
+  delete [] irecv;
+  delete [] rrecv;
+  nprecvmax *= 2;
+  irecv = new long [nprecvmax * nint];
+  rrecv = new Real [nprecvmax * (nreal + naux)];
   nprecv = 0;
 }
 
