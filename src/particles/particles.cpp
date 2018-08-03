@@ -200,7 +200,7 @@ void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
     }
   }
 
-  if (mesh_size.nx2 > 1) {
+  if (active2_) {
     if (x2 < mesh_size.x2min) {
       // Inner x2
       if (pmy_mesh->mesh_bcs[INNER_X2] == PERIODIC_BNDRY) {
@@ -230,7 +230,7 @@ void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
     }
   }
 
-  if (mesh_size.nx3 > 1) {
+  if (active3_) {
     if (x3 < mesh_size.x3min) {
       // Inner x3
       if (pmy_mesh->mesh_bcs[INNER_X3] == PERIODIC_BNDRY) {
