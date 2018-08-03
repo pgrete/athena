@@ -404,7 +404,10 @@ void Particles::SendToNeighbors()
   const int KS = pmy_block->ks;
   const int KE = pmy_block->ke;
 
-  Mesh *pm = pmy_block->pmy_mesh;
+  const LogicalLocation& loc = pmy_block->loc;
+  enum BoundaryFlag *mesh_bcs = pmy_mesh->mesh_bcs;
+  const long nrbx1 = pmy_mesh->nrbx1, nrbx2 = pmy_mesh->nrbx2, nrbx3 = pmy_mesh->nrbx3;
+  const int root_level = pmy_mesh->root_level;
 
   // TODO: Currently only works for Cartesian.
   if (COORDINATE_SYSTEM != "cartesian") {
@@ -430,9 +433,8 @@ void Particles::SendToNeighbors()
     ApplyBoundaryConditions(k, x1, x2, x3);
 
     // Find the neighbor MeshBlock to send it to.
-    MeshBlockTree *pnmbt =
-        pm->tree.FindNeighbor(pmy_block->loc, ox1, ox2, ox3, pm->mesh_bcs,
-                              pm->nrbx1, pm->nrbx2, pm->nrbx3, pm->root_level);
+    MeshBlockTree *pnmbt = pmy_mesh->tree.FindNeighbor(loc, ox1, ox2, ox3, mesh_bcs,
+                               nrbx1, nrbx2, nrbx3, root_level);
     if (pnmbt == NULL) {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
@@ -443,7 +445,7 @@ void Particles::SendToNeighbors()
 
     MeshBlock *pnmb;
     if (pnmbt->flag)  // Neighbor is on the same or a courser level:
-      pnmb = pm->FindMeshBlock(pnmbt->gid);
+      pnmb = pmy_mesh->FindMeshBlock(pnmbt->gid);
     else {          // Neighbor is on a finer level:
       bool flag = true;
       for (int i = 0; flag && i < 2; ++i)
@@ -451,14 +453,12 @@ void Particles::SendToNeighbors()
           for (int k = 0; flag && k < 2; ++k) {
             int gid = pnmbt->pleaf[i][j][k]->gid;
             if (gid < 0) continue;
-            pnmb = pm->FindMeshBlock(gid);
+            pnmb = pmy_mesh->FindMeshBlock(gid);
+            RegionSize& block_size = pnmb->block_size;
             flag = false;
-            if (active1_)
-              flag = flag || x1 < pnmb->block_size.x1min || x1 > pnmb->block_size.x1max;
-            if (active2_)
-              flag = flag || x2 < pnmb->block_size.x2min || x2 > pnmb->block_size.x2max;
-            if (active3_)
-              flag = flag || x3 < pnmb->block_size.x3min || x3 > pnmb->block_size.x3max;
+            if (active1_) flag = flag || x1 < block_size.x1min || x1 > block_size.x1max;
+            if (active2_) flag = flag || x2 < block_size.x2min || x2 > block_size.x2max;
+            if (active3_) flag = flag || x3 < block_size.x3min || x3 > block_size.x3max;
           }
       if (flag) {
         std::stringstream msg;
