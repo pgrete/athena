@@ -122,6 +122,9 @@ private:
   void SaveStatus();
   void SendToNeighbors();
 
+  // Instance variables
+  bool active1_, active2_, active3_;  // active dimensions
+
   // MeshBlock-to-MeshBlock communication:
   AthenaArray<long> irecv;  // integer receive buffers
   AthenaArray<Real> rrecv;  // real receive buffers

@@ -99,6 +99,11 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   nparmax = pin->GetOrAddInteger("particles", "nparmax", 1);
   npar = 0;
 
+  // Check active dimensions.
+  active1_ = pmy_mesh->mesh_size.nx1 > 1;
+  active2_ = pmy_mesh->mesh_size.nx2 > 1;
+  active3_ = pmy_mesh->mesh_size.nx3 > 1;
+
   // Allocate integer properties.
   intprop.NewAthenaArray(nint,nparmax);
 
@@ -165,7 +170,7 @@ void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
   _IndicesToMeshCoords(pmy_block, xi1(k), xi2(k), xi3(k), x1, x2, x3);
   _CartesianToMeshCoords(xp0(k), yp0(k), zp0(k), x10, x20, x30);
 
-  if (mesh_size.nx1 > 1) {
+  if (active1_) {
     if (x1 < mesh_size.x1min) {
       // Inner x1
       if (pmy_mesh->mesh_bcs[INNER_X1] == PERIODIC_BNDRY) {
@@ -448,11 +453,11 @@ void Particles::SendToNeighbors()
             if (gid < 0) continue;
             pnmb = pm->FindMeshBlock(gid);
             flag = false;
-            if (pm->mesh_size.nx1 > 1)
+            if (active1_)
               flag = flag || x1 < pnmb->block_size.x1min || x1 > pnmb->block_size.x1max;
-            if (pm->mesh_size.nx2 > 1)
+            if (active2_)
               flag = flag || x2 < pnmb->block_size.x2min || x2 > pnmb->block_size.x2max;
-            if (pm->mesh_size.nx3 > 1)
+            if (active3_)
               flag = flag || x3 < pnmb->block_size.x3min || x3 > pnmb->block_size.x3max;
           }
       if (flag) {
@@ -824,12 +829,9 @@ void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
   const Coordinates *pcoord = pmb->pcoord;
 
   // Make the conversion.
-  xi1 = (pmb->block_size.nx1 > 1) ?
-            IS + (x1 - block_size.x1min) / pcoord->dx1f(IS) : IS;
-  xi2 = (pmb->block_size.nx2 > 1) ?
-            JS + (x2 - block_size.x2min) / pcoord->dx2f(JS) : JS;
-  xi3 = (pmb->block_size.nx3 > 1) ?
-            KS + (x3 - block_size.x3min) / pcoord->dx3f(KS) : KS;
+  xi1 = (block_size.nx1 > 1) ? IS + (x1 - block_size.x1min) / pcoord->dx1f(IS) : IS;
+  xi2 = (block_size.nx2 > 1) ? JS + (x2 - block_size.x2min) / pcoord->dx2f(JS) : JS;
+  xi3 = (block_size.nx3 > 1) ? KS + (x3 - block_size.x3min) / pcoord->dx3f(KS) : KS;
 }
 
 //--------------------------------------------------------------------------------------
@@ -851,11 +853,11 @@ void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
   const Coordinates *pcoord = pmb->pcoord;
 
   // Make the conversion.
-  x1 = (pmb->block_size.nx1 > 1) ?
+  x1 = (block_size.nx1 > 1) ?
            block_size.x1min + (xi1 - IS) * pcoord->dx1f(IS) : pcoord->x1v(IS);
-  x2 = (pmb->block_size.nx2 > 1) ?
+  x2 = (block_size.nx2 > 1) ?
            block_size.x2min + (xi2 - JS) * pcoord->dx2f(JS) : pcoord->x2v(JS);
-  x3 = (pmb->block_size.nx3 > 1) ?
+  x3 = (block_size.nx3 > 1) ?
            block_size.x3min + (xi3 - KS) * pcoord->dx3f(KS) : pcoord->x3v(KS);
 }
 
