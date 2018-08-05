@@ -13,8 +13,10 @@
 // Class variable initialization
 bool DustParticles::initialized = false;
 int DustParticles::iwx = -1, DustParticles::iwy = -1, DustParticles::iwz = -1;
-AthenaArray<int> DustParticles::imeshsrc, DustParticles::imeshdst,
-                 DustParticles::iwork, DustParticles::imeshaux;
+int DustParticles::idpx = -1, DustParticles::idpy = -1, DustParticles::idpz = -1;
+AthenaArray<int> DustParticles::imeshsrc, DustParticles::iwork,
+                 DustParticles::irealprop, DustParticles::imeshaux,
+                 DustParticles::imeshdst;
 
 bool DustParticles::backreaction = false;
 Real DustParticles::mass = 1.0, DustParticles::taus = 0.0;
@@ -53,12 +55,23 @@ void DustParticles::Initialize(ParameterInput *pin)
     // Turn on/off back reaction.
     backreaction = pin->GetOrAddBoolean("particles", "backreaction", false);
     if (taus == 0.0) backreaction = false;
+
     if (backreaction) {
+      idpx = ParticleMesh::AddMeshAux();
+      idpy = ParticleMesh::AddMeshAux();
+      idpz = ParticleMesh::AddMeshAux();
+
+      irealprop.NewAthenaArray(3);
+      irealprop(0) = ivpx;
+      irealprop(1) = ivpy;
+      irealprop(2) = ivpz;
+
       imeshaux.NewAthenaArray(3);
+      imeshaux(0) = idpx;
+      imeshaux(1) = idpy;
+      imeshaux(2) = idpz;
+
       imeshdst.NewAthenaArray(3);
-      imeshaux(0) = ParticleMesh::AddMeshAux();
-      imeshaux(1) = ParticleMesh::AddMeshAux();
-      imeshaux(2) = ParticleMesh::AddMeshAux();
       imeshdst(0) = IM1;
       imeshdst(1) = IM2;
       imeshdst(2) = IM3;
@@ -77,6 +90,12 @@ DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
 {
   // Assign shorthands (need to do this for every constructor of a derived class)
   AssignShorthands();
+
+  if (backreaction) {
+    dpx.InitWithShallowSlice(ppm->meshaux, 4, idpx, 1);
+    dpy.InitWithShallowSlice(ppm->meshaux, 4, idpy, 1);
+    dpz.InitWithShallowSlice(ppm->meshaux, 4, idpz, 1);
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -85,6 +104,15 @@ DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
 
 DustParticles::~DustParticles()
 {
+  wx.DeleteAthenaArray();
+  wy.DeleteAthenaArray();
+  wz.DeleteAthenaArray();
+
+  if (backreaction) {
+    dpx.DeleteAthenaArray();
+    dpy.DeleteAthenaArray();
+    dpz.DeleteAthenaArray();
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -106,18 +134,19 @@ void DustParticles::AssignShorthands()
 void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 {
   // Interpolate gas velocity onto particles.
-  ppm->InterpolateMeshToParticles(meshsrc, imeshsrc, work, iwork);
+  if (backreaction)
+    ppm->InterpolateMeshAndAssignParticles(meshsrc, imeshsrc, work, iwork,
+                                           realprop, irealprop, imeshaux);
+  else
+    ppm->InterpolateMeshToParticles(meshsrc, imeshsrc, work, iwork);
 
   // Add drag force to particles.
   if (taus > 0.0) {
     Real taus1 = 1.0 / taus;
     for (long k = 0; k < npar; ++k) {
-      wx(k) = taus1 * (vpx(k) - wx(k));
-      wy(k) = taus1 * (vpy(k) - wy(k));
-      wz(k) = taus1 * (vpz(k) - wz(k));
-      apx(k) -= wx(k);
-      apy(k) -= wy(k);
-      apz(k) -= wz(k);
+      apx(k) -= taus1 * (vpx(k) - wx(k));
+      apy(k) -= taus1 * (vpy(k) - wy(k));
+      apz(k) -= taus1 * (vpz(k) - wz(k));
     }
   } else if (taus == 0.0) {
     for (long k = 0; k < npar; ++k) {
@@ -129,24 +158,6 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void DustParticles::ReactToMeshAux(Real t, Real dt,
-//                                         const AthenaArray<Real>& meshsrc)
-//  \brief Add back reaction to meshaux.
-
-void DustParticles::ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc)
-{
-  if (backreaction) {
-    Real c = dt * mass;
-    for (long k = 0; k < npar; ++k){
-      wx(k) *= c;
-      wy(k) *= c;
-      wz(k) *= c;
-    }
-    ppm->AssignParticlesToMeshAux(work, iwork, imeshaux);
-  }
-}
-
-//--------------------------------------------------------------------------------------
 //! \fn void DustParticles::DepositToMesh(Real t, Real dt,
 //               const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst);
 //  \brief Deposits meshaux to Mesh.
@@ -154,6 +165,19 @@ void DustParticles::ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& mes
 void DustParticles::DepositToMesh(
          Real t, Real dt, const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst)
 {
-  if (backreaction)
-    ppm->DepositMeshAux(meshdst, imeshaux, imeshdst);
+  if (!backreaction) return;
+
+  // Compute the momentum change.
+  Real c = dt * mass / taus;
+  for (int ka = ppm->ks, kb = pmy_block->ks; ka <= ppm->ke; ++ka, ++kb)
+    for (int ja = ppm->js, jb = pmy_block->js; ja <= ppm->je; ++ja, ++jb)
+      for (int ia = ppm->is, ib = pmy_block->is; ia <= ppm->ie; ++ia, ++ib) {
+        Real w1 = 1.0 / ppm->weight(ka,ja,ia);
+        dpx(ka,ja,ia) = c * (w1 * dpx(ka,ja,ia) - meshsrc(IVX,kb,jb,ib));
+        dpy(ka,ja,ia) = c * (w1 * dpy(ka,ja,ia) - meshsrc(IVY,kb,jb,ib));
+        dpz(ka,ja,ia) = c * (w1 * dpz(ka,ja,ia) - meshsrc(IVZ,kb,jb,ib));
+      }
+
+  // Deposit it to the mesh.
+  ppm->DepositMeshAux(meshdst, imeshaux, imeshdst);
 }
