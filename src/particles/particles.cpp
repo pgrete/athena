@@ -49,42 +49,45 @@ int _CheckSide(Real xi, int nx, int xi1, int xi2);
 
 void Particles::Initialize(ParameterInput *pin)
 {
-  if (!initialized) {
-    // Add particle ID.
-    ipid = AddIntProperty();
+  if (initialized) return;
 
-    // Add particle position.
-    ixp = AddRealProperty();
-    iyp = AddRealProperty();
-    izp = AddRealProperty();
+  // Add particle ID.
+  ipid = AddIntProperty();
 
-    // Add particle velocity.
-    ivpx = AddRealProperty();
-    ivpy = AddRealProperty();
-    ivpz = AddRealProperty();
+  // Add particle position.
+  ixp = AddRealProperty();
+  iyp = AddRealProperty();
+  izp = AddRealProperty();
 
-    // Add old particle position.
-    ixp0 = AddAuxProperty();
-    iyp0 = AddAuxProperty();
-    izp0 = AddAuxProperty();
+  // Add particle velocity.
+  ivpx = AddRealProperty();
+  ivpy = AddRealProperty();
+  ivpz = AddRealProperty();
 
-    // Add old particle velocity.
-    ivpx0 = AddAuxProperty();
-    ivpy0 = AddAuxProperty();
-    ivpz0 = AddAuxProperty();
+  // Add old particle position.
+  ixp0 = AddAuxProperty();
+  iyp0 = AddAuxProperty();
+  izp0 = AddAuxProperty();
 
-    // Add particle position indices.
-    ixi1 = AddWorkingArray();
-    ixi2 = AddWorkingArray();
-    ixi3 = AddWorkingArray();
+  // Add old particle velocity.
+  ivpx0 = AddAuxProperty();
+  ivpy0 = AddAuxProperty();
+  ivpz0 = AddAuxProperty();
 
-    // Add acceleration components.
-    iapx = AddWorkingArray();
-    iapy = AddWorkingArray();
-    iapz = AddWorkingArray();
+  // Add particle position indices.
+  ixi1 = AddWorkingArray();
+  ixi2 = AddWorkingArray();
+  ixi3 = AddWorkingArray();
 
-    initialized = true;
-  }
+  // Add acceleration components.
+  iapx = AddWorkingArray();
+  iapy = AddWorkingArray();
+  iapz = AddWorkingArray();
+
+  // Initiate ParticleMesh class.
+  ParticleMesh::Initialize(pin);
+
+  initialized = true;
 }
 
 //--------------------------------------------------------------------------------------

@@ -21,6 +21,7 @@ const int NGPM = int(std::ceil(RINF));   // number of ghost cells needed.
 
 // Forward declaration
 class Particles;
+class ParameterInput;
 
 //--------------------------------------------------------------------------------------
 //! \class ParticleMesh
@@ -32,6 +33,9 @@ friend class Particles;
 friend class DustParticles;
 
 public:
+  // Class methods
+  static void Initialize(ParameterInput *pin);
+
   // Constructor and destructor
   ParticleMesh(Particles *ppar, int nmeshaux);
   ~ParticleMesh();
@@ -70,6 +74,9 @@ private:
     int irs, ire, jrs, jre, krs, kre;  // beginning/ending indices in meshaux to receive
     int iss, ise, jss, jse, kss, kse;  // beginning/ending indices in meshaux to send
   } BoundaryAttributes;
+
+  // Class variables
+  static bool initialized_;
 
   // Instance Variables
   bool active1_, active2_, active3_;  // active dimensions

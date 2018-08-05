@@ -18,11 +18,24 @@
 #include "../utils/buffer_utils.hpp"
 #include "particles.hpp"
 
+// Class variable initialization
+bool ParticleMesh::initialized_ = false;
+
 // Local function prototypes.
 Real _ParticleMeshWeightFunction(Real dxi);
 
 // Local constants.
 const int OFFSET = NGHOST - NGPM;  // offset between meshblock and meshaux
+
+//--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::Initialize(ParameterInput *pin)
+//  \brief initiates the ParticleMesh class.
+
+void ParticleMesh::Initialize(ParameterInput *pin)
+{
+  if (initialized_) return;
+  initialized_ = true;
+}
 
 //--------------------------------------------------------------------------------------
 //! \fn ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
