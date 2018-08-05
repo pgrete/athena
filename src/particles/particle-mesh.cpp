@@ -331,26 +331,24 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
   }
 
   // Zero out the destination particle arrays.
+  Real *pp[nmeshsrc];
   for (int n = 0; n < nmeshsrc; ++n) {
-    Real* pdata = &pardst(ipardst(n),0);
+    Real *p = pp[n] = &pardst(ipardst(n),0);
     for (long k = 0; k < ppar_->npar; ++k)
-      *pdata++ = 0.0;
+      *p++ = 0.0;
   }
 
   // Zero out meshaux.
-  Real *pdata = &weight(0,0,0);
+  Real *pmw0 = &weight(0,0,0), *pmw = pmw0;
   for (int i = 0; i < ncells_; ++i)
-    *pdata++ = 0.0;
+    *pmw++ = 0.0;
 
+  Real *pm0[nmeshdst];
   for (int n = 0; n < nmeshdst; ++n) {
-    Real* pdata = &meshaux(imeshaux(n),0,0,0);
+    Real *p = pm0[n] = &meshaux(imeshaux(n),0,0,0);
     for (int i = 0; i < ncells_; ++i)
-      *pdata++ = 0.0;
+      *p++ = 0.0;
   }
-
-  // Allocate working array.
-  AthenaArray<Real> p;
-  p.NewAthenaArray(nmeshdst);
 
   // Loop over each particle.
   for (long k = 0; k < ppar_->npar; ++k) {
@@ -363,9 +361,17 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
     int ima2s = imb2s - (active2_ ? OFFSET : 0);
     int ima3s = imb3s - (active3_ ? OFFSET : 0);
 
-    // Copy the particle properties.
-    for (int n = 0; n < nmeshdst; ++n)
-      p(n) = parsrc(iparsrc(n),k);
+    // Prepare for pointer operations.
+    int dpm1 = ima1s + nx1_ * (ima2s + nx2_ * ima3s),
+        dpm2 = nx1_ - imb1e + imb1s - 1,
+        dpm3 = nx1_ * (nx2_ - imb2e + imb2s - 1);
+    pmw = pmw0 + dpm1;
+
+    Real p[nmeshdst], *pm[nmeshdst];
+    for (int n = 0; n < nmeshdst; ++n) {
+      p[n] = parsrc(iparsrc(n),k);
+      pm[n] = pm0[n] + dpm1;
+    }
 
     // Weigh each cell.
     for (int imb3 = imb3s, ima3 = ima3s; imb3 <= imb3e; ++imb3, ++ima3) {
@@ -378,22 +384,27 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
         for (int imb1 = imb1s, ima1 = ima1s; imb1 <= imb1e; ++imb1, ++ima1) {
           Real w = w23 * (active1_ ?
                            _ParticleMeshWeightFunction(imb1 + 0.5 - xi1) : 1.0);
-          weight(ima3,ima2,ima1) += w;
+          *pmw++ += w;
 
           // Interpolate mesh to particles.
           for (int n = 0; n < nmeshsrc; ++n)
-            pardst(ipardst(n),k) += w * meshsrc(imeshsrc(n),imb3,imb2,imb1);
+            *pp[n] += w * meshsrc(imeshsrc(n),imb3,imb2,imb1);
 
           // Assign particles to meshaux.
           for (int n = 0; n < nmeshdst; ++n)
-            meshaux(imeshaux(n),ima3,ima2,ima1) += w * p(n);
+            *pm[n]++ += w * p[n];
         }
+        pmw += dpm2;
+        for (int n = 0; n < nmeshdst; ++n)
+          pm[n] += dpm2;
       }
+      pmw += dpm3;
+      for (int n = 0; n < nmeshdst; ++n)
+        pm[n] += dpm3;
     }
+    for (int n = 0; n < nmeshsrc; ++n)
+      ++pp[n];
   }
-
-  // Release working array.
-  p.DeleteAthenaArray();
 
   // Treat neighbors of different levels.
   if (pmesh_->multilevel)
