@@ -25,7 +25,6 @@ int Particles::nint = 0;
 int Particles::nreal = 0;
 int Particles::naux = 0;
 int Particles::nwork = 0;
-int Particles::nmeshaux = 0;
 int Particles::ipid = -1;
 int Particles::ixp = -1, Particles::iyp = -1, Particles::izp = -1;
 int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
@@ -120,7 +119,7 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   if (nwork > 0) work.NewAthenaArray(nwork,nparmax);
 
   // Allocate mesh auxiliaries.
-  ppm = new ParticleMesh(this, nmeshaux);
+  ppm = new ParticleMesh(this);
 
   // Shallow copy to shorthands.
   AssignShorthands();
@@ -310,7 +309,7 @@ void Particles::SendParticlesAndMesh(int step)
   }
 
   // Send MeshAux boundary.
-  if (step > 0 && nmeshaux > 0)
+  if (step > 0 && ppm->nmeshaux > 0)
     ppm->SendBoundary();
 }
 
@@ -324,7 +323,7 @@ void Particles::ReceiveParticlesAndMesh(int step)
   if (nprecv > 0) FlushReceiveBuffer();
 
   // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
-  if (nmeshaux > 0) {
+  if (ppm->nmeshaux > 0) {
     ppm->ReceiveBoundary();
 
     Hydro *phydro = pmy_block->phydro;
@@ -636,15 +635,6 @@ int Particles::AddAuxProperty()
 int Particles::AddWorkingArray()
 {
   return nwork++;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn int Particles::AddMeshAux()
-//  \brief adds one auxiliary to the mesh and returns the index.
-
-int Particles::AddMeshAux()
-{
-  return nmeshaux++;
 }
 
 //--------------------------------------------------------------------------------------

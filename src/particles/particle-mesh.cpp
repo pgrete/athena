@@ -20,6 +20,7 @@
 
 // Class variable initialization
 bool ParticleMesh::initialized_ = false;
+int ParticleMesh::nmeshaux = 0;
 
 // Local function prototypes.
 Real _ParticleMeshWeightFunction(Real dxi);
@@ -38,17 +39,25 @@ void ParticleMesh::Initialize(ParameterInput *pin)
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn int ParticleMesh::AddMeshAux()
+//  \brief adds one auxiliary to the mesh and returns the index.
+
+int ParticleMesh::AddMeshAux()
+{
+  return nmeshaux++;
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
 //  \brief constructs a new ParticleMesh instance.
 
-ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
+ParticleMesh::ParticleMesh(Particles *ppar)
 {
   // Save some inputs.
   ppar_ = ppar;
   pmb_ = ppar->pmy_block;
   pmesh_ = pmb_->pmy_mesh;
   pbval_ = pmb_->pbval;
-  nmeshaux = nmeshaux_;
 
   // Determine active dimensions.
   RegionSize& block_size = pmb_->block_size;
@@ -90,7 +99,7 @@ ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux_)
     ks = ke = 0;
 
   // Allocate the block for particle-mesh.
-  meshaux.NewAthenaArray(nmeshaux, nx3_, nx2_, nx1_);
+  if (nmeshaux > 0) meshaux.NewAthenaArray(nmeshaux, nx3_, nx2_, nx1_);
   ncells_ = nx1_ * nx2_ * nx3_;
 
   // Find the maximum number of neighbors.

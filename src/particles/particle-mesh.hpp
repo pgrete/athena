@@ -35,15 +35,18 @@ friend class DustParticles;
 public:
   // Class methods
   static void Initialize(ParameterInput *pin);
+  static int AddMeshAux();
 
   // Constructor and destructor
-  ParticleMesh(Particles *ppar, int nmeshaux);
+  ParticleMesh(Particles *ppar);
   ~ParticleMesh();
 
 protected:
-  // Instance Variables
+  // Class variables
+  static int nmeshaux;  // number of auxiliaries to the meshblock
+
+  // Instance variables
   AthenaArray<Real> meshaux;   // auxiliaries to the meshblock
-  int nmeshaux;                // number of auxiliaries to the meshblock
   int is, ie, js, je, ks, ke;  // beginning and ending indices
 
   // Instance methods

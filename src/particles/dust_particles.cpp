@@ -56,9 +56,9 @@ void DustParticles::Initialize(ParameterInput *pin)
     if (backreaction) {
       imeshaux.NewAthenaArray(3);
       imeshdst.NewAthenaArray(3);
-      imeshaux(0) = AddMeshAux();
-      imeshaux(1) = AddMeshAux();
-      imeshaux(2) = AddMeshAux();
+      imeshaux(0) = ParticleMesh::AddMeshAux();
+      imeshaux(1) = ParticleMesh::AddMeshAux();
+      imeshaux(2) = ParticleMesh::AddMeshAux();
       imeshdst(0) = IM1;
       imeshdst(1) = IM2;
       imeshdst(2) = IM3;
