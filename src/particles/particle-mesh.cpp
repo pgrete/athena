@@ -21,6 +21,7 @@
 // Class variable initialization
 bool ParticleMesh::initialized_ = false;
 int ParticleMesh::nmeshaux = 0;
+int ParticleMesh::iweight = -1;
 
 // Local function prototypes.
 Real _ParticleMeshWeightFunction(Real dxi);
@@ -35,6 +36,10 @@ const int OFFSET = NGHOST - NGPM;  // offset between meshblock and meshaux
 void ParticleMesh::Initialize(ParameterInput *pin)
 {
   if (initialized_) return;
+
+  // Add weight in meshaux.
+  iweight = AddMeshAux();
+
   initialized_ = true;
 }
 
@@ -99,8 +104,11 @@ ParticleMesh::ParticleMesh(Particles *ppar)
     ks = ke = 0;
 
   // Allocate the block for particle-mesh.
-  if (nmeshaux > 0) meshaux.NewAthenaArray(nmeshaux, nx3_, nx2_, nx1_);
+  meshaux.NewAthenaArray(nmeshaux, nx3_, nx2_, nx1_);
   ncells_ = nx1_ * nx2_ * nx3_;
+
+  // Get a shorthand to weights.
+  weight.InitWithShallowSlice(meshaux, 4, iweight, 1);
 
   // Find the maximum number of neighbors.
   bd_.nbmax = BoundaryBase::BufferID(dim, pmesh_->multilevel);
@@ -129,6 +137,7 @@ ParticleMesh::ParticleMesh(Particles *ppar)
 ParticleMesh::~ParticleMesh()
 {
   // Destroy the particle meshblock.
+  weight.DeleteAthenaArray();
   meshaux.DeleteAthenaArray();
 
   // Destroy boundary data.
@@ -221,6 +230,10 @@ void ParticleMesh::AssignParticlesToMeshAux(
   }
 
   // Zero out meshaux.
+  Real *pmw0 = &weight(0,0,0), *pmw = pmw0;
+  for (int i = 0; i < ncells_; ++i)
+    *pmw++ = 0.0;
+
   Real *pm0[nprop];
   for (int n = 0; n < nprop; ++n) {
     Real *p = pm0[n] = &meshaux(imeshaux(n),0,0,0);
@@ -242,6 +255,8 @@ void ParticleMesh::AssignParticlesToMeshAux(
     int dpm1 = ix1s + nx1_ * (ix2s + nx2_ * ix3s),
         dpm2 = nx1_ - ix1e + ix1s - 1,
         dpm3 = nx1_ * (nx2_ - ix2e + ix2s - 1);
+    pmw = pmw0 + dpm1;
+
     Real p[nprop], *pm[nprop];
     for (int n = 0; n < nprop; ++n) {
       p[n] = par(ipar(n),k);
@@ -256,15 +271,17 @@ void ParticleMesh::AssignParticlesToMeshAux(
         Real w23 = w3 * (active2_ ? _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
 
         for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
-          Real weight = w23 * (active1_ ?
-                                    _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+          Real w = w23 * (active1_ ?  _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+          *pmw++ += w;
 
           for (int n = 0; n < nprop; ++n)
-            *pm[n]++ += weight * p[n];
+            *pm[n]++ += w * p[n];
         }
+        pmw += dpm2;
         for (int n = 0; n < nprop; ++n)
           pm[n] += dpm2;
       }
+      pmw += dpm3;
       for (int n = 0; n < nprop; ++n)
         pm[n] += dpm3;
     }
@@ -321,6 +338,10 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
   }
 
   // Zero out meshaux.
+  Real *pdata = &weight(0,0,0);
+  for (int i = 0; i < ncells_; ++i)
+    *pdata++ = 0.0;
+
   for (int n = 0; n < nmeshdst; ++n) {
     Real* pdata = &meshaux(imeshaux(n),0,0,0);
     for (int i = 0; i < ncells_; ++i)
@@ -351,19 +372,21 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
       Real w3 = active3_ ? _ParticleMeshWeightFunction(imb3 + 0.5 - xi3) : 1.0;
 
       for (int imb2 = imb2s, ima2 = ima2s; imb2 <= imb2e; ++imb2, ++ima2) {
-        Real w23 = w3 * (active2_ ? _ParticleMeshWeightFunction(imb2 + 0.5 - xi2) : 1.0);
+        Real w23 = w3 * (active2_ ?
+                           _ParticleMeshWeightFunction(imb2 + 0.5 - xi2) : 1.0);
 
         for (int imb1 = imb1s, ima1 = ima1s; imb1 <= imb1e; ++imb1, ++ima1) {
-          Real weight = w23 * (active1_ ?
-                                    _ParticleMeshWeightFunction(imb1 + 0.5 - xi1) : 1.0);
+          Real w = w23 * (active1_ ?
+                           _ParticleMeshWeightFunction(imb1 + 0.5 - xi1) : 1.0);
+          weight(ima3,ima2,ima1) += w;
 
           // Interpolate mesh to particles.
           for (int n = 0; n < nmeshsrc; ++n)
-            pardst(ipardst(n),k) += weight * meshsrc(imeshsrc(n),imb3,imb2,imb1);
+            pardst(ipardst(n),k) += w * meshsrc(imeshsrc(n),imb3,imb2,imb1);
 
           // Assign particles to meshaux.
           for (int n = 0; n < nmeshdst; ++n)
-            meshaux(imeshaux(n),ima3,ima2,ima1) += weight * p(n);
+            meshaux(imeshaux(n),ima3,ima2,ima1) += w * p(n);
         }
       }
     }
@@ -690,8 +713,12 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
       pbuf0 = bd_.send[nb.bufid];
 
     // Zero out the buffer.
-    Real *pbuf[nprop], *buf[nprop];
     BoundaryAttributes& ba = ba_[i];
+    Real *pbufw = pbuf0 + iweight * ba.ngtot, *bufw = pbufw;
+    for (int j = 0; j < ba.ngtot; ++j)
+      *bufw++ = 0.0;
+
+    Real *pbuf[nprop], *buf[nprop];
     for (int n = 0; n < nprop; ++n) {
       buf[n] = pbuf[n] = pbuf0 + imeshaux(n) * ba.ngtot;
       for (int j = 0; j < ba.ngtot; ++j)
@@ -732,6 +759,8 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
       long dbuf1 = ix1s + ba.ngx1 * (ix2s + ba.ngx2 * ix3s),
            dbuf2 = ba.ngx1 - ix1e + ix1s - 1,
            dbuf3 = ba.ngx1 * (ba.ngx2 - ix2e + ix2s - 1);
+
+      bufw = pbufw + dbuf1;
       for (int n = 0; n < nprop; ++n) {
         prop[n] = par(ipar(n),k);
         buf[n] = pbuf[n] + dbuf1;
@@ -743,20 +772,23 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
 
         for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
           Real w23 = w3 * (active2_ ?
-                         _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
+                             _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
 
           for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
-            Real weight = w23 * (active1_ ?
-                         _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+            Real w = w23 * (active1_ ?
+                             _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+            *bufw++ += w;
 
             for (int n = 0; n < nprop; ++n)
-              *buf[n]++ += weight * prop[n];
+              *buf[n]++ += w * prop[n];
           }
 
+          bufw += dbuf2;
           for (int n = 0; n < nprop; ++n)
             buf[n] += dbuf2;
         }
 
+        bufw += dbuf3;
         for (int n = 0; n < nprop; ++n)
           buf[n] += dbuf3;
       }
