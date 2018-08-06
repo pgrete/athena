@@ -172,10 +172,10 @@ void DustParticles::DepositToMesh(
   for (int ka = ppm->ks, kb = pmy_block->ks; ka <= ppm->ke; ++ka, ++kb)
     for (int ja = ppm->js, jb = pmy_block->js; ja <= ppm->je; ++ja, ++jb)
       for (int ia = ppm->is, ib = pmy_block->is; ia <= ppm->ie; ++ia, ++ib) {
-        Real w1 = 1.0 / ppm->weight(ka,ja,ia);
-        dpx(ka,ja,ia) = c * (w1 * dpx(ka,ja,ia) - meshsrc(IVX,kb,jb,ib));
-        dpy(ka,ja,ia) = c * (w1 * dpy(ka,ja,ia) - meshsrc(IVY,kb,jb,ib));
-        dpz(ka,ja,ia) = c * (w1 * dpz(ka,ja,ia) - meshsrc(IVZ,kb,jb,ib));
+        Real w = ppm->weight(ka,ja,ia);
+        dpx(ka,ja,ia) = c * (dpx(ka,ja,ia) - w * meshsrc(IVX,kb,jb,ib));
+        dpy(ka,ja,ia) = c * (dpy(ka,ja,ia) - w * meshsrc(IVY,kb,jb,ib));
+        dpz(ka,ja,ia) = c * (dpz(ka,ja,ia) - w * meshsrc(IVZ,kb,jb,ib));
       }
 
   // Deposit it to the mesh.
