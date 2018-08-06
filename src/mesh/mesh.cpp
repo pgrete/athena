@@ -1220,6 +1220,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
     if (PARTICLES) {
       pmb = pblock;
       while (pmb != NULL) {
+        pmb->ppar->LinkNeighbors();
         pmb->ppar->SetPositionIndices();
         pmb = pmb->next;
       }

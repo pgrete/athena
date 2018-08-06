@@ -39,6 +39,7 @@ public:
   ~Particles();
 
   // Instance methods
+  void LinkNeighbors();
   void SetPositionIndices();
   void Integrate(int step);
   void SendParticlesAndMesh(int step);
@@ -106,6 +107,14 @@ protected:
   Mesh* pmy_mesh;        // Mesh pointer
 
 private:
+  struct Neighbor {
+    NeighborBlock *pnb;
+    MeshBlock *pmb;
+    Neighbor *next;
+
+    Neighbor() : pnb(NULL), pmb(NULL), next(NULL) {}
+  };
+
   // Class methods
   static void GetPositionIndices(MeshBlock *pmb, long npar,
                                  const AthenaArray<Real>& xp,
@@ -126,7 +135,8 @@ private:
   bool active1_, active2_, active3_;  // active dimensions
 
   // MeshBlock-to-MeshBlock communication:
-  ParticleBuffer recv;  // receive buffer
+  Neighbor neighbor_[3][3][3];  // links to neighbors
+  ParticleBuffer recv;          // receive buffer
 };
 
 //--------------------------------------------------------------------------------------

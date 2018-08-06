@@ -14,6 +14,7 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
+#include "../globals.hpp"
 #include "../mesh/meshblock_tree.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../hydro/hydro.hpp"
@@ -550,6 +551,31 @@ void Particles::FlushReceiveBuffer()
   // Clear the receive buffers.
   npar += nprecv;
   recv.npar = 0;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::LinkNeighbors()
+//  \brief fetches neighbor information for later communication.
+
+void Particles::LinkNeighbors()
+{
+  BoundaryValues *pbval = pmy_block->pbval;
+
+  neighbor_[1][1][1].pmb = pmy_block;
+
+  for (int i = 0; i < pbval->nneighbor; ++i) {
+    NeighborBlock& nb = pbval->neighbor[i];
+    Neighbor *pn = &neighbor_[nb.ox1+1][nb.ox2+1][nb.ox3+1];
+    while (pn->next != NULL)
+      pn = pn->next;
+    if (pn->pnb != NULL) {
+      pn->next = new Neighbor;
+      pn = pn->next;
+    }
+    pn->pnb = &nb;
+    if (nb.rank == Globals::my_rank)
+      pn->pmb = pmy_mesh->FindMeshBlock(nb.gid);
+  }
 }
 
 //--------------------------------------------------------------------------------------
