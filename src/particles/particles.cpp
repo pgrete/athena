@@ -124,11 +124,8 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   // Shallow copy to shorthands.
   AssignShorthands();
 
-  // Allocate buffers.
-  nprecvmax = 1;
-  nprecv = 0;
-  irecv = new long [nprecvmax * nint];
-  rrecv = new Real [nprecvmax * (nreal + naux)];
+  // Initiate ParticleBuffer class.
+  ParticleBuffer::SetNumberOfProperties(nint, nreal + naux);
 }
 
 //--------------------------------------------------------------------------------------
@@ -151,10 +148,6 @@ Particles::~Particles()
 
   // Delete mesh auxiliaries.
   delete ppm;
-
-  // Delete buffers.
-  delete [] irecv;
-  delete [] rrecv;
 }
 
 //--------------------------------------------------------------------------------------
@@ -320,7 +313,7 @@ void Particles::SendParticlesAndMesh(int step)
 void Particles::ReceiveParticlesAndMesh(int step)
 {
   // Flush Particles receive buffer.
-  if (nprecv > 0) FlushReceiveBuffer();
+  if (recv.npar > 0) FlushReceiveBuffer();
 
   // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
   if (ppm->nmeshaux > 0) {
@@ -480,21 +473,20 @@ void Particles::SendToNeighbors()
     }
 
     // Check the buffer size of the target MeshBlock.
-    if (pnp->nprecv >= pnp->nprecvmax) {
-      pnp->FlushReceiveBuffer();
-      pnp->DoubleReceiveBuffer();
-    }
+    ParticleBuffer& nrecv = pnp->recv;
+    if (nrecv.npar >= nrecv.nparmax)
+      nrecv.Reallocate((nrecv.nparmax > 0) ? 2 * nrecv.nparmax : 1);
 
     // Copy the properties of the particle to the neighbor.
-    long *pi = pnp->irecv + nint * pnp->nprecv;
+    long *pi = nrecv.ibuf + ParticleBuffer::nint * nrecv.npar;
     for (int j = 0; j < nint; ++j)
       *pi++ = intprop(j,k);
-    Real *pr = pnp->rrecv + (nreal + naux) * pnp->nprecv;
+    Real *pr = nrecv.rbuf + ParticleBuffer::nreal * nrecv.npar;
     for (int j = 0; j < nreal; ++j)
       *pr++ = realprop(j,k);
     for (int j = 0; j < naux; ++j)
       *pr++ = auxprop(j,k);
-    ++pnp->nprecv;
+    ++nrecv.npar;
 
     // Pop the particle from the current MeshBlock.
     if (--npar != k) {
@@ -518,6 +510,7 @@ void Particles::SendToNeighbors()
 void Particles::FlushReceiveBuffer()
 {
   // Check the memory size.
+  int nprecv = recv.npar;
   if (npar + nprecv > nparmax) {
     // Increase maximum number of particles allowed.
     nparmax += 2 * (npar + nprecv - nparmax);
@@ -533,8 +526,8 @@ void Particles::FlushReceiveBuffer()
   }
 
   // Flush the receive buffers.
-  long *pi = irecv;
-  Real *pr = rrecv;
+  long *pi = recv.ibuf;
+  Real *pr = recv.rbuf;
   for (long k = npar; k < npar + nprecv; ++k) {
     for (int j = 0; j < nint; ++j)
       intprop(j,k) = *pi++;
@@ -556,21 +549,7 @@ void Particles::FlushReceiveBuffer()
 
   // Clear the receive buffers.
   npar += nprecv;
-  nprecv = 0;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::DoubleReceiveBuffer()
-//  \brief doubles the receive buffer; any content in the buffer will be lost.
-
-void Particles::DoubleReceiveBuffer()
-{
-  delete [] irecv;
-  delete [] rrecv;
-  nprecvmax *= 2;
-  irecv = new long [nprecvmax * nint];
-  rrecv = new Real [nprecvmax * (nreal + naux)];
-  nprecv = 0;
+  recv.npar = 0;
 }
 
 //--------------------------------------------------------------------------------------

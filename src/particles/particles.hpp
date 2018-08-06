@@ -13,6 +13,7 @@
 #include "../athena_arrays.hpp"
 #include "../mesh/mesh.hpp"
 #include "../outputs/outputs.hpp"
+#include "particle_buffer.hpp"
 #include "particle-mesh.hpp"
 
 class ParameterInput;
@@ -117,7 +118,6 @@ private:
   void ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3);
   void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void FlushReceiveBuffer();
-  void DoubleReceiveBuffer();
   void SaveStatus();
   void SendToNeighbors();
 
@@ -125,10 +125,7 @@ private:
   bool active1_, active2_, active3_;  // active dimensions
 
   // MeshBlock-to-MeshBlock communication:
-  long *irecv;    // integer receive buffer
-  Real *rrecv;    // real receive buffer
-  int nprecvmax;  // maximum number of particles per receive buffer
-  int nprecv;     // actual number of particles per receive buffer
+  ParticleBuffer recv;  // receive buffer
 };
 
 //--------------------------------------------------------------------------------------
