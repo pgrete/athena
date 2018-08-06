@@ -24,7 +24,6 @@ class MeshBlockTree {
   friend class Mesh;
   friend class MeshBlock;
   friend class BoundaryBase;
-  friend class Particles;
 
 public:
   MeshBlockTree();

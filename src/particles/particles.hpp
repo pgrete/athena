@@ -19,6 +19,18 @@
 class ParameterInput;
 
 //--------------------------------------------------------------------------------------
+//! \struct Neighbor
+//  \brief defines a structure for links to neighbors
+
+struct Neighbor {
+  NeighborBlock *pnb;
+  MeshBlock *pmb;
+  Neighbor *next;
+
+  Neighbor() : pnb(NULL), pmb(NULL), next(NULL) {}
+};
+
+//--------------------------------------------------------------------------------------
 //! \class Particles
 //  \brief defines the bass class for all implementations of particles.
 
@@ -107,14 +119,6 @@ protected:
   Mesh* pmy_mesh;        // Mesh pointer
 
 private:
-  struct Neighbor {
-    NeighborBlock *pnb;
-    MeshBlock *pmb;
-    Neighbor *next;
-
-    Neighbor() : pnb(NULL), pmb(NULL), next(NULL) {}
-  };
-
   // Class methods
   static void GetPositionIndices(MeshBlock *pmb, long npar,
                                  const AthenaArray<Real>& xp,
@@ -130,6 +134,8 @@ private:
   void FlushReceiveBuffer();
   void SaveStatus();
   void SendToNeighbors();
+  struct Neighbor* FindTargetNeighbor(
+      int ox1, int ox2, int ox3, int xi1, int xi2, int xi3);
 
   // Instance variables
   bool active1_, active2_, active3_;  // active dimensions

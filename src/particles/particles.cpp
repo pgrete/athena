@@ -15,7 +15,6 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../globals.hpp"
-#include "../mesh/meshblock_tree.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../hydro/hydro.hpp"
 #include "particles.hpp"
@@ -35,13 +34,13 @@ int Particles::ixi1 = -1, Particles::ixi2 = -1, Particles::ixi3 = -1;
 int Particles::iapx = -1, Particles::iapy = -1, Particles::iapz = -1;
 
 // Local function prototypes
-void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3);
-void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z);
-void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
-                          Real& xi1, Real& xi2, Real& xi3);
-void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
-                          Real& x1, Real& x2, Real& x3);
-int _CheckSide(Real xi, int nx, int xi1, int xi2);
+static void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3);
+static void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z);
+static void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
+                                 Real& xi1, Real& xi2, Real& xi3);
+static void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
+                                 Real& x1, Real& x2, Real& x3);
+static int CheckSide(int xi, int xi1, int xi2);
 
 //--------------------------------------------------------------------------------------
 //! \fn Particles::Initialize(ParameterInput *pin)
@@ -390,20 +389,12 @@ void Particles::SaveStatus()
 
 void Particles::SendToNeighbors()
 {
-  const int NX1 = pmy_block->block_size.nx1;
-  const int NX2 = pmy_block->block_size.nx2;
-  const int NX3 = pmy_block->block_size.nx3;
   const int IS = pmy_block->is;
   const int IE = pmy_block->ie;
   const int JS = pmy_block->js;
   const int JE = pmy_block->je;
   const int KS = pmy_block->ks;
   const int KE = pmy_block->ke;
-
-  const LogicalLocation& loc = pmy_block->loc;
-  enum BoundaryFlag *mesh_bcs = pmy_mesh->mesh_bcs;
-  const long nrbx1 = pmy_mesh->nrbx1, nrbx2 = pmy_mesh->nrbx2, nrbx3 = pmy_mesh->nrbx3;
-  const int root_level = pmy_mesh->root_level;
 
   // TODO: Currently only works for Cartesian.
   if (COORDINATE_SYSTEM != "cartesian") {
@@ -416,9 +407,10 @@ void Particles::SendToNeighbors()
 
   for (long k = 0; k < npar; ) {
     // Check if a particle is outside the boundary.
-    int ox1 = _CheckSide(xi1(k), NX1, IS, IE),
-        ox2 = _CheckSide(xi2(k), NX2, JS, JE),
-        ox3 = _CheckSide(xi3(k), NX3, KS, KE);
+    int xi1i = int(xi1(k)), xi2i = int(xi2(k)), xi3i = int(xi3(k));
+    int ox1 = active1_ ? CheckSide(xi1i, IS, IE) : 0,
+        ox2 = active2_ ? CheckSide(xi2i, JS, JE) : 0,
+        ox3 = active3_ ? CheckSide(xi3i, KS, KE) : 0;
     if (ox1 == 0 && ox2 == 0 && ox3 == 0) {
       ++k;
       continue;
@@ -429,41 +421,15 @@ void Particles::SendToNeighbors()
     ApplyBoundaryConditions(k, x1, x2, x3);
 
     // Find the neighbor MeshBlock to send it to.
-    MeshBlockTree *pnmbt = pmy_mesh->tree.FindNeighbor(loc, ox1, ox2, ox3, mesh_bcs,
-                               nrbx1, nrbx2, nrbx3, root_level);
-    if (pnmbt == NULL) {
+    Neighbor *pn = FindTargetNeighbor(ox1, ox2, ox3, xi1i, xi2i, xi3i);
+    if (pn == NULL) {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
-          << "cannot find the neighboring MeshBlock. " << std::endl;
-      throw std::runtime_error(msg.str().c_str());
+          << "cannot find the neighbor block to send the particle to. " << std::endl;
+      throw std::runtime_error(msg.str().data());
       continue;
     }
-
-    MeshBlock *pnmb;
-    if (pnmbt->flag)  // Neighbor is on the same or a courser level:
-      pnmb = pmy_mesh->FindMeshBlock(pnmbt->gid);
-    else {          // Neighbor is on a finer level:
-      bool flag = true;
-      for (int i = 0; flag && i < 2; ++i)
-        for (int j = 0; flag && j < 2; ++j)
-          for (int k = 0; flag && k < 2; ++k) {
-            int gid = pnmbt->pleaf[i][j][k]->gid;
-            if (gid < 0) continue;
-            pnmb = pmy_mesh->FindMeshBlock(gid);
-            RegionSize& block_size = pnmb->block_size;
-            flag = false;
-            if (active1_) flag = flag || x1 < block_size.x1min || x1 > block_size.x1max;
-            if (active2_) flag = flag || x2 < block_size.x2min || x2 > block_size.x2max;
-            if (active3_) flag = flag || x3 < block_size.x3min || x3 > block_size.x3max;
-          }
-      if (flag) {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
-            << "cannot find the neighboring MeshBlock. " << std::endl;
-        throw std::runtime_error(msg.str().c_str());
-        continue;
-      }
-    }
+    MeshBlock *pnmb = pmy_mesh->FindMeshBlock(pn->pnb->gid);
     Particles *pnp = pnmb->ppar;
 
     // No need to send if back to the same block.
@@ -502,6 +468,35 @@ void Particles::SendToNeighbors()
         auxprop(j,k) = auxprop(j,npar);
     }
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn MeshBlock* Particles::FindTargetNeighbor(
+//          int ox1, int ox2, int ox3, int xi1, int xi2, int xi3)
+//  \brief finds the neighbor to send a particle to.
+
+struct Neighbor* Particles::FindTargetNeighbor(
+    int ox1, int ox2, int ox3, int xi1, int xi2, int xi3)
+{
+  // Find the head of the linked list.
+  Neighbor *pn = &neighbor_[ox1+1][ox2+1][ox3+1];
+
+  // Search down the list if the neighbor is at a finer level.
+  if (pn->pnb->level > pmy_block->loc.level) {
+    RegionSize& bs = pmy_block->block_size;
+    int fi[2] = {0, 0}, i = 0;
+    if (active1_ && ox1 == 0) fi[i++] = 2 * (xi1 - pmy_block->is) / bs.nx1;
+    if (active2_ && ox2 == 0) fi[i++] = 2 * (xi2 - pmy_block->js) / bs.nx2;
+    if (active3_ && ox3 == 0) fi[i++] = 2 * (xi3 - pmy_block->ks) / bs.nx3;
+    while (pn != NULL) {
+      NeighborBlock *pnb = pn->pnb;
+      if (pnb->fi1 == fi[0] && pnb->fi2 == fi[1]) break;
+      pn = pn->next;
+    }
+  }
+
+  // Return the target neighbor.
+  return pn;
 }
 
 //--------------------------------------------------------------------------------------
@@ -884,15 +879,12 @@ void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn int _CheckSide(Real xi, int nx, int xi1, int xi2)
-//  \brief returns -1 if int(xi) < xi1 and nx > 1, +1 if int(xi) > xi2 and nx > 1,
-//         and 0 otherwise.
+//! \fn int CheckSide(int xi, nx, int xi1, int xi2)
+//  \brief returns -1 if xi < xi1, +1 if xi > xi2, or 0 otherwise.
 
-inline int _CheckSide(Real xi, int nx, int xi1, int xi2)
+inline int CheckSide(int xi, int xi1, int xi2)
 {
-   if (nx > 1) {
-     if (int(xi) < xi1) return -1;
-     if (int(xi) > xi2) return +1;
-   }
+   if (xi < xi1) return -1;
+   if (xi > xi2) return +1;
    return 0;
 }
