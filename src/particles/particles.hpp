@@ -39,6 +39,7 @@ public:
   ~Particles();
 
   // Instance methods
+  void SetPositionIndices();
   void Integrate(int step);
   void SendParticlesAndMesh(int step);
   void ReceiveParticlesAndMesh(int step);

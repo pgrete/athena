@@ -297,7 +297,7 @@ void Particles::SendParticlesAndMesh(int step)
 {
   // Send particles.
   if (npar > 0) {
-    GetPositionIndices(pmy_block, npar, xp, yp, zp, xi1, xi2, xi3);
+    SetPositionIndices();
     SendToNeighbors();
   }
 
@@ -553,9 +553,17 @@ void Particles::FlushReceiveBuffer()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::SetPositionIndices()
+//  \brief updates position indices of particles.
+
+void Particles::SetPositionIndices()
+{
+  GetPositionIndices(pmy_block, npar, xp, yp, zp, xi1, xi2, xi3);
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::Integrate(int step)
 //  \brief updates all particle positions and velocities from t to t + dt.
-//======================================================================================
 
 void Particles::Integrate(int step)
 {

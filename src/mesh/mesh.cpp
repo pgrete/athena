@@ -1201,7 +1201,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
   Hydro *phydro;
   Field *pfield;
   Gravity *pgrav;
-  DustParticles *ppar;
   BoundaryValues *pbval;
   std::stringstream msg;
   int inb=nbtotal;
@@ -1221,14 +1220,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
     if (PARTICLES) {
       pmb = pblock;
       while (pmb != NULL) {
-        ppar = pmb->ppar;
-        ppar->SendParticlesAndMesh(0);
-        pmb = pmb->next;
-      }
-      pmb = pblock;
-      while (pmb != NULL) {
-        ppar = pmb->ppar;
-        ppar->ReceiveParticlesAndMesh(0);
+        pmb->ppar->SetPositionIndices();
         pmb = pmb->next;
       }
     }
