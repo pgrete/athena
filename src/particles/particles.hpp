@@ -134,6 +134,7 @@ private:
   void FlushReceiveBuffer(ParticleBuffer& recv);
   void SaveStatus();
   void SendToNeighbors();
+  void ReceiveFromNeighbors();
   struct Neighbor* FindTargetNeighbor(
       int ox1, int ox2, int ox3, int xi1, int xi2, int xi3);
 
@@ -141,8 +142,9 @@ private:
   bool active1_, active2_, active3_;  // active dimensions
 
   // MeshBlock-to-MeshBlock communication:
+  BoundaryValues *pbval_;       // ptr to my BoundaryValues
   Neighbor neighbor_[3][3][3];  // links to neighbors
-  ParticleBuffer recv_;          // receive buffer
+  ParticleBuffer recv_[56];     // receive buffers
 };
 
 //--------------------------------------------------------------------------------------

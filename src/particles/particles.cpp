@@ -98,6 +98,7 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
   // Point to the calling MeshBlock.
   pmy_block = pmb;
   pmy_mesh = pmb->pmy_mesh;
+  pbval_ = pmb->pbval;
   nparmax = pin->GetOrAddInteger("particles", "nparmax", 1);
   npar = 0;
 
@@ -312,8 +313,8 @@ void Particles::SendParticlesAndMesh(int step)
 
 void Particles::ReceiveParticlesAndMesh(int step)
 {
-  // Flush Particles receive buffer.
-  if (recv_.npar > 0) FlushReceiveBuffer(recv_);
+  // Receive particles from neighbor blocks.
+  ReceiveFromNeighbors();
 
   // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
   if (ppm->nmeshaux > 0) {
@@ -440,7 +441,7 @@ void Particles::SendToNeighbors()
     }
 
     // Check the buffer size of the target MeshBlock.
-    ParticleBuffer& nrecv = pnp->recv_;
+    ParticleBuffer& nrecv = pnp->recv_[pn->pnb->targetid];
     if (nrecv.npar >= nrecv.nparmax)
       nrecv.Reallocate((nrecv.nparmax > 0) ? 2 * nrecv.nparmax : 1);
 
@@ -467,6 +468,19 @@ void Particles::SendToNeighbors()
       for (int j = 0; j < naux; ++j)
         auxprop(j,k) = auxprop(j,npar);
     }
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::ReceiveFromNeighbors()
+//  \brief receives particles from neighboring meshblocks.
+
+void Particles::ReceiveFromNeighbors()
+{
+  for (int i = 0; i < pbval_->nneighbor; ++i) {
+    NeighborBlock& nb = pbval_->neighbor[i];
+    ParticleBuffer& recv = recv_[nb.bufid];
+    if (recv.npar > 0) FlushReceiveBuffer(recv);
   }
 }
 
@@ -554,12 +568,10 @@ void Particles::FlushReceiveBuffer(ParticleBuffer& recv)
 
 void Particles::LinkNeighbors()
 {
-  BoundaryValues *pbval = pmy_block->pbval;
-
   neighbor_[1][1][1].pmb = pmy_block;
 
-  for (int i = 0; i < pbval->nneighbor; ++i) {
-    NeighborBlock& nb = pbval->neighbor[i];
+  for (int i = 0; i < pbval_->nneighbor; ++i) {
+    NeighborBlock& nb = pbval_->neighbor[i];
     Neighbor *pn = &neighbor_[nb.ox1+1][nb.ox2+1][nb.ox3+1];
     while (pn->next != NULL)
       pn = pn->next;
