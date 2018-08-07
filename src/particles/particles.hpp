@@ -142,7 +142,7 @@ private:
 
   // MeshBlock-to-MeshBlock communication:
   Neighbor neighbor_[3][3][3];  // links to neighbors
-  ParticleBuffer recv;          // receive buffer
+  ParticleBuffer recv_;          // receive buffer
 };
 
 //--------------------------------------------------------------------------------------
