@@ -142,9 +142,9 @@ private:
   bool active1_, active2_, active3_;  // active dimensions
 
   // MeshBlock-to-MeshBlock communication:
-  BoundaryValues *pbval_;       // ptr to my BoundaryValues
-  Neighbor neighbor_[3][3][3];  // links to neighbors
-  ParticleBuffer recv_[56];     // receive buffers
+  BoundaryValues *pbval_;               // ptr to my BoundaryValues
+  Neighbor neighbor_[3][3][3];          // links to neighbors
+  ParticleBuffer send_[56], recv_[56];  // send/receive particle buffers
 };
 
 //--------------------------------------------------------------------------------------

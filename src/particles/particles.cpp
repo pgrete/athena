@@ -421,7 +421,7 @@ void Particles::SendToNeighbors()
     Real x1, x2, x3;
     ApplyBoundaryConditions(k, x1, x2, x3);
 
-    // Find the neighbor MeshBlock to send it to.
+    // Find the neighbor block to send it to.
     Neighbor *pn = FindTargetNeighbor(ox1, ox2, ox3, xi1i, xi2i, xi3i);
     if (pn == NULL) {
       std::stringstream msg;
@@ -430,31 +430,38 @@ void Particles::SendToNeighbors()
       throw std::runtime_error(msg.str().data());
       continue;
     }
-    MeshBlock *pnmb = pmy_mesh->FindMeshBlock(pn->pnb->gid);
-    Particles *pnp = pnmb->ppar;
+    NeighborBlock *pnb = pn->pnb;
 
-    // No need to send if back to the same block.
-    if (pnmb == pmy_block) {
-      _MeshCoordsToIndices(pmy_block, x1, x2, x3, xi1(k), xi2(k), xi3(k));
-      ++k;
-      continue;
-    }
+    // Determine which particle buffer to use.
+    ParticleBuffer *ppb = NULL;
+    if (pnb->rank == Globals::my_rank) {
+      // No need to send if back to the same block.
+      if (pnb->gid == pmy_block->gid) {
+        _MeshCoordsToIndices(pmy_block, x1, x2, x3, xi1(k), xi2(k), xi3(k));
+        ++k;
+        continue;
+      }
+      // Use the target receive buffer.
+      ppb = &pn->pmb->ppar->recv_[pnb->targetid];
 
-    // Check the buffer size of the target MeshBlock.
-    ParticleBuffer& nrecv = pnp->recv_[pn->pnb->targetid];
-    if (nrecv.npar >= nrecv.nparmax)
-      nrecv.Reallocate((nrecv.nparmax > 0) ? 2 * nrecv.nparmax : 1);
+    } else
+      // Use the send buffer.
+      ppb = &send_[pnb->bufid];
 
-    // Copy the properties of the particle to the neighbor.
-    long *pi = nrecv.ibuf + ParticleBuffer::nint * nrecv.npar;
+    // Check the buffer size.
+    if (ppb->npar >= ppb->nparmax)
+      ppb->Reallocate((ppb->nparmax > 0) ? 2 * ppb->nparmax : 1);
+
+    // Copy the properties of the particle to the buffer.
+    long *pi = ppb->ibuf + ParticleBuffer::nint * ppb->npar;
     for (int j = 0; j < nint; ++j)
       *pi++ = intprop(j,k);
-    Real *pr = nrecv.rbuf + ParticleBuffer::nreal * nrecv.npar;
+    Real *pr = ppb->rbuf + ParticleBuffer::nreal * ppb->npar;
     for (int j = 0; j < nreal; ++j)
       *pr++ = realprop(j,k);
     for (int j = 0; j < naux; ++j)
       *pr++ = auxprop(j,k);
-    ++nrecv.npar;
+    ++ppb->npar;
 
     // Pop the particle from the current MeshBlock.
     if (--npar != k) {
