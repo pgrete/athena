@@ -51,11 +51,12 @@ public:
   ~Particles();
 
   // Instance methods
+  void ClearBoundary();
   void LinkNeighbors();
   void SetPositionIndices();
   void Integrate(int step);
   void SendParticlesAndMesh(int step);
-  void ReceiveParticlesAndMesh(int step);
+  bool ReceiveParticlesAndMesh(int step);
 
   size_t GetSizeInBytes();
   void ReadRestart(char *mbdata, int &os);
@@ -134,7 +135,7 @@ private:
   void FlushReceiveBuffer(ParticleBuffer& recv);
   void SaveStatus();
   void SendToNeighbors();
-  void ReceiveFromNeighbors();
+  bool ReceiveFromNeighbors();
   struct Neighbor* FindTargetNeighbor(
       int ox1, int ox2, int ox3, int xi1, int xi2, int xi3);
 
@@ -145,6 +146,7 @@ private:
   BoundaryValues *pbval_;               // ptr to my BoundaryValues
   Neighbor neighbor_[3][3][3];          // links to neighbors
   ParticleBuffer send_[56], recv_[56];  // send/receive particle buffers
+  enum BoundaryStatus bstatus_[56];     // boundary status
 };
 
 //--------------------------------------------------------------------------------------

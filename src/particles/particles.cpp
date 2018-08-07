@@ -127,6 +127,7 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 
   // Initiate ParticleBuffer class.
   ParticleBuffer::SetNumberOfProperties(nint, nreal + naux);
+  ClearBoundary();
 }
 
 //--------------------------------------------------------------------------------------
@@ -308,13 +309,15 @@ void Particles::SendParticlesAndMesh(int step)
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::ReceiveParticlesAndMesh(int step)
-//  \brief receives particles and meshaux near boundaries from neighbors.
+//! \fn bool Particles::ReceiveParticlesAndMesh(int step)
+//  \brief receives particles and meshaux near boundaries from neighbors and returns a
+//         flag indicating if all receives are completed.
 
-void Particles::ReceiveParticlesAndMesh(int step)
+bool Particles::ReceiveParticlesAndMesh(int step)
 {
   // Receive particles from neighbor blocks.
-  ReceiveFromNeighbors();
+  bool flag = ReceiveFromNeighbors();
+  if (!flag) return false;
 
   // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
   if (ppm->nmeshaux > 0) {
@@ -338,6 +341,8 @@ void Particles::ReceiveParticlesAndMesh(int step)
       break;
     }
   }
+
+  return flag;
 }
 
 //--------------------------------------------------------------------------------------
@@ -476,19 +481,44 @@ void Particles::SendToNeighbors()
         auxprop(j,k) = auxprop(j,npar);
     }
   }
+
+  // Update the boundary status.
+  for (int i = 0; i < pbval_->nneighbor; ++i) {
+    NeighborBlock& nb = pbval_->neighbor[i];
+    if (nb.rank != Globals::my_rank) continue;
+    pmy_mesh->FindMeshBlock(nb.gid)->ppar->bstatus_[nb.targetid] = BNDRY_ARRIVED;
+  }
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::ReceiveFromNeighbors()
-//  \brief receives particles from neighboring meshblocks.
+//! \fn bool Particles::ReceiveFromNeighbors()
+//  \brief receives particles from neighboring meshblocks and returns a flag indicating
+//         if all receives are completed.
 
-void Particles::ReceiveFromNeighbors()
+bool Particles::ReceiveFromNeighbors()
 {
+  bool flag = true;
+
   for (int i = 0; i < pbval_->nneighbor; ++i) {
     NeighborBlock& nb = pbval_->neighbor[i];
-    ParticleBuffer& recv = recv_[nb.bufid];
-    if (recv.npar > 0) FlushReceiveBuffer(recv);
+    switch (bstatus_[nb.bufid]) {
+
+      case BNDRY_WAITING:
+        flag = false;
+        break;
+
+      case BNDRY_COMPLETED:
+        break;
+
+      case BNDRY_ARRIVED:
+        ParticleBuffer& recv = recv_[nb.bufid];
+        if (recv.npar > 0) FlushReceiveBuffer(recv);
+        bstatus_[nb.bufid] = BNDRY_COMPLETED;
+        break;
+    }
   }
+
+  return flag;
 }
 
 //--------------------------------------------------------------------------------------
@@ -567,6 +597,18 @@ void Particles::FlushReceiveBuffer(ParticleBuffer& recv)
   // Clear the receive buffers.
   npar += nprecv;
   recv.npar = 0;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::ClearBoundary()
+//  \brief resets boundary for particle transportation.
+
+void Particles::ClearBoundary()
+{
+  for (int i = 0; i < pbval_->nneighbor; ++i) {
+    NeighborBlock& nb = pbval_->neighbor[i];
+    bstatus_[nb.bufid] = BNDRY_WAITING;
+  }
 }
 
 //--------------------------------------------------------------------------------------

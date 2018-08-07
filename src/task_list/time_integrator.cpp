@@ -99,7 +99,7 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm)
     if (PARTICLES) {
       AddTimeIntegratorTask(INT_PAR, NONE);
       AddTimeIntegratorTask(SEND_PM, INT_PAR);
-      AddTimeIntegratorTask(RECV_PM, SEND_PM);
+      AddTimeIntegratorTask(RECV_PM, START_ALLRECV);
     }
 
     // prolongate, compute new primitives
@@ -329,6 +329,7 @@ enum TaskStatus TimeIntegratorTaskList::StartAllReceive(MeshBlock *pmb, int step
 enum TaskStatus TimeIntegratorTaskList::ClearAllBoundary(MeshBlock *pmb, int step)
 {
   pmb->pbval->ClearBoundaryAll();
+  if (PARTICLES) pmb->ppar->ClearBoundary();
   return TASK_SUCCESS;
 }
 
@@ -568,8 +569,10 @@ enum TaskStatus TimeIntegratorTaskList::ParticlesSend(MeshBlock *pmb, int step)
 
 enum TaskStatus TimeIntegratorTaskList::ParticlesReceive(MeshBlock *pmb, int step)
 {
-  pmb->ppar->ReceiveParticlesAndMesh(step);
-  return TASK_SUCCESS;
+  if (pmb->ppar->ReceiveParticlesAndMesh(step))
+    return TASK_SUCCESS;
+  else
+    return TASK_FAIL;
 }
 
 //----------------------------------------------------------------------------------------
