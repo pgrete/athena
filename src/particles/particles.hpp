@@ -131,7 +131,7 @@ private:
   // Instance methods
   void ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3);
   void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
-  void FlushReceiveBuffer();
+  void FlushReceiveBuffer(ParticleBuffer& recv);
   void SaveStatus();
   void SendToNeighbors();
   struct Neighbor* FindTargetNeighbor(

@@ -313,7 +313,7 @@ void Particles::SendParticlesAndMesh(int step)
 void Particles::ReceiveParticlesAndMesh(int step)
 {
   // Flush Particles receive buffer.
-  if (recv_.npar > 0) FlushReceiveBuffer();
+  if (recv_.npar > 0) FlushReceiveBuffer(recv_);
 
   // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
   if (ppm->nmeshaux > 0) {
@@ -500,13 +500,13 @@ struct Neighbor* Particles::FindTargetNeighbor(
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::FlushReceiveBuffer()
+//! \fn void Particles::FlushReceiveBuffer(ParticleBuffer& recv)
 //  \brief adds particles from the receive buffer.
 
-void Particles::FlushReceiveBuffer()
+void Particles::FlushReceiveBuffer(ParticleBuffer& recv)
 {
   // Check the memory size.
-  int nprecv = recv_.npar;
+  int nprecv = recv.npar;
   if (npar + nprecv > nparmax) {
     // Increase maximum number of particles allowed.
     nparmax += 2 * (npar + nprecv - nparmax);
@@ -522,8 +522,8 @@ void Particles::FlushReceiveBuffer()
   }
 
   // Flush the receive buffers.
-  long *pi = recv_.ibuf;
-  Real *pr = recv_.rbuf;
+  long *pi = recv.ibuf;
+  Real *pr = recv.rbuf;
   for (long k = npar; k < npar + nprecv; ++k) {
     for (int j = 0; j < nint; ++j)
       intprop(j,k) = *pi++;
@@ -545,7 +545,7 @@ void Particles::FlushReceiveBuffer()
 
   // Clear the receive buffers.
   npar += nprecv;
-  recv_.npar = 0;
+  recv.npar = 0;
 }
 
 //--------------------------------------------------------------------------------------
