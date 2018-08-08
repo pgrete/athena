@@ -16,6 +16,12 @@
 #include "particle_buffer.hpp"
 #include "particle-mesh.hpp"
 
+// MPI header
+#ifdef MPI_PARALLEL
+#include <mpi.h>
+#endif
+
+// Forward declarations
 class ParameterInput;
 
 //--------------------------------------------------------------------------------------
@@ -143,10 +149,14 @@ private:
   bool active1_, active2_, active3_;  // active dimensions
 
   // MeshBlock-to-MeshBlock communication:
-  BoundaryValues *pbval_;               // ptr to my BoundaryValues
-  Neighbor neighbor_[3][3][3];          // links to neighbors
-  ParticleBuffer send_[56], recv_[56];  // send/receive particle buffers
-  enum BoundaryStatus bstatus_[56];     // boundary status
+  BoundaryValues *pbval_;            // ptr to my BoundaryValues
+  Neighbor neighbor_[3][3][3];       // links to neighbors
+  ParticleBuffer recv_[56];          // particle receive buffers
+  enum BoundaryStatus bstatus_[56];  // boundary status
+#ifdef MPI_PARALLEL
+  static MPI_Comm my_comm;   // my MPI communicator
+  ParticleBuffer send_[56];  // particle send buffers
+#endif
 };
 
 //--------------------------------------------------------------------------------------

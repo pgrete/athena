@@ -46,6 +46,11 @@ ParticleBuffer::ParticleBuffer()
   ibuf = NULL;
   rbuf = NULL;
   nparmax = npar = 0;
+#ifdef MPI_PARALLEL
+  reqi = reqr = MPI_REQUEST_NULL;
+  flagn = flagi = flagr = 0;
+  tag = -1;
+#endif
 }
 
 //--------------------------------------------------------------------------------------
@@ -72,6 +77,11 @@ ParticleBuffer::ParticleBuffer(int nparmax0)
   ibuf = new long [nint * nparmax];
   rbuf = new Real [nreal * nparmax];
   npar = 0;
+#ifdef MPI_PARALLEL
+  reqi = reqr = MPI_REQUEST_NULL;
+  flagn = flagi = flagr = 0;
+  tag = -1;
+#endif
 }
 
 //--------------------------------------------------------------------------------------
@@ -82,6 +92,10 @@ ParticleBuffer::~ParticleBuffer()
 {
   if (ibuf != NULL) delete [] ibuf;
   if (rbuf != NULL) delete [] rbuf;
+#ifdef MPI_PARALLEL
+  if (reqi != MPI_REQUEST_NULL) MPI_Request_free(&reqi);
+  if (reqr != MPI_REQUEST_NULL) MPI_Request_free(&reqr);
+#endif
 }
 
 //--------------------------------------------------------------------------------------
@@ -105,6 +119,15 @@ void ParticleBuffer::Reallocate(int new_nparmax)
     throw std::runtime_error(msg.str().data());
     return;
   }
+#ifdef MPI_PARALLEL
+  if (reqi != MPI_REQUEST_NULL || reqr != MPI_REQUEST_NULL) {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [ParticleBuffer::Reallocate]" << std::endl
+        << "MPI requests are active. " << std::endl;
+    throw std::runtime_error(msg.str().data());
+    return;
+  }
+#endif
 
   // Allocate new space.
   nparmax = new_nparmax;
