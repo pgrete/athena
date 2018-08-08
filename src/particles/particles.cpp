@@ -161,6 +161,144 @@ Particles::~Particles()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::ClearBoundary()
+//  \brief resets boundary for particle transportation.
+
+void Particles::ClearBoundary()
+{
+  for (int i = 0; i < pbval_->nneighbor; ++i) {
+    NeighborBlock& nb = pbval_->neighbor[i];
+    bstatus_[nb.bufid] = BNDRY_WAITING;
+#ifdef MPI_PARALLEL
+    if (nb.rank != Globals::my_rank) {
+      ParticleBuffer& recv = recv_[nb.bufid];
+      recv.flagn = recv.flagi = recv.flagr = 0;
+      send_[nb.bufid].npar = 0;
+    }
+#endif
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::Integrate(int step)
+//  \brief updates all particle positions and velocities from t to t + dt.
+
+void Particles::Integrate(int step)
+{
+  Real t, dt;
+
+  switch (step) {
+
+  case 1:
+    t = pmy_mesh->time;
+    dt = 0.5 * pmy_mesh->dt;
+    SaveStatus();
+    EulerStep(t, dt, pmy_block->phydro->w);
+    ReactToMeshAux(t, dt, pmy_block->phydro->w);
+    break;
+
+  case 2:
+    t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
+    dt = pmy_mesh->dt;
+    EulerStep(t, dt, pmy_block->phydro->w1);
+    ReactToMeshAux(t, dt, pmy_block->phydro->w1);
+    break;
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::LinkNeighbors()
+//  \brief fetches neighbor information for later communication.
+
+void Particles::LinkNeighbors()
+{
+  neighbor_[1][1][1].pmb = pmy_block;
+
+  for (int i = 0; i < pbval_->nneighbor; ++i) {
+    NeighborBlock& nb = pbval_->neighbor[i];
+    Neighbor *pn = &neighbor_[nb.ox1+1][nb.ox2+1][nb.ox3+1];
+    while (pn->next != NULL)
+      pn = pn->next;
+    if (pn->pnb != NULL) {
+      pn->next = new Neighbor;
+      pn = pn->next;
+    }
+    pn->pnb = &nb;
+    if (nb.rank == Globals::my_rank)
+      pn->pmb = pmy_mesh->FindMeshBlock(nb.gid);
+#ifdef MPI_PARALLEL
+    else {
+      send_[nb.bufid].tag = (nb.lid<<8) | (nb.targetid<<2),
+      recv_[nb.bufid].tag = (pmy_block->lid<<8) | (nb.bufid<<2);
+    }
+#endif
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::SendParticlesAndMesh(int step)
+//  \brief send particles and meshaux near boundaries to neighbors.
+
+void Particles::SendParticlesAndMesh(int step)
+{
+  // Send particles.
+  if (npar > 0) {
+    SetPositionIndices();
+    SendToNeighbors();
+  }
+
+  // Send MeshAux boundary.
+  if (step > 0 && ppm->nmeshaux > 0)
+    ppm->SendBoundary();
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::SetPositionIndices()
+//  \brief updates position indices of particles.
+
+void Particles::SetPositionIndices()
+{
+  GetPositionIndices(pmy_block, npar, xp, yp, zp, xi1, xi2, xi3);
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn bool Particles::ReceiveParticlesAndMesh(int step)
+//  \brief receives particles and meshaux near boundaries from neighbors and returns a
+//         flag indicating if all receives are completed.
+
+bool Particles::ReceiveParticlesAndMesh(int step)
+{
+  // Receive particles from neighbor blocks.
+  bool flag = ReceiveFromNeighbors();
+  if (!flag) return false;
+
+  // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
+  if (ppm->nmeshaux > 0) {
+    ppm->ReceiveBoundary();
+
+    Hydro *phydro = pmy_block->phydro;
+    Real t, dt;
+
+    switch (step) {
+
+    case 1:
+      t = pmy_mesh->time;
+      dt = 0.5 * pmy_mesh->dt;
+      DepositToMesh(t, dt, phydro->u, phydro->u1);
+      break;
+
+    case 2:
+      t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
+      dt = pmy_mesh->dt;
+      DepositToMesh(t, dt, phydro->u1, phydro->u);
+      break;
+    }
+  }
+
+  return flag;
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
 //  \brief applies boundary conditions to particle k and returns its updated mesh
 //         coordinates (x1,x2,x3).
@@ -297,60 +435,6 @@ void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
     // Convert to the index space.
     _MeshCoordsToIndices(pmb, x1, x2, x3, xi1(k), xi2(k), xi3(k));
   }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::SendParticlesAndMesh(int step)
-//  \brief send particles and meshaux near boundaries to neighbors.
-
-void Particles::SendParticlesAndMesh(int step)
-{
-  // Send particles.
-  if (npar > 0) {
-    SetPositionIndices();
-    SendToNeighbors();
-  }
-
-  // Send MeshAux boundary.
-  if (step > 0 && ppm->nmeshaux > 0)
-    ppm->SendBoundary();
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn bool Particles::ReceiveParticlesAndMesh(int step)
-//  \brief receives particles and meshaux near boundaries from neighbors and returns a
-//         flag indicating if all receives are completed.
-
-bool Particles::ReceiveParticlesAndMesh(int step)
-{
-  // Receive particles from neighbor blocks.
-  bool flag = ReceiveFromNeighbors();
-  if (!flag) return false;
-
-  // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
-  if (ppm->nmeshaux > 0) {
-    ppm->ReceiveBoundary();
-
-    Hydro *phydro = pmy_block->phydro;
-    Real t, dt;
-
-    switch (step) {
-
-    case 1:
-      t = pmy_mesh->time;
-      dt = 0.5 * pmy_mesh->dt;
-      DepositToMesh(t, dt, phydro->u, phydro->u1);
-      break;
-
-    case 2:
-      t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
-      dt = pmy_mesh->dt;
-      DepositToMesh(t, dt, phydro->u1, phydro->u);
-      break;
-    }
-  }
-
-  return flag;
 }
 
 //--------------------------------------------------------------------------------------
@@ -675,90 +759,6 @@ void Particles::FlushReceiveBuffer(ParticleBuffer& recv)
   // Clear the receive buffers.
   npar += nprecv;
   recv.npar = 0;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::ClearBoundary()
-//  \brief resets boundary for particle transportation.
-
-void Particles::ClearBoundary()
-{
-  for (int i = 0; i < pbval_->nneighbor; ++i) {
-    NeighborBlock& nb = pbval_->neighbor[i];
-    bstatus_[nb.bufid] = BNDRY_WAITING;
-#ifdef MPI_PARALLEL
-    if (nb.rank != Globals::my_rank) {
-      ParticleBuffer& recv = recv_[nb.bufid];
-      recv.flagn = recv.flagi = recv.flagr = 0;
-      send_[nb.bufid].npar = 0;
-    }
-#endif
-  }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::LinkNeighbors()
-//  \brief fetches neighbor information for later communication.
-
-void Particles::LinkNeighbors()
-{
-  neighbor_[1][1][1].pmb = pmy_block;
-
-  for (int i = 0; i < pbval_->nneighbor; ++i) {
-    NeighborBlock& nb = pbval_->neighbor[i];
-    Neighbor *pn = &neighbor_[nb.ox1+1][nb.ox2+1][nb.ox3+1];
-    while (pn->next != NULL)
-      pn = pn->next;
-    if (pn->pnb != NULL) {
-      pn->next = new Neighbor;
-      pn = pn->next;
-    }
-    pn->pnb = &nb;
-    if (nb.rank == Globals::my_rank)
-      pn->pmb = pmy_mesh->FindMeshBlock(nb.gid);
-#ifdef MPI_PARALLEL
-    else {
-      send_[nb.bufid].tag = (nb.lid<<8) | (nb.targetid<<2),
-      recv_[nb.bufid].tag = (pmy_block->lid<<8) | (nb.bufid<<2);
-    }
-#endif
-  }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::SetPositionIndices()
-//  \brief updates position indices of particles.
-
-void Particles::SetPositionIndices()
-{
-  GetPositionIndices(pmy_block, npar, xp, yp, zp, xi1, xi2, xi3);
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::Integrate(int step)
-//  \brief updates all particle positions and velocities from t to t + dt.
-
-void Particles::Integrate(int step)
-{
-  Real t, dt;
-
-  switch (step) {
-
-  case 1:
-    t = pmy_mesh->time;
-    dt = 0.5 * pmy_mesh->dt;
-    SaveStatus();
-    EulerStep(t, dt, pmy_block->phydro->w);
-    ReactToMeshAux(t, dt, pmy_block->phydro->w);
-    break;
-
-  case 2:
-    t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
-    dt = pmy_mesh->dt;
-    EulerStep(t, dt, pmy_block->phydro->w1);
-    ReactToMeshAux(t, dt, pmy_block->phydro->w1);
-    break;
-  }
 }
 
 //--------------------------------------------------------------------------------------

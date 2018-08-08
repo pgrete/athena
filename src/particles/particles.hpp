@@ -58,10 +58,10 @@ public:
 
   // Instance methods
   void ClearBoundary();
-  void LinkNeighbors();
-  void SetPositionIndices();
   void Integrate(int step);
+  void LinkNeighbors();
   void SendParticlesAndMesh(int step);
+  void SetPositionIndices();
   bool ReceiveParticlesAndMesh(int step);
 
   size_t GetSizeInBytes();
