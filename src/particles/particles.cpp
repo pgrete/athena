@@ -177,6 +177,8 @@ void Particles::ClearBoundary()
     }
 #endif
   }
+
+  ppm->ClearBoundary();
 }
 
 //--------------------------------------------------------------------------------------
@@ -466,28 +468,30 @@ bool Particles::ReceiveParticleMesh(int step)
   if (ppm->nmeshaux <= 0) return true;
 
   // Flush ParticleMesh receive buffers.
-  ppm->ReceiveBoundary();
+  bool flag = ppm->ReceiveBoundary();
 
-  // Deposit ParticleMesh meshaux to MeshBlock.
-  Hydro *phydro = pmy_block->phydro;
-  Real t, dt;
+  if (flag) {
+    // Deposit ParticleMesh meshaux to MeshBlock.
+    Hydro *phydro = pmy_block->phydro;
+    Real t, dt;
 
-  switch (step) {
+    switch (step) {
 
-  case 1:
-    t = pmy_mesh->time;
-    dt = 0.5 * pmy_mesh->dt;
-    DepositToMesh(t, dt, phydro->u, phydro->u1);
-    break;
+    case 1:
+      t = pmy_mesh->time;
+      dt = 0.5 * pmy_mesh->dt;
+      DepositToMesh(t, dt, phydro->u, phydro->u1);
+      break;
 
-  case 2:
-    t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
-    dt = pmy_mesh->dt;
-    DepositToMesh(t, dt, phydro->u1, phydro->u);
-    break;
+    case 2:
+      t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
+      dt = pmy_mesh->dt;
+      DepositToMesh(t, dt, phydro->u1, phydro->u);
+      break;
+    }
   }
 
-  return true;
+  return flag;
 }
 
 //--------------------------------------------------------------------------------------

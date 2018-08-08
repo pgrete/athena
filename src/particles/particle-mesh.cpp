@@ -839,6 +839,18 @@ void ParticleMesh::AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba)
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::ClearBoundary()
+//  \brief clears boundary data to neighboring blocks.
+
+void ParticleMesh::ClearBoundary()
+{
+  for (int n = 0; n < pbval_->nneighbor; n++) {
+    NeighborBlock& nb = pbval_->neighbor[n];
+    bd_.flag[nb.bufid] = BNDRY_WAITING;
+  }
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::SendBoundary()
 //  \brief Send boundary values to neighboring blocks.
 
@@ -863,17 +875,34 @@ void ParticleMesh::SendBoundary()
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::ReceiveBoundary()
-//  \brief Receive boundary values from neighboring blocks and add to my block.
+//  \brief receives boundary values from neighboring blocks and add to my block and
+//         returns a flag indicating if all receives are completed.
 
-void ParticleMesh::ReceiveBoundary()
+bool ParticleMesh::ReceiveBoundary()
 {
+  bool flag = true;
+
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
-    if (bd_.flag[nb.bufid] == BNDRY_COMPLETED) continue;
+    enum BoundaryStatus& bstatus = bd_.flag[nb.bufid];
 
-    AddBoundaryBuffer(bd_.recv[nb.bufid], ba_[n]);
-    bd_.flag[nb.bufid] = BNDRY_COMPLETED;
+    switch (bstatus) {
+
+    case BNDRY_COMPLETED:
+      break;
+
+    case BNDRY_WAITING:
+      flag = false;
+      break;
+
+    case BNDRY_ARRIVED:
+      AddBoundaryBuffer(bd_.recv[nb.bufid], ba_[n]);
+      bstatus = BNDRY_COMPLETED;
+      break;
+    }
   }
+
+  return flag;
 }
 
 //--------------------------------------------------------------------------------------

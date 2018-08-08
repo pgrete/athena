@@ -99,9 +99,9 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm)
     if (PARTICLES) {
       AddTimeIntegratorTask(INT_PAR, NONE);
       AddTimeIntegratorTask(SEND_PAR, INT_PAR);
-      AddTimeIntegratorTask(RECV_PAR, START_ALLRECV);
+      AddTimeIntegratorTask(RECV_PAR, NONE);
       AddTimeIntegratorTask(SEND_PM, INT_PAR);
-      AddTimeIntegratorTask(RECV_PM, RECV_PAR);
+      AddTimeIntegratorTask(RECV_PM, START_ALLRECV);
     }
 
     // prolongate, compute new primitives

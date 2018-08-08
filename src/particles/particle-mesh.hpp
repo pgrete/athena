@@ -65,8 +65,10 @@ protected:
            const AthenaArray<int>& imeshaux);
   void DepositMeshAux(AthenaArray<Real>& u,
            const AthenaArray<int>& imeshaux, const AthenaArray<int>& imeshblock);
+
+  void ClearBoundary();
   void SendBoundary();
-  void ReceiveBoundary();
+  bool ReceiveBoundary();
 
 private:
   typedef struct BoundaryAttributes {
