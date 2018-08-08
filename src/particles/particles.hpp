@@ -60,9 +60,11 @@ public:
   void ClearBoundary();
   void Integrate(int step);
   void LinkNeighbors();
-  void SendParticlesAndMesh(int step);
+  void SendParticleMesh();
+  void SendToNeighbors();
   void SetPositionIndices();
-  bool ReceiveParticlesAndMesh(int step);
+  bool ReceiveFromNeighbors();
+  bool ReceiveParticleMesh(int step);
 
   size_t GetSizeInBytes();
   void ReadRestart(char *mbdata, int &os);
@@ -140,8 +142,6 @@ private:
   void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void FlushReceiveBuffer(ParticleBuffer& recv);
   void SaveStatus();
-  void SendToNeighbors();
-  bool ReceiveFromNeighbors();
   struct Neighbor* FindTargetNeighbor(
       int ox1, int ox2, int ox3, int xi1, int xi2, int xi3);
 

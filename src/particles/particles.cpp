@@ -236,20 +236,136 @@ void Particles::LinkNeighbors()
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::SendParticlesAndMesh(int step)
-//  \brief send particles and meshaux near boundaries to neighbors.
+//! \fn void Particles::SendParticleMesh()
+//  \brief send ParticleMesh meshaux near boundaries to neighbors.
 
-void Particles::SendParticlesAndMesh(int step)
+void Particles::SendParticleMesh()
 {
-  // Send particles.
-  if (npar > 0) {
-    SetPositionIndices();
-    SendToNeighbors();
+  if (ppm->nmeshaux > 0)
+    ppm->SendBoundary();
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::SendToNeighbors()
+//  \brief sends particles outside boundary to the buffers of neighboring meshblocks.
+
+void Particles::SendToNeighbors()
+{
+  const int IS = pmy_block->is;
+  const int IE = pmy_block->ie;
+  const int JS = pmy_block->js;
+  const int JE = pmy_block->je;
+  const int KS = pmy_block->ks;
+  const int KE = pmy_block->ke;
+
+  // TODO: Currently only works for Cartesian.
+  if (COORDINATE_SYSTEM != "cartesian") {
+    std::stringstream msg;
+    msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
+        << "Non-Cartesian coordinates not yet implemented. " << std::endl;
+    throw std::runtime_error(msg.str().c_str());
+    return;
   }
 
-  // Send MeshAux boundary.
-  if (step > 0 && ppm->nmeshaux > 0)
-    ppm->SendBoundary();
+  for (long k = 0; k < npar; ) {
+    // Check if a particle is outside the boundary.
+    int xi1i = int(xi1(k)), xi2i = int(xi2(k)), xi3i = int(xi3(k));
+    int ox1 = active1_ ? CheckSide(xi1i, IS, IE) : 0,
+        ox2 = active2_ ? CheckSide(xi2i, JS, JE) : 0,
+        ox3 = active3_ ? CheckSide(xi3i, KS, KE) : 0;
+    if (ox1 == 0 && ox2 == 0 && ox3 == 0) {
+      ++k;
+      continue;
+    }
+
+    // Apply boundary conditions and find the mesh coordinates.
+    Real x1, x2, x3;
+    ApplyBoundaryConditions(k, x1, x2, x3);
+
+    // Find the neighbor block to send it to.
+    Neighbor *pn = FindTargetNeighbor(ox1, ox2, ox3, xi1i, xi2i, xi3i);
+    if (pn == NULL) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
+          << "cannot find the neighbor block to send the particle to. " << std::endl;
+      throw std::runtime_error(msg.str().data());
+      continue;
+    }
+    NeighborBlock *pnb = pn->pnb;
+
+    // Determine which particle buffer to use.
+    ParticleBuffer *ppb = NULL;
+    if (pnb->rank == Globals::my_rank) {
+      // No need to send if back to the same block.
+      if (pnb->gid == pmy_block->gid) {
+        _MeshCoordsToIndices(pmy_block, x1, x2, x3, xi1(k), xi2(k), xi3(k));
+        ++k;
+        continue;
+      }
+      // Use the target receive buffer.
+      ppb = &pn->pmb->ppar->recv_[pnb->targetid];
+
+    } else {
+#ifdef MPI_PARALLEL
+      // Use the send buffer.
+      ppb = &send_[pnb->bufid];
+#endif
+    }
+
+    // Check the buffer size.
+    if (ppb->npar >= ppb->nparmax)
+      ppb->Reallocate((ppb->nparmax > 0) ? 2 * ppb->nparmax : 1);
+
+    // Copy the properties of the particle to the buffer.
+    long *pi = ppb->ibuf + ParticleBuffer::nint * ppb->npar;
+    for (int j = 0; j < nint; ++j)
+      *pi++ = intprop(j,k);
+    Real *pr = ppb->rbuf + ParticleBuffer::nreal * ppb->npar;
+    for (int j = 0; j < nreal; ++j)
+      *pr++ = realprop(j,k);
+    for (int j = 0; j < naux; ++j)
+      *pr++ = auxprop(j,k);
+    ++ppb->npar;
+
+    // Pop the particle from the current MeshBlock.
+    if (--npar != k) {
+      xi1(k) = xi1(npar);
+      xi2(k) = xi2(npar);
+      xi3(k) = xi3(npar);
+      for (int j = 0; j < nint; ++j)
+        intprop(j,k) = intprop(j,npar);
+      for (int j = 0; j < nreal; ++j)
+        realprop(j,k) = realprop(j,npar);
+      for (int j = 0; j < naux; ++j)
+        auxprop(j,k) = auxprop(j,npar);
+    }
+  }
+
+  // Send to neighbor processes and update boundary status.
+  for (int i = 0; i < pbval_->nneighbor; ++i) {
+    NeighborBlock& nb = pbval_->neighbor[i];
+    int dst = nb.rank;
+    if (dst == Globals::my_rank) {
+      Particles *ppar = pmy_mesh->FindMeshBlock(nb.gid)->ppar;
+      ppar->bstatus_[nb.targetid] =
+          (ppar->recv_[nb.targetid].npar > 0) ? BNDRY_ARRIVED : BNDRY_COMPLETED;
+    } else {
+#ifdef MPI_PARALLEL
+      ParticleBuffer& send = send_[nb.bufid];
+      int npsend = send.npar;
+      MPI_Send(&npsend, 1, MPI_INT, nb.rank, send.tag, my_comm);
+      if (npsend > 0) {
+        MPI_Request req = MPI_REQUEST_NULL;
+        MPI_Isend(send.ibuf, npsend * ParticleBuffer::nint, MPI_LONG,
+                  dst, send.tag + 1, my_comm, &req);
+        MPI_Request_free(&req);
+        MPI_Isend(send.rbuf, npsend * ParticleBuffer::nreal, MPI_ATHENA_REAL,
+                  dst, send.tag + 2, my_comm, &req);
+        MPI_Request_free(&req);
+      }
+#endif
+    }
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -262,40 +378,116 @@ void Particles::SetPositionIndices()
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn bool Particles::ReceiveParticlesAndMesh(int step)
-//  \brief receives particles and meshaux near boundaries from neighbors and returns a
-//         flag indicating if all receives are completed.
+//! \fn bool Particles::ReceiveFromNeighbors()
+//  \brief receives particles from neighboring meshblocks and returns a flag indicating
+//         if all receives are completed.
 
-bool Particles::ReceiveParticlesAndMesh(int step)
+bool Particles::ReceiveFromNeighbors()
 {
-  // Receive particles from neighbor blocks.
-  bool flag = ReceiveFromNeighbors();
-  if (!flag) return false;
+  bool flag = true;
 
-  // Flush ParticleMesh receive buffers and deposit MeshAux to MeshBlock.
-  if (ppm->nmeshaux > 0) {
-    ppm->ReceiveBoundary();
+  for (int i = 0; i < pbval_->nneighbor; ++i) {
+    NeighborBlock& nb = pbval_->neighbor[i];
+    enum BoundaryStatus& bstatus = bstatus_[nb.bufid];
 
-    Hydro *phydro = pmy_block->phydro;
-    Real t, dt;
+#ifdef MPI_PARALLEL
+    // Communicate with neighbor processes.
+    if (nb.rank != Globals::my_rank && bstatus == BNDRY_WAITING) {
+      ParticleBuffer& recv = recv_[nb.bufid];
+      if (!recv.flagn) {
+        // Get the number of incoming particles.
+        if (recv.reqi == MPI_REQUEST_NULL)
+          MPI_Irecv(&recv.npar, 1, MPI_INT, nb.rank, recv.tag, my_comm, &recv.reqi);
+        else
+          MPI_Test(&recv.reqi, &recv.flagn, MPI_STATUS_IGNORE);
+        if (recv.flagn) {
+          if (recv.npar > 0) {
+            // Check the buffer size.
+            int nprecv = recv.npar;
+            if (nprecv > recv.nparmax) {
+              recv.npar = 0;
+              recv.Reallocate(2 * nprecv - recv.nparmax);
+              recv.npar = nprecv;
+            }
+          } else
+            // No incoming particles.
+            bstatus = BNDRY_COMPLETED;
+        }
+      }
+      if (recv.flagn && recv.npar > 0) {
+        // Receive data from the neighbor.
+        if (!recv.flagi) {
+          if (recv.reqi == MPI_REQUEST_NULL)
+            MPI_Irecv(recv.ibuf, recv.npar * ParticleBuffer::nint, MPI_LONG,
+                      nb.rank, recv.tag + 1, my_comm, &recv.reqi);
+          else
+            MPI_Test(&recv.reqi, &recv.flagi, MPI_STATUS_IGNORE);
+        }
+        if (!recv.flagr) {
+          if (recv.reqr == MPI_REQUEST_NULL)
+            MPI_Irecv(recv.rbuf, recv.npar * ParticleBuffer::nreal, MPI_ATHENA_REAL,
+                      nb.rank, recv.tag + 2, my_comm, &recv.reqr);
+          else
+            MPI_Test(&recv.reqr, &recv.flagr, MPI_STATUS_IGNORE);
+        }
+        if (recv.flagi && recv.flagr)
+          bstatus = BNDRY_ARRIVED;
+      }
+    }
+#endif
 
-    switch (step) {
+    switch (bstatus) {
 
-    case 1:
-      t = pmy_mesh->time;
-      dt = 0.5 * pmy_mesh->dt;
-      DepositToMesh(t, dt, phydro->u, phydro->u1);
-      break;
+      case BNDRY_COMPLETED:
+        break;
 
-    case 2:
-      t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
-      dt = pmy_mesh->dt;
-      DepositToMesh(t, dt, phydro->u1, phydro->u);
-      break;
+      case BNDRY_WAITING:
+        flag = false;
+        break;
+
+      case BNDRY_ARRIVED:
+        ParticleBuffer& recv = recv_[nb.bufid];
+        FlushReceiveBuffer(recv);
+        bstatus = BNDRY_COMPLETED;
+        break;
     }
   }
 
   return flag;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn bool Particles::ReceiveParticleMesh(int step)
+//  \brief receives ParticleMesh meshaux near boundaries from neighbors and returns a
+//         flag indicating if all receives are completed.
+
+bool Particles::ReceiveParticleMesh(int step)
+{
+  if (ppm->nmeshaux <= 0) return true;
+
+  // Flush ParticleMesh receive buffers.
+  ppm->ReceiveBoundary();
+
+  // Deposit ParticleMesh meshaux to MeshBlock.
+  Hydro *phydro = pmy_block->phydro;
+  Real t, dt;
+
+  switch (step) {
+
+  case 1:
+    t = pmy_mesh->time;
+    dt = 0.5 * pmy_mesh->dt;
+    DepositToMesh(t, dt, phydro->u, phydro->u1);
+    break;
+
+  case 2:
+    t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
+    dt = pmy_mesh->dt;
+    DepositToMesh(t, dt, phydro->u1, phydro->u);
+    break;
+  }
+
+  return true;
 }
 
 //--------------------------------------------------------------------------------------
@@ -479,208 +671,6 @@ void Particles::SaveStatus()
     vpy0(k) = vpy(k);
     vpz0(k) = vpz(k);
   }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::SendToNeighbors()
-//  \brief sends particles outside boundary to the buffers of neighboring meshblocks.
-
-void Particles::SendToNeighbors()
-{
-  const int IS = pmy_block->is;
-  const int IE = pmy_block->ie;
-  const int JS = pmy_block->js;
-  const int JE = pmy_block->je;
-  const int KS = pmy_block->ks;
-  const int KE = pmy_block->ke;
-
-  // TODO: Currently only works for Cartesian.
-  if (COORDINATE_SYSTEM != "cartesian") {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
-        << "Non-Cartesian coordinates not yet implemented. " << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-    return;
-  }
-
-  for (long k = 0; k < npar; ) {
-    // Check if a particle is outside the boundary.
-    int xi1i = int(xi1(k)), xi2i = int(xi2(k)), xi3i = int(xi3(k));
-    int ox1 = active1_ ? CheckSide(xi1i, IS, IE) : 0,
-        ox2 = active2_ ? CheckSide(xi2i, JS, JE) : 0,
-        ox3 = active3_ ? CheckSide(xi3i, KS, KE) : 0;
-    if (ox1 == 0 && ox2 == 0 && ox3 == 0) {
-      ++k;
-      continue;
-    }
-
-    // Apply boundary conditions and find the mesh coordinates.
-    Real x1, x2, x3;
-    ApplyBoundaryConditions(k, x1, x2, x3);
-
-    // Find the neighbor block to send it to.
-    Neighbor *pn = FindTargetNeighbor(ox1, ox2, ox3, xi1i, xi2i, xi3i);
-    if (pn == NULL) {
-      std::stringstream msg;
-      msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
-          << "cannot find the neighbor block to send the particle to. " << std::endl;
-      throw std::runtime_error(msg.str().data());
-      continue;
-    }
-    NeighborBlock *pnb = pn->pnb;
-
-    // Determine which particle buffer to use.
-    ParticleBuffer *ppb = NULL;
-    if (pnb->rank == Globals::my_rank) {
-      // No need to send if back to the same block.
-      if (pnb->gid == pmy_block->gid) {
-        _MeshCoordsToIndices(pmy_block, x1, x2, x3, xi1(k), xi2(k), xi3(k));
-        ++k;
-        continue;
-      }
-      // Use the target receive buffer.
-      ppb = &pn->pmb->ppar->recv_[pnb->targetid];
-
-    } else {
-#ifdef MPI_PARALLEL
-      // Use the send buffer.
-      ppb = &send_[pnb->bufid];
-#endif
-    }
-
-    // Check the buffer size.
-    if (ppb->npar >= ppb->nparmax)
-      ppb->Reallocate((ppb->nparmax > 0) ? 2 * ppb->nparmax : 1);
-
-    // Copy the properties of the particle to the buffer.
-    long *pi = ppb->ibuf + ParticleBuffer::nint * ppb->npar;
-    for (int j = 0; j < nint; ++j)
-      *pi++ = intprop(j,k);
-    Real *pr = ppb->rbuf + ParticleBuffer::nreal * ppb->npar;
-    for (int j = 0; j < nreal; ++j)
-      *pr++ = realprop(j,k);
-    for (int j = 0; j < naux; ++j)
-      *pr++ = auxprop(j,k);
-    ++ppb->npar;
-
-    // Pop the particle from the current MeshBlock.
-    if (--npar != k) {
-      xi1(k) = xi1(npar);
-      xi2(k) = xi2(npar);
-      xi3(k) = xi3(npar);
-      for (int j = 0; j < nint; ++j)
-        intprop(j,k) = intprop(j,npar);
-      for (int j = 0; j < nreal; ++j)
-        realprop(j,k) = realprop(j,npar);
-      for (int j = 0; j < naux; ++j)
-        auxprop(j,k) = auxprop(j,npar);
-    }
-  }
-
-  // Send to neighbor processes and update boundary status.
-  for (int i = 0; i < pbval_->nneighbor; ++i) {
-    NeighborBlock& nb = pbval_->neighbor[i];
-    int dst = nb.rank;
-    if (dst == Globals::my_rank) {
-      Particles *ppar = pmy_mesh->FindMeshBlock(nb.gid)->ppar;
-      ppar->bstatus_[nb.targetid] =
-          (ppar->recv_[nb.targetid].npar > 0) ? BNDRY_ARRIVED : BNDRY_COMPLETED;
-    } else {
-#ifdef MPI_PARALLEL
-      ParticleBuffer& send = send_[nb.bufid];
-      int npsend = send.npar;
-      MPI_Send(&npsend, 1, MPI_INT, nb.rank, send.tag, my_comm);
-      if (npsend > 0) {
-        MPI_Request req = MPI_REQUEST_NULL;
-        MPI_Isend(send.ibuf, npsend * ParticleBuffer::nint, MPI_LONG,
-                  dst, send.tag + 1, my_comm, &req);
-        MPI_Request_free(&req);
-        MPI_Isend(send.rbuf, npsend * ParticleBuffer::nreal, MPI_ATHENA_REAL,
-                  dst, send.tag + 2, my_comm, &req);
-        MPI_Request_free(&req);
-      }
-#endif
-    }
-  }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn bool Particles::ReceiveFromNeighbors()
-//  \brief receives particles from neighboring meshblocks and returns a flag indicating
-//         if all receives are completed.
-
-bool Particles::ReceiveFromNeighbors()
-{
-  bool flag = true;
-
-  for (int i = 0; i < pbval_->nneighbor; ++i) {
-    NeighborBlock& nb = pbval_->neighbor[i];
-    enum BoundaryStatus& bstatus = bstatus_[nb.bufid];
-
-#ifdef MPI_PARALLEL
-    // Communicate with neighbor processes.
-    if (nb.rank != Globals::my_rank && bstatus == BNDRY_WAITING) {
-      ParticleBuffer& recv = recv_[nb.bufid];
-      if (!recv.flagn) {
-        // Get the number of incoming particles.
-        if (recv.reqi == MPI_REQUEST_NULL)
-          MPI_Irecv(&recv.npar, 1, MPI_INT, nb.rank, recv.tag, my_comm, &recv.reqi);
-        else
-          MPI_Test(&recv.reqi, &recv.flagn, MPI_STATUS_IGNORE);
-        if (recv.flagn) {
-          if (recv.npar > 0) {
-            // Check the buffer size.
-            int nprecv = recv.npar;
-            if (nprecv > recv.nparmax) {
-              recv.npar = 0;
-              recv.Reallocate(2 * nprecv - recv.nparmax);
-              recv.npar = nprecv;
-            }
-          } else
-            // No incoming particles.
-            bstatus = BNDRY_COMPLETED;
-        }
-      }
-      if (recv.flagn && recv.npar > 0) {
-        // Receive data from the neighbor.
-        if (!recv.flagi) {
-          if (recv.reqi == MPI_REQUEST_NULL)
-            MPI_Irecv(recv.ibuf, recv.npar * ParticleBuffer::nint, MPI_LONG,
-                      nb.rank, recv.tag + 1, my_comm, &recv.reqi);
-          else
-            MPI_Test(&recv.reqi, &recv.flagi, MPI_STATUS_IGNORE);
-        }
-        if (!recv.flagr) {
-          if (recv.reqr == MPI_REQUEST_NULL)
-            MPI_Irecv(recv.rbuf, recv.npar * ParticleBuffer::nreal, MPI_ATHENA_REAL,
-                      nb.rank, recv.tag + 2, my_comm, &recv.reqr);
-          else
-            MPI_Test(&recv.reqr, &recv.flagr, MPI_STATUS_IGNORE);
-        }
-        if (recv.flagi && recv.flagr)
-          bstatus = BNDRY_ARRIVED;
-      }
-    }
-#endif
-
-    switch (bstatus) {
-
-      case BNDRY_COMPLETED:
-        break;
-
-      case BNDRY_WAITING:
-        flag = false;
-        break;
-
-      case BNDRY_ARRIVED:
-        ParticleBuffer& recv = recv_[nb.bufid];
-        FlushReceiveBuffer(recv);
-        bstatus = BNDRY_COMPLETED;
-        break;
-    }
-  }
-
-  return flag;
 }
 
 //--------------------------------------------------------------------------------------

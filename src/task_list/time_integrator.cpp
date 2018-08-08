@@ -98,8 +98,10 @@ TimeIntegratorTaskList::TimeIntegratorTaskList(ParameterInput *pin, Mesh *pm)
     // evolve particles
     if (PARTICLES) {
       AddTimeIntegratorTask(INT_PAR, NONE);
+      AddTimeIntegratorTask(SEND_PAR, INT_PAR);
+      AddTimeIntegratorTask(RECV_PAR, START_ALLRECV);
       AddTimeIntegratorTask(SEND_PM, INT_PAR);
-      AddTimeIntegratorTask(RECV_PM, START_ALLRECV);
+      AddTimeIntegratorTask(RECV_PM, RECV_PAR);
     }
 
     // prolongate, compute new primitives
@@ -292,15 +294,25 @@ void TimeIntegratorTaskList::AddTimeIntegratorTask(uint64_t id, uint64_t dep)
         static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
         (&TimeIntegratorTaskList::ParticlesIntegrate);
       break;
-    case (SEND_PM):
+    case (SEND_PAR):
       task_list_[ntasks].TaskFunc=
         static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
         (&TimeIntegratorTaskList::ParticlesSend);
       break;
-    case (RECV_PM):
+    case (RECV_PAR):
       task_list_[ntasks].TaskFunc=
         static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
         (&TimeIntegratorTaskList::ParticlesReceive);
+      break;
+    case (SEND_PM):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::ParticleMeshSend);
+      break;
+    case (RECV_PM):
+      task_list_[ntasks].TaskFunc=
+        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
+        (&TimeIntegratorTaskList::ParticleMeshReceive);
       break;
 
     default:
@@ -563,13 +575,27 @@ enum TaskStatus TimeIntegratorTaskList::ParticlesIntegrate(MeshBlock *pmb, int s
 
 enum TaskStatus TimeIntegratorTaskList::ParticlesSend(MeshBlock *pmb, int step)
 {
-  pmb->ppar->SendParticlesAndMesh(step);
+  pmb->ppar->SendToNeighbors();
   return TASK_SUCCESS;
 }
 
 enum TaskStatus TimeIntegratorTaskList::ParticlesReceive(MeshBlock *pmb, int step)
 {
-  if (pmb->ppar->ReceiveParticlesAndMesh(step))
+  if (pmb->ppar->ReceiveFromNeighbors())
+    return TASK_SUCCESS;
+  else
+    return TASK_FAIL;
+}
+
+enum TaskStatus TimeIntegratorTaskList::ParticleMeshSend(MeshBlock *pmb, int step)
+{
+  pmb->ppar->SendParticleMesh();
+  return TASK_SUCCESS;
+}
+
+enum TaskStatus TimeIntegratorTaskList::ParticleMeshReceive(MeshBlock *pmb, int step)
+{
+  if (pmb->ppar->ReceiveParticleMesh(step))
     return TASK_SUCCESS;
   else
     return TASK_FAIL;
