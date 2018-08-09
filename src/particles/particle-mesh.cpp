@@ -22,6 +22,9 @@
 bool ParticleMesh::initialized_ = false;
 int ParticleMesh::nmeshaux = 0;
 int ParticleMesh::iweight = -1;
+#ifdef MPI_PARALLEL
+MPI_Comm ParticleMesh::my_comm = MPI_COMM_NULL;
+#endif
 
 // Local function prototypes.
 Real _ParticleMeshWeightFunction(Real dxi);
@@ -39,6 +42,11 @@ void ParticleMesh::Initialize(ParameterInput *pin)
 
   // Add weight in meshaux.
   iweight = AddMeshAux();
+
+#ifdef MPI_PARALLEL
+  // Get my MPI communicator.
+  MPI_Comm_dup(MPI_COMM_WORLD, &my_comm);
+#endif
 
   initialized_ = true;
 }
@@ -116,6 +124,10 @@ ParticleMesh::ParticleMesh(Particles *ppar)
     bd_.flag[n] = BNDRY_WAITING;
     bd_.send[n] = NULL;
     bd_.recv[n] = NULL;
+#ifdef MPI_PARALLEL
+    bd_.req_recv[n] = MPI_REQUEST_NULL;
+    bd_.req_send[n] = MPI_REQUEST_NULL;
+#endif
   }
 
   // Set the boundary attributes.
@@ -126,13 +138,21 @@ ParticleMesh::ParticleMesh(Particles *ppar)
     NeighborBlock& nb = pbval_->neighbor[n];
     BoundaryAttributes& ba = ba_[n];
 
-    int nsend = ba.ngtot * nmeshaux;
     int nrecv = (ba.ire - ba.irs + 1) *
                 (ba.jre - ba.jrs + 1) *
                 (ba.kre - ba.krs + 1) * nmeshaux;
-
-    bd_.send[nb.bufid] = new Real [nsend];
     bd_.recv[nb.bufid] = new Real [nrecv];
+
+#ifdef MPI_PARALLEL
+    if (nb.rank != Globals::my_rank) {
+      int nsend = ba.ngtot * nmeshaux;
+      bd_.send[nb.bufid] = new Real [nsend];
+      MPI_Recv_init(bd_.recv[nb.bufid], nrecv, MPI_ATHENA_REAL, nb.rank,
+                    (pmb_->lid<<6) | nb.bufid, my_comm, &bd_.req_recv[nb.bufid]);
+      MPI_Send_init(bd_.send[nb.bufid], nsend, MPI_ATHENA_REAL, nb.rank,
+                    (nb.lid<<6) | nb.targetid, my_comm, &bd_.req_send[nb.bufid]);
+    }
+#endif
   }
 }
 
@@ -148,8 +168,12 @@ ParticleMesh::~ParticleMesh()
 
   // Destroy boundary data.
   for (int n = 0; n < bd_.nbmax; n++) {
-    if (bd_.send[n] != NULL) delete [] bd_.send[n];
     if (bd_.recv[n] != NULL) delete [] bd_.recv[n];
+#ifdef MPI_PARALLEL
+    if (bd_.send[n] != NULL) delete [] bd_.send[n];
+    if (bd_.req_recv[n] != MPI_REQUEST_NULL) MPI_Request_free(&bd_.req_recv[n]);
+    if (bd_.req_send[n] != MPI_REQUEST_NULL) MPI_Request_free(&bd_.req_send[n]);
+#endif
   }
 }
 
@@ -725,8 +749,11 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
     if (nb.rank == Globals::my_rank) {
       pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
       pbuf0 = pnbd->recv[nb.targetid];
-    } else
+    }
+#ifdef MPI_PARALLEL
+    else
       pbuf0 = bd_.send[nb.bufid];
+#endif
 
     // Zero out the buffer.
     BoundaryAttributes& ba = ba_[i];
@@ -813,6 +840,10 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
     // Set the boundary flag.
     if (nb.rank == Globals::my_rank)
       pnbd->flag[nb.targetid] = BNDRY_ARRIVED;
+#ifdef MPI_PARALLEL
+    else
+      MPI_Start(&bd_.req_send[nb.bufid]);
+#endif
   }
 }
 
@@ -872,8 +903,13 @@ void ParticleMesh::SendBoundary()
         BoundaryData *pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
         LoadBoundaryBufferSameLevel(pnbd->recv[nb.targetid], ba_[n]);
         pnbd->flag[nb.targetid] = BNDRY_ARRIVED;
-      } else
+      }
+#ifdef MPI_PARALLEL
+      else {
         LoadBoundaryBufferSameLevel(bd_.send[nb.bufid], ba_[n]);
+        MPI_Start(&bd_.req_send[nb.bufid]);
+      }
+#endif
     }
   }
 }
@@ -884,6 +920,13 @@ void ParticleMesh::SendBoundary()
 
 void ParticleMesh::StartReceiving()
 {
+#ifdef MPI_PARALLEL
+  for (int n = 0; n < pbval_->nneighbor; n++) {
+    NeighborBlock& nb = pbval_->neighbor[n];
+    if (nb.rank == Globals::my_rank) continue;
+    MPI_Start(&bd_.req_recv[nb.bufid]);
+  }
+#endif
 }
 
 //--------------------------------------------------------------------------------------
@@ -891,31 +934,42 @@ void ParticleMesh::StartReceiving()
 //  \brief receives boundary values from neighboring blocks and add to my block and
 //         returns a flag indicating if all receives are completed.
 
+#include <iomanip>
+
 bool ParticleMesh::ReceiveBoundary()
 {
-  bool flag = true;
+  bool completed = true;
 
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
     enum BoundaryStatus& bstatus = bd_.flag[nb.bufid];
 
+    int flag = 0;
     switch (bstatus) {
 
-    case BNDRY_COMPLETED:
-      break;
-
     case BNDRY_WAITING:
-      flag = false;
-      break;
+#ifdef MPI_PARALLEL
+      if (nb.rank != Globals::my_rank) {
+        MPI_Test(&bd_.req_recv[nb.bufid], &flag, MPI_STATUS_IGNORE);
+        if (flag) bstatus = BNDRY_ARRIVED;
+      }
+#endif
+      if (!flag) {
+        completed = false;
+        break;
+      }
 
     case BNDRY_ARRIVED:
       AddBoundaryBuffer(bd_.recv[nb.bufid], ba_[n]);
       bstatus = BNDRY_COMPLETED;
       break;
+
+    case BNDRY_COMPLETED:
+      break;
     }
   }
 
-  return flag;
+  return completed;
 }
 
 //--------------------------------------------------------------------------------------

@@ -15,6 +15,11 @@
 #include "../bvals/bvals.hpp"
 #include "../mesh/mesh.hpp"
 
+// MPI header
+#ifdef MPI_PARALLEL
+#include <mpi.h>
+#endif
+
 // Particle-mesh constants.
 const Real RINF = 1;  // radius of influence
 const int NGPM = int(std::ceil(RINF));   // number of ghost cells needed.
@@ -105,4 +110,9 @@ private:
            const AthenaArray<int>& imeshaux);
   int LoadBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba);
   void AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba);
+
+#ifdef MPI_PARALLEL
+  // Variables for MPI
+  static MPI_Comm my_comm;  // my MPI communicator
+#endif
 };
