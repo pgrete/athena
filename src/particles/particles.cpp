@@ -380,6 +380,15 @@ void Particles::SetPositionIndices()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::StartReceiving()
+//  \brief starts receiving ParticleMesh meshaux near boundary from neighbor processes.
+
+void Particles::StartReceiving()
+{
+  ppm->StartReceiving();
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn bool Particles::ReceiveFromNeighbors()
 //  \brief receives particles from neighboring meshblocks and returns a flag indicating
 //         if all receives are completed.

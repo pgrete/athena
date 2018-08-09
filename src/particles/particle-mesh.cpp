@@ -874,6 +874,14 @@ void ParticleMesh::SendBoundary()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::StartReceiving()
+//  \brief starts receiving meshaux near boundary from neighbor processes.
+
+void ParticleMesh::StartReceiving()
+{
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::ReceiveBoundary()
 //  \brief receives boundary values from neighboring blocks and add to my block and
 //         returns a flag indicating if all receives are completed.

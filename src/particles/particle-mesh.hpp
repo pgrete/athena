@@ -68,6 +68,7 @@ protected:
 
   void ClearBoundary();
   void SendBoundary();
+  void StartReceiving();
   bool ReceiveBoundary();
 
 private:

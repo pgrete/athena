@@ -335,6 +335,7 @@ void TimeIntegratorTaskList::AddTimeIntegratorTask(uint64_t id, uint64_t dep)
 enum TaskStatus TimeIntegratorTaskList::StartAllReceive(MeshBlock *pmb, int step)
 {
   pmb->pbval->StartReceivingAll();
+  if (PARTICLES) pmb->ppar->StartReceiving();
   return TASK_SUCCESS;
 }
 

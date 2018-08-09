@@ -63,6 +63,7 @@ public:
   void SendParticleMesh();
   void SendToNeighbors();
   void SetPositionIndices();
+  void StartReceiving();
   bool ReceiveFromNeighbors();
   bool ReceiveParticleMesh(int step);
 
