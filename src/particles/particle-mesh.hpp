@@ -72,16 +72,15 @@ protected:
   bool ReceiveBoundary();
 
 private:
-  typedef struct BoundaryAttributes {
+  struct BoundaryAttributes {
     Real xi1min, xi1max, xi2min, xi2max, xi3min, xi3max;
                                // domain that influences the ghost block
     Real xi1_0, xi2_0, xi3_0;  // origin of the ghost block wrt to the local meshblock
     int ngx1, ngx2, ngx3;      // dimensions of the ghost block
-    int ngx12;                 // total number of cells in x1-x2 plane of the ghost block
     int ngtot;                 // total number of cells in the ghost block
     int irs, ire, jrs, jre, krs, kre;  // beginning/ending indices in meshaux to receive
     int iss, ise, jss, jse, kss, kse;  // beginning/ending indices in meshaux to send
-  } BoundaryAttributes;
+  };
 
   // Class variables
   static bool initialized_;

@@ -671,8 +671,7 @@ void ParticleMesh::SetBoundaryAttributes()
       ba.ngx2 = (nb.ox2 == 0) ? block_size.nx2 : NGPM;
       ba.ngx3 = (nb.ox3 == 0) ? block_size.nx3 : NGPM;
     }
-    ba.ngx12 = ba.ngx1 * ba.ngx2;
-    ba.ngtot = ba.ngx12 * ba.ngx3;
+    ba.ngtot = ba.ngx1 * ba.ngx2 * ba.ngx3;
 
     // Set the indices in meshaux to send and receive.
     ba.irs = irs;  ba.ire = ire;
