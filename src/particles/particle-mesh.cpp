@@ -110,24 +110,30 @@ ParticleMesh::ParticleMesh(Particles *ppar)
   // Get a shorthand to weights.
   weight.InitWithShallowSlice(meshaux, 4, iweight, 1);
 
-  // Find the maximum number of neighbors.
-  bd_.nbmax = BoundaryBase::BufferID(dim, pmesh_->multilevel);
-
   // Initialize boundary data.
+  bd_.nbmax = 56;
   for (int n = 0; n < bd_.nbmax; n++) {
     bd_.flag[n] = BNDRY_WAITING;
     bd_.send[n] = NULL;
     bd_.recv[n] = NULL;
-
-    int size = ((pbval_->ni[n].ox1 == 0) ? block_size.nx1 : NGPM) *
-               ((pbval_->ni[n].ox2 == 0) ? block_size.nx2 : NGPM) *
-               ((pbval_->ni[n].ox3 == 0) ? block_size.nx3 : NGPM) * nmeshaux;
-    bd_.send[n] = new Real [size];
-    bd_.recv[n] = new Real [size];
   }
 
   // Set the boundary attributes.
   SetBoundaryAttributes();
+
+  // Allocate space for active boundary data.
+  for (int n = 0; n < pbval_->nneighbor; n++) {
+    NeighborBlock& nb = pbval_->neighbor[n];
+    BoundaryAttributes& ba = ba_[n];
+
+    int nsend = ba.ngtot * nmeshaux;
+    int nrecv = (ba.ire - ba.irs + 1) *
+                (ba.jre - ba.jrs + 1) *
+                (ba.kre - ba.krs + 1) * nmeshaux;
+
+    bd_.send[nb.bufid] = new Real [nsend];
+    bd_.recv[nb.bufid] = new Real [nrecv];
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -142,8 +148,8 @@ ParticleMesh::~ParticleMesh()
 
   // Destroy boundary data.
   for (int n = 0; n < bd_.nbmax; n++) {
-    delete [] bd_.send[n];
-    delete [] bd_.recv[n];
+    if (bd_.send[n] != NULL) delete [] bd_.send[n];
+    if (bd_.recv[n] != NULL) delete [] bd_.recv[n];
   }
 }
 
