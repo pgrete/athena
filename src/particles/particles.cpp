@@ -230,8 +230,8 @@ void Particles::LinkNeighbors()
       pn->pmb = pmy_mesh->FindMeshBlock(nb.gid);
 #ifdef MPI_PARALLEL
     else {
-      send_[nb.bufid].tag = (nb.lid<<8) | (nb.targetid<<2),
-      recv_[nb.bufid].tag = (pmy_block->lid<<8) | (nb.bufid<<2);
+      send_[nb.bufid].tag = (nb.gid<<8) | (nb.targetid<<2),
+      recv_[nb.bufid].tag = (pmy_block->gid<<8) | (nb.bufid<<2);
     }
 #endif
   }
