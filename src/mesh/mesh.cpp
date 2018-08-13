@@ -1216,16 +1216,6 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       }
     }
 
-    // TODO: initialize particles in a more flexible way.
-    if (PARTICLES) {
-      pmb = pblock;
-      while (pmb != NULL) {
-        pmb->ppar->LinkNeighbors();
-        pmb->ppar->SetPositionIndices();
-        pmb = pmb->next;
-      }
-    }
-
     // solve gravity for the first time
     if(SELF_GRAVITY_ENABLED == 1){
       pmb = pblock;
@@ -1364,6 +1354,16 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
       }
     }
   } while(iflag==false);
+
+  // TODO: initialize particles in a more flexible way.
+  if (PARTICLES) {
+    pmb = pblock;
+    while (pmb != NULL) {
+      pmb->ppar->LinkNeighbors();
+      pmb->ppar->SetPositionIndices();
+      pmb = pmb->next;
+    }
+  }
 
   // calculate the first time step
   pmb = pblock;
