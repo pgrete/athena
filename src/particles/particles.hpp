@@ -58,6 +58,7 @@ public:
 
   // Instance methods
   void ClearBoundary();
+  void InitialBlockTimeStep();
   void Integrate(int step);
   void LinkNeighbors();
   void NewBlockTimeStep();

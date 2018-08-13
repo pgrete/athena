@@ -1369,6 +1369,7 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin)
   pmb = pblock;
   while (pmb != NULL)  {
     pmb->phydro->NewBlockTimeStep();
+    if (PARTICLES) pmb->ppar->InitialBlockTimeStep();
     pmb=pmb->next;
   }
   NewTimeStep();

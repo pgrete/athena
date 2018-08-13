@@ -183,6 +183,17 @@ void Particles::ClearBoundary()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::InitialBlockTimeStep();
+//  \brief computes the time step constrained by particles for the first time.
+
+void Particles::InitialBlockTimeStep()
+{
+  ZeroAcceleration();
+  AddAcceleration(pmy_mesh->time, pmy_block->new_block_dt, pmy_block->phydro->u);
+  NewBlockTimeStep();
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::Integrate(int step)
 //  \brief updates all particle positions and velocities from t to t + dt.
 
