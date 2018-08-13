@@ -7,6 +7,7 @@
 //  \brief implements functions in particle classes
 
 // C++ Standard Libraries
+#include <algorithm>
 #include <cmath>
 #include <sstream>
 #include <string>
@@ -834,8 +835,46 @@ void Particles::AssignShorthands()
 //! \fn void Particles::NewBlockTimeStep();
 //  \brief constrains the time step by particles in the block.
 
+static Real find_dt_inv2(Real dx, Real vp, Real ap);
+
 void Particles::NewBlockTimeStep()
 {
+  Coordinates *pc = pmy_block->pcoord;
+
+  // Find the allowed time step for each particle.
+  Real dt_inv2_max = 0.0, dt_inv2;
+  for (long k = 0; k < npar; ++k) {
+    dt_inv2 = 0.0;
+    if (active1_) dt_inv2 += find_dt_inv2(pc->dx1f(int(xi1(k))), vpx(k), apx(k));
+    if (active2_) dt_inv2 += find_dt_inv2(pc->dx2f(int(xi2(k))), vpy(k), apy(k));
+    if (active3_) dt_inv2 += find_dt_inv2(pc->dx3f(int(xi3(k))), vpz(k), apz(k));
+    dt_inv2_max = std::max(dt_inv2_max, dt_inv2);
+  }
+
+  // Constrain the time step by the minimum.
+  if (dt_inv2_max > 0.0) {
+    Real dt_min = 1.0 / std::sqrt(dt_inv2_max);
+    if (dt_min < pmy_block->new_block_dt) pmy_block->new_block_dt = dt_min;
+  }
+}
+
+Real find_dt_inv2(Real dx, Real vp, Real ap)
+{
+  vp = std::fabs(vp);
+  ap = std::fabs(ap);
+
+  if (vp != 0.0 && ap != 0.0) {
+    Real f = 0.5 * vp / dx;
+    f *= 1.0 + std::sqrt(1.0 + ap / (f * vp));
+    return f * f;
+
+  } else if (ap != 0.0)
+    return 0.5 * ap / dx;
+
+  else {
+    Real f = vp / dx;
+    return f * f;
+  }
 }
 
 //--------------------------------------------------------------------------------------
