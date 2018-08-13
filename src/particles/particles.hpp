@@ -144,6 +144,7 @@ private:
   void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void FlushReceiveBuffer(ParticleBuffer& recv);
   void SaveStatus();
+  void ZeroAcceleration();
   struct Neighbor* FindTargetNeighbor(
       int ox1, int ox2, int ox3, int xi1, int xi2, int xi3);
 

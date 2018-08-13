@@ -650,11 +650,7 @@ void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
 void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 {
   // Get the accelerations.
-  for (long k = 0; k < npar; ++k) {
-    apx(k) = 0.0;
-    apy(k) = 0.0;
-    apz(k) = 0.0;
-  }
+  ZeroAcceleration();
   AddAcceleration(t, dt, meshsrc);
 
   // Update the positions and velocities **from the beginning of the time step**.
@@ -684,6 +680,19 @@ void Particles::SaveStatus()
     vpx0(k) = vpx(k);
     vpy0(k) = vpy(k);
     vpz0(k) = vpz(k);
+  }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::ZeroAcceleration()
+//  \brief initializes acceleration with zeros.
+
+void Particles::ZeroAcceleration()
+{
+  for (long k = 0; k < npar; ++k) {
+    apx(k) = 0.0;
+    apy(k) = 0.0;
+    apz(k) = 0.0;
   }
 }
 
