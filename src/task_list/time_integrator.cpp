@@ -686,6 +686,7 @@ enum TaskStatus TimeIntegratorTaskList::NewBlockTimeStep(MeshBlock *pmb, int ste
   if (step != nsub_steps) return TASK_SUCCESS; // only do on last sub-step
 
   pmb->phydro->NewBlockTimeStep();
+  if (PARTICLES) pmb->ppar->NewBlockTimeStep();
   return TASK_SUCCESS;
 }
 

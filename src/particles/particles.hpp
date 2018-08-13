@@ -60,6 +60,7 @@ public:
   void ClearBoundary();
   void Integrate(int step);
   void LinkNeighbors();
+  void NewBlockTimeStep();
   void SendParticleMesh();
   void SendToNeighbors();
   void SetPositionIndices();

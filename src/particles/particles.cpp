@@ -831,6 +831,14 @@ void Particles::AssignShorthands()
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::NewBlockTimeStep();
+//  \brief constrains the time step by particles in the block.
+
+void Particles::NewBlockTimeStep()
+{
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn Particles::GetSizeInBytes()
 //  \brief returns the data size in bytes in the meshblock.
 

@@ -52,6 +52,7 @@ class MeshBlock {
   friend class BoundaryValues;
   friend class Mesh;
   friend class Hydro;
+  friend class Particles;
   friend class TaskList;
 #ifdef HDF5OUTPUT
   friend class ATHDF5Output;
