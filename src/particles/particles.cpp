@@ -77,15 +77,15 @@ void Particles::Initialize(ParameterInput *pin)
   ivpy0 = AddAuxProperty();
   ivpz0 = AddAuxProperty();
 
-  // Add acceleration components.
-  iapx = AddAuxProperty();
-  iapy = AddAuxProperty();
-  iapz = AddAuxProperty();
-
   // Add particle position indices.
   ixi1 = AddWorkingArray();
   ixi2 = AddWorkingArray();
   ixi3 = AddWorkingArray();
+
+  // Add acceleration components.
+  iapx = AddWorkingArray();
+  iapy = AddWorkingArray();
+  iapz = AddWorkingArray();
 
   // Initiate ParticleMesh class.
   ParticleMesh::Initialize(pin);
@@ -831,13 +831,13 @@ void Particles::AssignShorthands()
   vpx0.InitWithShallowSlice(auxprop, 2, ivpx0, 1);
   vpy0.InitWithShallowSlice(auxprop, 2, ivpy0, 1);
   vpz0.InitWithShallowSlice(auxprop, 2, ivpz0, 1);
-  apx.InitWithShallowSlice(auxprop, 2, iapx, 1);
-  apy.InitWithShallowSlice(auxprop, 2, iapy, 1);
-  apz.InitWithShallowSlice(auxprop, 2, iapz, 1);
 
   xi1.InitWithShallowSlice(work, 2, ixi1, 1);
   xi2.InitWithShallowSlice(work, 2, ixi2, 1);
   xi3.InitWithShallowSlice(work, 2, ixi3, 1);
+  apx.InitWithShallowSlice(work, 2, iapx, 1);
+  apy.InitWithShallowSlice(work, 2, iapy, 1);
+  apz.InitWithShallowSlice(work, 2, iapz, 1);
 }
 
 //--------------------------------------------------------------------------------------
