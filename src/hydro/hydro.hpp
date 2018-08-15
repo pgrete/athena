@@ -1,5 +1,5 @@
-#ifndef HYDRO_HPP
-#define HYDRO_HPP
+#ifndef HYDRO_HYDRO_HPP_
+#define HYDRO_HYDRO_HPP_
 //========================================================================================
 // Athena++ astrophysical MHD code
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
@@ -16,6 +16,7 @@
 class MeshBlock;
 class ParameterInput;
 class HydroSourceTerms;
+class HydroDiffusion;
 struct IntegratorWeight;
 
 //! \class Hydro
@@ -29,17 +30,23 @@ public:
 
   // data
   MeshBlock* pmy_block;    // ptr to MeshBlock containing this Hydro
-  AthenaArray<Real> u,w;      // conserved and primitive variables
-  AthenaArray<Real> u1,w1;    // conserved and primitive variables at intermediate step
-  AthenaArray<Real> flux[3];  // conserved and primitive variables
+  // conserved and primitive variables
+  AthenaArray<Real> u,w;      // time-integrator memory register #1
+  AthenaArray<Real> u1,w1;    // time-integrator memory register #2
+  AthenaArray<Real> u2;       // time-integrator memory register #3
+  // (no more than MAX_NREGISTER allowed)
+
+  AthenaArray<Real> flux[3];  // face-averaged flux vector
 
   HydroSourceTerms *psrc;
+  HydroDiffusion *phdif;
 
   // functions
   Real NewBlockTimeStep(void);    // computes new timestep on a MeshBlock
-  void AddFluxDivergenceToAverage(AthenaArray<Real> &u1,
-    AthenaArray<Real> &u2, AthenaArray<Real> &w, AthenaArray<Real> &bcc,
-    const IntegratorWeight wght, AthenaArray<Real> &u_out);
+  void WeightedAveU(AthenaArray<Real> &u_out, AthenaArray<Real> &u_in1,
+    AthenaArray<Real> &u_in2, const Real wght[3]);
+  void AddFluxDivergenceToAverage(AthenaArray<Real> &w, AthenaArray<Real> &bcc,
+    const Real wght, AthenaArray<Real> &u_out);
   void CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
     AthenaArray<Real> &bcc, int order);
   void RiemannSolver(const int kl, const int ku, const int jl, const int ju,
@@ -47,8 +54,8 @@ public:
     AthenaArray<Real> &wl, AthenaArray<Real> &wr, AthenaArray<Real> &flx,
     AthenaArray<Real> &e1, AthenaArray<Real> &e2);
 
-  void AddGravityFluxMG(void);
   void AddGravityFlux(void);
+  void AddGravityFluxWithGflx(void);
   void CalculateGravityFlux(AthenaArray<Real> &phi_in);
   void CorrectGravityFlux(void);
 
@@ -70,9 +77,9 @@ private:
   AthenaArray<Real> cons_;         // conserved state, for some GR Riemann solvers
 
   // self-gravity
-  AthenaArray<Real> gflx[3], gflx_old[3]; // gravity tensor
+  AthenaArray<Real> gflx[3], gflx_old[3]; // gravity tensor (old Athena style)
 
 
   TimeStepFunc_t UserTimeStep_;
 };
-#endif // HYDRO_HPP
+#endif // HYDRO_HYDRO_HPP_

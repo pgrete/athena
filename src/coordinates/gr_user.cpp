@@ -24,9 +24,6 @@ static Real Determinant(const AthenaArray<Real> &g);
 static Real Determinant(Real a11, Real a12, Real a13, Real a21, Real a22, Real a23,
     Real a31, Real a32, Real a33);
 static Real Determinant(Real a11, Real a12, Real a21, Real a22);
-static void CalculateConnection(const AthenaArray<Real> &g_inv,
-    const AthenaArray<Real> &dg_dx1, const AthenaArray<Real> &dg_dx2,
-    const AthenaArray<Real> &dg_dx3, AthenaArray<Real> &connection);
 static void CalculateTransformation(const AthenaArray<Real> &g,
     const AthenaArray<Real> &g_inv, int face, AthenaArray<Real> &transformation);
 
@@ -38,8 +35,7 @@ static void CalculateTransformation(const AthenaArray<Real> &g,
 //   flag: true if object is for coarse grid only in an AMR calculation
 
 GRUser::GRUser(MeshBlock *pmb, ParameterInput *pin, bool flag)
-  : Coordinates(pmb, pin, flag)
-{
+  : Coordinates(pmb, pin, flag) {
   // Set object names
   pmy_block = pmb;
   Mesh *pm = pmy_block->pmy_mesh;
@@ -190,7 +186,7 @@ GRUser::GRUser(MeshBlock *pmb, ParameterInput *pin, bool flag)
     coord_width1_kji_.NewAthenaArray(ncells3, ncells2, ncells1);
     coord_width2_kji_.NewAthenaArray(ncells3, ncells2, ncells1);
     coord_width3_kji_.NewAthenaArray(ncells3, ncells2, ncells1);
-    coord_src_kji_.NewAthenaArray(4, NMETRIC, ncells3, ncells2, ncells1);
+    coord_src_kji_.NewAthenaArray(3, NMETRIC, ncells3, ncells2, ncells1);
     metric_face1_kji_.NewAthenaArray(2, NMETRIC, ncells3, ncells2, ncells1+1);
     metric_face2_kji_.NewAthenaArray(2, NMETRIC, ncells3, ncells2+1, ncells1);
     metric_face3_kji_.NewAthenaArray(2, NMETRIC, ncells3+1, ncells2, ncells1);
@@ -202,14 +198,13 @@ GRUser::GRUser(MeshBlock *pmb, ParameterInput *pin, bool flag)
   }
 
   // Allocate scratch arrays
-  AthenaArray<Real> g, g_inv, dg_dx1, dg_dx2, dg_dx3, connection, transformation;
+  AthenaArray<Real> g, g_inv, dg_dx1, dg_dx2, dg_dx3, transformation;
   g.NewAthenaArray(NMETRIC);
   g_inv.NewAthenaArray(NMETRIC);
   dg_dx1.NewAthenaArray(NMETRIC);
   dg_dx2.NewAthenaArray(NMETRIC);
   dg_dx3.NewAthenaArray(NMETRIC);
   if (not coarse_flag) {
-    connection.NewAthenaArray(4, NMETRIC);
     transformation.NewAthenaArray(2, NTRIANGULAR);
   }
 
@@ -242,13 +237,12 @@ GRUser::GRUser(MeshBlock *pmb, ParameterInput *pin, bool flag)
           coord_width3_kji_(k,j,i) = std::sqrt(g(I33)) * dx3;
         }
 
-        // Calculate connection coefficients
+        // Store metric derivatives
         if (not coarse_flag) {
-          CalculateConnection(g_inv, dg_dx1, dg_dx2, dg_dx3, connection);
-          for (int n = 0; n < 4; ++n) {
-            for (int m = 0; m < NMETRIC; ++m) {
-              coord_src_kji_(n,m,k,j,i) = connection(n,m);
-            }
+          for (int m = 0; m < NMETRIC; ++m) {
+            coord_src_kji_(0,m,k,j,i) = dg_dx1(m);
+            coord_src_kji_(1,m,k,j,i) = dg_dx2(m);
+            coord_src_kji_(2,m,k,j,i) = dg_dx3(m);
           }
         }
 
@@ -451,7 +445,6 @@ GRUser::GRUser(MeshBlock *pmb, ParameterInput *pin, bool flag)
   dg_dx2.DeleteAthenaArray();
   dg_dx3.DeleteAthenaArray();
   if (not coarse_flag) {
-    connection.DeleteAthenaArray();
     transformation.DeleteAthenaArray();
   }
 }
@@ -459,8 +452,7 @@ GRUser::GRUser(MeshBlock *pmb, ParameterInput *pin, bool flag)
 //----------------------------------------------------------------------------------------
 // Destructor
 
-GRUser::~GRUser()
-{
+GRUser::~GRUser() {
   dx1v.DeleteAthenaArray();
   dx2v.DeleteAthenaArray();
   dx3v.DeleteAthenaArray();
@@ -506,10 +498,9 @@ GRUser::~GRUser()
 // Edge3(i,j,k) located at (i-1/2,j-1/2,k), i.e. (x1f(i), x2f(j), x3v(k))
 
 void GRUser::Edge1Length(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &lengths)
-{
+    AthenaArray<Real> &lengths) {
   // \Delta L \approx \sqrt{-g} \Delta x^1
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
     lengths(i) = coord_len1_kji_(k,j,i);
   }
@@ -517,10 +508,9 @@ void GRUser::Edge1Length(const int k, const int j, const int il, const int iu,
 }
 
 void GRUser::Edge2Length(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &lengths)
-{
+    AthenaArray<Real> &lengths) {
   // \Delta L \approx \sqrt{-g} \Delta x^2
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
     lengths(i) = coord_len2_kji_(k,j,i);
   }
@@ -528,10 +518,9 @@ void GRUser::Edge2Length(const int k, const int j, const int il, const int iu,
 }
 
 void GRUser::Edge3Length(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &lengths)
-{
+    AthenaArray<Real> &lengths) {
   // \Delta L \approx \sqrt{-g} \Delta x^3
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
     lengths(i) = coord_len3_kji_(k,j,i);
   }
@@ -541,20 +530,17 @@ void GRUser::Edge3Length(const int k, const int j, const int il, const int iu,
 //----------------------------------------------------------------------------------------
 // GetEdgeXLength functions: return length of edge-X at (i,j,k)
 
-Real GRUser::GetEdge1Length(const int k, const int j, const int i)
-{
+Real GRUser::GetEdge1Length(const int k, const int j, const int i) {
   // \Delta L \approx \sqrt{-g} \Delta x^1
   return coord_len1_kji_(k,j,i);
 }
 
-Real GRUser::GetEdge2Length(const int k, const int j, const int i)
-{
+Real GRUser::GetEdge2Length(const int k, const int j, const int i) {
   // \Delta L \approx \sqrt{-g} \Delta x^2
   return coord_len2_kji_(k,j,i);
 }
 
-Real GRUser::GetEdge3Length(const int k, const int j, const int i)
-{
+Real GRUser::GetEdge3Length(const int k, const int j, const int i) {
   // \Delta L \approx \sqrt{-g} \Delta x^3
   return coord_len3_kji_(k,j,i);
 }
@@ -563,10 +549,9 @@ Real GRUser::GetEdge3Length(const int k, const int j, const int i)
 // CenterWidthX functions: return physical width in X-dir at (i,j,k) cell-center
 
 void GRUser::CenterWidth1(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &dx1)
-{
+    AthenaArray<Real> &dx1) {
   // \Delta W \approx \sqrt{g_{11}} \Delta x^1
-  #pragma simd
+  #pragma omp simd
   for (int i=il; i<=iu; ++i) {
     dx1(i) = coord_width1_kji_(k,j,i);
   }
@@ -574,10 +559,9 @@ void GRUser::CenterWidth1(const int k, const int j, const int il, const int iu,
 }
 
 void GRUser::CenterWidth2(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &dx2)
-{
+    AthenaArray<Real> &dx2) {
   // \Delta W \approx \sqrt{g_{22}} \Delta x^2
-  #pragma simd
+  #pragma omp simd
   for (int i=il; i<=iu; ++i) {
     dx2(i) = coord_width2_kji_(k,j,i);
   }
@@ -585,10 +569,9 @@ void GRUser::CenterWidth2(const int k, const int j, const int il, const int iu,
 }
 
 void GRUser::CenterWidth3(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &dx3)
-{
+    AthenaArray<Real> &dx3) {
   // \Delta W \approx \sqrt{g_{33}} \Delta x^3
-  #pragma simd
+  #pragma omp simd
   for (int i=il; i<=iu; ++i) {
     dx3(i) = coord_width3_kji_(k,j,i);
   }
@@ -604,10 +587,9 @@ void GRUser::CenterWidth3(const int k, const int j, const int il, const int iu,
 //   areas: 1D array of interface areas orthogonal to X-face
 
 void GRUser::Face1Area(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &areas)
-{
+    AthenaArray<Real> &areas) {
   // \Delta A \approx \sqrt{-g} \Delta x^2 \Delta x^3
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
     areas(i) = coord_area1_kji_(k,j,i);
   }
@@ -615,10 +597,9 @@ void GRUser::Face1Area(const int k, const int j, const int il, const int iu,
 }
 
 void GRUser::Face2Area(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &areas)
-{
+    AthenaArray<Real> &areas) {
   // \Delta A \approx \sqrt{-g} \Delta x^1 \Delta x^3
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
     areas(i) = coord_area2_kji_(k,j,i);
   }
@@ -626,10 +607,9 @@ void GRUser::Face2Area(const int k, const int j, const int il, const int iu,
 }
 
 void GRUser::Face3Area(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &areas)
-{
+    AthenaArray<Real> &areas) {
   // \Delta A \approx \sqrt{-g} \Delta x^1 \Delta x^2
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
     areas(i) = coord_area3_kji_(k,j,i);
   }
@@ -643,20 +623,17 @@ void GRUser::Face3Area(const int k, const int j, const int il, const int iu,
 // return:
 //   interface area orthogonal to X-face
 
-Real GRUser::GetFace1Area(const int k, const int j, const int i)
-{
+Real GRUser::GetFace1Area(const int k, const int j, const int i) {
   // \Delta A \approx \sqrt{-g} \Delta x^2 \Delta x^3
   return coord_area1_kji_(k,j,i);
 }
 
-Real GRUser::GetFace2Area(const int k, const int j, const int i)
-{
+Real GRUser::GetFace2Area(const int k, const int j, const int i) {
   // \Delta A \approx \sqrt{-g} \Delta x^1 \Delta x^3
   return coord_area2_kji_(k,j,i);
 }
 
-Real GRUser::GetFace3Area(const int k, const int j, const int i)
-{
+Real GRUser::GetFace3Area(const int k, const int j, const int i) {
   // \Delta A \approx \sqrt{-g} \Delta x^1 \Delta x^2
   return coord_area3_kji_(k,j,i);
 }
@@ -670,10 +647,9 @@ Real GRUser::GetFace3Area(const int k, const int j, const int i)
 //   volumes: 1D array of cell volumes
 
 void GRUser::CellVolume(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &volumes)
-{
+    AthenaArray<Real> &volumes) {
   // \Delta V \approx \sqrt{-g} \Delta x^1 \Delta x^2 \Delta x^3
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
     volumes(i) = coord_vol_kji_(k,j,i);
   }
@@ -687,8 +663,7 @@ void GRUser::CellVolume(const int k, const int j, const int il, const int iu,
 // Outputs:
 //   returned value: cell volume
 
-Real GRUser::GetCellVolume(const int k, const int j, const int i)
-{
+Real GRUser::GetCellVolume(const int k, const int j, const int i) {
   // \Delta V \approx \sqrt{-g} \Delta x^1 \Delta x^2 \Delta x^3
   return coord_vol_kji_(k,j,i);
 }
@@ -705,8 +680,7 @@ Real GRUser::GetCellVolume(const int k, const int j, const int i)
 
 void GRUser::CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
     const AthenaArray<Real> &prim, const AthenaArray<Real> &bb_cc,
-    AthenaArray<Real> &cons)
-{
+    AthenaArray<Real> &cons) {
   // Extract indices
   int is = pmy_block->is;
   int ie = pmy_block->ie;
@@ -721,7 +695,7 @@ void GRUser::CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
   // Go through cells
   for (int k = ks; k <= ke; ++k) {
     for (int j = js; j <= je; ++j) {
-      #pragma simd
+      #pragma omp simd
       for (int i = is; i <= ie; ++i) {
 
         // Extract metric coefficients
@@ -729,101 +703,23 @@ void GRUser::CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
         const Real &g_01 = metric_cell_kji_(0,I01,k,j,i);
         const Real &g_02 = metric_cell_kji_(0,I02,k,j,i);
         const Real &g_03 = metric_cell_kji_(0,I03,k,j,i);
-        const Real &g_10 = metric_cell_kji_(0,I01,k,j,i);
         const Real &g_11 = metric_cell_kji_(0,I11,k,j,i);
         const Real &g_12 = metric_cell_kji_(0,I12,k,j,i);
         const Real &g_13 = metric_cell_kji_(0,I13,k,j,i);
-        const Real &g_20 = metric_cell_kji_(0,I02,k,j,i);
-        const Real &g_21 = metric_cell_kji_(0,I12,k,j,i);
         const Real &g_22 = metric_cell_kji_(0,I22,k,j,i);
         const Real &g_23 = metric_cell_kji_(0,I23,k,j,i);
-        const Real &g_30 = metric_cell_kji_(0,I03,k,j,i);
-        const Real &g_31 = metric_cell_kji_(0,I13,k,j,i);
-        const Real &g_32 = metric_cell_kji_(0,I23,k,j,i);
         const Real &g_33 = metric_cell_kji_(0,I33,k,j,i);
         const Real &g00 = metric_cell_kji_(1,I00,k,j,i);
         const Real &g01 = metric_cell_kji_(1,I01,k,j,i);
         const Real &g02 = metric_cell_kji_(1,I02,k,j,i);
         const Real &g03 = metric_cell_kji_(1,I03,k,j,i);
-        const Real &g10 = metric_cell_kji_(1,I01,k,j,i);
         const Real &g11 = metric_cell_kji_(1,I11,k,j,i);
         const Real &g12 = metric_cell_kji_(1,I12,k,j,i);
         const Real &g13 = metric_cell_kji_(1,I13,k,j,i);
-        const Real &g20 = metric_cell_kji_(1,I02,k,j,i);
-        const Real &g21 = metric_cell_kji_(1,I12,k,j,i);
         const Real &g22 = metric_cell_kji_(1,I22,k,j,i);
         const Real &g23 = metric_cell_kji_(1,I23,k,j,i);
-        const Real &g30 = metric_cell_kji_(1,I03,k,j,i);
-        const Real &g31 = metric_cell_kji_(1,I13,k,j,i);
-        const Real &g32 = metric_cell_kji_(1,I23,k,j,i);
         const Real &g33 = metric_cell_kji_(1,I33,k,j,i);
         Real alpha = std::sqrt(-1.0/g00);
-
-        // Extract connection coefficients
-        const Real &gamma0_00 = coord_src_kji_(0,I00,k,j,i);
-        const Real &gamma0_01 = coord_src_kji_(0,I01,k,j,i);
-        const Real &gamma0_02 = coord_src_kji_(0,I02,k,j,i);
-        const Real &gamma0_03 = coord_src_kji_(0,I03,k,j,i);
-        const Real &gamma0_10 = coord_src_kji_(0,I01,k,j,i);
-        const Real &gamma0_11 = coord_src_kji_(0,I11,k,j,i);
-        const Real &gamma0_12 = coord_src_kji_(0,I12,k,j,i);
-        const Real &gamma0_13 = coord_src_kji_(0,I13,k,j,i);
-        const Real &gamma0_20 = coord_src_kji_(0,I02,k,j,i);
-        const Real &gamma0_21 = coord_src_kji_(0,I12,k,j,i);
-        const Real &gamma0_22 = coord_src_kji_(0,I22,k,j,i);
-        const Real &gamma0_23 = coord_src_kji_(0,I23,k,j,i);
-        const Real &gamma0_30 = coord_src_kji_(0,I03,k,j,i);
-        const Real &gamma0_31 = coord_src_kji_(0,I13,k,j,i);
-        const Real &gamma0_32 = coord_src_kji_(0,I23,k,j,i);
-        const Real &gamma0_33 = coord_src_kji_(0,I33,k,j,i);
-        const Real &gamma1_00 = coord_src_kji_(1,I00,k,j,i);
-        const Real &gamma1_01 = coord_src_kji_(1,I01,k,j,i);
-        const Real &gamma1_02 = coord_src_kji_(1,I02,k,j,i);
-        const Real &gamma1_03 = coord_src_kji_(1,I03,k,j,i);
-        const Real &gamma1_10 = coord_src_kji_(1,I01,k,j,i);
-        const Real &gamma1_11 = coord_src_kji_(1,I11,k,j,i);
-        const Real &gamma1_12 = coord_src_kji_(1,I12,k,j,i);
-        const Real &gamma1_13 = coord_src_kji_(1,I13,k,j,i);
-        const Real &gamma1_20 = coord_src_kji_(1,I02,k,j,i);
-        const Real &gamma1_21 = coord_src_kji_(1,I12,k,j,i);
-        const Real &gamma1_22 = coord_src_kji_(1,I22,k,j,i);
-        const Real &gamma1_23 = coord_src_kji_(1,I23,k,j,i);
-        const Real &gamma1_30 = coord_src_kji_(1,I03,k,j,i);
-        const Real &gamma1_31 = coord_src_kji_(1,I13,k,j,i);
-        const Real &gamma1_32 = coord_src_kji_(1,I23,k,j,i);
-        const Real &gamma1_33 = coord_src_kji_(1,I33,k,j,i);
-        const Real &gamma2_00 = coord_src_kji_(2,I00,k,j,i);
-        const Real &gamma2_01 = coord_src_kji_(2,I01,k,j,i);
-        const Real &gamma2_02 = coord_src_kji_(2,I02,k,j,i);
-        const Real &gamma2_03 = coord_src_kji_(2,I03,k,j,i);
-        const Real &gamma2_10 = coord_src_kji_(2,I01,k,j,i);
-        const Real &gamma2_11 = coord_src_kji_(2,I11,k,j,i);
-        const Real &gamma2_12 = coord_src_kji_(2,I12,k,j,i);
-        const Real &gamma2_13 = coord_src_kji_(2,I13,k,j,i);
-        const Real &gamma2_20 = coord_src_kji_(2,I02,k,j,i);
-        const Real &gamma2_21 = coord_src_kji_(2,I12,k,j,i);
-        const Real &gamma2_22 = coord_src_kji_(2,I22,k,j,i);
-        const Real &gamma2_23 = coord_src_kji_(2,I23,k,j,i);
-        const Real &gamma2_30 = coord_src_kji_(2,I03,k,j,i);
-        const Real &gamma2_31 = coord_src_kji_(2,I13,k,j,i);
-        const Real &gamma2_32 = coord_src_kji_(2,I23,k,j,i);
-        const Real &gamma2_33 = coord_src_kji_(2,I33,k,j,i);
-        const Real &gamma3_00 = coord_src_kji_(3,I00,k,j,i);
-        const Real &gamma3_01 = coord_src_kji_(3,I01,k,j,i);
-        const Real &gamma3_02 = coord_src_kji_(3,I02,k,j,i);
-        const Real &gamma3_03 = coord_src_kji_(3,I03,k,j,i);
-        const Real &gamma3_10 = coord_src_kji_(3,I01,k,j,i);
-        const Real &gamma3_11 = coord_src_kji_(3,I11,k,j,i);
-        const Real &gamma3_12 = coord_src_kji_(3,I12,k,j,i);
-        const Real &gamma3_13 = coord_src_kji_(3,I13,k,j,i);
-        const Real &gamma3_20 = coord_src_kji_(3,I02,k,j,i);
-        const Real &gamma3_21 = coord_src_kji_(3,I12,k,j,i);
-        const Real &gamma3_22 = coord_src_kji_(3,I22,k,j,i);
-        const Real &gamma3_23 = coord_src_kji_(3,I23,k,j,i);
-        const Real &gamma3_30 = coord_src_kji_(3,I03,k,j,i);
-        const Real &gamma3_31 = coord_src_kji_(3,I13,k,j,i);
-        const Real &gamma3_32 = coord_src_kji_(3,I23,k,j,i);
-        const Real &gamma3_33 = coord_src_kji_(3,I33,k,j,i);
 
         // Extract primitives
         const Real &rho = prim(IDN,k,j,i);
@@ -833,86 +729,77 @@ void GRUser::CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
         const Real &uu3 = prim(IVZ,k,j,i);
 
         // Calculate 4-velocity
-        Real tmp = g_11*uu1*uu1 + 2.0*g_12*uu1*uu2 + 2.0*g_13*uu1*uu3
-                 + g_22*uu2*uu2 + 2.0*g_23*uu2*uu3
-                 + g_33*uu3*uu3;
-        Real gamma = std::sqrt(1.0 + tmp);
+        Real uu_sq = g_11*uu1*uu1 + 2.0*g_12*uu1*uu2 + 2.0*g_13*uu1*uu3
+                   + g_22*uu2*uu2 + 2.0*g_23*uu2*uu3
+                   + g_33*uu3*uu3;
+        Real gamma = std::sqrt(1.0 + uu_sq);
         Real u0 = gamma / alpha;
         Real u1 = uu1 - alpha * gamma * g01;
         Real u2 = uu2 - alpha * gamma * g02;
         Real u3 = uu3 - alpha * gamma * g03;
-        Real u_0 = g_00*u0 + g_01*u1 + g_02*u2 + g_03*u3;
-        Real u_1 = g_10*u0 + g_11*u1 + g_12*u2 + g_13*u3;
-        Real u_2 = g_20*u0 + g_21*u1 + g_22*u2 + g_23*u3;
-        Real u_3 = g_30*u0 + g_31*u1 + g_32*u2 + g_33*u3;
 
         // Extract and calculate magnetic field
         Real b0 = 0.0, b1 = 0.0, b2 = 0.0, b3 = 0.0;
-        Real b_0 = 0.0, b_1 = 0.0, b_2 = 0.0, b_3 = 0.0;
         Real b_sq = 0.0;
         if (MAGNETIC_FIELDS_ENABLED) {
+          Real u_1 = g_01*u0 + g_11*u1 + g_12*u2 + g_13*u3;
+          Real u_2 = g_02*u0 + g_12*u1 + g_22*u2 + g_23*u3;
+          Real u_3 = g_03*u0 + g_13*u1 + g_23*u2 + g_33*u3;
           const Real &bb1 = bb_cc(IB1,k,j,i);
           const Real &bb2 = bb_cc(IB2,k,j,i);
           const Real &bb3 = bb_cc(IB3,k,j,i);
-          b0  = g_10*bb1*u0 + g_11*bb1*u1 + g_12*bb1*u2 + g_13*bb1*u3
-              + g_20*bb2*u0 + g_21*bb2*u1 + g_22*bb2*u2 + g_23*bb2*u3
-              + g_30*bb3*u0 + g_31*bb3*u1 + g_32*bb3*u2 + g_33*bb3*u3;
+          b0 = u_1*bb1 + u_2*bb2 + u_3*bb3;
           b1 = (bb1 + b0 * u1) / u0;
           b2 = (bb2 + b0 * u2) / u0;
           b3 = (bb3 + b0 * u3) / u0;
-          b_0 = g_00*b0 + g_01*b1 + g_02*b2 + g_03*b3;
-          b_1 = g_10*b0 + g_11*b1 + g_12*b2 + g_13*b3;
-          b_2 = g_20*b0 + g_21*b1 + g_22*b2 + g_23*b3;
-          b_3 = g_30*b0 + g_31*b1 + g_32*b2 + g_33*b3;
-          b_sq = b0*b_0 + b1*b_1 + b2*b_2 + b3*b_3;
+          Real b_0 = g_00*b0 + g_01*b1 + g_02*b2 + g_03*b3;
+          Real b_1 = g_01*b0 + g_11*b1 + g_12*b2 + g_13*b3;
+          Real b_2 = g_02*b0 + g_12*b1 + g_22*b2 + g_23*b3;
+          Real b_3 = g_03*b0 + g_13*b1 + g_23*b2 + g_33*b3;
+          b_sq = b_0*b0 + b_1*b1 + b_2*b2 + b_3*b3;
         }
 
         // Calculate stress-energy tensor
         Real wtot = rho + gamma_adi/(gamma_adi-1.0) * pgas + b_sq;
         Real ptot = pgas + 0.5*b_sq;
-        Real t0_0 = wtot*u0*u_0 - b0*b_0 + ptot;
-        Real t0_1 = wtot*u0*u_1 - b0*b_1;
-        Real t0_2 = wtot*u0*u_2 - b0*b_2;
-        Real t0_3 = wtot*u0*u_3 - b0*b_3;
-        Real t1_0 = wtot*u1*u_0 - b1*b_0;
-        Real t1_1 = wtot*u1*u_1 - b1*b_1 + ptot;
-        Real t1_2 = wtot*u1*u_2 - b1*b_2;
-        Real t1_3 = wtot*u1*u_3 - b1*b_3;
-        Real t2_0 = wtot*u2*u_0 - b2*b_0;
-        Real t2_1 = wtot*u2*u_1 - b2*b_1;
-        Real t2_2 = wtot*u2*u_2 - b2*b_2 + ptot;
-        Real t2_3 = wtot*u2*u_3 - b2*b_3;
-        Real t3_0 = wtot*u3*u_0 - b3*b_0;
-        Real t3_1 = wtot*u3*u_1 - b3*b_1;
-        Real t3_2 = wtot*u3*u_2 - b3*b_2;
-        Real t3_3 = wtot*u3*u_3 - b3*b_3 + ptot;
+        Real tt[NMETRIC];
+        tt[I00] = wtot * u0 * u0 + ptot * g00 - b0 * b0;
+        tt[I01] = wtot * u0 * u1 + ptot * g01 - b0 * b1;
+        tt[I02] = wtot * u0 * u2 + ptot * g02 - b0 * b2;
+        tt[I03] = wtot * u0 * u3 + ptot * g03 - b0 * b3;
+        tt[I11] = wtot * u1 * u1 + ptot * g11 - b1 * b1;
+        tt[I12] = wtot * u1 * u2 + ptot * g12 - b1 * b2;
+        tt[I13] = wtot * u1 * u3 + ptot * g13 - b1 * b3;
+        tt[I22] = wtot * u2 * u2 + ptot * g22 - b2 * b2;
+        tt[I23] = wtot * u2 * u3 + ptot * g23 - b2 * b3;
+        tt[I33] = wtot * u3 * u3 + ptot * g33 - b3 * b3;
 
         // Calculate source terms
-        Real s_0 = gamma0_00*t0_0 + gamma0_10*t1_0 + gamma0_20*t2_0 + gamma0_30*t3_0
-                 + gamma1_00*t0_1 + gamma1_10*t1_1 + gamma1_20*t2_1 + gamma1_30*t3_1
-                 + gamma2_00*t0_2 + gamma2_10*t1_2 + gamma2_20*t2_2 + gamma2_30*t3_2
-                 + gamma3_00*t0_3 + gamma3_10*t1_3 + gamma3_20*t2_3 + gamma3_30*t3_3;
-        Real s_1 = gamma0_01*t0_0 + gamma0_11*t1_0 + gamma0_21*t2_0 + gamma0_31*t3_0
-                 + gamma1_01*t0_1 + gamma1_11*t1_1 + gamma1_21*t2_1 + gamma1_31*t3_1
-                 + gamma2_01*t0_2 + gamma2_11*t1_2 + gamma2_21*t2_2 + gamma2_31*t3_2
-                 + gamma3_01*t0_3 + gamma3_11*t1_3 + gamma3_21*t2_3 + gamma3_31*t3_3;
-        Real s_2 = gamma0_02*t0_0 + gamma0_12*t1_0 + gamma0_22*t2_0 + gamma0_32*t3_0
-                 + gamma1_02*t0_1 + gamma1_12*t1_1 + gamma1_22*t2_1 + gamma1_32*t3_1
-                 + gamma2_02*t0_2 + gamma2_12*t1_2 + gamma2_22*t2_2 + gamma2_32*t3_2
-                 + gamma3_02*t0_3 + gamma3_12*t1_3 + gamma3_22*t2_3 + gamma3_32*t3_3;
-        Real s_3 = gamma0_03*t0_0 + gamma0_13*t1_0 + gamma0_23*t2_0 + gamma0_33*t3_0
-                 + gamma1_03*t0_1 + gamma1_13*t1_1 + gamma1_23*t2_1 + gamma1_33*t3_1
-                 + gamma2_03*t0_2 + gamma2_13*t1_2 + gamma2_23*t2_2 + gamma2_33*t3_2
-                 + gamma3_03*t0_3 + gamma3_13*t1_3 + gamma3_23*t2_3 + gamma3_33*t3_3;
+        Real s_1 = 0.0, s_2 = 0.0, s_3 = 0.0;
+        for (int n = 0; n < NMETRIC; ++n) {
+          s_1 += coord_src_kji_(0,n,k,j,i) * tt[n];
+          s_2 += coord_src_kji_(1,n,k,j,i) * tt[n];
+          s_3 += coord_src_kji_(2,n,k,j,i) * tt[n];
+        }
+        s_1 -= 0.5 * (coord_src_kji_(0,I00,k,j,i) * tt[I00]
+            + coord_src_kji_(0,I11,k,j,i) * tt[I11]
+            + coord_src_kji_(0,I22,k,j,i) * tt[I22]
+            + coord_src_kji_(0,I33,k,j,i) * tt[I33]);
+        s_2 -= 0.5 * (coord_src_kji_(1,I00,k,j,i) * tt[I00]
+            + coord_src_kji_(1,I11,k,j,i) * tt[I11]
+            + coord_src_kji_(1,I22,k,j,i) * tt[I22]
+            + coord_src_kji_(1,I33,k,j,i) * tt[I33]);
+        s_3 -= 0.5 * (coord_src_kji_(2,I00,k,j,i) * tt[I00]
+            + coord_src_kji_(2,I11,k,j,i) * tt[I11]
+            + coord_src_kji_(2,I22,k,j,i) * tt[I22]
+            + coord_src_kji_(2,I33,k,j,i) * tt[I33]);
 
         // Extract conserved quantities
-        Real &m_0 = cons(IEN,k,j,i);
         Real &m_1 = cons(IM1,k,j,i);
         Real &m_2 = cons(IM2,k,j,i);
         Real &m_3 = cons(IM3,k,j,i);
 
         // Add source terms to conserved quantities
-        m_0 += dt * s_0;
         m_1 += dt * s_1;
         m_2 += dt * s_2;
         m_3 += dt * s_3;
@@ -932,10 +819,9 @@ void GRUser::CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
 //   g_inv: array of inverse metric components in 1D
 
 void GRUser::CellMetric(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &g, AthenaArray<Real> &g_inv)
-{
+    AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {
   for (int n = 0; n < NMETRIC; ++n) {
-    #pragma simd
+    #pragma omp simd
     for (int i = il; i <= iu; ++i) {
       g(n,i) = metric_cell_kji_(0,n,k,j,i);
       g_inv(n,i) = metric_cell_kji_(1,n,k,j,i);
@@ -945,10 +831,9 @@ void GRUser::CellMetric(const int k, const int j, const int il, const int iu,
 }
 
 void GRUser::Face1Metric(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &g, AthenaArray<Real> &g_inv)
-{
+    AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {
   for (int n = 0; n < NMETRIC; ++n) {
-    #pragma simd
+    #pragma omp simd
     for (int i = il; i <= iu; ++i) {
       g(n,i) = metric_face1_kji_(0,n,k,j,i);
       g_inv(n,i) = metric_face1_kji_(1,n,k,j,i);
@@ -958,10 +843,9 @@ void GRUser::Face1Metric(const int k, const int j, const int il, const int iu,
 }
 
 void GRUser::Face2Metric(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &g, AthenaArray<Real> &g_inv)
-{
+    AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {
   for (int n = 0; n < NMETRIC; ++n) {
-    #pragma simd
+    #pragma omp simd
     for (int i = il; i <= iu; ++i) {
       g(n,i) = metric_face2_kji_(0,n,k,j,i);
       g_inv(n,i) = metric_face2_kji_(1,n,k,j,i);
@@ -971,10 +855,9 @@ void GRUser::Face2Metric(const int k, const int j, const int il, const int iu,
 }
 
 void GRUser::Face3Metric(const int k, const int j, const int il, const int iu,
-    AthenaArray<Real> &g, AthenaArray<Real> &g_inv)
-{
+    AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {
   for (int n = 0; n < NMETRIC; ++n) {
-    #pragma simd
+    #pragma omp simd
     for (int i = il; i <= iu; ++i) {
       g(n,i) = metric_face3_kji_(0,n,k,j,i);
       g_inv(n,i) = metric_face3_kji_(1,n,k,j,i);
@@ -1006,10 +889,9 @@ void GRUser::Face3Metric(const int k, const int j, const int il, const int iu,
 
 void GRUser::PrimToLocal1(const int k, const int j, const int il, const int iu,
     const AthenaArray<Real> &bb1, AthenaArray<Real> &prim_l, AthenaArray<Real> &prim_r,
-    AthenaArray<Real> &bbx)
-{
+    AthenaArray<Real> &bbx) {
   // Go through 1D block of cells
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
 
     // Extract transformation coefficients
@@ -1179,10 +1061,9 @@ void GRUser::PrimToLocal1(const int k, const int j, const int il, const int iu,
 
 void GRUser::PrimToLocal2(const int k, const int j, const int il, const int iu,
     const AthenaArray<Real> &bb2, AthenaArray<Real> &prim_l, AthenaArray<Real> &prim_r,
-    AthenaArray<Real> &bbx)
-{
+    AthenaArray<Real> &bbx) {
   // Go through 1D block of cells
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
 
     // Extract transformation coefficients
@@ -1352,10 +1233,9 @@ void GRUser::PrimToLocal2(const int k, const int j, const int il, const int iu,
 
 void GRUser::PrimToLocal3(const int k, const int j, const int il, const int iu,
     const AthenaArray<Real> &bb3, AthenaArray<Real> &prim_l, AthenaArray<Real> &prim_r,
-    AthenaArray<Real> &bbx)
-{
+    AthenaArray<Real> &bbx) {
   // Go through 1D block of cells
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
 
     // Extract transformation coefficients
@@ -1522,10 +1402,9 @@ void GRUser::PrimToLocal3(const int k, const int j, const int il, const int iu,
 
 void GRUser::FluxToGlobal1(const int k, const int j, const int il, const int iu,
     const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx, AthenaArray<Real> &flux,
-    AthenaArray<Real> &ey, AthenaArray<Real> &ez)
-{
+    AthenaArray<Real> &ey, AthenaArray<Real> &ez) {
   // Go through 1D block of cells
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
 
     // Extract transformation coefficients
@@ -1635,10 +1514,9 @@ void GRUser::FluxToGlobal1(const int k, const int j, const int il, const int iu,
 
 void GRUser::FluxToGlobal2(const int k, const int j, const int il, const int iu,
     const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx, AthenaArray<Real> &flux,
-    AthenaArray<Real> &ey, AthenaArray<Real> &ez)
-{
+    AthenaArray<Real> &ey, AthenaArray<Real> &ez) {
   // Go through 1D block of cells
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
 
     // Extract transformation coefficients
@@ -1748,10 +1626,9 @@ void GRUser::FluxToGlobal2(const int k, const int j, const int il, const int iu,
 
 void GRUser::FluxToGlobal3(const int k, const int j, const int il, const int iu,
     const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx, AthenaArray<Real> &flux,
-    AthenaArray<Real> &ey, AthenaArray<Real> &ez)
-{
+    AthenaArray<Real> &ey, AthenaArray<Real> &ez) {
   // Go through 1D block of cells
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
 
     // Extract transformation coefficients
@@ -1850,8 +1727,7 @@ void GRUser::FluxToGlobal3(const int k, const int j, const int il, const int iu,
 //   pa0,pa1,pa2,pa3: pointers to contravariant 4-vector components
 
 void GRUser::RaiseVectorCell(Real a_0, Real a_1, Real a_2, Real a_3, int k, int j, int i,
-    Real *pa0, Real *pa1, Real *pa2, Real *pa3)
-{
+    Real *pa0, Real *pa1, Real *pa2, Real *pa3) {
   // Extract metric coefficients
   const Real &g00 = metric_cell_kji_(1,I00,k,j,i);
   const Real &g01 = metric_cell_kji_(1,I01,k,j,i);
@@ -1887,8 +1763,7 @@ void GRUser::RaiseVectorCell(Real a_0, Real a_1, Real a_2, Real a_3, int k, int 
 //   pa_0,pa_1,pa_2,pa_3: pointers to covariant 4-vector components
 
 void GRUser::LowerVectorCell(Real a0, Real a1, Real a2, Real a3, int k, int j, int i,
-    Real *pa_0, Real *pa_1, Real *pa_2, Real *pa_3)
-{
+    Real *pa_0, Real *pa_1, Real *pa_2, Real *pa_3) {
   // Extract metric coefficients
   const Real &g_00 = metric_cell_kji_(0,I00,k,j,i);
   const Real &g_01 = metric_cell_kji_(0,I01,k,j,i);
@@ -1924,8 +1799,7 @@ void GRUser::LowerVectorCell(Real a0, Real a1, Real a2, Real a3, int k, int j, i
 // Outputs:
 //   returned value: determinant
 
-static Real Determinant(const AthenaArray<Real> &g)
-{
+static Real Determinant(const AthenaArray<Real> &g) {
   const Real &a11 = g(I00);
   const Real &a12 = g(I01);
   const Real &a13 = g(I02);
@@ -1950,62 +1824,15 @@ static Real Determinant(const AthenaArray<Real> &g)
 }
 
 static Real Determinant(Real a11, Real a12, Real a13, Real a21, Real a22, Real a23,
-    Real a31, Real a32, Real a33)
-{
+    Real a31, Real a32, Real a33) {
   Real det = a11 * Determinant(a22, a23, a32, a33)
            - a12 * Determinant(a21, a23, a31, a33)
            + a13 * Determinant(a21, a22, a31, a32);
   return det;
 }
 
-static Real Determinant(Real a11, Real a12, Real a21, Real a22)
-{
+static Real Determinant(Real a11, Real a12, Real a21, Real a22) {
   return a11 * a22 - a12 * a21;
-}
-
-//----------------------------------------------------------------------------------------
-// Function for calculating connection coefficients
-// Inputs:
-//   g_inv: array of contravariant metric coefficients
-//   dg_dx1,dg_dx2,dg_dx3: arrays of spatial derivatives of covariant metric components
-// Outputs:
-//   connection: array of connection coefficients
-
-static void CalculateConnection(const AthenaArray<Real> &g_inv,
-    const AthenaArray<Real> &dg_dx1, const AthenaArray<Real> &dg_dx2,
-    const AthenaArray<Real> &dg_dx3, AthenaArray<Real> &connection)
-{
-  int index[4][4];
-  index[0][0] = I00; index[0][1] = I01; index[0][2] = I02; index[0][3] = I03;
-  index[1][0] = I01; index[1][1] = I11; index[1][2] = I12; index[1][3] = I13;
-  index[2][0] = I02; index[2][1] = I12; index[2][2] = I22; index[2][3] = I23;
-  index[3][0] = I03; index[3][1] = I13; index[3][2] = I23; index[3][3] = I33;
-  const AthenaArray<Real> *dg[4];
-  dg[1] = &dg_dx1;
-  dg[2] = &dg_dx2;
-  dg[3] = &dg_dx3;
-  for (int sigma = 0; sigma < 4; ++sigma) {
-    for (int mu = 0; mu < 4; ++mu) {
-      for (int nu = mu; nu < 4; ++nu) {
-        Real coefficient = 0.0;
-        for (int lambda = 0; lambda < 4; ++lambda) {
-          Real derivatives = 0.0;
-          if (nu != 0) {
-            derivatives += (*dg[nu])(index[mu][lambda]);
-          }
-          if (mu != 0) {
-            derivatives += (*dg[mu])(index[nu][lambda]);
-          }
-          if (lambda != 0) {
-            derivatives -= (*dg[lambda])(index[mu][nu]);
-          }
-          coefficient += g_inv(index[sigma][lambda]) * derivatives;
-        }
-        connection(sigma,index[mu][nu]) = 0.5 * coefficient;
-      }
-    }
-  }
-  return;
 }
 
 //----------------------------------------------------------------------------------------
@@ -2017,8 +1844,7 @@ static void CalculateConnection(const AthenaArray<Real> &g_inv,
 //   transformation: array of transformation coefficients
 
 static void CalculateTransformation(const AthenaArray<Real> &g,
-    const AthenaArray<Real> &g_inv, int face, AthenaArray<Real> &transformation)
-{
+    const AthenaArray<Real> &g_inv, int face, AthenaArray<Real> &transformation) {
   // Prepare indices
   int index[4][4];
   index[0][0] = I00;

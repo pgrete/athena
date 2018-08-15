@@ -186,27 +186,26 @@ void Particles::ClearBoundary()
 //! \fn void Particles::Integrate(int step)
 //  \brief updates all particle positions and velocities from t to t + dt.
 
-void Particles::Integrate(int step)
+void Particles::Integrate(int stage)
 {
   Real t, dt;
 
-  switch (step) {
+  switch (stage) {
 
   case 1:
     t = pmy_mesh->time;
     dt = 0.5 * pmy_mesh->dt;
     SaveStatus();
-    EulerStep(t, dt, pmy_block->phydro->w);
-    ReactToMeshAux(t, dt, pmy_block->phydro->w);
     break;
 
   case 2:
     t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
     dt = pmy_mesh->dt;
-    EulerStep(t, dt, pmy_block->phydro->w1);
-    ReactToMeshAux(t, dt, pmy_block->phydro->w1);
     break;
   }
+
+  EulerStep(t, dt, pmy_block->phydro->w);
+  ReactToMeshAux(t, dt, pmy_block->phydro->w);
 }
 
 //--------------------------------------------------------------------------------------
@@ -215,6 +214,7 @@ void Particles::Integrate(int step)
 
 void Particles::LinkNeighbors()
 {
+  // Construct links to neighbors.
   neighbor_[1][1][1].pmb = pmy_block;
 
   for (int i = 0; i < pbval_->nneighbor; ++i) {
@@ -236,6 +236,10 @@ void Particles::LinkNeighbors()
     }
 #endif
   }
+
+  // Initiate ParticleMesh boundary data.
+  ppm->SetBoundaryAttributes();
+  ppm->InitiateBoundaryData();
 }
 
 //--------------------------------------------------------------------------------------
@@ -473,7 +477,7 @@ bool Particles::ReceiveFromNeighbors()
 //  \brief receives ParticleMesh meshaux near boundaries from neighbors and returns a
 //         flag indicating if all receives are completed.
 
-bool Particles::ReceiveParticleMesh(int step)
+bool Particles::ReceiveParticleMesh(int stage)
 {
   if (ppm->nmeshaux <= 0) return true;
 
@@ -485,20 +489,20 @@ bool Particles::ReceiveParticleMesh(int step)
     Hydro *phydro = pmy_block->phydro;
     Real t, dt;
 
-    switch (step) {
+    switch (stage) {
 
     case 1:
       t = pmy_mesh->time;
       dt = 0.5 * pmy_mesh->dt;
-      DepositToMesh(t, dt, phydro->u, phydro->u1);
       break;
 
     case 2:
       t = pmy_mesh->time + 0.5 * pmy_mesh->dt;
       dt = pmy_mesh->dt;
-      DepositToMesh(t, dt, phydro->u1, phydro->u);
       break;
     }
+
+    DepositToMesh(t, dt, phydro->w, phydro->u);
   }
 
   return flag;

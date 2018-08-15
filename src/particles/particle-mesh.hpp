@@ -104,6 +104,7 @@ private:
   BoundaryAttributes ba_[56];  // ghost block attributes
 
   // Instance methods
+  void InitiateBoundaryData();
   void SetBoundaryAttributes();
   void AssignParticlesToDifferentLevels(
            const AthenaArray<Real>& par, const AthenaArray<int>& ipar,

@@ -129,31 +129,6 @@ ParticleMesh::ParticleMesh(Particles *ppar)
     bd_.req_send[n] = MPI_REQUEST_NULL;
 #endif
   }
-
-  // Set the boundary attributes.
-  SetBoundaryAttributes();
-
-  // Allocate space for active boundary data.
-  for (int n = 0; n < pbval_->nneighbor; n++) {
-    NeighborBlock& nb = pbval_->neighbor[n];
-    BoundaryAttributes& ba = ba_[n];
-
-    int nrecv = (ba.ire - ba.irs + 1) *
-                (ba.jre - ba.jrs + 1) *
-                (ba.kre - ba.krs + 1) * nmeshaux;
-    bd_.recv[nb.bufid] = new Real [nrecv];
-
-#ifdef MPI_PARALLEL
-    if (nb.rank != Globals::my_rank) {
-      int nsend = ba.ngtot * nmeshaux;
-      bd_.send[nb.bufid] = new Real [nsend];
-      MPI_Recv_init(bd_.recv[nb.bufid], nrecv, MPI_ATHENA_REAL, nb.rank,
-                    (pmb_->lid<<6) | nb.bufid, my_comm, &bd_.req_recv[nb.bufid]);
-      MPI_Send_init(bd_.send[nb.bufid], nsend, MPI_ATHENA_REAL, nb.rank,
-                    (nb.lid<<6) | nb.targetid, my_comm, &bd_.req_send[nb.bufid]);
-    }
-#endif
-  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -473,6 +448,34 @@ void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
   }
 }
 
+
+//--------------------------------------------------------------------------------------
+//! \fn void ParticleMesh::InitiateBoundaryData()
+//  \brief allocates space for boundary data.
+
+void ParticleMesh::InitiateBoundaryData()
+{
+  for (int n = 0; n < pbval_->nneighbor; n++) {
+    NeighborBlock& nb = pbval_->neighbor[n];
+    BoundaryAttributes& ba = ba_[n];
+
+    int nrecv = (ba.ire - ba.irs + 1) *
+                (ba.jre - ba.jrs + 1) *
+                (ba.kre - ba.krs + 1) * nmeshaux;
+    bd_.recv[nb.bufid] = new Real [nrecv];
+
+#ifdef MPI_PARALLEL
+    if (nb.rank != Globals::my_rank) {
+      int nsend = ba.ngtot * nmeshaux;
+      bd_.send[nb.bufid] = new Real [nsend];
+      MPI_Recv_init(bd_.recv[nb.bufid], nrecv, MPI_ATHENA_REAL, nb.rank,
+                    (pmb_->lid<<6) | nb.bufid, my_comm, &bd_.req_recv[nb.bufid]);
+      MPI_Send_init(bd_.send[nb.bufid], nsend, MPI_ATHENA_REAL, nb.rank,
+                    (nb.lid<<6) | nb.targetid, my_comm, &bd_.req_send[nb.bufid]);
+    }
+#endif
+  }
+}
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::SetBoundaryAttributes()

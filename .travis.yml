@@ -1,0 +1,138 @@
+# .travis.yml
+# Defines build matrix and regression tests for Travis CI.com
+language: cpp
+branches:
+  only:
+  - master
+  - hydro4
+  - mhd4
+# Default build matrix is 4x Ubuntu builds:
+os:
+  - linux
+dist: trusty
+sudo: false # use faster container-based build
+addons:
+  apt:
+    packages:
+      - "python3"
+      - "python3-pip"
+# OpenMPI and MPICH implementations:
+env:
+  matrix:
+  - MPI_CHOICE=mpich
+  - MPI_CHOICE=openmpi
+compiler:
+  - g++
+  - clang++
+# Define Ubuntu build caches (cache ignored inside "include:" matrix)
+cache:
+  pip: true # Caching NumPy for regression test script
+  directories:
+    # For caching Linux source directories:
+    - openmpi-3.0.2 # released 6/1/18
+    - mpich-3.2.1 # stable maintenance release from 11/10/17
+    # Caching Linux install directories:
+    - openmpi
+    - mpich
+    - fftw
+    - fftw-3.3.7 # stable release as of 11/8/17
+    - hdf5
+    - hdf5-1.10.1 # released on 2017-04-27
+
+# Explicitly includilng the 2x macOS jobs in build matrix
+# Must specify complete build details, or the jobs will inherit
+# the first value in the above arrays. Could encapsulate in script
+matrix:
+  include:
+  - os: osx
+    osx_image: xcode9.3 # macOS 10.13 High Sierra
+    compiler: clang++
+    env:
+    - MPI_CHOICE=mpich
+    # Override Linux cache mapping
+    cache:
+      pip: true
+      directories:
+      - "/usr/local/Cellar/mpich/"
+      - "/usr/local/Cellar/open-mpi/"
+      - "/usr/local/Cellar/libevent/"
+      - "/usr/local/Cellar/szip/"
+      # Cached Homebrew install of OpenMPI needs libevent 2.1.6 symlink:
+      - "/usr/local/opt/libevent"
+      # For caching macOS Homebrew installation symlinks:
+      - openmpi
+      - mpich
+      - fftw
+      - "/usr/local/Cellar/fftw/"
+      - hdf5
+      - "/usr/local/Cellar/hdf5/"
+  - os: osx
+    osx_image: xcode8.3 # macOS 10.12 Sierra. Default as of 4/11/18
+    compiler: clang++
+    env:
+    - MPI_CHOICE=openmpi
+    - TMPDIR=/tmp
+    # Cache is shared with other osx build with MPICH
+    cache:
+      pip: true
+      directories:
+      - "/usr/local/Cellar/mpich/"
+      - "/usr/local/Cellar/open-mpi/"
+      - "/usr/local/Cellar/libevent/"
+      - "/usr/local/Cellar/szip/"
+      - "/usr/local/opt/libevent"
+      - openmpi
+      - mpich
+      - fftw
+      - "/usr/local/Cellar/fftw/"
+      - hdf5
+      - "/usr/local/Cellar/hdf5/"
+# Recommended by Travis CI documentation to unset these for MPI builds to prevent conflicts
+before_install:
+  - test -n $CC  && unset CC
+  # Cache compiler variable from Travis CI Build Matrix before unsetting
+  - export TEMP_CXX=$CXX
+  - test -n $CXX && unset CXX
+# Install OpenMPI, MPICH, and FFTW
+install:
+  - travis_wait 45 bash ./tst/ci/travis/install_mpich.sh
+  - travis_wait 45 bash ./tst/ci/travis/install_openmpi.sh
+  - bash ./tst/ci/travis/install_fftw.sh
+  - bash ./tst/ci/travis/install_hdf5.sh
+  - export PATH=$TRAVIS_BUILD_DIR/fftw/bin/:$TRAVIS_BUILD_DIR/hdf5/bin/:$PATH
+  - export CPATH=$TRAVIS_BUILD_DIR/fftw/include/:$TRAVIS_BUILD_DIR/hdf5/include/$CPATH
+  - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/fftw/share/:$TRAVIS_BUILD_DIR/hdf5/lib/:$LD_LIBRARY_PATH
+  - export LIBRARY_PATH=$TRAVIS_BUILD_DIR/fftw/lib/:$TRAVIS_BUILD_DIR/hdf5/lib/:$LIBRARY_PATH
+  # Check fix for OpenMPI version > 2.0 and macOS version > Sierra tmpdir length issue
+  - echo $TMPDIR || true
+# Install Python module dependencies for run_tests.py, utils/athena.py
+before_script:
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew upgrade python3 || true; fi
+  - python3 -m pip install --upgrade --user pip
+  - pip3 install --user numpy || true # --user is necessary, since no virtualenv, sudo
+  - pip3 install --user flake8 || true
+  - pip3 install --user h5py || true # needed only for outputs/all_outputs.py test
+# Without "set -e" (which may cause issues with Travis clean up), all script
+# steps will be executed even if there are non-zero exit codes ---> Failed build
+script:
+  # Test PEP 8 style compliance for .py files:
+  - python3 -m flake8 --exclude=cpplint.py,openmpi-*
+  - echo "Finished linting Python files with flake8"
+  # Test Google C++ Style Guide adherence for .cpp, .hpp files:
+  - cd tst/style/; ./cpplint_athena.sh
+  - cd ..
+  # Run regression test suite:
+  - ./ci/travis/run_tests_travis.sh
+
+# Codecov coverage analysis
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -t ccdc959e-e2c3-4811-95c6-512151b39471
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+  slack:
+    rooms:
+      secure: lQpuacMeYX8RWntTWyNbcaKfLw6gFIwkWfvnqfdpC/PDqB96R3BmfH2Yi6ZQyUOq+dD/QFGpmqJ0YEGD91hwPCaR9P5LMqhhbAbUC3ON23E3vhm33eynGjq7Y492UrQ1vFMUMAzl6mEi+OoSaKpMNi6OSXBEYs2KfxDlwTMWKbw+9pvGS8ydt8RFcsjofeQOeKWH/x09vTwHqsbwaNB0+GzotcbZQ8PQuT9Lot9OER1qiO1JXWzSce9PrJI1mPBWN094cDK3Na8fzUHq6qsY+G+dgTW45/gJjgO3nRawZd/XrY5iZsDKJ1t8XbC8GbHVxZzMcd+g0VEfaV5c4O8U20xBiWwdw8NmbgZB2sSxVi7wLhqDc6a/8brXx92gIP64AA+UTYXVYykU4/IlQqJs74EgAemTQOEHLO3j8ylK832+XS7JHmio9rjRb3y0meF+uWP5xZ71xBSLQcmvEVAJo5fsrK5SxXHkfvNb2ydjp2i+cUiUPlBXtY1HV7JCTnziqFwQvToA7/Z8/Bw/jaV1p2yQHMXTq0LzqiqNOq8aRiMPkMTwI4Hc6wIHkapfInqHGaqoYRbm9qqbbp6VcHmUjwRdVh0xv87PbHiLtgucV8Lq58isqXaZ42Xr5jJc3dKBx9XbDWWYBTMZgJti5Ye0BI4JR7AMjA67Td2FesG60W0=
+    on_success: always
+    on_failure: always

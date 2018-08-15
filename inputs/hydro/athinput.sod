@@ -1,7 +1,7 @@
 <comment>
 problem   = Sod's shock tube
 reference = Sod, G.A., JCP 27, pp. 1-31 (1978)
-configure = --with-gas=hydro --with-problem=shock_tube
+configure = --prob=shock_tube
 
 <job>
 problem_id  = Sod       # problem ID: basename of output filenames
@@ -24,6 +24,8 @@ cfl_number  = 0.8       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim        = -1        # cycle limit
 tlim        = 0.25      # time limit
 integrator  = vl2       # time integration algorithm
+xorder      = 2         # order of spatial reconstruction
+ncycle_out  = 1         # interval for stdout summary info
 
 <mesh>
 nx1         = 256       # Number of zones in X1-direction

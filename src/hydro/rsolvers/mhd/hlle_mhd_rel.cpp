@@ -18,6 +18,7 @@
 #include "../../../eos/eos.hpp"                  // EquationOfState
 #include "../../../mesh/mesh.hpp"                // MeshBlock
 
+
 // Declarations
 static void HLLETransforming(MeshBlock *pmb, const int k, const int j, const int il,
     const int iu, const int ivx, const AthenaArray<Real> &bb,
@@ -50,8 +51,7 @@ static void HLLENonTransforming(MeshBlock *pmb, const int k, const int j, const 
 void Hydro::RiemannSolver(const int kl, const int ku, const int jl, const int ju,
     const int il, const int iu, const int ivx, const AthenaArray<Real> &bb,
     AthenaArray<Real> &prim_l, AthenaArray<Real> &prim_r, AthenaArray<Real> &flux,
-    AthenaArray<Real> &ey, AthenaArray<Real> &ez)
-{
+    AthenaArray<Real> &ey, AthenaArray<Real> &ez) {
   for (int k = kl; k <= ku; ++k) {
     for (int j = jl; j <= ju; ++j) {
       if (GENERAL_RELATIVITY and ivx == IVY and pmy_block->pcoord->IsPole(j)) {
@@ -95,8 +95,7 @@ static void HLLETransforming(MeshBlock *pmb, const int k, const int j, const int
     AthenaArray<Real> &lambdas_m_l, AthenaArray<Real> &lambdas_p_r,
     AthenaArray<Real> &lambdas_m_r, AthenaArray<Real> &g, AthenaArray<Real> &gi,
     AthenaArray<Real> &prim_l, AthenaArray<Real> &prim_r, AthenaArray<Real> &cons,
-    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez)
-{
+    AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {
   // Calculate metric if in GR
   int i01, i11;
   #if GENERAL_RELATIVITY
@@ -138,7 +137,7 @@ static void HLLETransforming(MeshBlock *pmb, const int k, const int j, const int
   }
   #else  // SR; need to populate 1D normal B array
   {
-    #pragma simd
+#pragma omp simd simdlen(SIMD_WIDTH)
     for (int i = il; i <= iu; ++i) {
       bb_normal(i) = bb(k,j,i);
     }
@@ -157,55 +156,64 @@ static void HLLETransforming(MeshBlock *pmb, const int k, const int j, const int
 
   // Extract ratio of specific heats
   const Real gamma_adi = pmb->peos->GetGamma();
+  const Real gamma_prime = gamma_adi/(gamma_adi-1.0);
 
   // Go through each interface
-  #pragma simd
+#pragma omp simd simdlen(SIMD_WIDTH)
   for (int i = il; i <= iu; ++i) {
 
     // Extract left primitives
-    const Real &rho_l = prim_l(IDN,k,j,i);
-    const Real &pgas_l = prim_l(IPR,k,j,i);
+    Real rho_l = prim_l(IDN,k,j,i);
+    Real pgas_l = prim_l(IPR,k,j,i);
     Real u_l[4];
     if (GENERAL_RELATIVITY) {
-      u_l[1] = prim_l(ivx,k,j,i);
-      u_l[2] = prim_l(ivy,k,j,i);
-      u_l[3] = prim_l(ivz,k,j,i);
-      u_l[0] = std::sqrt(1.0 + SQR(u_l[1]) + SQR(u_l[2]) + SQR(u_l[3]));
+      Real vx_l = prim_l(ivx,k,j,i);
+      Real vy_l = prim_l(ivy,k,j,i);
+      Real vz_l = prim_l(ivz,k,j,i);
+      u_l[0] = std::sqrt(1.0 + SQR(vx_l) + SQR(vy_l) + SQR(vz_l));
+      u_l[1] = vx_l;
+      u_l[2] = vy_l;
+      u_l[3] = vz_l;
     } else {  // SR
-      const Real &vx_l = prim_l(ivx,k,j,i);
-      const Real &vy_l = prim_l(ivy,k,j,i);
-      const Real &vz_l = prim_l(ivz,k,j,i);
+      Real vx_l = prim_l(ivx,k,j,i);
+      Real vy_l = prim_l(ivy,k,j,i);
+      Real vz_l = prim_l(ivz,k,j,i);
       u_l[0] = std::sqrt(1.0 / (1.0 - SQR(vx_l) - SQR(vy_l) - SQR(vz_l)));
       u_l[1] = u_l[0] * vx_l;
       u_l[2] = u_l[0] * vy_l;
       u_l[3] = u_l[0] * vz_l;
     }
-    const Real &bb2_l = prim_l(IBY,k,j,i);
-    const Real &bb3_l = prim_l(IBZ,k,j,i);
+
+    Real bb2_l = prim_l(IBY,k,j,i);
+    Real bb3_l = prim_l(IBZ,k,j,i);
 
     // Extract right primitives
-    const Real &rho_r = prim_r(IDN,k,j,i);
-    const Real &pgas_r = prim_r(IPR,k,j,i);
+    Real rho_r = prim_r(IDN,k,j,i);
+    Real pgas_r = prim_r(IPR,k,j,i);
     Real u_r[4];
     if (GENERAL_RELATIVITY) {
-      u_r[1] = prim_r(ivx,k,j,i);
-      u_r[2] = prim_r(ivy,k,j,i);
-      u_r[3] = prim_r(ivz,k,j,i);
-      u_r[0] = std::sqrt(1.0 + SQR(u_r[1]) + SQR(u_r[2]) + SQR(u_r[3]));
+      Real vx_r = prim_r(ivx,k,j,i);
+      Real vy_r = prim_r(ivy,k,j,i);
+      Real vz_r = prim_r(ivz,k,j,i);
+      u_r[0] = std::sqrt(1.0 + SQR(vx_r) + SQR(vy_r) + SQR(vz_r));
+      u_r[1] = vx_r;
+      u_r[2] = vy_r;
+      u_r[3] = vz_r;
     } else {  // SR
-      const Real &vx_r = prim_r(ivx,k,j,i);
-      const Real &vy_r = prim_r(ivy,k,j,i);
-      const Real &vz_r = prim_r(ivz,k,j,i);
+      Real vx_r = prim_r(ivx,k,j,i);
+      Real vy_r = prim_r(ivy,k,j,i);
+      Real vz_r = prim_r(ivz,k,j,i);
       u_r[0] = std::sqrt(1.0 / (1.0 - SQR(vx_r) - SQR(vy_r) - SQR(vz_r)));
       u_r[1] = u_r[0] * vx_r;
       u_r[2] = u_r[0] * vy_r;
       u_r[3] = u_r[0] * vz_r;
     }
-    const Real &bb2_r = prim_r(IBY,k,j,i);
-    const Real &bb3_r = prim_r(IBZ,k,j,i);
+
+    Real bb2_r = prim_r(IBY,k,j,i);
+    Real bb3_r = prim_r(IBZ,k,j,i);
 
     // Extract normal magnetic field
-    const Real &bb1 = bb_normal(i);
+    Real bb1 = bb_normal(i);
 
     // Calculate 4-magnetic field in left state
     Real b_l[4];
@@ -229,7 +237,7 @@ static void HLLETransforming(MeshBlock *pmb, const int k, const int j, const int
 
     // Calculate conserved quantities in L region (MUB 8)
     Real cons_l[NWAVE];
-    Real wtot_l = rho_l + gamma_adi/(gamma_adi-1.0) * pgas_l + b_sq_l;
+    Real wtot_l = rho_l + gamma_prime * pgas_l + b_sq_l;
     Real ptot_l = pgas_l + 0.5*b_sq_l;
     cons_l[IDN] = rho_l * u_l[0];
     cons_l[IEN] = wtot_l * u_l[0] * u_l[0] - b_l[0] * b_l[0] - ptot_l;
@@ -251,7 +259,7 @@ static void HLLETransforming(MeshBlock *pmb, const int k, const int j, const int
 
     // Calculate conserved quantities in R region (MUB 8)
     Real cons_r[NWAVE];
-    Real wtot_r = rho_r + gamma_adi/(gamma_adi-1.0) * pgas_r + b_sq_r;
+    Real wtot_r = rho_r + gamma_prime * pgas_r + b_sq_r;
     Real ptot_r = pgas_r + 0.5*b_sq_r;
     cons_r[IDN] = rho_r * u_r[0];
     cons_r[IEN] = wtot_r * u_r[0] * u_r[0] - b_r[0] * b_r[0] - ptot_r;
@@ -271,12 +279,13 @@ static void HLLETransforming(MeshBlock *pmb, const int k, const int j, const int
     flux_r[IBY] = b_r[2] * u_r[1] - b_r[1] * u_r[2];
     flux_r[IBZ] = b_r[3] * u_r[1] - b_r[1] * u_r[3];
 
+    Real lambda_diff_inv = 1.0 / (lambda_r-lambda_l);
     // Calculate conserved quantities in HLL region in GR (MB2005 9)
     Real cons_hll[NWAVE];
     if (GENERAL_RELATIVITY) {
       for (int n = 0; n < NWAVE; ++n) {
         cons_hll[n] = (lambda_r*cons_r[n] - lambda_l*cons_l[n] + flux_l[n] - flux_r[n])
-            / (lambda_r-lambda_l);
+          * lambda_diff_inv;
       }
     }
 
@@ -284,7 +293,7 @@ static void HLLETransforming(MeshBlock *pmb, const int k, const int j, const int
     Real flux_hll[NWAVE];
     for (int n = 0; n < NWAVE; ++n) {
       flux_hll[n] = (lambda_r*flux_l[n] - lambda_l*flux_r[n]
-          + lambda_l*lambda_r * (cons_r[n] - cons_l[n])) / (lambda_r-lambda_l);
+                     + lambda_l*lambda_r * (cons_r[n] - cons_l[n])) * lambda_diff_inv;
     }
 
     // Calculate interface velocity
@@ -370,7 +379,7 @@ static void HLLENonTransforming(MeshBlock *pmb, const int k, const int j, const 
   pmb->pcoord->Face2Metric(k, j, il, iu, g, gi);
 
   // Go through each interface
-  #pragma simd
+  #pragma omp simd
   for (int i = il; i <= iu; ++i) {
 
     // Extract metric

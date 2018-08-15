@@ -1,5 +1,5 @@
-#ifndef GRAVITY_HPP
-#define GRAVITY_HPP
+#ifndef GRAVITY_GRAVITY_HPP_
+#define GRAVITY_GRAVITY_HPP_
 
 //========================================================================================
 // Athena++ astrophysical MHD code
@@ -7,7 +7,8 @@
 // Licensed under the 3-clause BSD License, see LICENSE file for details
 //========================================================================================
 //! \file gravity.hpp
-//  \brief defines Gravity class which implements data and functions for gravitational potential
+//  \brief defines Gravity class which implements data and functions for gravitational
+//         potential
 
 // Athena++ classes headers
 #include "../athena.hpp"
@@ -16,6 +17,7 @@
 class MeshBlock;
 class ParameterInput;
 class Coordinates;
+class GravityBoundaryValues;
 
 //! \class Gravity
 //  \brief gravitational potential data and functions
@@ -27,7 +29,7 @@ public:
 
   MeshBlock* pmy_block;  // ptr to MeshBlock containing this Field
 
-  AthenaArray<Real> phi, phi_old;  // gravitational potential
+  AthenaArray<Real> phi;  // gravitational potential
   Real gconst, four_pi_G;
   Real grav_mean_rho;
   bool srcterm;
@@ -38,6 +40,7 @@ public:
 private:
   bool gravity_tensor_momentum_;
   bool gravity_tensor_energy_;
- 
+
 };
-#endif // GRAVITY_HPP
+
+#endif // GRAVITY_GRAVITY_HPP_

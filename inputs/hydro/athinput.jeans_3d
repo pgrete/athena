@@ -1,7 +1,7 @@
 <comment>
-problem   = spherical blast wave
-reference = Gardiner. T.A. & Stone, J.M., JCP, 205, 509 (2005) (for MHD version of test)
-configure = --prob=blast
+problem   = Jeans test
+reference = 
+configure = --prob=jeans --grav=mg/fft (-fft)
 
 <job>
 problem_id = Jeans    # problem ID: basename of output filenames
@@ -20,6 +20,9 @@ ghost_zones= false
 cfl_number = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim       = 100000     # cycle limit
 tlim       = 2.0        # time limit
+integrator  = vl2       # time integration algorithm
+xorder      = 2         # order of spatial reconstruction
+ncycle_out  = 1         # interval for stdout summary info
 
 <mesh>
 nx1        = 64         # Number of zones in X1-direction
@@ -52,4 +55,4 @@ iso_sound_speed = 1.00           # equavalent to sqrt(gamma*p/d) for p=0.1, d=1
 <problem>
 amp             = 1.e-6
 njeans          = 0.5
-compute_error   = false
+compute_error   = true
