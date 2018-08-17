@@ -53,16 +53,12 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 
   // Find the total number of particles in each direction.
   RegionSize& mesh_size = pmy_mesh->mesh_size;
-  long npx1, npx2, npx3;
-  if (pmy_mesh->multilevel) {
-    npx1 = (block_size.nx1 > 1) ? pin->GetInteger("problem", "npx1") : 1;
-    npx2 = (block_size.nx2 > 1) ? pin->GetInteger("problem", "npx2") : 1;
-    npx3 = (block_size.nx3 > 1) ? pin->GetInteger("problem", "npx3") : 1;
-  } else {
-    npx1 = mesh_size.nx1;
-    npx2 = mesh_size.nx2;
-    npx3 = mesh_size.nx3;
-  }
+  long npx1 = (block_size.nx1 > 1) ?
+                  pin->GetOrAddInteger("problem", "npx1", mesh_size.nx1) : 1,
+       npx2 = (block_size.nx2 > 1) ?
+                  pin->GetOrAddInteger("problem", "npx2", mesh_size.nx2) : 1,
+       npx3 = (block_size.nx3 > 1) ?
+                  pin->GetOrAddInteger("problem", "npx3", mesh_size.nx3) : 1;
 
   // Find the mass of each particle and the distance between adjacent particles.
   Real vol = 1.0;
