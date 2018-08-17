@@ -274,7 +274,7 @@ void Particles::SendToNeighbors()
     return;
   }
 
-  for (long k = 0; k < npar; ) {
+  for (int k = 0; k < npar; ) {
     // Check if a particle is outside the boundary.
     int xi1i = int(xi1(k)), xi2i = int(xi2(k)), xi3i = int(xi3(k));
     int ox1 = active1_ ? CheckSide(xi1i, IS, IE) : 0,
@@ -324,7 +324,7 @@ void Particles::SendToNeighbors()
       ppb->Reallocate((ppb->nparmax > 0) ? 2 * ppb->nparmax : 1);
 
     // Copy the properties of the particle to the buffer.
-    long *pi = ppb->ibuf + ParticleBuffer::nint * ppb->npar;
+    int *pi = ppb->ibuf + ParticleBuffer::nint * ppb->npar;
     for (int j = 0; j < nint; ++j)
       *pi++ = intprop(j,k);
     Real *pr = ppb->rbuf + ParticleBuffer::nreal * ppb->npar;
@@ -509,11 +509,11 @@ bool Particles::ReceiveParticleMesh(int stage)
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
+//! \fn void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3)
 //  \brief applies boundary conditions to particle k and returns its updated mesh
 //         coordinates (x1,x2,x3).
 
-void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
+void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3)
 {
   bool flag = false;
   RegionSize& mesh_size = pmy_mesh->mesh_size;
@@ -620,7 +620,7 @@ void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
+//! \fn void Particles::GetPositionIndices(MeshBlock *pmb, int npar,
 //                                         const AthenaArray<Real>& xp,
 //                                         const AthenaArray<Real>& yp,
 //                                         const AthenaArray<Real>& zp,
@@ -629,7 +629,7 @@ void Particles::ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3)
 //                                         AthenaArray<Real>& xi3)
 //  \brief finds the position indices of each particle with respect to the local grid.
 
-void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
+void Particles::GetPositionIndices(MeshBlock *pmb, int npar,
                                    const AthenaArray<Real>& xp,
                                    const AthenaArray<Real>& yp,
                                    const AthenaArray<Real>& zp,
@@ -637,7 +637,7 @@ void Particles::GetPositionIndices(MeshBlock *pmb, long npar,
                                    AthenaArray<Real>& xi2,
                                    AthenaArray<Real>& xi3)
 {
-  for (long k = 0; k < npar; ++k) {
+  for (int k = 0; k < npar; ++k) {
     // Convert to the Mesh coordinates.
     Real x1, x2, x3;
     _CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
@@ -658,7 +658,7 @@ void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc)
   AddAcceleration(t, dt, meshsrc);
 
   // Update the positions and velocities **from the beginning of the time step**.
-  for (long k = 0; k < npar; ++k) {
+  for (int k = 0; k < npar; ++k) {
     xp(k) = xp0(k) + dt * vpx(k);
     yp(k) = yp0(k) + dt * vpy(k);
     zp(k) = zp0(k) + dt * vpz(k);
@@ -674,7 +674,7 @@ void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 
 void Particles::SaveStatus()
 {
-  for (long k = 0; k < npar; ++k) {
+  for (int k = 0; k < npar; ++k) {
     // Save current positions.
     xp0(k) = xp(k);
     yp0(k) = yp(k);
@@ -693,7 +693,7 @@ void Particles::SaveStatus()
 
 void Particles::ZeroAcceleration()
 {
-  for (long k = 0; k < npar; ++k) {
+  for (int k = 0; k < npar; ++k) {
     apx(k) = 0.0;
     apy(k) = 0.0;
     apz(k) = 0.0;
@@ -752,9 +752,9 @@ void Particles::FlushReceiveBuffer(ParticleBuffer& recv)
   }
 
   // Flush the receive buffers.
-  long *pi = recv.ibuf;
+  int *pi = recv.ibuf;
   Real *pr = recv.rbuf;
-  for (long k = npar; k < npar + nprecv; ++k) {
+  for (int k = npar; k < npar + nprecv; ++k) {
     for (int j = 0; j < nint; ++j)
       intprop(j,k) = *pi++;
     for (int j = 0; j < nreal; ++j)
@@ -854,7 +854,7 @@ void Particles::NewBlockTimeStep()
 
   // Find the allowed time step for each particle.
   Real dt_inv2_max = 0.0, dt_inv2;
-  for (long k = 0; k < npar; ++k) {
+  for (int k = 0; k < npar; ++k) {
     dt_inv2 = 0.0;
     if (active1_) dt_inv2 += std::pow(vpx(k) / pc->dx1f(int(xi1(k))), 2);
     if (active2_) dt_inv2 += std::pow(vpy(k) / pc->dx2f(int(xi2(k))), 2);
@@ -876,7 +876,7 @@ void Particles::NewBlockTimeStep()
 size_t Particles::GetSizeInBytes()
 {
   size_t size = sizeof(npar);
-  if (npar > 0) size += npar * (nint * sizeof(long) + nreal * sizeof(Real));
+  if (npar > 0) size += npar * (nint * sizeof(int) + nreal * sizeof(Real));
   return size;
 }
 
@@ -901,7 +901,7 @@ void Particles::ReadRestart(char *mbdata, int &os)
 
   if (npar > 0) {
     // Read integer properties.
-    size_t size = npar * sizeof(long);
+    size_t size = npar * sizeof(int);
     for (int k = 0; k < nint; ++k) {
       std::memcpy(&(intprop(k,0)), &(mbdata[os]), size);
       os += size;
@@ -928,7 +928,7 @@ void Particles::WriteRestart(char *&pdata)
 
   if (npar > 0) {
     // Write integer properties.
-    size_t size = npar * sizeof(long);
+    size_t size = npar * sizeof(int);
     for (int k = 0; k < nint; ++k) {
       std::memcpy(pdata, &(intprop(k,0)), size);
       pdata += size;
@@ -981,7 +981,7 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
     os << "# Athena++ particle data at time = " << pm->time << std::endl;
 
     // Write the particle data in the meshblock.
-    for (long k = 0; k < ppar->npar; ++k)
+    for (int k = 0; k < ppar->npar; ++k)
       os << ppar->pid(k) << "  "
          << ppar->xp(k) << "  " << ppar->yp(k) << "  " << ppar->zp(k) << "  "
          << ppar->vpx(k) << "  " << ppar->vpy(k) << "  " << ppar->vpz(k) << std::endl;

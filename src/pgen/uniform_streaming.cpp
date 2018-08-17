@@ -53,11 +53,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 
   // Find the total number of particles in each direction.
   RegionSize& mesh_size = pmy_mesh->mesh_size;
-  long npx1 = (block_size.nx1 > 1) ?
+  int npx1 = (block_size.nx1 > 1) ?
                   pin->GetOrAddInteger("problem", "npx1", mesh_size.nx1) : 1,
-       npx2 = (block_size.nx2 > 1) ?
+      npx2 = (block_size.nx2 > 1) ?
                   pin->GetOrAddInteger("problem", "npx2", mesh_size.nx2) : 1,
-       npx3 = (block_size.nx3 > 1) ?
+      npx3 = (block_size.nx3 > 1) ?
                   pin->GetOrAddInteger("problem", "npx3", mesh_size.nx3) : 1;
 
   // Find the mass of each particle and the distance between adjacent particles.
@@ -79,8 +79,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   ppar->mass = dtog * vol / (npx1 * npx2 * npx3);
 
   // Find the local number of particles and their beginning index.
-  long ix1 = 0, ix2 = 0, ix3 = 0;
-  long npx1_loc = 1, npx2_loc = 1, npx3_loc = 1;
+  int ix1 = 0, ix2 = 0, ix3 = 0;
+  int npx1_loc = 1, npx2_loc = 1, npx3_loc = 1;
   if (block_size.nx1 > 1) {
     ix1 = lround((block_size.x1min - mesh_size.x1min) / dx1);
     npx1_loc = lround((block_size.x1max - block_size.x1min) / dx1);
@@ -104,7 +104,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   }
 
   // Assign the particles.
-  long ipar = 0, id = ix1 + npx1 * (ix2 + npx2 * ix3);
+  int ipar = 0, id = ix1 + npx1 * (ix2 + npx2 * ix3);
   for (int k = 0; k < npx3_loc; ++k) {
     Real zp1 = block_size.x3min + (k + 0.5) * dx3;
     for (int j = 0; j < npx2_loc; ++j) {

@@ -169,12 +169,12 @@ void ParticleMesh::InterpolateMeshToParticles(
   Real *pp[nprop];
   for (int n = 0; n < nprop; ++n) {
     Real *p = pp[n] = &par(p1+n,0);
-    for (long k = 0; k < ppar_->npar; ++k)
+    for (int k = 0; k < ppar_->npar; ++k)
       *p++ = 0.0;
   }
 
   // Loop over each particle.
-  for (long k = 0; k < ppar_->npar; ++k) {
+  for (int k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
     Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
     int ix1s = int(xi1 - dxi1_), ix1e = int(xi1 + dxi1_);
@@ -225,7 +225,7 @@ void ParticleMesh::AssignParticlesToMeshAux(
   }
 
   // Loop over each particle.
-  for (long k = 0; k < ppar_->npar; ++k) {
+  for (int k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
     Real xi1 = ppar_->xi1(k) - (active1_ ? OFFSET : 0),
          xi2 = ppar_->xi2(k) - (active2_ ? OFFSET : 0),
@@ -295,7 +295,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
   Real *pp[ni];
   for (int n = 0; n < ni; ++n) {
     Real *p = pp[n] = &pardst(pd1+n,0);
-    for (long k = 0; k < ppar_->npar; ++k)
+    for (int k = 0; k < ppar_->npar; ++k)
       *p++ = 0.0;
   }
 
@@ -313,7 +313,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
   }
 
   // Loop over each particle.
-  for (long k = 0; k < ppar_->npar; ++k) {
+  for (int k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
     Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
     int imb1s = int(xi1 - dxi1_), imb1e = int(xi1 + dxi1_);
@@ -701,7 +701,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
     }
 
     // Find particles that influences the neighbor block.
-    for (long k = 0; k < ppar_->npar; ++k) {
+    for (int k = 0; k < ppar_->npar; ++k) {
       Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
       if ((active1_ && (xi1 <= ba.xi1min || xi1 >= ba.xi1max)) ||
           (active2_ && (xi2 <= ba.xi2min || xi2 >= ba.xi2max)) ||
@@ -731,7 +731,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
 
       // Stack the properties of the particle and set the pointers to the buffer.
       Real prop[nprop];
-      long dbuf1 = ix1s + ba.ngx1 * (ix2s + ba.ngx2 * ix3s),
+      int dbuf1 = ix1s + ba.ngx1 * (ix2s + ba.ngx2 * ix3s),
            dbuf2 = ba.ngx1 - ix1e + ix1s - 1,
            dbuf3 = ba.ngx1 * (ba.ngx2 - ix2e + ix2s - 1);
 

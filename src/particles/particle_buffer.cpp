@@ -74,7 +74,7 @@ ParticleBuffer::ParticleBuffer(int nparmax0)
 
   // Initialize the instance variables.
   nparmax = nparmax0;
-  ibuf = new long [nint * nparmax];
+  ibuf = new int [nint * nparmax];
   rbuf = new Real [nreal * nparmax];
   npar = 0;
 #ifdef MPI_PARALLEL
@@ -131,12 +131,12 @@ void ParticleBuffer::Reallocate(int new_nparmax)
 
   // Allocate new space.
   nparmax = new_nparmax;
-  long *ibuf_new = new long [nint * nparmax];
+  int *ibuf_new = new int [nint * nparmax];
   Real *rbuf_new = new Real [nreal * nparmax];
 
   // Move existing data.
   if (npar > 0) {
-    std::memcpy(ibuf_new, ibuf, nint * npar * sizeof(long));
+    std::memcpy(ibuf_new, ibuf, nint * npar * sizeof(int));
     std::memcpy(rbuf_new, rbuf, nreal * npar * sizeof(Real));
   }
 

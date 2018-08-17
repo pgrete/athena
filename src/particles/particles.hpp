@@ -105,11 +105,11 @@ protected:
                              AthenaArray<Real>& meshdst) {}
 
   // Instance variables
-  long npar;     // number of particles
-  long nparmax;  // maximum number of particles per meshblock
+  int npar;     // number of particles
+  int nparmax;  // maximum number of particles per meshblock
 
                                // Data attached to the particles:
-  AthenaArray<long> intprop;   //   integer properties
+  AthenaArray<int> intprop;   //   integer properties
   AthenaArray<Real> realprop;  //   real properties
   AthenaArray<Real> auxprop;   //   auxiliary properties (communicated when
                                //     particles moving to another meshblock)
@@ -118,7 +118,7 @@ protected:
   ParticleMesh *ppm;  // ptr to particle-mesh
 
                                        // Shorthands:
-  AthenaArray<long> pid;               //   particle ID
+  AthenaArray<int> pid;               //   particle ID
   AthenaArray<Real> xp, yp, zp;        //   position
   AthenaArray<Real> vpx, vpy, vpz;     //   velocity
   AthenaArray<Real> xi1, xi2, xi3;     //   position indices in local meshblock
@@ -131,7 +131,7 @@ protected:
 
 private:
   // Class methods
-  static void GetPositionIndices(MeshBlock *pmb, long npar,
+  static void GetPositionIndices(MeshBlock *pmb, int npar,
                                  const AthenaArray<Real>& xp,
                                  const AthenaArray<Real>& yp,
                                  const AthenaArray<Real>& zp,
@@ -140,7 +140,7 @@ private:
                                  AthenaArray<Real>& xi3);
 
   // Instance methods
-  void ApplyBoundaryConditions(long k, Real &x1, Real &x2, Real &x3);
+  void ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3);
   void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void FlushReceiveBuffer(ParticleBuffer& recv);
   void SaveStatus();

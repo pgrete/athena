@@ -40,7 +40,7 @@ protected:
   static int nreal;  // number of real properties per particle
 
   // Instance variables
-  long* ibuf;   // ptr to integer buffer
+  int* ibuf;   // ptr to integer buffer
   Real* rbuf;   // ptr to real buffer
   int nparmax;  // maximum number of particles
   int npar;     // actual number of particles in the buffer
