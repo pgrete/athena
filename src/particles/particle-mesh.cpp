@@ -27,7 +27,7 @@ MPI_Comm ParticleMesh::my_comm = MPI_COMM_NULL;
 #endif
 
 // Local function prototypes.
-Real _ParticleMeshWeightFunction(Real dxi);
+static Real _WeightFunction(Real dxi);
 
 // Local constants.
 const int OFFSET = NGHOST - NGPM;  // offset between meshblock and meshaux
@@ -183,14 +183,14 @@ void ParticleMesh::InterpolateMeshToParticles(
 
     // Weight each cell and accumulate the mesh properties onto the particles.
     for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
-      Real w3 = active3_ ? _ParticleMeshWeightFunction(ix3 + 0.5 - xi3) : 1.0;
+      Real w3 = active3_ ? _WeightFunction(ix3 + 0.5 - xi3) : 1.0;
 
       for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
-        Real w23 = w3 * (active2_ ? _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
+        Real w23 = w3 * (active2_ ? _WeightFunction(ix2 + 0.5 - xi2) : 1.0);
 
         for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
           Real weight = w23 * (active1_ ?
-                                    _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+                                    _WeightFunction(ix1 + 0.5 - xi1) : 1.0);
 
           for (int n = 0; n < nprop; ++n)
             *pp[n] += weight * meshsrc(ms1+n,ix3,ix2,ix1);
@@ -248,13 +248,13 @@ void ParticleMesh::AssignParticlesToMeshAux(
 
     // Weight each cell and accumulate particle property onto meshaux.
     for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
-      Real w3 = active3_ ? _ParticleMeshWeightFunction(ix3 + 0.5 - xi3) : 1.0;
+      Real w3 = active3_ ? _WeightFunction(ix3 + 0.5 - xi3) : 1.0;
 
       for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
-        Real w23 = w3 * (active2_ ? _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
+        Real w23 = w3 * (active2_ ? _WeightFunction(ix2 + 0.5 - xi2) : 1.0);
 
         for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
-          Real w = w23 * (active1_ ?  _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+          Real w = w23 * (active1_ ?  _WeightFunction(ix1 + 0.5 - xi1) : 1.0);
           *pmw++ += w;
 
           for (int n = 0; n < nprop; ++n)
@@ -337,15 +337,15 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 
     // Weigh each cell.
     for (int imb3 = imb3s, ima3 = ima3s; imb3 <= imb3e; ++imb3, ++ima3) {
-      Real w3 = active3_ ? _ParticleMeshWeightFunction(imb3 + 0.5 - xi3) : 1.0;
+      Real w3 = active3_ ? _WeightFunction(imb3 + 0.5 - xi3) : 1.0;
 
       for (int imb2 = imb2s, ima2 = ima2s; imb2 <= imb2e; ++imb2, ++ima2) {
         Real w23 = w3 * (active2_ ?
-                           _ParticleMeshWeightFunction(imb2 + 0.5 - xi2) : 1.0);
+                           _WeightFunction(imb2 + 0.5 - xi2) : 1.0);
 
         for (int imb1 = imb1s, ima1 = ima1s; imb1 <= imb1e; ++imb1, ++ima1) {
           Real w = w23 * (active1_ ?
-                           _ParticleMeshWeightFunction(imb1 + 0.5 - xi1) : 1.0);
+                           _WeightFunction(imb1 + 0.5 - xi1) : 1.0);
           *pmw++ += w;
 
           // Interpolate mesh to particles.
@@ -743,15 +743,15 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
 
       // Assign the particle.
       for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
-        Real w3 = active3_ ? _ParticleMeshWeightFunction(ix3 + 0.5 - xi3) : 1.0;
+        Real w3 = active3_ ? _WeightFunction(ix3 + 0.5 - xi3) : 1.0;
 
         for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
           Real w23 = w3 * (active2_ ?
-                             _ParticleMeshWeightFunction(ix2 + 0.5 - xi2) : 1.0);
+                             _WeightFunction(ix2 + 0.5 - xi2) : 1.0);
 
           for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
             Real w = w23 * (active1_ ?
-                             _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
+                             _WeightFunction(ix1 + 0.5 - xi1) : 1.0);
             *bufw++ += w;
 
             for (int n = 0; n < nprop; ++n)
@@ -905,20 +905,11 @@ bool ParticleMesh::ReceiveBoundary()
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn Real _ParticleMeshWeightFunction(Real dxi)
+//! \fn Real _WeightFunction(Real dxi)
 //  \brief evaluates the weight function given index distance.
 
-Real _ParticleMeshWeightFunction(Real dxi)
+Real _WeightFunction(Real dxi)
 {
-  if (dxi < 0) dxi = -dxi;
-
-  if (dxi < 0.5)
-    return 0.75 - dxi * dxi;
-
-  if (dxi < 1.5) {
-    dxi = 1.5 - dxi;
-    return 0.5 * (dxi * dxi);
-  }
-
-  return 0;
+  dxi = std::min(std::abs(dxi), 1.5);
+  return dxi < 0.5 ?  0.75 - dxi * dxi : 0.5 * ((1.5 - dxi) * (1.5 - dxi));
 }
