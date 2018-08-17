@@ -191,8 +191,6 @@ private:
   static bool initialized;      // whether or not the class is initialized
   static int iwx, iwy, iwz;     // indices for working arrays
   static int idpx, idpy, idpz;  // indices for momentum change
-  static AthenaArray<int> imeshsrc, iwork, irealprop, imeshaux, imeshdst;
-                                // Array of indices for particle-mesh mapping
 
   // Instance methods.
   void AssignShorthands();

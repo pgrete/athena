@@ -14,9 +14,6 @@
 bool DustParticles::initialized = false;
 int DustParticles::iwx = -1, DustParticles::iwy = -1, DustParticles::iwz = -1;
 int DustParticles::idpx = -1, DustParticles::idpy = -1, DustParticles::idpz = -1;
-AthenaArray<int> DustParticles::imeshsrc, DustParticles::iwork,
-                 DustParticles::irealprop, DustParticles::imeshaux,
-                 DustParticles::imeshdst;
 
 bool DustParticles::backreaction = false;
 Real DustParticles::mass = 1.0, DustParticles::taus = 0.0;
@@ -36,16 +33,6 @@ void DustParticles::Initialize(ParameterInput *pin)
     iwy = AddWorkingArray();
     iwz = AddWorkingArray();
 
-    // Assign indice mapping for particle-mesh.
-    imeshsrc.NewAthenaArray(3);
-    iwork.NewAthenaArray(3);
-    imeshsrc(0) = IVX;
-    imeshsrc(1) = IVY;
-    imeshsrc(2) = IVZ;
-    iwork(0) = iwx;
-    iwork(1) = iwy;
-    iwork(2) = iwz;
-
     // Define mass.
     mass = pin->GetOrAddReal("particles", "mass", 1.0);
 
@@ -60,21 +47,6 @@ void DustParticles::Initialize(ParameterInput *pin)
       idpx = ParticleMesh::AddMeshAux();
       idpy = ParticleMesh::AddMeshAux();
       idpz = ParticleMesh::AddMeshAux();
-
-      irealprop.NewAthenaArray(3);
-      irealprop(0) = ivpx;
-      irealprop(1) = ivpy;
-      irealprop(2) = ivpz;
-
-      imeshaux.NewAthenaArray(3);
-      imeshaux(0) = idpx;
-      imeshaux(1) = idpy;
-      imeshaux(2) = idpz;
-
-      imeshdst.NewAthenaArray(3);
-      imeshdst(0) = IM1;
-      imeshdst(1) = IM2;
-      imeshdst(2) = IM3;
     }
 
     initialized = true;
