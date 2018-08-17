@@ -154,31 +154,21 @@ ParticleMesh::~ParticleMesh()
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::InterpolateMeshToParticles(
-//               const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
-//               AthenaArray<Real>& par, const AthenaArray<int>& ipar)
-//  \brief interpolates meshsrc at specified indices imeshsrc onto particle array par
-//         (realprop, auxprop, or work in Particles class) at the corresponding indices
-//         ipar.
+//               const AthenaArray<Real>& meshsrc, int ms1, int ms2,
+//               AthenaArray<Real>& par, int p1)
+//  \brief interpolates meshsrc from property index ms1 to ms2 onto particle array par
+//         (realprop, auxprop, or work in Particles class) from property index p1 and
+//         up.
 
 void ParticleMesh::InterpolateMeshToParticles(
-         const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
-         AthenaArray<Real>& par, const AthenaArray<int>& ipar)
+         const AthenaArray<Real>& meshsrc, int ms1, int ms2,
+         AthenaArray<Real>& par, int p1)
 {
-  // Check the index mapping.
-  int nprop = imeshsrc.GetSize();
-  if (nprop <= 0 || ipar.GetSize() != nprop) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Particles::InterpolateMeshToParticles]"
-        << std::endl
-        << "index arrays imeshsrc and ipar do not match." << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-    return;
-  }
-
   // Zero out the particle arrays.
+  int nprop = ms2 - ms1 + 1;
   Real *pp[nprop];
   for (int n = 0; n < nprop; ++n) {
-    Real *p = pp[n] = &par(ipar(n),0);
+    Real *p = pp[n] = &par(p1+n,0);
     for (long k = 0; k < ppar_->npar; ++k)
       *p++ = 0.0;
   }
@@ -203,7 +193,7 @@ void ParticleMesh::InterpolateMeshToParticles(
                                     _ParticleMeshWeightFunction(ix1 + 0.5 - xi1) : 1.0);
 
           for (int n = 0; n < nprop; ++n)
-            *pp[n] += weight * meshsrc(imeshsrc(n),ix3,ix2,ix1);
+            *pp[n] += weight * meshsrc(ms1+n,ix3,ix2,ix1);
         }
       }
     }
@@ -214,34 +204,22 @@ void ParticleMesh::InterpolateMeshToParticles(
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::AssignParticlesToMeshAux(
-//               const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
-//               const AthenaArray<int>& imeshaux)
-//  \brief assigns par (realprop, auxprop, or work in Particles class) at specified
-//         indices ipar onto meshaux at the corresponding indices imeshaux.
+//               const AthenaArray<Real>& par, int p1, int p2, int ma1)
+//  \brief assigns par (realprop, auxprop, or work in Particles class) from property
+//         index p1 to p2 onto meshaux from property index ma1 and up.
 
 void ParticleMesh::AssignParticlesToMeshAux(
-         const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
-         const AthenaArray<int>& imeshaux)
+         const AthenaArray<Real>& par, int p1, int p2, int ma1)
 {
-  // Check the index mapping.
-  int nprop = ipar.GetSize();
-  if (nprop <= 0 || imeshaux.GetSize() != nprop) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Particles::AssignParticlesToMeshAux]"
-        << std::endl
-        << "index arrays ipar and imeshaux does not match." << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-    return;
-  }
-
   // Zero out meshaux.
+  int nprop = p2 - p1 + 1;
   Real *pmw0 = &weight(0,0,0), *pmw = pmw0;
   for (int i = 0; i < ncells_; ++i)
     *pmw++ = 0.0;
 
   Real *pm0[nprop];
   for (int n = 0; n < nprop; ++n) {
-    Real *p = pm0[n] = &meshaux(imeshaux(n),0,0,0);
+    Real *p = pm0[n] = &meshaux(ma1+n,0,0,0);
     for (int i = 0; i < ncells_; ++i)
       *p++ = 0.0;
   }
@@ -264,7 +242,7 @@ void ParticleMesh::AssignParticlesToMeshAux(
 
     Real p[nprop], *pm[nprop];
     for (int n = 0; n < nprop; ++n) {
-      p[n] = par(ipar(n),k);
+      p[n] = par(p1+n,k);
       pm[n] = pm0[n] + dpm1;
     }
 
@@ -294,51 +272,29 @@ void ParticleMesh::AssignParticlesToMeshAux(
 
   // Treat neighbors of different levels.
   if (pmesh_->multilevel)
-    AssignParticlesToDifferentLevels(par, ipar, imeshaux);
+    AssignParticlesToDifferentLevels(par, p1, p2, ma1);
 }
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::InterpolateMeshAndAssignParticles(
-//               const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
-//               AthenaArray<Real>& pardst, const AthenaArray<int>& ipardst,
-//               const AthenaArray<Real>& parsrc, const AthenaArray<int>& iparsrc,
-//               const AthenaArray<int>& imeshaux)
-//  \brief interpolates meshsrc at specified indices imeshsrc onto particle array pardst
-//         the corresponding indices ipardst, and assigns parsrc at specified indices
-//         iparsrc onto meshaux at the corresponding indices imeshaux.  The arrays
-//         parsrc and pardst can be realprop, auxprop, or work in Particles class.
+//               const AthenaArray<Real>& meshsrc, int ms1, int ms2,
+//               AthenaArray<Real>& pardst, int pd1,
+//               const AthenaArray<Real>& parsrc, int ps1, int ps2, int ma1)
+//  \brief interpolates meshsrc from property index ms1 to ms2 onto particle array
+//      pardst from index pd1 and up, and assigns parsrc from property index ps1 to ps2
+//      onto meshaux from ma1 and up.  The arrays parsrc and pardst can be realprop,
+//      auxprop, or work in Particles class.
 
 void ParticleMesh::InterpolateMeshAndAssignParticles(
-         const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
-         AthenaArray<Real>& pardst, const AthenaArray<int>& ipardst,
-         const AthenaArray<Real>& parsrc, const AthenaArray<int>& iparsrc,
-         const AthenaArray<int>& imeshaux)
+         const AthenaArray<Real>& meshsrc, int ms1, int ms2,
+         AthenaArray<Real>& pardst, int pd1,
+         const AthenaArray<Real>& parsrc, int ps1, int ps2, int ma1)
 {
-  // Check the index mapping.
-  int nmeshsrc = imeshsrc.GetSize();
-  if (nmeshsrc <= 0 || ipardst.GetSize() != nmeshsrc) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Particles::InterpolateMeshAndAssignParticles]"
-        << std::endl
-        << "index arrays imeshsrc and ipardst do not match." << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-    return;
-  }
-
-  int nmeshdst = imeshaux.GetSize();
-  if (nmeshdst <= 0 || iparsrc.GetSize() != nmeshdst) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Particles::InterpolateMeshAndAssignParticles]"
-        << std::endl
-        << "index arrays imeshaux and iparsrc do not match." << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-    return;
-  }
-
-  // Zero out the destination particle arrays.
-  Real *pp[nmeshsrc];
-  for (int n = 0; n < nmeshsrc; ++n) {
-    Real *p = pp[n] = &pardst(ipardst(n),0);
+  // Zero out destination particle arrays.
+  int ni = ms2 - ms1 + 1;
+  Real *pp[ni];
+  for (int n = 0; n < ni; ++n) {
+    Real *p = pp[n] = &pardst(pd1+n,0);
     for (long k = 0; k < ppar_->npar; ++k)
       *p++ = 0.0;
   }
@@ -348,9 +304,10 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
   for (int i = 0; i < ncells_; ++i)
     *pmw++ = 0.0;
 
-  Real *pm0[nmeshdst];
-  for (int n = 0; n < nmeshdst; ++n) {
-    Real *p = pm0[n] = &meshaux(imeshaux(n),0,0,0);
+  int na = ps2 - ps1 + 1;
+  Real *pm0[na];
+  for (int n = 0; n < na; ++n) {
+    Real *p = pm0[n] = &meshaux(ma1+n,0,0,0);
     for (int i = 0; i < ncells_; ++i)
       *p++ = 0.0;
   }
@@ -372,9 +329,9 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
         dpm3 = nx1_ * (nx2_ - imb2e + imb2s - 1);
     pmw = pmw0 + dpm1;
 
-    Real p[nmeshdst], *pm[nmeshdst];
-    for (int n = 0; n < nmeshdst; ++n) {
-      p[n] = parsrc(iparsrc(n),k);
+    Real p[na], *pm[na];
+    for (int n = 0; n < na; ++n) {
+      p[n] = parsrc(ps1+n,k);
       pm[n] = pm0[n] + dpm1;
     }
 
@@ -392,62 +349,46 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
           *pmw++ += w;
 
           // Interpolate mesh to particles.
-          for (int n = 0; n < nmeshsrc; ++n)
-            *pp[n] += w * meshsrc(imeshsrc(n),imb3,imb2,imb1);
+          for (int n = 0; n < ni; ++n)
+            *pp[n] += w * meshsrc(ms1+n,imb3,imb2,imb1);
 
           // Assign particles to meshaux.
-          for (int n = 0; n < nmeshdst; ++n)
+          for (int n = 0; n < na; ++n)
             *pm[n]++ += w * p[n];
         }
         pmw += dpm2;
-        for (int n = 0; n < nmeshdst; ++n)
+        for (int n = 0; n < na; ++n)
           pm[n] += dpm2;
       }
       pmw += dpm3;
-      for (int n = 0; n < nmeshdst; ++n)
+      for (int n = 0; n < na; ++n)
         pm[n] += dpm3;
     }
-    for (int n = 0; n < nmeshsrc; ++n)
+    for (int n = 0; n < ni; ++n)
       ++pp[n];
   }
 
   // Treat neighbors of different levels.
   if (pmesh_->multilevel)
-    AssignParticlesToDifferentLevels(parsrc, iparsrc, imeshaux);
+    AssignParticlesToDifferentLevels(parsrc, ps1, ps2, ma1);
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
-//               const AthenaArray<int>& imeshaux, const AthenaArray<int>& imeshblock)
-//  \brief deposits data in meshaux at specified indices imeshaux to meshblock u at the
-//         corresponding indices imeshblock, divided by cell volume.
+//! \fn void ParticleMesh::DepositMeshAux(
+//               AthenaArray<Real>& u, int ma1, int ma2, int mb1)
+//  \brief deposits data in meshaux from property index ma1 to ma2 to meshblock data u
+//         from property index mb1 and up, divided by cell volume.
 
-void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
-         const AthenaArray<int>& imeshaux, const AthenaArray<int>& imeshblock)
+void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u, int ma1, int ma2, int mb1)
 {
-  // Check the index mapping.
-  const int nprop = imeshaux.GetSize();
-  if (nprop <= 0 || imeshblock.GetSize() != nprop) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Particles::AssignParticlesToMeshAux]"
-        << std::endl
-        << "index arrays ipar and imeshaux does not match." << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-    return;
-  }
-
-  // Add meshaux to meshblock.
   Coordinates *pc = pmb_->pcoord;
-  for (int n = 0; n < nprop; ++n) {
-    int ima = imeshaux(n), imb = imeshblock(n);
-
+  int nprop = ma2 - ma1 + 1;
+  for (int n = 0; n < nprop; ++n)
     for (int ka = ks, kb = pmb_->ks; ka <= ke; ++ka, ++kb)
       for (int ja = js, jb = pmb_->js; ja <= je; ++ja, ++jb)
         for (int ia = is, ib = pmb_->is; ia <= ie; ++ia, ++ib)
-          u(imb,kb,jb,ib) += meshaux(ima,ka,ja,ia) / pc->GetCellVolume(kb,jb,ib);
-  }
+          u(mb1+n,kb,jb,ib) += meshaux(ma1+n,ka,ja,ia) / pc->GetCellVolume(kb,jb,ib);
 }
-
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::InitiateBoundaryData()
@@ -719,29 +660,17 @@ void ParticleMesh::SetBoundaryAttributes()
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::AssignParticlesToDifferentLevels(
-//               const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
-//               const AthenaArray<int>& imeshaux)
-//  \brief assigns particles to neighbors of different levels.  The parameters are the
-//         same as those in ParticleMesh::AssignParticlesToMeshAux().
+//               const AthenaArray<Real>& par, int p1, int p2, int ma1)
+//  \brief assigns particle array par from property index p1 to p2 to meshaux from
+//         property index ma1 and up in neighbors of different levels.
 
 void ParticleMesh::AssignParticlesToDifferentLevels(
-         const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
-         const AthenaArray<int>& imeshaux)
+         const AthenaArray<Real>& par, int p1, int p2, int ma1)
 {
   const int mylevel = pmb_->loc.level;
 
-  // Check the index mapping.
-  int nprop = ipar.GetSize();
-  if (nprop <= 0 || imeshaux.GetSize() != nprop) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Particles::AssignParticlesToDifferentLevels]"
-        << std::endl
-        << "index arrays ipar and imeshaux does not match." << std::endl;
-    throw std::runtime_error(msg.str().c_str());
-    return;
-  }
-
   // Find neighbor blocks that are on a different level.
+  int nprop = p2 - p1 + 1;
   for (int i = 0; i < pbval_->nneighbor; ++i) {
     NeighborBlock& nb = pbval_->neighbor[i];
     if (nb.level == mylevel) continue;
@@ -766,7 +695,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
 
     Real *pbuf[nprop], *buf[nprop];
     for (int n = 0; n < nprop; ++n) {
-      buf[n] = pbuf[n] = pbuf0 + imeshaux(n) * ba.ngtot;
+      buf[n] = pbuf[n] = pbuf0 + (ma1 + n) * ba.ngtot;
       for (int j = 0; j < ba.ngtot; ++j)
         *buf[n]++ = 0.0;
     }
@@ -808,7 +737,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
 
       bufw = pbufw + dbuf1;
       for (int n = 0; n < nprop; ++n) {
-        prop[n] = par(ipar(n),k);
+        prop[n] = par(p1+n,k);
         buf[n] = pbuf[n] + dbuf1;
       }
 

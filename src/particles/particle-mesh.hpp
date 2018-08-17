@@ -58,18 +58,14 @@ protected:
 
   // Instance methods
   void InterpolateMeshToParticles(
-           const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
-           AthenaArray<Real>& par, const AthenaArray<int>& ipar);
-  void AssignParticlesToMeshAux(
-           const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
-           const AthenaArray<int>& imeshaux);
+           const AthenaArray<Real>& meshsrc, int ms1, int ms2,
+           AthenaArray<Real>& par, int p1);
+  void AssignParticlesToMeshAux(const AthenaArray<Real>& par, int p1, int p2, int ma1);
   void InterpolateMeshAndAssignParticles(
-           const AthenaArray<Real>& meshsrc, const AthenaArray<int>& imeshsrc,
-           AthenaArray<Real>& pardst, const AthenaArray<int>& ipardst,
-           const AthenaArray<Real>& parsrc, const AthenaArray<int>& iparsrc,
-           const AthenaArray<int>& imeshaux);
-  void DepositMeshAux(AthenaArray<Real>& u,
-           const AthenaArray<int>& imeshaux, const AthenaArray<int>& imeshblock);
+           const AthenaArray<Real>& meshsrc, int ms1, int ms2,
+           AthenaArray<Real>& pardst, int pd1,
+           const AthenaArray<Real>& parsrc, int ps1, int ps2, int ma1);
+  void DepositMeshAux(AthenaArray<Real>& u, int ma1, int ma2, int mb1);
 
   void ClearBoundary();
   void SendBoundary();
@@ -107,8 +103,7 @@ private:
   void InitiateBoundaryData();
   void SetBoundaryAttributes();
   void AssignParticlesToDifferentLevels(
-           const AthenaArray<Real>& par, const AthenaArray<int>& ipar,
-           const AthenaArray<int>& imeshaux);
+           const AthenaArray<Real>& par, int p1, int p2, int ma1);
   int LoadBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba);
   void AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba);
 
