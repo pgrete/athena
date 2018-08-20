@@ -292,22 +292,20 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 {
   // Zero out destination particle arrays.
   int ni = ms2 - ms1 + 1;
-  Real *pp[ni];
   for (int n = 0; n < ni; ++n) {
-    Real *p = pp[n] = &pardst(pd1+n,0);
+    Real *p = &pardst(pd1+n,0);
     for (int k = 0; k < ppar_->npar; ++k)
       *p++ = 0.0;
   }
 
   // Zero out meshaux.
-  Real *pmw0 = &weight(0,0,0), *pmw = pmw0;
+  Real *p = &weight(0,0,0);
   for (int i = 0; i < ncells_; ++i)
-    *pmw++ = 0.0;
+    *p++ = 0.0;
 
   int na = ps2 - ps1 + 1;
-  Real *pm0[na];
   for (int n = 0; n < na; ++n) {
-    Real *p = pm0[n] = &meshaux(ma1+n,0,0,0);
+    Real *p = &meshaux(ma1+n,0,0,0);
     for (int i = 0; i < ncells_; ++i)
       *p++ = 0.0;
   }
@@ -323,17 +321,10 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
     int ima2s = imb2s - (active2_ ? OFFSET : 0);
     int ima3s = imb3s - (active3_ ? OFFSET : 0);
 
-    // Prepare for pointer operations.
-    int dpm1 = ima1s + nx1_ * (ima2s + nx2_ * ima3s),
-        dpm2 = nx1_ - imb1e + imb1s - 1,
-        dpm3 = nx1_ * (nx2_ - imb2e + imb2s - 1);
-    pmw = pmw0 + dpm1;
-
-    Real p[na], *pm[na];
-    for (int n = 0; n < na; ++n) {
+    //Real p[na], *pm[na];
+    Real p[na];
+    for (int n = 0; n < na; ++n)
       p[n] = parsrc(ps1+n,k);
-      pm[n] = pm0[n] + dpm1;
-    }
 
     // Weigh each cell.
     for (int imb3 = imb3s, ima3 = ima3s; imb3 <= imb3e; ++imb3, ++ima3) {
@@ -346,26 +337,18 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
         for (int imb1 = imb1s, ima1 = ima1s; imb1 <= imb1e; ++imb1, ++ima1) {
           Real w = w23 * (active1_ ?
                            _WeightFunction(imb1 + 0.5 - xi1) : 1.0);
-          *pmw++ += w;
+          weight(ima3,ima2,ima1) += w;
 
           // Interpolate mesh to particles.
           for (int n = 0; n < ni; ++n)
-            *pp[n] += w * meshsrc(ms1+n,imb3,imb2,imb1);
+            pardst(pd1+n,k) += w * meshsrc(ms1+n,imb3,imb2,imb1);
 
           // Assign particles to meshaux.
           for (int n = 0; n < na; ++n)
-            *pm[n]++ += w * p[n];
+            meshaux(ma1+n,ima3,ima2,ima1) += w * p[n];
         }
-        pmw += dpm2;
-        for (int n = 0; n < na; ++n)
-          pm[n] += dpm2;
       }
-      pmw += dpm3;
-      for (int n = 0; n < na; ++n)
-        pm[n] += dpm3;
     }
-    for (int n = 0; n < ni; ++n)
-      ++pp[n];
   }
 
   // Treat neighbors of different levels.
@@ -911,5 +894,5 @@ bool ParticleMesh::ReceiveBoundary()
 Real _WeightFunction(Real dxi)
 {
   dxi = std::min(std::abs(dxi), 1.5);
-  return dxi < 0.5 ?  0.75 - dxi * dxi : 0.5 * ((1.5 - dxi) * (1.5 - dxi));
+  return dxi < 0.5 ? 0.75 - dxi * dxi : 0.5 * ((1.5 - dxi) * (1.5 - dxi));
 }
