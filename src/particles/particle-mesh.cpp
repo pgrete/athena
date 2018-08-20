@@ -290,14 +290,6 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
          AthenaArray<Real>& pardst, int pd1,
          const AthenaArray<Real>& parsrc, int ps1, int ps2, int ma1)
 {
-  // Zero out destination particle arrays.
-  int ni = ms2 - ms1 + 1;
-  for (int n = 0; n < ni; ++n) {
-    Real *p = &pardst(pd1+n,0);
-    for (int k = 0; k < ppar_->npar; ++k)
-      *p++ = 0.0;
-  }
-
   // Zero out meshaux.
   Real *p = &weight(0,0,0);
   for (int i = 0; i < ncells_; ++i)
@@ -311,6 +303,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
   }
 
   // Transpose meshsrc.
+  int ni = ms2 - ms1 + 1;
   AthenaArray<Real> u;
   u.NewAthenaArray(meshsrc.GetDim3(), meshsrc.GetDim2(), meshsrc.GetDim1(), ni);
   for (int n = 0; n < ni; ++n)
