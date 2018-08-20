@@ -310,42 +310,48 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
       *p++ = 0.0;
   }
 
+  // Get the dimensions of each particle cloud.
+  int npc1 = active1_ ? 2 * NGPM + 1 : 1,
+      npc2 = active2_ ? 2 * NGPM + 1 : 1,
+      npc3 = active3_ ? 2 * NGPM + 1 : 1;
+
   // Loop over each particle.
   for (int k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
     Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
-    int imb1s = int(xi1 - dxi1_), imb1e = int(xi1 + dxi1_);
-    int imb2s = int(xi2 - dxi2_), imb2e = int(xi2 + dxi2_);
-    int imb3s = int(xi3 - dxi3_), imb3e = int(xi3 + dxi3_);
-    int ima1s = imb1s - (active1_ ? OFFSET : 0);
-    int ima2s = imb2s - (active2_ ? OFFSET : 0);
-    int ima3s = imb3s - (active3_ ? OFFSET : 0);
+    int imb1 = int(xi1 - dxi1_), imb2 = int(xi2 - dxi2_), imb3 = int(xi3 - dxi3_);
+    int ima1 = imb1 - (active1_ ? OFFSET : 0),
+        ima2 = imb2 - (active2_ ? OFFSET : 0),
+        ima3 = imb3 - (active3_ ? OFFSET : 0);
+    xi1 = imb1 + 0.5 - xi1;
+    xi2 = imb2 + 0.5 - xi2;
+    xi3 = imb3 + 0.5 - xi3;
 
-    //Real p[na], *pm[na];
+    // Fetch the properties of the particle.
     Real p[na];
     for (int n = 0; n < na; ++n)
       p[n] = parsrc(ps1+n,k);
 
     // Weigh each cell.
-    for (int imb3 = imb3s, ima3 = ima3s; imb3 <= imb3e; ++imb3, ++ima3) {
-      Real w3 = active3_ ? _WeightFunction(imb3 + 0.5 - xi3) : 1.0;
+    for (int ipc3 = 0; ipc3 < npc3; ++ipc3) {
+      Real w3 = active3_ ? _WeightFunction(xi3 + ipc3) : 1.0;
 
-      for (int imb2 = imb2s, ima2 = ima2s; imb2 <= imb2e; ++imb2, ++ima2) {
-        Real w23 = w3 * (active2_ ?
-                           _WeightFunction(imb2 + 0.5 - xi2) : 1.0);
+      for (int ipc2 = 0; ipc2 < npc2; ++ipc2) {
+        Real w23 = w3 * (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0);
 
-        for (int imb1 = imb1s, ima1 = ima1s; imb1 <= imb1e; ++imb1, ++ima1) {
-          Real w = w23 * (active1_ ?
-                           _WeightFunction(imb1 + 0.5 - xi1) : 1.0);
-          weight(ima3,ima2,ima1) += w;
+        for (int ipc1 = 0; ipc1 < npc1; ++ipc1) {
+          Real w = w23 * (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0);
 
-          // Interpolate mesh to particles.
+          // Record the weights.
+          weight(ima3+ipc3,ima2+ipc2,ima1+ipc1) += w;
+
+          // Interpolate meshsrc to particles.
           for (int n = 0; n < ni; ++n)
-            pardst(pd1+n,k) += w * meshsrc(ms1+n,imb3,imb2,imb1);
+            pardst(pd1+n,k) += w * meshsrc(ms1+n,imb3+ipc3,imb2+ipc2,imb1+ipc1);
 
           // Assign particles to meshaux.
           for (int n = 0; n < na; ++n)
-            meshaux(ma1+n,ima3,ima2,ima1) += w * p[n];
+            meshaux(ma1+n,ima3+ipc3,ima2+ipc2,ima1+ipc1) += w * p[n];
         }
       }
     }
