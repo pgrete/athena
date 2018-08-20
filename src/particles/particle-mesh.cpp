@@ -354,7 +354,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
           Real w = w23 * (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0);
 
           // Record the weights.
-          weight(ima3+ipc3,ima2+ipc2,ima1+ipc1) += w;
+          meshaux(iweight,ima3+ipc3,ima2+ipc2,ima1+ipc1) += w;
 
           // Interpolate meshsrc to particles.
           for (int n = 0; n < ni; ++n)
