@@ -310,6 +310,15 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
       *p++ = 0.0;
   }
 
+  // Transpose meshsrc.
+  AthenaArray<Real> u;
+  u.NewAthenaArray(meshsrc.GetDim3(), meshsrc.GetDim2(), meshsrc.GetDim1(), ni);
+  for (int n = 0; n < ni; ++n)
+    for (int k = 0; k < meshsrc.GetDim3(); ++k)
+      for (int j = 0; j < meshsrc.GetDim2(); ++j)
+        for (int i = 0; i < meshsrc.GetDim1(); ++i)
+          u(k,j,i,n) = meshsrc(ms1+n,k,j,i);
+
   // Get the dimensions of each particle cloud.
   int npc1 = active1_ ? 2 * NGPM + 1 : 1,
       npc2 = active2_ ? 2 * NGPM + 1 : 1,
@@ -327,10 +336,12 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
     xi2 = imb2 + 0.5 - xi2;
     xi3 = imb3 + 0.5 - xi3;
 
-    // Fetch the properties of the particle.
-    Real p[na];
+    // Initialize interpolated properties and fetch those of the particle for assignment.
+    Real pd[ni], ps[na];
+    for (int n = 0; n < ni; ++n)
+      pd[n] = 0.0;
     for (int n = 0; n < na; ++n)
-      p[n] = parsrc(ps1+n,k);
+      ps[n] = parsrc(ps1+n,k);
 
     // Weigh each cell.
     for (int ipc3 = 0; ipc3 < npc3; ++ipc3) {
@@ -347,15 +358,22 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 
           // Interpolate meshsrc to particles.
           for (int n = 0; n < ni; ++n)
-            pardst(pd1+n,k) += w * meshsrc(ms1+n,imb3+ipc3,imb2+ipc2,imb1+ipc1);
+            pd[n] += w * u(ipc3,ipc2,ipc1,n);
 
           // Assign particles to meshaux.
           for (int n = 0; n < na; ++n)
-            meshaux(ma1+n,ima3+ipc3,ima2+ipc2,ima1+ipc1) += w * p[n];
+            meshaux(ma1+n,ima3+ipc3,ima2+ipc2,ima1+ipc1) += w * ps[n];
         }
       }
     }
+
+    // Record the final interpolated properties.
+    for (int n = 0; n < ni; ++n)
+      pardst(pd1+n,k) = pd[n];
   }
+
+  // Release working array.
+  u.DeleteAthenaArray();
 
   // Treat neighbors of different levels.
   if (pmesh_->multilevel)
