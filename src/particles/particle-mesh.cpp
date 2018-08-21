@@ -291,25 +291,19 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
          const AthenaArray<Real>& parsrc, int ps1, int ps2, int ma1)
 {
   // Zero out meshaux.
-  Real *p = &weight(0,0,0);
-  for (int i = 0; i < ncells_; ++i)
-    *p++ = 0.0;
-
   int na = ps2 - ps1 + 1;
-  for (int n = 0; n < na; ++n) {
-    Real *p = &meshaux(ma1+n,0,0,0);
-    for (int i = 0; i < ncells_; ++i)
-      *p++ = 0.0;
-  }
+  std::fill(&weight(0,0,0), &weight(0,0,0) + ncells_, 0.0);
+  std::fill(&meshaux(ma1,0,0,0), &meshaux(ma1+na,0,0,0), 0.0);
 
   // Transpose meshsrc.
   int ni = ms2 - ms1 + 1;
+  int nx1 = meshsrc.GetDim1(), nx2 = meshsrc.GetDim2(), nx3 = meshsrc.GetDim3();
   AthenaArray<Real> u;
-  u.NewAthenaArray(meshsrc.GetDim3(), meshsrc.GetDim2(), meshsrc.GetDim1(), ni);
+  u.NewAthenaArray(nx3,nx2,nx1,ni);
   for (int n = 0; n < ni; ++n)
-    for (int k = 0; k < meshsrc.GetDim3(); ++k)
-      for (int j = 0; j < meshsrc.GetDim2(); ++j)
-        for (int i = 0; i < meshsrc.GetDim1(); ++i)
+    for (int k = 0; k < nx3; ++k)
+      for (int j = 0; j < nx2; ++j)
+        for (int i = 0; i < nx1; ++i)
           u(k,j,i,n) = meshsrc(ms1+n,k,j,i);
 
   // Get the dimensions of each particle cloud.
@@ -347,7 +341,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
           Real w = w23 * (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0);
 
           // Record the weights.
-          meshaux(iweight,ima3+ipc3,ima2+ipc2,ima1+ipc1) += w;
+          weight(ima3+ipc3,ima2+ipc2,ima1+ipc1) += w;
 
           // Interpolate meshsrc to particles.
           for (int n = 0; n < ni; ++n)
