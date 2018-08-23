@@ -61,9 +61,10 @@ protected:
 
   // Instance methods
   void InterpolateMeshToParticles(
-           const AthenaArray<Real>& meshsrc, int ms1, int ms2,
-           AthenaArray<Real>& par, int p1);
-  void AssignParticlesToMeshAux(const AthenaArray<Real>& par, int p1, int p2, int ma1);
+           const AthenaArray<Real>& meshsrc, int ms1,
+           AthenaArray<Real>& par, int p1, int nprop);
+  void AssignParticlesToMeshAux(
+           const AthenaArray<Real>& par, int p1, int ma1, int nprop);
   void InterpolateMeshAndAssignParticles(
            const AthenaArray<Real>& meshsrc, int ms1, int ms2,
            AthenaArray<Real>& pardst, int pd1,

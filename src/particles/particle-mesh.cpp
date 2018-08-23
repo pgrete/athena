@@ -159,51 +159,51 @@ ParticleMesh::~ParticleMesh()
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::InterpolateMeshToParticles(
-//               const AthenaArray<Real>& meshsrc, int ms1, int ms2,
-//               AthenaArray<Real>& par, int p1)
-//  \brief interpolates meshsrc from property index ms1 to ms2 onto particle array par
-//         (realprop, auxprop, or work in Particles class) from property index p1 and
-//         up.
+//               const AthenaArray<Real>& meshsrc, int ms1,
+//               AthenaArray<Real>& par, int p1, int nprop)
+//  \brief interpolates meshsrc from property index ms1 to ms1+nprop-1 onto particle
+//      array par (realprop, auxprop, or work in Particles class) from property index p1
+//      to p1+nprop-1.
 
 void ParticleMesh::InterpolateMeshToParticles(
-         const AthenaArray<Real>& meshsrc, int ms1, int ms2,
-         AthenaArray<Real>& par, int p1)
+         const AthenaArray<Real>& meshsrc, int ms1,
+         AthenaArray<Real>& par, int p1, int nprop)
 {
   // Zero out the particle arrays.
-  int nprop = ms2 - ms1 + 1;
-  Real *pp[nprop];
-  for (int n = 0; n < nprop; ++n) {
-    Real *p = pp[n] = &par(p1+n,0);
-    for (int k = 0; k < ppar_->npar; ++k)
-      *p++ = 0.0;
-  }
+  for (int n = 0; n < nprop; ++n)
+    #pragma ivdep
+    std::fill(&par(p1+n,0), &par(p1+n,ppar_->npar), 0.0);
 
   // Loop over each particle.
   for (int k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
     Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
-    int ix1s = int(xi1 - dxi1_), ix1e = int(xi1 + dxi1_);
-    int ix2s = int(xi2 - dxi2_), ix2e = int(xi2 + dxi2_);
-    int ix3s = int(xi3 - dxi3_), ix3e = int(xi3 + dxi3_);
+    int ix1 = int(xi1 - dxi1_), ix2 = int(xi2 - dxi2_), ix3 = int(xi3 - dxi3_);
+    xi1 = ix1 + 0.5 - xi1;
+    xi2 = ix2 + 0.5 - xi2;
+    xi3 = ix3 + 0.5 - xi3;
 
     // Weight each cell and accumulate the mesh properties onto the particles.
-    for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
-      Real w3 = active3_ ? _WeightFunction(ix3 + 0.5 - xi3) : 1.0;
+    #pragma loop count (NPC)
+    for (int ipc3 = 0; ipc3 < npc3_; ++ipc3) {
+      Real w3 = active3_ ? _WeightFunction(xi3 + ipc3) : 1.0;
+      int imb3 = ix3 + ipc3;
 
-      for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
-        Real w23 = w3 * (active2_ ? _WeightFunction(ix2 + 0.5 - xi2) : 1.0);
+      #pragma loop count (NPC)
+      for (int ipc2 = 0; ipc2 < npc2_; ++ipc2) {
+        Real w23 = w3 * (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0);
+        int imb2 = ix2 + ipc2;
 
-        for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
-          Real weight = w23 * (active1_ ?
-                                    _WeightFunction(ix1 + 0.5 - xi1) : 1.0);
+        #pragma loop count (NPC)
+        for (int ipc1 = 0; ipc1 < npc1_; ++ipc1) {
+          Real w = w23 * (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0);
+          int imb1 = ix1 + ipc1;
 
           for (int n = 0; n < nprop; ++n)
-            *pp[n] += weight * meshsrc(ms1+n,ix3,ix2,ix1);
+            par(p1+n,k) += w * meshsrc(ms1+n,imb3,imb2,imb1);
         }
       }
     }
-    for (int n = 0; n < nprop; ++n)
-      ++pp[n];
   }
 }
 
@@ -214,20 +214,13 @@ void ParticleMesh::InterpolateMeshToParticles(
 //         index p1 to p2 onto meshaux from property index ma1 and up.
 
 void ParticleMesh::AssignParticlesToMeshAux(
-         const AthenaArray<Real>& par, int p1, int p2, int ma1)
+         const AthenaArray<Real>& par, int p1, int ma1, int nprop)
 {
   // Zero out meshaux.
-  int nprop = p2 - p1 + 1;
-  Real *pmw0 = &weight(0,0,0), *pmw = pmw0;
-  for (int i = 0; i < ncells_; ++i)
-    *pmw++ = 0.0;
-
-  Real *pm0[nprop];
-  for (int n = 0; n < nprop; ++n) {
-    Real *p = pm0[n] = &meshaux(ma1+n,0,0,0);
-    for (int i = 0; i < ncells_; ++i)
-      *p++ = 0.0;
-  }
+  #pragma ivdep
+  std::fill(&weight(0,0,0), &weight(0,0,0) + ncells_, 0.0);
+  #pragma ivdep
+  std::fill(&meshaux(ma1,0,0,0), &meshaux(ma1+nprop,0,0,0), 0.0);
 
   // Loop over each particle.
   for (int k = 0; k < ppar_->npar; ++k) {
@@ -235,43 +228,38 @@ void ParticleMesh::AssignParticlesToMeshAux(
     Real xi1 = ppar_->xi1(k) - (active1_ ? OFFSET : 0),
          xi2 = ppar_->xi2(k) - (active2_ ? OFFSET : 0),
          xi3 = ppar_->xi3(k) - (active3_ ? OFFSET : 0);
-    int ix1s = int(xi1 - dxi1_), ix1e = int(xi1 + dxi1_);
-    int ix2s = int(xi2 - dxi2_), ix2e = int(xi2 + dxi2_);
-    int ix3s = int(xi3 - dxi3_), ix3e = int(xi3 + dxi3_);
+    int ix1 = int(xi1 - dxi1_), ix2 = int(xi2 - dxi2_), ix3 = int(xi3 - dxi3_);
+    xi1 = ix1 + 0.5 - xi1;
+    xi2 = ix2 + 0.5 - xi2;
+    xi3 = ix3 + 0.5 - xi3;
 
-    // Prepare for pointer operations.
-    int dpm1 = ix1s + nx1_ * (ix2s + nx2_ * ix3s),
-        dpm2 = nx1_ - ix1e + ix1s - 1,
-        dpm3 = nx1_ * (nx2_ - ix2e + ix2s - 1);
-    pmw = pmw0 + dpm1;
-
-    Real p[nprop], *pm[nprop];
-    for (int n = 0; n < nprop; ++n) {
+    // Fetch properties of the particle for assignment.
+    Real p[nprop];
+    for (int n = 0; n < nprop; ++n)
       p[n] = par(p1+n,k);
-      pm[n] = pm0[n] + dpm1;
-    }
 
     // Weight each cell and accumulate particle property onto meshaux.
-    for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
-      Real w3 = active3_ ? _WeightFunction(ix3 + 0.5 - xi3) : 1.0;
+    #pragma loop count (NPC)
+    for (int ipc3 = 0; ipc3 < npc3_; ++ipc3) {
+      Real w3 = active3_ ? _WeightFunction(xi3 + ipc3) : 1.0;
+      int ima3 = ix3 + ipc3;
 
-      for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
-        Real w23 = w3 * (active2_ ? _WeightFunction(ix2 + 0.5 - xi2) : 1.0);
+      #pragma loop count (NPC)
+      for (int ipc2 = 0; ipc2 < npc2_; ++ipc2) {
+        Real w23 = w3 * (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0);
+        int ima2 = ix2 + ipc2;
 
-        for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
-          Real w = w23 * (active1_ ?  _WeightFunction(ix1 + 0.5 - xi1) : 1.0);
-          *pmw++ += w;
+        #pragma loop count (NPC)
+        for (int ipc1 = 0; ipc1 < npc1_; ++ipc1) {
+          Real w = w23 * (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0);
+          int ima1 = ix1 + ipc1;
+
+          weight(ima3,ima2,ima1) += w;
 
           for (int n = 0; n < nprop; ++n)
-            *pm[n]++ += w * p[n];
+            meshaux(ma1+n,ima3,ima2,ima1) += w * p[n];
         }
-        pmw += dpm2;
-        for (int n = 0; n < nprop; ++n)
-          pm[n] += dpm2;
       }
-      pmw += dpm3;
-      for (int n = 0; n < nprop; ++n)
-        pm[n] += dpm3;
     }
   }
 
@@ -296,7 +284,9 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
          const AthenaArray<Real>& parsrc, int ps1, int ma1, int na)
 {
   // Zero out meshaux.
+  #pragma ivdep
   std::fill(&weight(0,0,0), &weight(0,0,0) + ncells_, 0.0);
+  #pragma ivdep
   std::fill(&meshaux(ma1,0,0,0), &meshaux(ma1+na,0,0,0), 0.0);
 
   // Transpose meshsrc.
@@ -346,7 +336,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 
           // Interpolate meshsrc to particles.
           for (int n = 0; n < ni; ++n)
-            pd[n] += w * u(ipc3,ipc2,ipc1,n);
+            pd[n] += w * u(imb3+ipc3,imb2+ipc2,imb1+ipc1,n);
 
           // Assign particles to meshaux.
           for (int n = 0; n < na; ++n)

@@ -110,7 +110,7 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
     ppm->InterpolateMeshAndAssignParticles(meshsrc, IVX, work, iwx, 3,
                                            realprop, ivpx, idpx, 3);
   else
-    ppm->InterpolateMeshToParticles(meshsrc, IVX, IVZ, work, iwx);
+    ppm->InterpolateMeshToParticles(meshsrc, IVX, work, iwx, 3);
 
   // Add drag force to particles.
   if (taus > 0.0) {
