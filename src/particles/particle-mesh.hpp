@@ -22,7 +22,10 @@
 
 // Particle-mesh constants.
 const Real RINF = 1;  // radius of influence
-const int NGPM = int(std::ceil(RINF));   // number of ghost cells needed.
+const int NGPM = int(std::ceil(RINF));  // number of ghost cells needed.
+
+// Define the size of a particle cloud = 2 * NGPM + 1
+#define NPC 3
 
 // Forward declaration
 class Particles;
@@ -95,6 +98,7 @@ private:
   Real dxi1_, dxi2_, dxi3_;           // range of influence from a particle cloud
   int nx1_, nx2_, nx3_;               // number of cells in meshaux in each dimension
   int ncells_;                        // total number of cells in meshaux
+  int npc1_, npc2_, npc3_;            // size of a particle cloud
 
   Particles *ppar_;            // ptr to my Particles instance
   MeshBlock *pmb_;             // ptr to my MeshBlock

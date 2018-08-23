@@ -118,6 +118,11 @@ ParticleMesh::ParticleMesh(Particles *ppar)
   // Get a shorthand to weights.
   weight.InitWithShallowSlice(meshaux, 4, iweight, 1);
 
+  // Determine the dimensions of each particle cloud.
+  npc1_ = active1_ ? NPC : 1;
+  npc2_ = active2_ ? NPC : 1;
+  npc3_ = active3_ ? NPC : 1;
+
   // Initialize boundary data.
   bd_.nbmax = 56;
   for (int n = 0; n < bd_.nbmax; n++) {
@@ -304,11 +309,6 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
         for (int i = 0; i < nx1; ++i)
           u(k,j,i,n) = meshsrc(ms1+n,k,j,i);
 
-  // Get the dimensions of each particle cloud.
-  int npc1 = active1_ ? 2 * NGPM + 1 : 1,
-      npc2 = active2_ ? 2 * NGPM + 1 : 1,
-      npc3 = active3_ ? 2 * NGPM + 1 : 1;
-
   // Loop over each particle.
   for (int k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
@@ -329,13 +329,16 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
       ps[n] = parsrc(ps1+n,k);
 
     // Weigh each cell.
-    for (int ipc3 = 0; ipc3 < npc3; ++ipc3) {
+    #pragma loop count (NPC)
+    for (int ipc3 = 0; ipc3 < npc3_; ++ipc3) {
       Real w3 = active3_ ? _WeightFunction(xi3 + ipc3) : 1.0;
 
-      for (int ipc2 = 0; ipc2 < npc2; ++ipc2) {
+      #pragma loop count (NPC)
+      for (int ipc2 = 0; ipc2 < npc2_; ++ipc2) {
         Real w23 = w3 * (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0);
 
-        for (int ipc1 = 0; ipc1 < npc1; ++ipc1) {
+        #pragma loop count (NPC)
+        for (int ipc1 = 0; ipc1 < npc1_; ++ipc1) {
           Real w = w23 * (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0);
 
           // Record the weights.
