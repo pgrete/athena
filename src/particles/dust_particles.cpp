@@ -107,8 +107,8 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
 {
   // Interpolate gas velocity onto particles.
   if (backreaction)
-    ppm->InterpolateMeshAndAssignParticles(meshsrc, IVX, IVZ, work, iwx,
-                                           realprop, ivpx, ivpz, idpx);
+    ppm->InterpolateMeshAndAssignParticles(meshsrc, IVX, work, iwx, 3,
+                                           realprop, ivpx, idpx, 3);
   else
     ppm->InterpolateMeshToParticles(meshsrc, IVX, IVZ, work, iwx);
 

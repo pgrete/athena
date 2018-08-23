@@ -272,31 +272,29 @@ void ParticleMesh::AssignParticlesToMeshAux(
 
   // Treat neighbors of different levels.
   if (pmesh_->multilevel)
-    AssignParticlesToDifferentLevels(par, p1, p2, ma1);
+    AssignParticlesToDifferentLevels(par, p1, ma1, nprop);
 }
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::InterpolateMeshAndAssignParticles(
-//               const AthenaArray<Real>& meshsrc, int ms1, int ms2,
-//               AthenaArray<Real>& pardst, int pd1,
-//               const AthenaArray<Real>& parsrc, int ps1, int ps2, int ma1)
-//  \brief interpolates meshsrc from property index ms1 to ms2 onto particle array
-//      pardst from index pd1 and up, and assigns parsrc from property index ps1 to ps2
-//      onto meshaux from ma1 and up.  The arrays parsrc and pardst can be realprop,
-//      auxprop, or work in Particles class.
+//               const AthenaArray<Real>& meshsrc, int ms1,
+//               AthenaArray<Real>& pardst, int pd1, int ni,
+//               const AthenaArray<Real>& parsrc, int ps1, int ma1, int na)
+//  \brief interpolates meshsrc from property index ms1 to ms1 + ni - 1 onto particle
+//      array pardst from index pd1 to pd1 + ni - 1, and assigns parsrc from property
+//      index ps1 to ps1 + na - 1 onto meshaux from ma1 to ma1 + na - 1.  The arrays
+//      parsrc and pardst can be realprop, auxprop, or work in Particles class.
 
 void ParticleMesh::InterpolateMeshAndAssignParticles(
-         const AthenaArray<Real>& meshsrc, int ms1, int ms2,
-         AthenaArray<Real>& pardst, int pd1,
-         const AthenaArray<Real>& parsrc, int ps1, int ps2, int ma1)
+         const AthenaArray<Real>& meshsrc, int ms1,
+         AthenaArray<Real>& pardst, int pd1, int ni,
+         const AthenaArray<Real>& parsrc, int ps1, int ma1, int na)
 {
   // Zero out meshaux.
-  int na = ps2 - ps1 + 1;
   std::fill(&weight(0,0,0), &weight(0,0,0) + ncells_, 0.0);
   std::fill(&meshaux(ma1,0,0,0), &meshaux(ma1+na,0,0,0), 0.0);
 
   // Transpose meshsrc.
-  int ni = ms2 - ms1 + 1;
   int nx1 = meshsrc.GetDim1(), nx2 = meshsrc.GetDim2(), nx3 = meshsrc.GetDim3();
   AthenaArray<Real> u;
   u.NewAthenaArray(nx3,nx2,nx1,ni);
@@ -364,7 +362,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 
   // Treat neighbors of different levels.
   if (pmesh_->multilevel)
-    AssignParticlesToDifferentLevels(parsrc, ps1, ps2, ma1);
+    AssignParticlesToDifferentLevels(parsrc, ps1, ma1, na);
 }
 
 //--------------------------------------------------------------------------------------
@@ -654,17 +652,16 @@ void ParticleMesh::SetBoundaryAttributes()
 
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::AssignParticlesToDifferentLevels(
-//               const AthenaArray<Real>& par, int p1, int p2, int ma1)
-//  \brief assigns particle array par from property index p1 to p2 to meshaux from
-//         property index ma1 and up in neighbors of different levels.
+//         const AthenaArray<Real>& par, int p1, int ma1, int nprop)
+//  \brief assigns particle array par from property index p1 to p1+nprop-1 to meshaux
+//         from property index ma1 to ma1+nprop-1 in neighbors of different levels.
 
 void ParticleMesh::AssignParticlesToDifferentLevels(
-         const AthenaArray<Real>& par, int p1, int p2, int ma1)
+         const AthenaArray<Real>& par, int p1, int ma1, int nprop)
 {
   const int mylevel = pmb_->loc.level;
 
   // Find neighbor blocks that are on a different level.
-  int nprop = p2 - p1 + 1;
   for (int i = 0; i < pbval_->nneighbor; ++i) {
     NeighborBlock& nb = pbval_->neighbor[i];
     if (nb.level == mylevel) continue;

@@ -65,6 +65,10 @@ protected:
            const AthenaArray<Real>& meshsrc, int ms1, int ms2,
            AthenaArray<Real>& pardst, int pd1,
            const AthenaArray<Real>& parsrc, int ps1, int ps2, int ma1);
+  void InterpolateMeshAndAssignParticles(
+           const AthenaArray<Real>& meshsrc, int ms1,
+           AthenaArray<Real>& pardst, int pd1, int ni,
+           const AthenaArray<Real>& parsrc, int ps1, int ma1, int na);
   void DepositMeshAux(AthenaArray<Real>& u, int ma1, int ma2, int mb1);
 
   void ClearBoundary();
@@ -103,7 +107,7 @@ private:
   void InitiateBoundaryData();
   void SetBoundaryAttributes();
   void AssignParticlesToDifferentLevels(
-           const AthenaArray<Real>& par, int p1, int p2, int ma1);
+           const AthenaArray<Real>& par, int p1, int ma1, int nprop);
   int LoadBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba);
   void AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba);
 
