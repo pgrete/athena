@@ -139,11 +139,20 @@ void DustParticles::DepositToMesh(
 {
   if (!backreaction) return;
 
+  const int ias = ppm->is, jas = ppm->js, kas = ppm->ks;
+  const int ibs = pmy_block->is, jbs = pmy_block->js, kbs = pmy_block->ks;
+  const int nx1 = pmy_block->block_size.nx1,
+            nx2 = pmy_block->block_size.nx2,
+            nx3 = pmy_block->block_size.nx3;
+
   // Compute the momentum change.
   Real c = dt * mass / taus;
-  for (int ka = ppm->ks, kb = pmy_block->ks; ka <= ppm->ke; ++ka, ++kb)
-    for (int ja = ppm->js, jb = pmy_block->js; ja <= ppm->je; ++ja, ++jb)
-      for (int ia = ppm->is, ib = pmy_block->is; ia <= ppm->ie; ++ia, ++ib) {
+  #pragma ivdep
+  for (int k = 0; k < nx3; ++k)
+    for (int j = 0; j < nx2; ++j)
+      for (int i = 0; i < nx1; ++i) {
+        int ia = ias + i, ja = jas + j, ka = kas + k;
+        int ib = ibs + i, jb = jbs + j, kb = kbs + k;
         Real w = ppm->weight(ka,ja,ia);
         dpx(ka,ja,ia) = c * (dpx(ka,ja,ia) - w * meshsrc(IVX,kb,jb,ib));
         dpy(ka,ja,ia) = c * (dpy(ka,ja,ia) - w * meshsrc(IVY,kb,jb,ib));
@@ -151,5 +160,5 @@ void DustParticles::DepositToMesh(
       }
 
   // Deposit it to the mesh.
-  ppm->DepositMeshAux(meshdst, idpx, idpz, IM1);
+  ppm->DepositMeshAux(meshdst, idpx, IM1, 3);
 }

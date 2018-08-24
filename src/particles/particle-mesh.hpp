@@ -73,7 +73,7 @@ protected:
            const AthenaArray<Real>& meshsrc, int ms1,
            AthenaArray<Real>& pardst, int pd1, int ni,
            const AthenaArray<Real>& parsrc, int ps1, int ma1, int na);
-  void DepositMeshAux(AthenaArray<Real>& u, int ma1, int ma2, int mb1);
+  void DepositMeshAux(AthenaArray<Real>& u, int ma1, int mb1, int nprop);
 
   void ClearBoundary();
   void SendBoundary();

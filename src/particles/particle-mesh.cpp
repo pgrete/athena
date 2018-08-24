@@ -352,20 +352,27 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void ParticleMesh::DepositMeshAux(
-//               AthenaArray<Real>& u, int ma1, int ma2, int mb1)
-//  \brief deposits data in meshaux from property index ma1 to ma2 to meshblock data u
-//         from property index mb1 and up, divided by cell volume.
+//! \fn void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u,
+//                                        int ma1, int mb1, int nprop)
+//  \brief deposits data in meshaux from property index ma1 to ma1+nprop-1 to meshblock
+//         data u from property index mb1 and mb1+nprop-1, divided by cell volume.
 
-void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u, int ma1, int ma2, int mb1)
+void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u, int ma1, int mb1, int nprop)
 {
+  const int ibs = pmb_->is, jbs = pmb_->js, kbs = pmb_->ks, 
+            ibe = pmb_->ie, jbe = pmb_->je, kbe = pmb_->ke;
+  const int offset1 = active1_ ? OFFSET : 0,
+            offset2 = active2_ ? OFFSET : 0,
+            offset3 = active3_ ? OFFSET : 0;
   Coordinates *pc = pmb_->pcoord;
-  int nprop = ma2 - ma1 + 1;
+
+  #pragma ivdep
   for (int n = 0; n < nprop; ++n)
-    for (int ka = ks, kb = pmb_->ks; ka <= ke; ++ka, ++kb)
-      for (int ja = js, jb = pmb_->js; ja <= je; ++ja, ++jb)
-        for (int ia = is, ib = pmb_->is; ia <= ie; ++ia, ++ib)
-          u(mb1+n,kb,jb,ib) += meshaux(ma1+n,ka,ja,ia) / pc->GetCellVolume(kb,jb,ib);
+    for (int k = kbs; k <= kbe; ++k)
+      for (int j = jbs; j <= jbe; ++j)
+        for (int i = ibs; i <= ibe; ++i)
+          u(mb1+n,k,j,i) += meshaux(ma1+n,k-offset3,j-offset2,i-offset1) /
+                            pc->GetCellVolume(k,j,i);
 }
 
 //--------------------------------------------------------------------------------------
