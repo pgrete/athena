@@ -186,18 +186,14 @@ void ParticleMesh::InterpolateMeshToParticles(
     // Weight each cell and accumulate the mesh properties onto the particles.
     #pragma loop count (NPC)
     for (int ipc3 = 0; ipc3 < npc3_; ++ipc3) {
-      Real w3 = active3_ ? _WeightFunction(xi3 + ipc3) : 1.0;
-      int imb3 = ix3 + ipc3;
-
       #pragma loop count (NPC)
       for (int ipc2 = 0; ipc2 < npc2_; ++ipc2) {
-        Real w23 = w3 * (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0);
-        int imb2 = ix2 + ipc2;
-
         #pragma loop count (NPC)
         for (int ipc1 = 0; ipc1 < npc1_; ++ipc1) {
-          Real w = w23 * (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0);
-          int imb1 = ix1 + ipc1;
+          Real w = (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0) *
+                   (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0) *
+                   (active3_ ? _WeightFunction(xi3 + ipc3) : 1.0);
+          int imb1 = ix1 + ipc1, imb2 = ix2 + ipc2, imb3 = ix3 + ipc3;
 
           for (int n = 0; n < nprop; ++n)
             par(p1+n,k) += w * meshsrc(ms1+n,imb3,imb2,imb1);
@@ -241,18 +237,14 @@ void ParticleMesh::AssignParticlesToMeshAux(
     // Weight each cell and accumulate particle property onto meshaux.
     #pragma loop count (NPC)
     for (int ipc3 = 0; ipc3 < npc3_; ++ipc3) {
-      Real w3 = active3_ ? _WeightFunction(xi3 + ipc3) : 1.0;
-      int ima3 = ix3 + ipc3;
-
       #pragma loop count (NPC)
       for (int ipc2 = 0; ipc2 < npc2_; ++ipc2) {
-        Real w23 = w3 * (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0);
-        int ima2 = ix2 + ipc2;
-
         #pragma loop count (NPC)
         for (int ipc1 = 0; ipc1 < npc1_; ++ipc1) {
-          Real w = w23 * (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0);
-          int ima1 = ix1 + ipc1;
+          Real w = (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0) *
+                   (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0) *
+                   (active3_ ? _WeightFunction(xi3 + ipc3) : 1.0);
+          int ima1 = ix1 + ipc1, ima2 = ix2 + ipc2, ima3 = ix3 + ipc3;
 
           weight(ima3,ima2,ima1) += w;
 
@@ -303,13 +295,13 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
   for (int k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
     Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
-    int imb1 = int(xi1 - dxi1_), imb2 = int(xi2 - dxi2_), imb3 = int(xi3 - dxi3_);
-    int ima1 = imb1 - (active1_ ? OFFSET : 0),
-        ima2 = imb2 - (active2_ ? OFFSET : 0),
-        ima3 = imb3 - (active3_ ? OFFSET : 0);
-    xi1 = imb1 + 0.5 - xi1;
-    xi2 = imb2 + 0.5 - xi2;
-    xi3 = imb3 + 0.5 - xi3;
+    int imb1s = int(xi1 - dxi1_), imb2s = int(xi2 - dxi2_), imb3s = int(xi3 - dxi3_);
+    int ima1s = imb1s - (active1_ ? OFFSET : 0),
+        ima2s = imb2s - (active2_ ? OFFSET : 0),
+        ima3s = imb3s - (active3_ ? OFFSET : 0);
+    xi1 = imb1s + 0.5 - xi1;
+    xi2 = imb2s + 0.5 - xi2;
+    xi3 = imb3s + 0.5 - xi3;
 
     // Initialize interpolated properties and fetch those of the particle for assignment.
     Real pd[ni], ps[na];
@@ -321,26 +313,27 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
     // Weigh each cell.
     #pragma loop count (NPC)
     for (int ipc3 = 0; ipc3 < npc3_; ++ipc3) {
-      Real w3 = active3_ ? _WeightFunction(xi3 + ipc3) : 1.0;
-
       #pragma loop count (NPC)
       for (int ipc2 = 0; ipc2 < npc2_; ++ipc2) {
-        Real w23 = w3 * (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0);
-
         #pragma loop count (NPC)
         for (int ipc1 = 0; ipc1 < npc1_; ++ipc1) {
-          Real w = w23 * (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0);
+          Real w = (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0) *
+                   (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0) *
+                   (active3_ ? _WeightFunction(xi3 + ipc3) : 1.0);
+          int ima1 = ima1s + ipc1, imb1 = imb1s + ipc1,
+              ima2 = ima2s + ipc2, imb2 = imb2s + ipc2,
+              ima3 = ima3s + ipc3, imb3 = imb3s + ipc3;
 
           // Record the weights.
-          weight(ima3+ipc3,ima2+ipc2,ima1+ipc1) += w;
+          weight(ima3,ima2,ima1) += w;
 
           // Interpolate meshsrc to particles.
           for (int n = 0; n < ni; ++n)
-            pd[n] += w * u(imb3+ipc3,imb2+ipc2,imb1+ipc1,n);
+            pd[n] += w * u(imb3,imb2,imb1,n);
 
           // Assign particles to meshaux.
           for (int n = 0; n < na; ++n)
-            meshaux(ma1+n,ima3+ipc3,ima2+ipc2,ima1+ipc1) += w * ps[n];
+            meshaux(ma1+n,ima3,ima2,ima1) += w * ps[n];
         }
       }
     }
@@ -716,8 +709,8 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
       // Stack the properties of the particle and set the pointers to the buffer.
       Real prop[nprop];
       int dbuf1 = ix1s + ba.ngx1 * (ix2s + ba.ngx2 * ix3s),
-           dbuf2 = ba.ngx1 - ix1e + ix1s - 1,
-           dbuf3 = ba.ngx1 * (ba.ngx2 - ix2e + ix2s - 1);
+          dbuf2 = ba.ngx1 - ix1e + ix1s - 1,
+          dbuf3 = ba.ngx1 * (ba.ngx2 - ix2e + ix2s - 1);
 
       bufw = pbufw + dbuf1;
       for (int n = 0; n < nprop; ++n) {
@@ -726,18 +719,18 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
       }
 
       // Assign the particle.
+      #pragma ivdep
+      #pragma loop count (NPC)
       for (int ix3 = ix3s; ix3 <= ix3e; ++ix3) {
-        Real w3 = active3_ ? _WeightFunction(ix3 + 0.5 - xi3) : 1.0;
-
+        #pragma loop count (NPC)
         for (int ix2 = ix2s; ix2 <= ix2e; ++ix2) {
-          Real w23 = w3 * (active2_ ?
-                             _WeightFunction(ix2 + 0.5 - xi2) : 1.0);
-
+          #pragma loop count (NPC)
           for (int ix1 = ix1s; ix1 <= ix1e; ++ix1) {
-            Real w = w23 * (active1_ ?
-                             _WeightFunction(ix1 + 0.5 - xi1) : 1.0);
-            *bufw++ += w;
+            Real w = (active1_ ? _WeightFunction(ix1 + 0.5 - xi1) : 1.0) *
+                     (active2_ ? _WeightFunction(ix2 + 0.5 - xi2) : 1.0) *
+                     (active3_ ? _WeightFunction(ix3 + 0.5 - xi3) : 1.0);
 
+            *bufw++ += w;
             for (int n = 0; n < nprop; ++n)
               *buf[n]++ += w * prop[n];
           }
