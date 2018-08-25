@@ -291,56 +291,86 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
         for (int i = 0; i < nx1; ++i)
           u(k,j,i,n) = meshsrc(ms1+n,k,j,i);
 
+  // Allocate space for SIMD.
+  Real w1[npc1_][SIMD_WIDTH] __attribute__((aligned(64)));
+  Real w2[npc2_][SIMD_WIDTH] __attribute__((aligned(64)));
+  Real w3[npc3_][SIMD_WIDTH] __attribute__((aligned(64)));
+  Real imb1v[SIMD_WIDTH] __attribute__((aligned(64)));
+  Real imb2v[SIMD_WIDTH] __attribute__((aligned(64)));
+  Real imb3v[SIMD_WIDTH] __attribute__((aligned(64)));
+
   // Loop over each particle.
-  for (int k = 0; k < ppar_->npar; ++k) {
-    // Find the domain the particle influences.
-    Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
-    int imb1s = int(xi1 - dxi1_), imb2s = int(xi2 - dxi2_), imb3s = int(xi3 - dxi3_);
-    int ima1s = imb1s - (active1_ ? OFFSET : 0),
-        ima2s = imb2s - (active2_ ? OFFSET : 0),
-        ima3s = imb3s - (active3_ ? OFFSET : 0);
-    xi1 = imb1s + 0.5 - xi1;
-    xi2 = imb2s + 0.5 - xi2;
-    xi3 = imb3s + 0.5 - xi3;
+  int npar = ppar_->npar;
+  for (int k = 0; k < npar; k += SIMD_WIDTH) {
+    #pragma omp simd simdlen(SIMD_WIDTH) 
+    for (int kk = 0; kk < std::min(SIMD_WIDTH, npar-k); ++kk) {
+      int kkk = k + kk;
 
-    // Initialize interpolated properties and fetch those of the particle for assignment.
-    Real pd[ni], ps[na];
-    for (int n = 0; n < ni; ++n)
-      pd[n] = 0.0;
-    for (int n = 0; n < na; ++n)
-      ps[n] = parsrc(ps1+n,k);
+      // Find the domain the particle influences.
+      Real xi1 = ppar_->xi1(kkk), xi2 = ppar_->xi2(kkk), xi3 = ppar_->xi3(kkk);
+      int imb1 = int(xi1 - dxi1_), imb2 = int(xi2 - dxi2_), imb3 = int(xi3 - dxi3_);
+      xi1 = imb1 + 0.5 - xi1;
+      xi2 = imb2 + 0.5 - xi2;
+      xi3 = imb3 + 0.5 - xi3;
 
-    // Weigh each cell.
-    #pragma loop count (NPC)
-    for (int ipc3 = 0; ipc3 < npc3_; ++ipc3) {
+      imb1v[kk] = imb1;
+      imb2v[kk] = imb2;
+      imb3v[kk] = imb3;
+
+      // Weigh each cell.
       #pragma loop count (NPC)
-      for (int ipc2 = 0; ipc2 < npc2_; ++ipc2) {
-        #pragma loop count (NPC)
-        for (int ipc1 = 0; ipc1 < npc1_; ++ipc1) {
-          Real w = (active1_ ? _WeightFunction(xi1 + ipc1) : 1.0) *
-                   (active2_ ? _WeightFunction(xi2 + ipc2) : 1.0) *
-                   (active3_ ? _WeightFunction(xi3 + ipc3) : 1.0);
-          int ima1 = ima1s + ipc1, imb1 = imb1s + ipc1,
-              ima2 = ima2s + ipc2, imb2 = imb2s + ipc2,
-              ima3 = ima3s + ipc3, imb3 = imb3s + ipc3;
-
-          // Record the weights.
-          weight(ima3,ima2,ima1) += w;
-
-          // Interpolate meshsrc to particles.
-          for (int n = 0; n < ni; ++n)
-            pd[n] += w * u(imb3,imb2,imb1,n);
-
-          // Assign particles to meshaux.
-          for (int n = 0; n < na; ++n)
-            meshaux(ma1+n,ima3,ima2,ima1) += w * ps[n];
-        }
-      }
+      for (int i = 0; i < npc1_; ++i)
+        w1[i][kk] = active1_ ? _WeightFunction(xi1 + i) : 1.0;
+      #pragma loop count (NPC)
+      for (int i = 0; i < npc2_; ++i)
+        w2[i][kk] = active2_ ? _WeightFunction(xi2 + i) : 1.0;
+      #pragma loop count (NPC)
+      for (int i = 0; i < npc3_; ++i)
+        w3[i][kk] = active3_ ? _WeightFunction(xi3 + i) : 1.0;
     }
 
-    // Record the final interpolated properties.
-    for (int n = 0; n < ni; ++n)
-      pardst(pd1+n,k) = pd[n];
+    #pragma ivdep
+    for (int kk = 0; kk < std::min(SIMD_WIDTH, npar-k); ++kk) {
+      int kkk = k + kk;
+
+      // Initiate interpolation and fetch particle properties.
+      Real pd[ni], ps[na];
+      for (int i = 0; i < ni; ++i)
+        pd[i] = 0.0;
+      for (int i = 0; i < na; ++i)
+        ps[i] = parsrc(ps1+i,kkk);
+
+      int imb1 = imb1v[kk], imb2 = imb2v[kk], imb3 = imb3v[kk];
+      int ima1 = imb1 - (active1_ ? OFFSET : 0),
+          ima2 = imb2 - (active2_ ? OFFSET : 0),
+          ima3 = imb3 - (active3_ ? OFFSET : 0);
+
+      #pragma loop count (NPC)
+      for (int ipc3 = 0; ipc3 < npc3_; ++ipc3) {
+        #pragma loop count (NPC)
+        for (int ipc2 = 0; ipc2 < npc2_; ++ipc2) {
+          #pragma loop count (NPC)
+          for (int ipc1 = 0; ipc1 < npc1_; ++ipc1) {
+            Real w = w1[ipc1][kk] * w2[ipc2][kk] * w3[ipc3][kk];
+
+            // Record the weights.
+            weight(ima3+ipc3,ima2+ipc2,ima1+ipc1) += w;
+
+            // Interpolate meshsrc to particles.
+            for (int n = 0; n < ni; ++n)
+              pd[n] += w * u(imb3+ipc3,imb2+ipc2,imb1+ipc1,n);
+
+            // Assign particles to meshaux.
+            for (int n = 0; n < na; ++n)
+              meshaux(ma1+n,ima3+ipc3,ima2+ipc2,ima1+ipc1) += w * ps[n];
+          }
+        }
+      }
+
+      // Record the final interpolated properties.
+      for (int n = 0; n < ni; ++n)
+        pardst(pd1+n,kkk) = pd[n];
+    }
   }
 
   // Release working array.
