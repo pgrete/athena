@@ -29,7 +29,7 @@ def run(**kwargs):
 
     # Combine the output tables.
     my_dir = os.path.dirname(os.path.realpath(__file__))
-    subprocess.run([my_dir + "/combine"], cwd="bin/")
+    subprocess.run([my_dir + "/combine.sh"], cwd="bin/")
 
 
 def analyze():
