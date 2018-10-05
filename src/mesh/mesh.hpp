@@ -80,9 +80,9 @@ public:
   int gflag;
   // At every cycle n, hydro and field registers (u, b) are advanced from t^n -> t^{n+1},
   // the time-integration scheme may partially substep several storage register pairs
-  // (u,b), (u1,b1), (u2, b2), ..., (umn, bm) through the dt interval.
-  // Track their time abscissae at the end of each stage (l) as (dt_m^l) relative to t^n
-  Real stage_abscissae[MAX_NSTAGE][MAX_NREGISTER];
+  // (u,b), (u1,b1), (u2, b2), ..., (um, bm) through the dt interval. Track their time
+  // abscissae at the end of each stage (1<=l<=nstage) as (dt_m^l) relative to t^n
+  Real stage_abscissae[MAX_NSTAGE+1][MAX_NREGISTER];
 
   // user output variables for analysis
   int nuser_out_var;
@@ -262,7 +262,7 @@ private:
 
 //----------------------------------------------------------------------------------------
 // \!fn Real ComputeMeshGeneratorX(int64_t index, int64_t nrange, bool sym_interval)
-// \brief wrapper fn to compute Real x logical location for either [0, 1] or [-0.5, 0.5]
+// \brief wrapper fn to compute Real x logical location for either [0., 1.] or [-0.5, 0.5]
 //        real cell ranges for MeshGenerator_[] functions (default/user vs. uniform)
 
 inline Real ComputeMeshGeneratorX(int64_t index, int64_t nrange, bool sym_interval) {
@@ -284,7 +284,7 @@ inline Real ComputeMeshGeneratorX(int64_t index, int64_t nrange, bool sym_interv
 
 //----------------------------------------------------------------------------------------
 // \!fn Real DefaultMeshGeneratorX1(Real x, RegionSize rs)
-// \brief x1 mesh generator function, x is the logical location; x=i/nx1, real in [0, 1]
+// \brief x1 mesh generator function, x is the logical location; x=i/nx1, real in [0., 1.]
 
 inline Real DefaultMeshGeneratorX1(Real x, RegionSize rs) {
   Real lw, rw;
@@ -302,7 +302,7 @@ inline Real DefaultMeshGeneratorX1(Real x, RegionSize rs) {
 
 //----------------------------------------------------------------------------------------
 // \!fn Real DefaultMeshGeneratorX2(Real x, RegionSize rs)
-// \brief x2 mesh generator function, x is the logical location; x=j/nx2, real in [0, 1]
+// \brief x2 mesh generator function, x is the logical location; x=j/nx2, real in [0., 1.]
 
 inline Real DefaultMeshGeneratorX2(Real x, RegionSize rs) {
   Real lw, rw;
@@ -319,7 +319,7 @@ inline Real DefaultMeshGeneratorX2(Real x, RegionSize rs) {
 
 //----------------------------------------------------------------------------------------
 // \!fn Real DefaultMeshGeneratorX3(Real x, RegionSize rs)
-// \brief x3 mesh generator function, x is the logical location; x=k/nx3, real in [0, 1]
+// \brief x3 mesh generator function, x is the logical location; x=k/nx3, real in [0., 1.]
 
 inline Real DefaultMeshGeneratorX3(Real x, RegionSize rs) {
   Real lw, rw;
