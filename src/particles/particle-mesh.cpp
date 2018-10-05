@@ -8,6 +8,7 @@
 //         methods.
 
 // Standard library
+#include <algorithm>
 #include <cstring>
 #include <sstream>
 
@@ -36,8 +37,7 @@ const int OFFSET = NGHOST - NGPM;  // offset between meshblock and meshaux
 //! \fn void ParticleMesh::Initialize(ParameterInput *pin)
 //  \brief initiates the ParticleMesh class.
 
-void ParticleMesh::Initialize(ParameterInput *pin)
-{
+void ParticleMesh::Initialize(ParameterInput *pin) {
   if (initialized_) return;
 
   // Add weight in meshaux.
@@ -55,8 +55,7 @@ void ParticleMesh::Initialize(ParameterInput *pin)
 //! \fn int ParticleMesh::AddMeshAux()
 //  \brief adds one auxiliary to the mesh and returns the index.
 
-int ParticleMesh::AddMeshAux()
-{
+int ParticleMesh::AddMeshAux() {
   return nmeshaux++;
 }
 
@@ -64,8 +63,7 @@ int ParticleMesh::AddMeshAux()
 //! \fn ParticleMesh::ParticleMesh(Particles *ppar, int nmeshaux)
 //  \brief constructs a new ParticleMesh instance.
 
-ParticleMesh::ParticleMesh(Particles *ppar)
-{
+ParticleMesh::ParticleMesh(Particles *ppar) {
   // Save some inputs.
   ppar_ = ppar;
   pmb_ = ppar->pmy_block;
@@ -92,24 +90,27 @@ ParticleMesh::ParticleMesh(Particles *ppar)
     is = NGPM;
     ie = NGPM + block_size.nx1 - 1;
     nx1_ = block_size.nx1 + 2 * NGPM;
-  } else
+  } else {
     is = ie = 0;
+  }
 
   if (active2_) {
     ++dim;
     js = NGPM;
     je = NGPM + block_size.nx2 - 1;
     nx2_ = block_size.nx2 + 2 * NGPM;
-  } else
+  } else {
     js = je = 0;
+  }
 
   if (active3_) {
     ++dim;
     ks = NGPM;
     ke = NGPM + block_size.nx3 - 1;
     nx3_ = block_size.nx3 + 2 * NGPM;
-  } else
+  } else {
     ks = ke = 0;
+  }
 
   // Allocate the block for particle-mesh.
   meshaux.NewAthenaArray(nmeshaux, nx3_, nx2_, nx1_);
@@ -140,8 +141,7 @@ ParticleMesh::ParticleMesh(Particles *ppar)
 //! \fn ParticleMesh::~ParticleMesh()
 //  \brief destructs a ParticleMesh instance.
 
-ParticleMesh::~ParticleMesh()
-{
+ParticleMesh::~ParticleMesh() {
   // Destroy the particle meshblock.
   weight.DeleteAthenaArray();
   meshaux.DeleteAthenaArray();
@@ -167,8 +167,7 @@ ParticleMesh::~ParticleMesh()
 
 void ParticleMesh::InterpolateMeshToParticles(
          const AthenaArray<Real>& meshsrc, int ms1,
-         AthenaArray<Real>& par, int p1, int nprop)
-{
+         AthenaArray<Real>& par, int p1, int nprop) {
   // Zero out the particle arrays.
   for (int n = 0; n < nprop; ++n)
     #pragma ivdep
@@ -178,7 +177,9 @@ void ParticleMesh::InterpolateMeshToParticles(
   for (int k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
     Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
-    int ix1 = int(xi1 - dxi1_), ix2 = int(xi2 - dxi2_), ix3 = int(xi3 - dxi3_);
+    int ix1 = static_cast<int>(xi1 - dxi1_),
+        ix2 = static_cast<int>(xi2 - dxi2_),
+        ix3 = static_cast<int>(xi3 - dxi3_);
     xi1 = ix1 + 0.5 - xi1;
     xi2 = ix2 + 0.5 - xi2;
     xi3 = ix3 + 0.5 - xi3;
@@ -210,8 +211,7 @@ void ParticleMesh::InterpolateMeshToParticles(
 //         index p1 to p2 onto meshaux from property index ma1 and up.
 
 void ParticleMesh::AssignParticlesToMeshAux(
-         const AthenaArray<Real>& par, int p1, int ma1, int nprop)
-{
+         const AthenaArray<Real>& par, int p1, int ma1, int nprop) {
   // Zero out meshaux.
   #pragma ivdep
   std::fill(&weight(0,0,0), &weight(0,0,0) + ncells_, 0.0);
@@ -224,13 +224,15 @@ void ParticleMesh::AssignParticlesToMeshAux(
     Real xi1 = ppar_->xi1(k) - (active1_ ? OFFSET : 0),
          xi2 = ppar_->xi2(k) - (active2_ ? OFFSET : 0),
          xi3 = ppar_->xi3(k) - (active3_ ? OFFSET : 0);
-    int ix1 = int(xi1 - dxi1_), ix2 = int(xi2 - dxi2_), ix3 = int(xi3 - dxi3_);
+    int ix1 = static_cast<int>(xi1 - dxi1_),
+        ix2 = static_cast<int>(xi2 - dxi2_),
+        ix3 = static_cast<int>(xi3 - dxi3_);
     xi1 = ix1 + 0.5 - xi1;
     xi2 = ix2 + 0.5 - xi2;
     xi3 = ix3 + 0.5 - xi3;
 
     // Fetch properties of the particle for assignment.
-    Real p[nprop];
+    Real *p = new Real[nprop];
     for (int n = 0; n < nprop; ++n)
       p[n] = par(p1+n,k);
 
@@ -253,6 +255,7 @@ void ParticleMesh::AssignParticlesToMeshAux(
         }
       }
     }
+    delete [] p;
   }
 
   // Treat neighbors of different levels.
@@ -273,8 +276,7 @@ void ParticleMesh::AssignParticlesToMeshAux(
 void ParticleMesh::InterpolateMeshAndAssignParticles(
          const AthenaArray<Real>& meshsrc, int ms1,
          AthenaArray<Real>& pardst, int pd1, int ni,
-         const AthenaArray<Real>& parsrc, int ps1, int ma1, int na)
-{
+         const AthenaArray<Real>& parsrc, int ps1, int ma1, int na) {
   // Zero out meshaux.
   #pragma ivdep
   std::fill(&weight(0,0,0), &weight(0,0,0) + ncells_, 0.0);
@@ -308,7 +310,9 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 
       // Find the domain the particle influences.
       Real xi1 = ppar_->xi1(kkk), xi2 = ppar_->xi2(kkk), xi3 = ppar_->xi3(kkk);
-      int imb1 = int(xi1 - dxi1_), imb2 = int(xi2 - dxi2_), imb3 = int(xi3 - dxi3_);
+      int imb1 = static_cast<int>(xi1 - dxi1_),
+          imb2 = static_cast<int>(xi2 - dxi2_),
+          imb3 = static_cast<int>(xi3 - dxi3_);
       xi1 = imb1 + 0.5 - xi1;
       xi2 = imb2 + 0.5 - xi2;
       xi3 = imb3 + 0.5 - xi3;
@@ -387,8 +391,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 //  \brief deposits data in meshaux from property index ma1 to ma1+nprop-1 to meshblock
 //         data u from property index mb1 and mb1+nprop-1, divided by cell volume.
 
-void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u, int ma1, int mb1, int nprop)
-{
+void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u, int ma1, int mb1, int nprop) {
   const int ibs = pmb_->is, jbs = pmb_->js, kbs = pmb_->ks, 
             ibe = pmb_->ie, jbe = pmb_->je, kbe = pmb_->ke;
   const int offset1 = active1_ ? OFFSET : 0,
@@ -409,8 +412,7 @@ void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u, int ma1, int mb1, int np
 //! \fn void ParticleMesh::InitiateBoundaryData()
 //  \brief allocates space for boundary data.
 
-void ParticleMesh::InitiateBoundaryData()
-{
+void ParticleMesh::InitiateBoundaryData() {
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
     BoundaryAttributes& ba = ba_[n];
@@ -418,12 +420,12 @@ void ParticleMesh::InitiateBoundaryData()
     int nrecv = (ba.ire - ba.irs + 1) *
                 (ba.jre - ba.jrs + 1) *
                 (ba.kre - ba.krs + 1) * nmeshaux;
-    bd_.recv[nb.bufid] = new Real [nrecv];
+    bd_.recv[nb.bufid] = new Real[nrecv];
 
 #ifdef MPI_PARALLEL
     if (nb.rank != Globals::my_rank) {
       int nsend = ba.ngtot * nmeshaux;
-      bd_.send[nb.bufid] = new Real [nsend];
+      bd_.send[nb.bufid] = new Real[nsend];
       MPI_Recv_init(bd_.recv[nb.bufid], nrecv, MPI_ATHENA_REAL, nb.rank,
                     (pmb_->lid<<6) | nb.bufid, my_comm, &bd_.req_recv[nb.bufid]);
       MPI_Send_init(bd_.send[nb.bufid], nsend, MPI_ATHENA_REAL, nb.rank,
@@ -437,16 +439,15 @@ void ParticleMesh::InitiateBoundaryData()
 //! \fn void ParticleMesh::SetBoundaryAttributes()
 //  \brief initializes or reinitializes attributes for each boundary.
 
-void ParticleMesh::SetBoundaryAttributes()
-{
+void ParticleMesh::SetBoundaryAttributes() {
   const RegionSize& block_size = pmb_->block_size;
   const Real xi1mid = (pmb_->is + pmb_->ie + 1) / 2,
              xi2mid = (pmb_->js + pmb_->je + 1) / 2,
              xi3mid = (pmb_->ks + pmb_->ke + 1) / 2;
   const int mylevel = pmb_->loc.level;
-  const int myfx1 = int(pbval_->loc.lx1 & 1L),
-            myfx2 = int(pbval_->loc.lx2 & 1L),
-            myfx3 = int(pbval_->loc.lx3 & 1L);
+  const int myfx1 = static_cast<int>(pbval_->loc.lx1 & 1L),
+            myfx2 = static_cast<int>(pbval_->loc.lx2 & 1L),
+            myfx3 = static_cast<int>(pbval_->loc.lx3 & 1L);
   const int nx1h = active1_ ? block_size.nx1 / 2 + NGPM : 1,
             nx2h = active2_ ? block_size.nx2 / 2 + NGPM : 1,
             nx3h = active3_ ? block_size.nx3 / 2 + NGPM : 1;
@@ -605,7 +606,7 @@ void ParticleMesh::SetBoundaryAttributes()
               jre = js + nx2h - 1;
             }
           }
-        } else
+        } else {
           if (active3_) {
             if (nb.fi1) {
               xi3min = xi3mid - dxi;
@@ -616,6 +617,7 @@ void ParticleMesh::SetBoundaryAttributes()
               kre = ks + nx3h - 1;
             }
           }
+        }
       }
     } else if (nb.level < mylevel) {  // Neighbor block is at a coarser level.
       if (nb.type == NEIGHBOR_FACE) {
@@ -634,8 +636,9 @@ void ParticleMesh::SetBoundaryAttributes()
           if (active1_ && myfx1) xi1_0 = xi1min - dxi;
         } else if (nb.ox2 == 0) {
           if (active2_ && myfx2) xi2_0 = xi2min - dxi;
-        } else
+        } else {
           if (active3_ && myfx3) xi3_0 = xi3min - dxi;
+        }
       }
     }
 
@@ -680,8 +683,7 @@ void ParticleMesh::SetBoundaryAttributes()
 //         from property index ma1 to ma1+nprop-1 in neighbors of different levels.
 
 void ParticleMesh::AssignParticlesToDifferentLevels(
-         const AthenaArray<Real>& par, int p1, int ma1, int nprop)
-{
+         const AthenaArray<Real>& par, int p1, int ma1, int nprop) {
   const int mylevel = pmb_->loc.level;
 
   // Find neighbor blocks that are on a different level.
@@ -736,15 +738,15 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
       }
 
       // Find the region of the ghost block to assign the particle to.
-      int ix1s = std::max(int(xi1 - dxi1_), 0),
-          ix1e = std::min(int(xi1 + dxi1_), ba.ngx1-1),
-          ix2s = std::max(int(xi2 - dxi2_), 0),
-          ix2e = std::min(int(xi2 + dxi2_), ba.ngx2-1),
-          ix3s = std::max(int(xi3 - dxi3_), 0),
-          ix3e = std::min(int(xi3 + dxi3_), ba.ngx3-1);
+      int ix1s = std::max(static_cast<int>(xi1 - dxi1_), 0),
+          ix1e = std::min(static_cast<int>(xi1 + dxi1_), ba.ngx1-1),
+          ix2s = std::max(static_cast<int>(xi2 - dxi2_), 0),
+          ix2e = std::min(static_cast<int>(xi2 + dxi2_), ba.ngx2-1),
+          ix3s = std::max(static_cast<int>(xi3 - dxi3_), 0),
+          ix3e = std::min(static_cast<int>(xi3 + dxi3_), ba.ngx3-1);
 
       // Stack the properties of the particle and set the pointers to the buffer.
-      Real prop[nprop];
+      Real *prop = new Real[nprop];
       int dbuf1 = ix1s + ba.ngx1 * (ix2s + ba.ngx2 * ix3s),
           dbuf2 = ba.ngx1 - ix1e + ix1s - 1,
           dbuf3 = ba.ngx1 * (ba.ngx2 - ix2e + ix2s - 1);
@@ -781,6 +783,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
         for (int n = 0; n < nprop; ++n)
           buf[n] += dbuf3;
       }
+      delete [] prop;
     }
 
     // Set the boundary flag.
@@ -798,8 +801,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
 //                            Real *buf, const BoundaryAttributes& ba)
 //  \brief Fill boundary buffers for sending to a block on the same level
 
-int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba)
-{
+int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba) {
   int p = 0;
   BufferUtility::Pack4DData(meshaux, buf, 0, nmeshaux - 1,
                             ba.iss, ba.ise, ba.jss, ba.jse, ba.kss, ba.kse, p);
@@ -810,8 +812,7 @@ int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const BoundaryAttribute
 //! \fn void ParticleMesh::AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba)
 //  \brief Add boundary buffer from a neighbor block to meshaux.
 
-void ParticleMesh::AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba)
-{
+void ParticleMesh::AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba) {
   // Add the data to the meshaux.
   for (int n = 0; n < nmeshaux; ++n)
     for (int k = ba.krs; k <= ba.kre; ++k)
@@ -824,8 +825,7 @@ void ParticleMesh::AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba)
 //! \fn void ParticleMesh::ClearBoundary()
 //  \brief clears boundary data to neighboring blocks.
 
-void ParticleMesh::ClearBoundary()
-{
+void ParticleMesh::ClearBoundary() {
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
     bd_.flag[nb.bufid] = BNDRY_WAITING;
@@ -836,8 +836,7 @@ void ParticleMesh::ClearBoundary()
 //! \fn void ParticleMesh::SendBoundary()
 //  \brief Send boundary values to neighboring blocks.
 
-void ParticleMesh::SendBoundary()
-{
+void ParticleMesh::SendBoundary() {
   const int mylevel = pmb_->loc.level;
 
   for (int n = 0; n < pbval_->nneighbor; n++) {
@@ -849,13 +848,12 @@ void ParticleMesh::SendBoundary()
         BoundaryData *pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
         LoadBoundaryBufferSameLevel(pnbd->recv[nb.targetid], ba_[n]);
         pnbd->flag[nb.targetid] = BNDRY_ARRIVED;
-      }
+      } else {
 #ifdef MPI_PARALLEL
-      else {
         LoadBoundaryBufferSameLevel(bd_.send[nb.bufid], ba_[n]);
         MPI_Start(&bd_.req_send[nb.bufid]);
-      }
 #endif
+      }
     }
   }
 }
@@ -864,8 +862,7 @@ void ParticleMesh::SendBoundary()
 //! \fn void ParticleMesh::StartReceiving()
 //  \brief starts receiving meshaux near boundary from neighbor processes.
 
-void ParticleMesh::StartReceiving()
-{
+void ParticleMesh::StartReceiving() {
 #ifdef MPI_PARALLEL
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
@@ -882,8 +879,7 @@ void ParticleMesh::StartReceiving()
 
 #include <iomanip>
 
-bool ParticleMesh::ReceiveBoundary()
-{
+bool ParticleMesh::ReceiveBoundary() {
   bool completed = true;
 
   for (int n = 0; n < pbval_->nneighbor; n++) {
@@ -922,8 +918,7 @@ bool ParticleMesh::ReceiveBoundary()
 //! \fn Real _WeightFunction(Real dxi)
 //  \brief evaluates the weight function given index distance.
 
-Real _WeightFunction(Real dxi)
-{
+Real _WeightFunction(Real dxi) {
   dxi = std::min(std::abs(dxi), 1.5);
   return dxi < 0.5 ? 0.75 - dxi * dxi : 0.5 * ((1.5 - dxi) * (1.5 - dxi));
 }

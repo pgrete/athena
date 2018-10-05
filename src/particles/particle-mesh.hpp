@@ -1,3 +1,5 @@
+#ifndef PARTICLES_PARTICLE_MESH_HPP_
+#define PARTICLES_PARTICLE_MESH_HPP_
 //======================================================================================
 // Athena++ astrophysical MHD code
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
@@ -22,7 +24,7 @@
 
 // Particle-mesh constants.
 const Real RINF = 1;  // radius of influence
-const int NGPM = int(std::ceil(RINF));  // number of ghost cells needed.
+const int NGPM = static_cast<int>(std::ceil(RINF));  // number of ghost cells needed.
 
 // Define the size of a particle cloud = 2 * NGPM + 1
 #define NPC 3
@@ -46,7 +48,7 @@ public:
   static int AddMeshAux();
 
   // Constructor and destructor
-  ParticleMesh(Particles *ppar);
+  explicit ParticleMesh(Particles *ppar);
   ~ParticleMesh();
 
 protected:
@@ -117,3 +119,4 @@ private:
   static MPI_Comm my_comm;  // my MPI communicator
 #endif
 };
+#endif  // PARTICLES_PARTICLE_MESH_HPP_

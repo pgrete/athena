@@ -50,8 +50,7 @@ static int CheckSide(int xi, int xi1, int xi2);
 //! \fn Particles::Initialize(ParameterInput *pin)
 //  \brief initializes the class.
 
-void Particles::Initialize(ParameterInput *pin)
-{
+void Particles::Initialize(ParameterInput *pin) {
   if (initialized) return;
 
   // Add particle ID.
@@ -102,8 +101,7 @@ void Particles::Initialize(ParameterInput *pin)
 //! \fn Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 //  \brief constructs a Particles instance.
 
-Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
-{
+Particles::Particles(MeshBlock *pmb, ParameterInput *pin) {
   // Point to the calling MeshBlock.
   pmy_block = pmb;
   pmy_mesh = pmb->pmy_mesh;
@@ -143,8 +141,7 @@ Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 //! \fn Particles::~Particles()
 //  \brief destroys a Particles instance.
 
-Particles::~Particles()
-{
+Particles::~Particles() {
   // Delete integer properties.
   intprop.DeleteAthenaArray();
 
@@ -165,8 +162,7 @@ Particles::~Particles()
 //! \fn void Particles::ClearBoundary()
 //  \brief resets boundary for particle transportation.
 
-void Particles::ClearBoundary()
-{
+void Particles::ClearBoundary() {
   for (int i = 0; i < pbval_->nneighbor; ++i) {
     NeighborBlock& nb = pbval_->neighbor[i];
     bstatus_[nb.bufid] = BNDRY_WAITING;
@@ -186,8 +182,7 @@ void Particles::ClearBoundary()
 //! \fn void Particles::Integrate(int step)
 //  \brief updates all particle positions and velocities from t to t + dt.
 
-void Particles::Integrate(int stage)
-{
+void Particles::Integrate(int stage) {
   Real t, dt;
 
   switch (stage) {
@@ -212,8 +207,7 @@ void Particles::Integrate(int stage)
 //! \fn void Particles::LinkNeighbors()
 //  \brief fetches neighbor information for later communication.
 
-void Particles::LinkNeighbors()
-{
+void Particles::LinkNeighbors() {
   // Construct links to neighbors.
   neighbor_[1][1][1].pmb = pmy_block;
 
@@ -227,14 +221,14 @@ void Particles::LinkNeighbors()
       pn = pn->next;
     }
     pn->pnb = &nb;
-    if (nb.rank == Globals::my_rank)
+    if (nb.rank == Globals::my_rank) {
       pn->pmb = pmy_mesh->FindMeshBlock(nb.gid);
+    } else {
 #ifdef MPI_PARALLEL
-    else {
       send_[nb.bufid].tag = (nb.gid<<8) | (nb.targetid<<2),
       recv_[nb.bufid].tag = (pmy_block->gid<<8) | (nb.bufid<<2);
-    }
 #endif
+    }
   }
 
   // Initiate ParticleMesh boundary data.
@@ -246,8 +240,7 @@ void Particles::LinkNeighbors()
 //! \fn void Particles::SendParticleMesh()
 //  \brief send ParticleMesh meshaux near boundaries to neighbors.
 
-void Particles::SendParticleMesh()
-{
+void Particles::SendParticleMesh() {
   if (ppm->nmeshaux > 0)
     ppm->SendBoundary();
 }
@@ -256,8 +249,7 @@ void Particles::SendParticleMesh()
 //! \fn void Particles::SendToNeighbors()
 //  \brief sends particles outside boundary to the buffers of neighboring meshblocks.
 
-void Particles::SendToNeighbors()
-{
+void Particles::SendToNeighbors() {
   const int IS = pmy_block->is;
   const int IE = pmy_block->ie;
   const int JS = pmy_block->js;
@@ -265,7 +257,7 @@ void Particles::SendToNeighbors()
   const int KS = pmy_block->ks;
   const int KE = pmy_block->ke;
 
-  // TODO: Currently only works for Cartesian.
+  // TODO(ccyang): Currently only works for Cartesian.
   if (COORDINATE_SYSTEM != "cartesian") {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
@@ -276,7 +268,9 @@ void Particles::SendToNeighbors()
 
   for (int k = 0; k < npar; ) {
     // Check if a particle is outside the boundary.
-    int xi1i = int(xi1(k)), xi2i = int(xi2(k)), xi3i = int(xi3(k));
+    int xi1i = static_cast<int>(xi1(k)),
+        xi2i = static_cast<int>(xi2(k)),
+        xi3i = static_cast<int>(xi3(k));
     int ox1 = active1_ ? CheckSide(xi1i, IS, IE) : 0,
         ox2 = active2_ ? CheckSide(xi2i, JS, JE) : 0,
         ox3 = active3_ ? CheckSide(xi3i, KS, KE) : 0;
@@ -379,8 +373,7 @@ void Particles::SendToNeighbors()
 //! \fn void Particles::SetPositionIndices()
 //  \brief updates position indices of particles.
 
-void Particles::SetPositionIndices()
-{
+void Particles::SetPositionIndices() {
   GetPositionIndices(pmy_block, npar, xp, yp, zp, xi1, xi2, xi3);
 }
 
@@ -388,8 +381,7 @@ void Particles::SetPositionIndices()
 //! \fn void Particles::StartReceiving()
 //  \brief starts receiving ParticleMesh meshaux near boundary from neighbor processes.
 
-void Particles::StartReceiving()
-{
+void Particles::StartReceiving() {
   ppm->StartReceiving();
 }
 
@@ -398,8 +390,7 @@ void Particles::StartReceiving()
 //  \brief receives particles from neighboring meshblocks and returns a flag indicating
 //         if all receives are completed.
 
-bool Particles::ReceiveFromNeighbors()
-{
+bool Particles::ReceiveFromNeighbors() {
   bool flag = true;
 
   for (int i = 0; i < pbval_->nneighbor; ++i) {
@@ -425,9 +416,10 @@ bool Particles::ReceiveFromNeighbors()
               recv.Reallocate(2 * nprecv - recv.nparmax);
               recv.npar = nprecv;
             }
-          } else
+          } else {
             // No incoming particles.
             bstatus = BNDRY_COMPLETED;
+          }
         }
       }
       if (recv.flagn && recv.npar > 0) {
@@ -477,8 +469,7 @@ bool Particles::ReceiveFromNeighbors()
 //  \brief receives ParticleMesh meshaux near boundaries from neighbors and returns a
 //         flag indicating if all receives are completed.
 
-bool Particles::ReceiveParticleMesh(int stage)
-{
+bool Particles::ReceiveParticleMesh(int stage) {
   if (ppm->nmeshaux <= 0) return true;
 
   // Flush ParticleMesh receive buffers.
@@ -513,8 +504,7 @@ bool Particles::ReceiveParticleMesh(int stage)
 //  \brief applies boundary conditions to particle k and returns its updated mesh
 //         coordinates (x1,x2,x3).
 
-void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3)
-{
+void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
   bool flag = false;
   RegionSize& mesh_size = pmy_mesh->mesh_size;
 
@@ -635,8 +625,7 @@ void Particles::GetPositionIndices(MeshBlock *pmb, int npar,
                                    const AthenaArray<Real>& zp,
                                    AthenaArray<Real>& xi1,
                                    AthenaArray<Real>& xi2,
-                                   AthenaArray<Real>& xi3)
-{
+                                   AthenaArray<Real>& xi3) {
   for (int k = 0; k < npar; ++k) {
     // Convert to the Mesh coordinates.
     Real x1, x2, x3;
@@ -651,8 +640,7 @@ void Particles::GetPositionIndices(MeshBlock *pmb, int npar,
 //! \fn void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 //  \brief evolves the particle positions and velocities by one Euler step.
 
-void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc)
-{
+void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
   // Get the accelerations.
   ZeroAcceleration();
   AddAcceleration(t, dt, meshsrc);
@@ -672,8 +660,7 @@ void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 //! \fn void Particles::SaveStatus()
 //  \brief saves the current positions and velocities for later use.
 
-void Particles::SaveStatus()
-{
+void Particles::SaveStatus() {
   for (int k = 0; k < npar; ++k) {
     // Save current positions.
     xp0(k) = xp(k);
@@ -691,8 +678,7 @@ void Particles::SaveStatus()
 //! \fn void Particles::ZeroAcceleration()
 //  \brief initializes acceleration with zeros.
 
-void Particles::ZeroAcceleration()
-{
+void Particles::ZeroAcceleration() {
   for (int k = 0; k < npar; ++k) {
     apx(k) = 0.0;
     apy(k) = 0.0;
@@ -706,8 +692,7 @@ void Particles::ZeroAcceleration()
 //  \brief finds the neighbor to send a particle to.
 
 struct Neighbor* Particles::FindTargetNeighbor(
-    int ox1, int ox2, int ox3, int xi1, int xi2, int xi3)
-{
+    int ox1, int ox2, int ox3, int xi1, int xi2, int xi3) {
   // Find the head of the linked list.
   Neighbor *pn = &neighbor_[ox1+1][ox2+1][ox3+1];
 
@@ -733,8 +718,7 @@ struct Neighbor* Particles::FindTargetNeighbor(
 //! \fn void Particles::FlushReceiveBuffer(ParticleBuffer& recv)
 //  \brief adds particles from the receive buffer.
 
-void Particles::FlushReceiveBuffer(ParticleBuffer& recv)
-{
+void Particles::FlushReceiveBuffer(ParticleBuffer& recv) {
   // Check the memory size.
   int nprecv = recv.npar;
   if (npar + nprecv > nparmax) {
@@ -782,8 +766,7 @@ void Particles::FlushReceiveBuffer(ParticleBuffer& recv)
 //! \fn int Particles::AddIntProperty()
 //  \brief adds one integer property to the particles and returns the index.
 
-int Particles::AddIntProperty()
-{
+int Particles::AddIntProperty() {
   return nint++;
 }
 
@@ -791,8 +774,7 @@ int Particles::AddIntProperty()
 //! \fn int Particles::AddRealProperty()
 //  \brief adds one real property to the particles and returns the index.
 
-int Particles::AddRealProperty()
-{
+int Particles::AddRealProperty() {
   return nreal++;
 }
 
@@ -800,8 +782,7 @@ int Particles::AddRealProperty()
 //! \fn int Particles::AddAuxProperty()
 //  \brief adds one auxiliary property to the particles and returns the index.
 
-int Particles::AddAuxProperty()
-{
+int Particles::AddAuxProperty() {
   return naux++;
 }
 
@@ -809,8 +790,7 @@ int Particles::AddAuxProperty()
 //! \fn int Particles::AddWorkingArray()
 //  \brief adds one working array to the particles and returns the index.
 
-int Particles::AddWorkingArray()
-{
+int Particles::AddWorkingArray() {
   return nwork++;
 }
 
@@ -818,8 +798,7 @@ int Particles::AddWorkingArray()
 //! \fn void Particles::AssignShorthands()
 //  \brief assigns shorthands by shallow coping slices of the data.
 
-void Particles::AssignShorthands()
-{
+void Particles::AssignShorthands() {
   pid.InitWithShallowSlice(intprop, 2, ipid, 1);
 
   xp.InitWithShallowSlice(realprop, 2, ixp, 1);
@@ -848,17 +827,16 @@ void Particles::AssignShorthands()
 //! \fn void Particles::NewBlockTimeStep();
 //  \brief constrains the time step by particles in the block.
 
-void Particles::NewBlockTimeStep()
-{
+void Particles::NewBlockTimeStep() {
   Coordinates *pc = pmy_block->pcoord;
 
   // Find the allowed time step for each particle.
   Real dt_inv2_max = 0.0, dt_inv2;
   for (int k = 0; k < npar; ++k) {
     dt_inv2 = 0.0;
-    if (active1_) dt_inv2 += std::pow(vpx(k) / pc->dx1f(int(xi1(k))), 2);
-    if (active2_) dt_inv2 += std::pow(vpy(k) / pc->dx2f(int(xi2(k))), 2);
-    if (active3_) dt_inv2 += std::pow(vpz(k) / pc->dx3f(int(xi3(k))), 2);
+    if (active1_) dt_inv2 += std::pow(vpx(k) / pc->dx1f(static_cast<int>(xi1(k))), 2);
+    if (active2_) dt_inv2 += std::pow(vpy(k) / pc->dx2f(static_cast<int>(xi2(k))), 2);
+    if (active3_) dt_inv2 += std::pow(vpz(k) / pc->dx3f(static_cast<int>(xi3(k))), 2);
     dt_inv2_max = std::max(dt_inv2_max, dt_inv2);
   }
 
@@ -873,8 +851,7 @@ void Particles::NewBlockTimeStep()
 //! \fn Particles::GetSizeInBytes()
 //  \brief returns the data size in bytes in the meshblock.
 
-size_t Particles::GetSizeInBytes()
-{
+size_t Particles::GetSizeInBytes() {
   size_t size = sizeof(npar);
   if (npar > 0) size += npar * (nint * sizeof(int) + nreal * sizeof(Real));
   return size;
@@ -886,13 +863,11 @@ size_t Particles::GetSizeInBytes()
 
 #include <cstring>
 
-void Particles::ReadRestart(char *mbdata, int &os)
-{
+void Particles::ReadRestart(char *mbdata, int &os) {
   // Read number of particles.
   std::memcpy(&npar, &(mbdata[os]), sizeof(npar));
   os += sizeof(npar);
-  if (npar > nparmax)
-  {
+  if (npar > nparmax) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Particles::ReadRestart]" << std::endl
         << "npar = " << npar << " > nparmax = " << nparmax << std::endl;
@@ -920,8 +895,7 @@ void Particles::ReadRestart(char *mbdata, int &os)
 //! \fn Particles::WriteRestart()
 //  \brief writes the particle data to the restart file.
 
-void Particles::WriteRestart(char *&pdata)
-{
+void Particles::WriteRestart(char *&pdata) {
   // Write number of particles.
   memcpy(pdata, &npar, sizeof(npar));
   pdata += sizeof(npar);
@@ -950,8 +924,7 @@ void Particles::WriteRestart(char *&pdata)
 #include <fstream>
 #include <iomanip>
 
-void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
-{
+void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op) {
   MeshBlock *pmb = pm->pblock;
   Particles *ppar;
   std::stringstream fname, msg;
@@ -997,11 +970,10 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op)
 //! \fn void _CartesianToMeshCoords(x, y, z, x1, x2, x3)
 //  \brief returns in (x1, x2, x3) the coordinates used by the mesh from Cartesian 
 //         coordinates (x, y, z).
-// TODO: Currently only supports Cartesian to Cartensian.
-// TODO: Generalize and move this to the Coordinates class.
+// TODO(ccyang): Currently only supports Cartesian to Cartensian.
+// TODO(ccyang): Generalize and move this to the Coordinates class.
 
-inline void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3)
-{
+inline void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) {
   x1 = x;
   x2 = y;
   x3 = z;
@@ -1011,11 +983,10 @@ inline void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, R
 //! \fn void _MeshCoordsToCartesian(x1, x2, x3, x, y, z)
 //  \brief returns in Cartesian coordinates (x, y, z) from (x1, x2, x3) the coordinates
 //         used by the mesh.
-// TODO: Currently only supports Cartesian to Cartensian.
-// TODO: Generalize and move this to the Coordinates class.
+// TODO(ccyang): Currently only supports Cartesian to Cartensian.
+// TODO(ccyang): Generalize and move this to the Coordinates class.
 
-inline void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z)
-{
+inline void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) {
   x = x1;
   y = x2;
   z = x3;
@@ -1026,12 +997,11 @@ inline void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, 
 //                                Real& xi1, Real& xi2, Real& xi3)
 //  \brief returns in index coordinates (xi1, xi2, xi3) with respect to the local
 //         grid of MeshBlock pmb from the physical coordinates (x1, x2, x3).
-// TODO: Currently only supports uniform mesh.
-// TODO: Generalize and move this to the Coordinates class.
+// TODO(ccyang): Currently only supports uniform mesh.
+// TODO(ccyang): Generalize and move this to the Coordinates class.
 
 void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
-                          Real& xi1, Real& xi2, Real& xi3)
-{
+                          Real& xi1, Real& xi2, Real& xi3) {
   // Get the meshblock info.
   const int IS = pmb->is;
   const int JS = pmb->js;
@@ -1050,12 +1020,11 @@ void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
 //                                Real& x1, Real& x2, Real& x3)
 //  \brief returns in mesh coordinates (x1, x2, x3) from index coordinates
 //         (xi1, xi2, xi3) with respect to the local grid of MeshBlock pmb.
-// TODO: Currently only supports uniform mesh.
-// TODO: Generalize and move this to the Coordinates class.
+// TODO(ccyang): Currently only supports uniform mesh.
+// TODO(ccyang): Generalize and move this to the Coordinates class.
 
 void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
-                          Real& x1, Real& x2, Real& x3)
-{
+                          Real& x1, Real& x2, Real& x3) {
   // Get the meshblock info.
   const int IS = pmb->is;
   const int JS = pmb->js;
@@ -1076,8 +1045,7 @@ void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
 //! \fn int CheckSide(int xi, nx, int xi1, int xi2)
 //  \brief returns -1 if xi < xi1, +1 if xi > xi2, or 0 otherwise.
 
-inline int CheckSide(int xi, int xi1, int xi2)
-{
+inline int CheckSide(int xi, int xi1, int xi2) {
    if (xi < xi1) return -1;
    if (xi > xi2) return +1;
    return 0;

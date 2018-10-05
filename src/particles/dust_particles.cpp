@@ -22,8 +22,7 @@ Real DustParticles::mass = 1.0, DustParticles::taus = 0.0;
 //! \fn DustParticles::Initialize()
 //  \brief initializes the class.
 
-void DustParticles::Initialize(ParameterInput *pin)
-{
+void DustParticles::Initialize(ParameterInput *pin) {
   // Initialize first the parent class.
   if (!Particles::initialized) Particles::Initialize(pin);
 
@@ -58,8 +57,7 @@ void DustParticles::Initialize(ParameterInput *pin)
 //  \brief constructs a DustParticles instance.
 
 DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
-  : Particles(pmb, pin)
-{
+  : Particles(pmb, pin) {
   // Assign shorthands (need to do this for every constructor of a derived class)
   AssignShorthands();
 
@@ -74,8 +72,7 @@ DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
 //! \fn DustParticles::~DustParticles()
 //  \brief destroys a DustParticles instance.
 
-DustParticles::~DustParticles()
-{
+DustParticles::~DustParticles() {
   wx.DeleteAthenaArray();
   wy.DeleteAthenaArray();
   wz.DeleteAthenaArray();
@@ -91,8 +88,7 @@ DustParticles::~DustParticles()
 //! \fn void DustParticles::AssignShorthands()
 //  \brief assigns shorthands by shallow coping slices of the data.
 
-void DustParticles::AssignShorthands()
-{
+void DustParticles::AssignShorthands() {
   Particles::AssignShorthands();
   wx.InitWithShallowSlice(work, 2, iwx, 1);
   wy.InitWithShallowSlice(work, 2, iwy, 1);
@@ -103,8 +99,7 @@ void DustParticles::AssignShorthands()
 //! \fn void DustParticles::AddAcceleration()
 //  \brief adds acceleration to particles.
 
-void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc)
-{
+void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
   // Interpolate gas velocity onto particles.
   if (backreaction)
     ppm->InterpolateMeshAndAssignParticles(meshsrc, IVX, work, iwx, 3,
@@ -115,13 +110,13 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
   // Add drag force to particles.
   if (taus > 0.0) {
     Real taus1 = 1.0 / taus;
-    for (long k = 0; k < npar; ++k) {
+    for (int k = 0; k < npar; ++k) {
       apx(k) -= taus1 * (vpx(k) - wx(k));
       apy(k) -= taus1 * (vpy(k) - wy(k));
       apz(k) -= taus1 * (vpz(k) - wz(k));
     }
   } else if (taus == 0.0) {
-    for (long k = 0; k < npar; ++k) {
+    for (int k = 0; k < npar; ++k) {
       vpx(k) = wx(k);
       vpy(k) = wy(k);
       vpz(k) = wz(k);
@@ -135,8 +130,7 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
 //  \brief Deposits meshaux to Mesh.
 
 void DustParticles::DepositToMesh(
-         Real t, Real dt, const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst)
-{
+         Real t, Real dt, const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst) {
   if (!backreaction) return;
 
   const int ias = ppm->is, jas = ppm->js, kas = ppm->ks;

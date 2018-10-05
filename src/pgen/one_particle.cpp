@@ -20,8 +20,7 @@
 //  \brief Sets the initial conditions.
 //======================================================================================
 
-void MeshBlock::ProblemGenerator(ParameterInput *pin)
-{
+void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   // Get the (uniform) velocity of the gas.
   Real ux0, uy0, uz0;
   ux0 = pin->GetOrAddReal("problem", "ux0", 0.0);
@@ -69,6 +68,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     ppar->vpx(0) = vpx0;
     ppar->vpy(0) = vpy0;
     ppar->vpz(0) = vpz0;
-  } else
+  } else {
     ppar->npar = 0;
+  }
 }

@@ -1,3 +1,5 @@
+#ifndef PARTICLES_PARTICLE_BUFFER_HPP_
+#define PARTICLES_PARTICLE_BUFFER_HPP_
 //======================================================================================
 // Athena++ astrophysical MHD code
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
@@ -28,7 +30,7 @@ public:
 
   // Constructors and destructor
   ParticleBuffer();
-  ParticleBuffer(int nparmax0);
+  explicit ParticleBuffer(int nparmax0);
   ~ParticleBuffer();
 
   // Instance method
@@ -51,3 +53,4 @@ protected:
   int tag;                 // MPI tag (allowing for from tag to tag + 2)
 #endif
 };
+#endif  // PARTICLES_PARTICLE_BUFFER_HPP_

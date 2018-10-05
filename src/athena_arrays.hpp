@@ -321,8 +321,7 @@ void AthenaArray<T>::SwapAthenaArray(AthenaArray<T>& array2) {
 #include <algorithm>  // min()
 
 template<typename T>
-void AthenaArray<T>::ResizeLastDimension(int new_nx1)
-{
+void AthenaArray<T>::ResizeLastDimension(int new_nx1) {
   // Do nothing if no change in dimensions.
   if (nx1_ == new_nx1) return;
 

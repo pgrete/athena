@@ -1,5 +1,5 @@
-#ifndef PARTICLE_HPP
-#define PARTICLE_HPP
+#ifndef PARTICLES_PARTICLES_HPP_
+#define PARTICLES_PARTICLES_HPP_
 //======================================================================================
 // Athena++ astrophysical MHD code
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
@@ -203,4 +203,4 @@ private:
   AthenaArray<Real> dpx, dpy, dpz;  // shorthand for momentum change
 };
 
-#endif
+#endif  // PARTICLES_PARTICLES_HPP_

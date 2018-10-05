@@ -852,8 +852,7 @@ enum TaskStatus TimeIntegratorTaskList::EMFShearRemap(MeshBlock *pmb, int stage)
 //--------------------------------------------------------------------------------------
 // Functions to manage particles
 
-enum TaskStatus TimeIntegratorTaskList::ParticlesIntegrate(MeshBlock *pmb, int stage)
-{
+enum TaskStatus TimeIntegratorTaskList::ParticlesIntegrate(MeshBlock *pmb, int stage) {
   if (integrator == "vl2") {
     pmb->ppar->Integrate(stage);
     return TASK_NEXT;
@@ -861,28 +860,24 @@ enum TaskStatus TimeIntegratorTaskList::ParticlesIntegrate(MeshBlock *pmb, int s
   return TASK_FAIL;
 }
 
-enum TaskStatus TimeIntegratorTaskList::ParticlesSend(MeshBlock *pmb, int stage)
-{
+enum TaskStatus TimeIntegratorTaskList::ParticlesSend(MeshBlock *pmb, int stage) {
   pmb->ppar->SendToNeighbors();
   return TASK_SUCCESS;
 }
 
-enum TaskStatus TimeIntegratorTaskList::ParticlesReceive(MeshBlock *pmb, int stage)
-{
+enum TaskStatus TimeIntegratorTaskList::ParticlesReceive(MeshBlock *pmb, int stage) {
   if (pmb->ppar->ReceiveFromNeighbors())
     return TASK_SUCCESS;
   else
     return TASK_FAIL;
 }
 
-enum TaskStatus TimeIntegratorTaskList::ParticleMeshSend(MeshBlock *pmb, int stage)
-{
+enum TaskStatus TimeIntegratorTaskList::ParticleMeshSend(MeshBlock *pmb, int stage) {
   pmb->ppar->SendParticleMesh();
   return TASK_SUCCESS;
 }
 
-enum TaskStatus TimeIntegratorTaskList::ParticleMeshReceive(MeshBlock *pmb, int stage)
-{
+enum TaskStatus TimeIntegratorTaskList::ParticleMeshReceive(MeshBlock *pmb, int stage) {
   if (pmb->ppar->ReceiveParticleMesh(stage))
     return TASK_SUCCESS;
   else

@@ -20,8 +20,7 @@ int ParticleBuffer::nint = 0, ParticleBuffer::nreal = 0;
 //! \fn void ParticleBuffer::SetNumberOfProperties(int nint0, int nreal0)
 //  \brief sets the number of integer and real propertes.
 
-void ParticleBuffer::SetNumberOfProperties(int nint0, int nreal0)
-{
+void ParticleBuffer::SetNumberOfProperties(int nint0, int nreal0) {
   // Sanity check
   if (nint0 < 0 || nreal0 < 0) {
     std::stringstream msg;
@@ -41,8 +40,7 @@ void ParticleBuffer::SetNumberOfProperties(int nint0, int nreal0)
 //! \fn ParticleBuffer::ParticleBuffer()
 //  \brief initiates a default instance of ParticleBuffer.
 
-ParticleBuffer::ParticleBuffer()
-{
+ParticleBuffer::ParticleBuffer() {
   ibuf = NULL;
   rbuf = NULL;
   nparmax = npar = 0;
@@ -57,8 +55,7 @@ ParticleBuffer::ParticleBuffer()
 //! \fn ParticleBuffer::ParticleBuffer(int nparmax0)
 //  \brief initiates a new instance of ParticleBuffer with nparmax = nparmax0.
 
-ParticleBuffer::ParticleBuffer(int nparmax0)
-{
+ParticleBuffer::ParticleBuffer(int nparmax0) {
   // Sanity check
   if (nparmax0 <= 0) {
     std::stringstream msg;
@@ -74,8 +71,8 @@ ParticleBuffer::ParticleBuffer(int nparmax0)
 
   // Initialize the instance variables.
   nparmax = nparmax0;
-  ibuf = new int [nint * nparmax];
-  rbuf = new Real [nreal * nparmax];
+  ibuf = new int[nint * nparmax];
+  rbuf = new Real[nreal * nparmax];
   npar = 0;
 #ifdef MPI_PARALLEL
   reqi = reqr = MPI_REQUEST_NULL;
@@ -88,8 +85,7 @@ ParticleBuffer::ParticleBuffer(int nparmax0)
 //! \fn ParticleBuffer::ParticleBuffer(int nparmax0)
 //  \brief destroys an instance of ParticleBuffer.
 
-ParticleBuffer::~ParticleBuffer()
-{
+ParticleBuffer::~ParticleBuffer() {
   if (ibuf != NULL) delete [] ibuf;
   if (rbuf != NULL) delete [] rbuf;
 #ifdef MPI_PARALLEL
@@ -102,8 +98,7 @@ ParticleBuffer::~ParticleBuffer()
 //! \fn void ParticleBuffer::Reallocate(int new_nparmax)
 //  \brief reallocates the buffers; the old content is preserved.
 
-void ParticleBuffer::Reallocate(int new_nparmax)
-{
+void ParticleBuffer::Reallocate(int new_nparmax) {
   // Sanity check
   if (new_nparmax <= 0) {
     std::stringstream msg;
@@ -131,8 +126,8 @@ void ParticleBuffer::Reallocate(int new_nparmax)
 
   // Allocate new space.
   nparmax = new_nparmax;
-  int *ibuf_new = new int [nint * nparmax];
-  Real *rbuf_new = new Real [nreal * nparmax];
+  int *ibuf_new = new int[nint * nparmax];
+  Real *rbuf_new = new Real[nreal * nparmax];
 
   // Move existing data.
   if (npar > 0) {
