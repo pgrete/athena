@@ -1,6 +1,7 @@
 # Test for uniform streaming between gas and particles.
 
 # Modules
+import math
 import numpy as np                             # standard Python module for numerics
 import sys                                     # standard Python module to change path
 import scripts.utils.athena as athena          # utilities for running Athena++
@@ -35,7 +36,6 @@ def run(**kwargs):
 def analyze():
     """Analyze the output and determine if the test passes. """
     from glob import glob
-    import math
 
     # Define the base name.
     base = "bin/UniStream"
@@ -62,7 +62,8 @@ def analyze():
     taus = float(input_particles["taus"])
     backreaction = False
     if "backreaction" in input_particles:
-        if input_particles["backreaction"] == "true": backreaction = True
+        if input_particles["backreaction"] == "true":
+            backreaction = True
 
     # Construct numpy datatypes.
     dtp = np.dtype(
@@ -151,15 +152,9 @@ def analyze():
     dxpavg, dxpmin, dxpmax = np.array(dxpavg), np.array(dxpmin), np.array(dxpmax)
     dypavg, dypmin, dypmax = np.array(dypavg), np.array(dypmin), np.array(dypmax)
     dzpavg, dzpmin, dzpmax = np.array(dzpavg), np.array(dzpmin), np.array(dzpmax)
-    dxperr = [dxpmax - dxpavg, dxpavg - dxpmin]
-    dyperr = [dypmax - dypavg, dypavg - dypmin]
-    dzperr = [dzpmax - dzpavg, dzpavg - dzpmin]
     vpxavg, vpxmin, vpxmax = np.array(vpxavg), np.array(vpxmin), np.array(vpxmax)
     vpyavg, vpymin, vpymax = np.array(vpyavg), np.array(vpymin), np.array(vpymax)
     vpzavg, vpzmin, vpzmax = np.array(vpzavg), np.array(vpzmin), np.array(vpzmax)
-    vpxerr = [vpxmax - vpxavg, vpxavg - vpxmin]
-    vpyerr = [vpymax - vpyavg, vpyavg - vpymin]
-    vpzerr = [vpzmax - vpzavg, vpzavg - vpzmin]
 
     # Collect gas data.
     for fname in glob(base + ".[0-9][0-9][0-9][0-9][0-9].tab"):
@@ -179,9 +174,6 @@ def analyze():
     uxavg, uxmin, uxmax = np.array(uxavg), np.array(uxmin), np.array(uxmax)
     uyavg, uymin, uymax = np.array(uyavg), np.array(uymin), np.array(uymax)
     uzavg, uzmin, uzmax = np.array(uzavg), np.array(uzmin), np.array(uzmax)
-    uxerr = [uxmax - uxavg, uxavg - uxmin]
-    uyerr = [uymax - uyavg, uyavg - uymin]
-    uzerr = [uzmax - uzavg, uzavg - uzmin]
 
     # Find the analytical solution.
     us1 = UniformStreaming(taus, 0, dtog, ux0, vpx0, backreaction=backreaction)
@@ -249,18 +241,15 @@ def analyze():
     return ok
 
 
-#=======================================================================
+# ======================================================================
 # Class definition for uniform streaming motion between gas and solid
 # particles.
-#=======================================================================
-import math
-import numpy as np
-#-----------------------------------------------------------------------
+# ======================================================================
 class UniformStreaming:
     """Object for uniform streaming motion between gas and solid
     particles.
     """
-#-----------------------------------------------------------------------
+# ----------------------------------------------------------------------
     def __init__(self, ts, g, epsilon, u0, v0, backreaction=True):
         """Initializes the object.
 
@@ -285,7 +274,8 @@ class UniformStreaming:
         self.br = backreaction
         # Find the center-of-mass velocity.
         self.ucm = (u0 + epsilon * v0) / (1 + epsilon)
-#-----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
     def velocities(self, t):
         """Find the velocities of the gas and the particles as a
         function of time.
@@ -313,7 +303,8 @@ class UniformStreaming:
             v = self.v0 * r + self.u0 * (1 - r)
 
         return u, v
-#-----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
     def displacement(self, t):
         """Find the displacement of a particle function of time.
 
@@ -335,4 +326,4 @@ class UniformStreaming:
             dxp = self.u0 * t + (self.v0 - self.u0) * self.ts * (1 - np.exp(-t / self.ts))
 
         return dxp
-#=======================================================================
+# ======================================================================
