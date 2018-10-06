@@ -54,7 +54,7 @@ public:
   Particles(MeshBlock *pmb, ParameterInput *pin);
 
   // Destructor
-  ~Particles();
+  virtual ~Particles();
 
   // Instance methods
   void ClearBoundary();
@@ -99,10 +99,6 @@ protected:
   virtual void AssignShorthands();  // Needs to be called everytime
                                     // intprop, realprop, & auxprop are resized
                                     // Be sure to call back when derived.
-  virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
-  virtual void ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
-  virtual void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
-                             AthenaArray<Real>& meshdst) {}
 
   // Instance variables
   int npar;     // number of particles
@@ -140,6 +136,11 @@ private:
                                  AthenaArray<Real>& xi3);
 
   // Instance methods
+  virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
+  virtual void ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
+  virtual void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
+                             AthenaArray<Real>& meshdst) {}
+
   void ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3);
   void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void FlushReceiveBuffer(ParticleBuffer& recv);
