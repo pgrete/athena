@@ -9,6 +9,7 @@
 // C++ standard libraries
 #include <cstring>
 #include <sstream>
+#include <stdexcept>
 
 // Athena++ headers
 #include "particle_buffer.hpp"
