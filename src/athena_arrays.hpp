@@ -336,12 +336,12 @@ void AthenaArray<T>::ResizeLastDimension(int new_nx1) {
   pdata_ = new T[nx1_*nx2_*nx3_*nx4_*nx5_]();
 
   // Move the data.
-  int jold = 0, jnew = 0;
+  std::size_t jold = 0, jnew = 0;
   for (int ix5 = 0; ix5 < nx5_; ++ix5)
     for (int ix4 = 0; ix4 < nx4_; ++ix4)
       for (int ix3 = 0; ix3 < nx3_; ++ix3)
         for (int ix2 = 0; ix2 < nx2_; ++ix2) {
-          int kold = jold, knew = jnew;
+          std::size_t kold = jold, knew = jnew;
           for (int ix1 = 0; ix1 < std::min(old_nx1,new_nx1); ++ix1)
             pdata_[knew++] = pdata_old[kold++];
           jold += old_nx1;
