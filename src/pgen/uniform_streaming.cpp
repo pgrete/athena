@@ -7,6 +7,7 @@
 //  \brief tests one particle.
 
 // C++ standard libraries
+#include <cmath>
 #include <sstream>
 
 // Athena++ headers
@@ -81,16 +82,16 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   int ix1 = 0, ix2 = 0, ix3 = 0;
   int npx1_loc = 1, npx2_loc = 1, npx3_loc = 1;
   if (block_size.nx1 > 1) {
-    ix1 = lround((block_size.x1min - mesh_size.x1min) / dx1);
-    npx1_loc = lround((block_size.x1max - block_size.x1min) / dx1);
+    ix1 = static_cast<int>(std::round((block_size.x1min - mesh_size.x1min) / dx1));
+    npx1_loc = static_cast<int>(std::round((block_size.x1max - block_size.x1min) / dx1));
   }
   if (block_size.nx2 > 1) {
-    ix2 = lround((block_size.x2min - mesh_size.x2min) / dx2);
-    npx2_loc = lround((block_size.x2max - block_size.x2min) / dx2);
+    ix2 = static_cast<int>(std::round((block_size.x2min - mesh_size.x2min) / dx2));
+    npx2_loc = static_cast<int>(std::round((block_size.x2max - block_size.x2min) / dx2));
   }
   if (block_size.nx3 > 1) {
-    ix3 = lround((block_size.x3min - mesh_size.x3min) / dx3);
-    npx3_loc = lround((block_size.x3max - block_size.x3min) / dx3);
+    ix3 = static_cast<int>(std::round((block_size.x3min - mesh_size.x3min) / dx3));
+    npx3_loc = static_cast<int>(std::round((block_size.x3max - block_size.x3min) / dx3));
   }
 
   // Check the memory allocation.
