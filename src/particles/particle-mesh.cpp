@@ -890,28 +890,26 @@ bool ParticleMesh::ReceiveBoundary() {
     NeighborBlock& nb = pbval_->neighbor[n];
     enum BoundaryStatus& bstatus = bd_.flag[nb.bufid];
 
-    int flag = 0;
-    switch (bstatus) {
-
-    case BNDRY_WAITING:
-#ifdef MPI_PARALLEL
-      if (nb.rank != Globals::my_rank) {
-        MPI_Test(&bd_.req_recv[nb.bufid], &flag, MPI_STATUS_IGNORE);
-        if (flag) bstatus = BNDRY_ARRIVED;
-      }
-#endif
-      if (!flag) {
+    if (bstatus == BNDRY_WAITING) {
+      if (nb.rank == Globals::my_rank) {
         completed = false;
-        break;
+        continue;
+      } else {
+#ifdef MPI_PARALLEL
+        int flag;
+        MPI_Test(&bd_.req_recv[nb.bufid], &flag, MPI_STATUS_IGNORE);
+        if (!flag) {
+          completed = false;
+          continue;
+        }
+        bstatus = BNDRY_ARRIVED;
+#endif
       }
+    }
 
-    case BNDRY_ARRIVED:
+    if (bstatus == BNDRY_ARRIVED) {
       AddBoundaryBuffer(bd_.recv[nb.bufid], ba_[n]);
       bstatus = BNDRY_COMPLETED;
-      break;
-
-    case BNDRY_COMPLETED:
-      break;
     }
   }
 
