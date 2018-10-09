@@ -828,6 +828,10 @@ void ParticleMesh::AddBoundaryBuffer(Real *buf, const BoundaryAttributes& ba) {
 void ParticleMesh::ClearBoundary() {
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
+#ifdef MPI_PARALLEL
+    if (nb.rank != Globals::my_rank)
+      MPI_Wait(&bd_.req_send[nb.bufid], MPI_STATUS_IGNORE);
+#endif
     bd_.flag[nb.bufid] = BNDRY_WAITING;
   }
 }
