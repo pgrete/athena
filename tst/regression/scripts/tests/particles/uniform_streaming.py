@@ -104,7 +104,7 @@ def analyze():
     xpold, ypold, zpold = np.copy(xp0), np.copy(yp0), np.copy(zp0)
 
     # Collect particle data.
-    for fname in glob(base + ".*.par.tab"):
+    for fname in sorted(glob(base + ".*.par.tab")):
         with open(fname) as f:
             t.append(float(f.readline().split()[-1]))
         dp = np.rec.array(np.loadtxt(fname, dtype=dtp))
@@ -157,7 +157,7 @@ def analyze():
     vpzavg, vpzmin, vpzmax = np.array(vpzavg), np.array(vpzmin), np.array(vpzmax)
 
     # Collect gas data.
-    for fname in glob(base + ".[0-9][0-9][0-9][0-9][0-9].tab"):
+    for fname in sorted(glob(base + ".[0-9][0-9][0-9][0-9][0-9].tab")):
         dg = np.rec.array(np.loadtxt(fname, dtype=dtg))
 
         # Process gas velocities.
