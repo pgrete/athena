@@ -13,7 +13,8 @@ read ntimes < <(ls $BASE.block0.out1.*.par.tab | wc -l)
 
 for i in $(seq -f "%05g" 0 $((ntimes - 1))); do
 	if (( nblocks > 1 )); then
-		cat $BASE.block*.out1.$i.par.tab | sort -n | \
+		cat $BASE.block*.out1.$i.par.tab | \
+                sort --general-numeric-sort | \
 		sed "2,${nblocks}d" > $BASE.$i.par.tab
 	else
 		mv $BASE.block0.out1.$i.par.tab $BASE.$i.par.tab
