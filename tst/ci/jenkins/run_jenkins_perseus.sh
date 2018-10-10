@@ -38,6 +38,7 @@ module list
 # Run regression test sets. Need to specify Slurm mpirun wrapper, srun
 # --silent option refers only to stdout of Makefile calls for condensed build logs. Don't use with pgen_compile.py
 time python ./run_tests.py pgen --config=--cflag="$(../ci/set_warning_cflag.sh g++)"
+time python ./run_tests.py particles/uniform_streaming --mpirun=srun --silent
 time python ./run_tests.py grav --mpirun=srun --silent
 time python ./run_tests.py mpi --mpirun=srun --silent
 time python ./run_tests.py hydro --silent
@@ -65,6 +66,7 @@ module load rh
 module list
 
 time python ./run_tests.py pgen --config=--cxx=icc --config=--cflag="$(../ci/set_warning_cflag.sh icc)"
+time python ./run_tests.py particles/uniform_streaming --config=--cxx=icc --mpirun=srun --silent
 time python ./run_tests.py grav --config=--cxx=icc --mpirun=srun --silent
 time python ./run_tests.py mpi --config=--cxx=icc --mpirun=srun --silent
 time python ./run_tests.py hydro --config=--cxx=icc --silent
