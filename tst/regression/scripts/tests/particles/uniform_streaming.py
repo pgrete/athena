@@ -25,7 +25,7 @@ def run(**kwargs):
     arguments = []
 
     # Run the executable.
-    athena.mpirun(kwargs['mpirun_cmd'], kwargs['mpirun_opts'], 4,
+    athena.mpirun(kwargs['mpirun_cmd'], kwargs['mpirun_opts'], 2,
                   'particles/athinput.uniform_streaming', arguments)
 
     # Combine the output tables.
