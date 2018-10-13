@@ -1,5 +1,5 @@
-#ifndef COORDINATES_HPP
-#define COORDINATES_HPP
+#ifndef COORDINATES_COORDINATES_HPP_
+#define COORDINATES_COORDINATES_HPP_
 //========================================================================================
 // Athena++ astrophysical MHD code
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
@@ -8,16 +8,17 @@
 //! \file coordinates.hpp
 //  \brief defines abstract base and derived classes for coordinates.  These classes
 //  provide data and functions to compute/store coordinate positions and spacing, as well
-//  as geometrical factors (areas, volumes, coordinate source terms) for various 
+//  as geometrical factors (areas, volumes, coordinate source terms) for various
 //  coordinate systems.
 
-// Athena++ classes headers
+// C/C++ headers
+#include <iostream>
+
+// Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "../mesh/mesh.hpp"
 #include "../hydro/srcterms/hydro_srcterms.hpp"
-
-#include <iostream>
 
 // forward declarations
 class MeshBlock;
@@ -38,6 +39,9 @@ public:
   AthenaArray<Real> dx1f, dx2f, dx3f, x1f, x2f, x3f; // face   spacing and positions
   AthenaArray<Real> dx1v, dx2v, dx3v, x1v, x2v, x3v; // volume spacing and positions
   AthenaArray<Real> x1s2, x1s3, x2s1, x2s3, x3s1, x3s2; // area averaged posn for AMR
+  // geometry coefficient
+  AthenaArray<Real> h2f,dh2fd1,h31f,h32f,dh31fd1,dh32fd2;
+  AthenaArray<Real> h2v,dh2vd1,h31v,h32v,dh31vd1,dh32vd2;
 
   // functions...
   // ...to compute length of edges
@@ -50,7 +54,13 @@ public:
   virtual Real GetEdge1Length(const int k, const int j, const int i);
   virtual Real GetEdge2Length(const int k, const int j, const int i);
   virtual Real GetEdge3Length(const int k, const int j, const int i);
-
+  // ...to compute length connecting cell centers (for non-ideal MHD)
+  virtual void VolCenter1Length(const int k, const int j, const int il, const int iu,
+      AthenaArray<Real> &len);
+  virtual void VolCenter2Length(const int k, const int j, const int il, const int iu,
+      AthenaArray<Real> &len);
+  virtual void VolCenter3Length(const int k, const int j, const int il, const int iu,
+      AthenaArray<Real> &len);
   // ...to compute physical width at cell center
   virtual void CenterWidth1(const int k, const int j, const int il, const int iu,
                             AthenaArray<Real> &dx1);
@@ -69,6 +79,27 @@ public:
   virtual Real GetFace1Area(const int k, const int j, const int i);
   virtual Real GetFace2Area(const int k, const int j, const int i);
   virtual Real GetFace3Area(const int k, const int j, const int i);
+  // ...to compute area of faces joined by cell centers (for non-ideal MHD)
+  virtual void VolCenterFace1Area(const int k, const int j, const int il, const int iu,
+      AthenaArray<Real> &area);
+  virtual void VolCenterFace2Area(const int k, const int j, const int il, const int iu,
+      AthenaArray<Real> &area);
+  virtual void VolCenterFace3Area(const int k, const int j, const int il, const int iu,
+      AthenaArray<Real> &area);
+
+  // ...to compute Laplacian of quantities in the coord system and orthogonal subspaces
+  virtual void Laplacian(const AthenaArray<Real> &s, AthenaArray<Real> &delta_s,
+    const int il, const int iu, const int jl, const int ju, const int kl, const int ku,
+    const int nl, const int nu);
+  virtual void LaplacianX1(const AthenaArray<Real> &s, AthenaArray<Real> &delta_s,
+    const int il, const int iu, const int jl, const int ju, const int kl, const int ku,
+    const int nl, const int nu);
+  virtual void LaplacianX2(const AthenaArray<Real> &s, AthenaArray<Real> &delta_s,
+    const int il, const int iu, const int jl, const int ju, const int kl, const int ku,
+    const int nl, const int nu);
+  virtual void LaplacianX3(const AthenaArray<Real> &s, AthenaArray<Real> &delta_s,
+    const int il, const int iu, const int jl, const int ju, const int kl, const int ku,
+    const int nl, const int nu);
 
   // ...to compute volume of cells
   virtual void CellVolume(const int k, const int j, const int il, const int iu,
@@ -77,7 +108,8 @@ public:
 
   // ...to compute geometrical source terms
   virtual void CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
-      const AthenaArray<Real> &prim, const AthenaArray<Real> &bcc, AthenaArray<Real> &u);
+                             const AthenaArray<Real> &prim, const AthenaArray<Real> &bcc,
+                             AthenaArray<Real> &u);
 
   // ...to determine if index is a pole
   bool IsPole(int j);
@@ -93,41 +125,41 @@ public:
       AthenaArray<Real> &g_inv, AthenaArray<Real> &dg_dx1, AthenaArray<Real> &dg_dx2,
       AthenaArray<Real> &dg_dx3);
   virtual void CellMetric(const int k, const int j, const int il, const int iu,
-      AthenaArray<Real> &g, AthenaArray<Real> &gi) {};
+      AthenaArray<Real> &g, AthenaArray<Real> &gi) {}
   virtual void Face1Metric(const int k, const int j, const int il, const int iu,
-      AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {};
+      AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {}
   virtual void Face2Metric(const int k, const int j, const int il, const int iu,
-      AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {};
+      AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {}
   virtual void Face3Metric(const int k, const int j, const int il, const int iu,
-      AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {};
+      AthenaArray<Real> &g, AthenaArray<Real> &g_inv) {}
 
   // ...to transform primitives to locally flat space
   virtual void PrimToLocal1(const int k, const int j, const int il, const int iu,
       const AthenaArray<Real> &b1_vals, AthenaArray<Real> &prim_left,
-      AthenaArray<Real> &prim_right, AthenaArray<Real> &bx) {};
+      AthenaArray<Real> &prim_right, AthenaArray<Real> &bx) {}
   virtual void PrimToLocal2(const int k, const int j, const int il, const int iu,
       const AthenaArray<Real> &b2_vals, AthenaArray<Real> &prim_left,
-      AthenaArray<Real> &prim_right, AthenaArray<Real> &bx) {};
+      AthenaArray<Real> &prim_right, AthenaArray<Real> &bx) {}
   virtual void PrimToLocal3(const int k, const int j, const int il, const int iu,
       const AthenaArray<Real> &b3_vals, AthenaArray<Real> &prim_left,
-      AthenaArray<Real> &prim_right, AthenaArray<Real> &bx) {};
+      AthenaArray<Real> &prim_right, AthenaArray<Real> &bx) {}
 
   // ...to transform fluxes in locally flat space to global frame
   virtual void FluxToGlobal1(const int k, const int j, const int il, const int iu,
       const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
-      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {};
+      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {}
   virtual void FluxToGlobal2(const int k, const int j, const int il, const int iu,
       const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
-      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {};
+      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {}
   virtual void FluxToGlobal3(const int k, const int j, const int il, const int iu,
       const AthenaArray<Real> &cons, const AthenaArray<Real> &bbx,
-      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {};
+      AthenaArray<Real> &flux, AthenaArray<Real> &ey, AthenaArray<Real> &ez) {}
 
   // ...to raise (lower) covariant (contravariant) components of a vector
   virtual void RaiseVectorCell(Real a_0, Real a_1, Real a_2, Real a_3, int k, int j,
-      int i, Real *pa0, Real *pa1, Real *pa2, Real *pa3) {};
+      int i, Real *pa0, Real *pa1, Real *pa2, Real *pa3) {}
   virtual void LowerVectorCell(Real a0, Real a1, Real a2, Real a3, int k, int j, int i,
-      Real *pa_0, Real *pa_1, Real *pa_2, Real *pa_3) {};
+      Real *pa_0, Real *pa_1, Real *pa_2, Real *pa_3) {}
 
 protected:
   bool coarse_flag;  // true if this coordinate object is parent (coarse) mesh in AMR
@@ -153,6 +185,9 @@ protected:
   AthenaArray<Real> coord_area3_i_, coord_area3_i1_, coord_area3_i2_;
   AthenaArray<Real> coord_area3_j1_, coord_area3_j2_;
   AthenaArray<Real> coord_area3_kji_;
+  AthenaArray<Real> coord_area1vc_i_,coord_area1vc_j_; //nonidealmhd additions
+  AthenaArray<Real> coord_area2vc_i_,coord_area2vc_j_; //nonidealmhd additions
+  AthenaArray<Real> coord_area3vc_i_; //nonidealmhd addition
   AthenaArray<Real> coord_len1_i1_, coord_len1_i2_;
   AthenaArray<Real> coord_len1_j1_, coord_len1_j2_;
   AthenaArray<Real> coord_len1_kji_;
@@ -248,7 +283,9 @@ public:
   void Edge2Length(const int k, const int j, const int il, const int iu,
     AthenaArray<Real> &len);
   Real GetEdge2Length(const int k, const int j, const int i);
-
+  // ...to compute length connecting cell centers (for non-ideal MHD)
+  void VolCenter2Length(const int k, const int j, const int il, const int iu,
+                        AthenaArray<Real> &len);
   // ...to compute physical width at cell center
   void CenterWidth2(const int k, const int j, const int il, const int iu,
                             AthenaArray<Real> &dx2);
@@ -260,7 +297,11 @@ public:
     AthenaArray<Real> &area);
   Real GetFace1Area(const int k, const int j, const int i);
   Real GetFace3Area(const int k, const int j, const int i);
-
+  // ...to compute area of faces joined by cell centers (for non-ideal MHD)
+  void VolCenterFace1Area(const int k, const int j, const int il, const int iu,
+                          AthenaArray<Real> &area);
+  void VolCenterFace3Area(const int k, const int j, const int il, const int iu,
+                          AthenaArray<Real> &area);
   // ...to compute volumes of cells
   void CellVolume(const int k, const int j, const int il, const int iu,
     AthenaArray<Real> &vol);
@@ -291,7 +332,11 @@ public:
     AthenaArray<Real> &len);
   Real GetEdge2Length(const int k, const int j, const int i);
   Real GetEdge3Length(const int k, const int j, const int i);
-
+  // ...to compute length connecting cell centers (for non-ideal MHD)
+  void VolCenter2Length(const int k, const int j, const int il, const int iu,
+                        AthenaArray<Real> &len);
+  void VolCenter3Length(const int k, const int j, const int il, const int iu,
+                        AthenaArray<Real> &len);
   // ...to compute physical width at cell center
   void CenterWidth2(const int k, const int j, const int il, const int iu,
                             AthenaArray<Real> &dx2);
@@ -308,7 +353,13 @@ public:
   Real GetFace1Area(const int k, const int j, const int i);
   Real GetFace2Area(const int k, const int j, const int i);
   Real GetFace3Area(const int k, const int j, const int i);
-
+  // ...to compute area of faces joined by cell centers (for non-ideal MHD)
+  void VolCenterFace1Area(const int k, const int j, const int il, const int iu,
+                          AthenaArray<Real> &area);
+  void VolCenterFace2Area(const int k, const int j, const int il, const int iu,
+                          AthenaArray<Real> &area);
+  void VolCenterFace3Area(const int k, const int j, const int il, const int iu,
+                          AthenaArray<Real> &area);
   // ...to compute volumes of cells
   void CellVolume(const int k, const int j, const int il, const int iu,
     AthenaArray<Real> &vol);
@@ -648,4 +699,4 @@ public:
       Real *pa_0, Real *pa_1, Real *pa_2, Real *pa_3);
 };
 
-#endif // COORDINATES_HPP
+#endif // COORDINATES_COORDINATES_HPP_

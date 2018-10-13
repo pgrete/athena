@@ -16,30 +16,33 @@
 // 2014-2016.  Contributions from many others have continued to the present.
 //========================================================================================
 
-// C/C++ headers
+// C headers
 #include <stdint.h>   // int64_t
+
+// C++ headers
+#include <csignal>
 #include <cstdio>     // sscanf()
 #include <cstdlib>    // strtol
 #include <ctime>      // clock(), CLOCKS_PER_SEC, clock_t
 #include <exception>  // exception
 #include <iomanip>    // setprecision()
 #include <iostream>   // cout, endl
+#include <limits>     // max_digits10
 #include <new>        // bad_alloc
 #include <string>     // string
-#include <csignal>
 
 // Athena++ headers
 #include "athena.hpp"
+#include "fft/turbulence.hpp"
 #include "globals.hpp"
+#include "gravity/fftgravity.hpp"
+#include "gravity/mggravity.hpp"
 #include "mesh/mesh.hpp"
-#include "parameter_input.hpp"
-#include "outputs/outputs.hpp"
 #include "outputs/io_wrapper.hpp"
+#include "outputs/outputs.hpp"
+#include "parameter_input.hpp"
 #include "utils/utils.hpp"
 #include "task_list/task_list.hpp"
-#include "gravity/mggravity.hpp"
-#include "gravity/fftgravity.hpp"
-#include "fft/turbulence.hpp"
 
 // MPI/OpenMP headers
 #ifdef MPI_PARALLEL
@@ -54,9 +57,8 @@
 //! \fn int main(int argc, char *argv[])
 //  \brief Athena++ main program
 
-int main(int argc, char *argv[])
-{
-  std::string athena_version = "version 1.0 - October 2016";
+int main(int argc, char *argv[]) {
+  std::string athena_version = "version 1.1.1 - July 2018";
   char *input_filename=NULL, *restart_filename=NULL;
   char *prundir = NULL;
   int res_flag=0;   // set to 1 if -r        argument is on cmdline
@@ -70,23 +72,42 @@ int main(int argc, char *argv[])
 // Initialize MPI environment, if necessary
 
 #ifdef MPI_PARALLEL
-  if(MPI_SUCCESS != MPI_Init(&argc, &argv)) {
+#ifdef OPENMP_PARALLEL
+  int mpiprv;
+  if (MPI_SUCCESS != MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &mpiprv)) {
     std::cout << "### FATAL ERROR in main" << std::endl
               << "MPI Initialization failed." << std::endl;
     return(0);
   }
+  if (mpiprv != MPI_THREAD_MULTIPLE) {
+    std::cout << "### FATAL ERROR in main" << std::endl
+              << "MPI_THREAD_MULTIPLE must be supported for the hybrid parallelzation. "
+              << MPI_THREAD_MULTIPLE << " : " << mpiprv
+              << std::endl;
+    MPI_Finalize();
+    return(0);
+  }
+#else
+  if (MPI_SUCCESS != MPI_Init(&argc, &argv)) {
+    std::cout << "### FATAL ERROR in main" << std::endl
+              << "MPI Initialization failed." << std::endl;
+    return(0);
+  }
+#endif
 
   // Get process id (rank) in MPI_COMM_WORLD
-  if(MPI_SUCCESS != MPI_Comm_rank(MPI_COMM_WORLD, &(Globals::my_rank))) {
+  if (MPI_SUCCESS != MPI_Comm_rank(MPI_COMM_WORLD, &(Globals::my_rank))) {
     std::cout << "### FATAL ERROR in main" << std::endl
               << "MPI_Comm_rank failed." << std::endl;
+    MPI_Finalize();
     return(0);
   }
 
   // Get total number of MPI processes (ranks)
-  if(MPI_SUCCESS != MPI_Comm_size(MPI_COMM_WORLD, &Globals::nranks)) {
+  if (MPI_SUCCESS != MPI_Comm_size(MPI_COMM_WORLD, &Globals::nranks)) {
     std::cout << "### FATAL ERROR in main" << std::endl
               << "MPI_Comm_size failed." << std::endl;
+    MPI_Finalize();
     return(0);
   }
 #else
@@ -100,7 +121,7 @@ int main(int argc, char *argv[])
   for (int i=1; i<argc; i++) {
 
     // If argv[i] is a 2 character string of the form "-?" then:
-    if(*argv[i] == '-'  && *(argv[i]+1) != '\0' && *(argv[i]+2) == '\0'){
+    if (*argv[i] == '-'  && *(argv[i]+1) != '\0' && *(argv[i]+2) == '\0') {
       switch(*(argv[i]+1)) {
       case 'i':                      // -i <input_filename>
         ++i;
@@ -118,7 +139,7 @@ int main(int argc, char *argv[])
         narg_flag = 1;
         break;
       case 'm':
-        mesh_flag = std::strtol(argv[++i],NULL,10);
+        mesh_flag = static_cast<int>(std::strtol(argv[++i],NULL,10));
         break;
       case 't':
         int wth, wtm, wts;
@@ -126,7 +147,7 @@ int main(int argc, char *argv[])
         wtlim=wth*3600+wtm*60+wts;
         break;
       case 'c':
-        if(Globals::my_rank==0) ShowConfig();
+        if (Globals::my_rank==0) ShowConfig();
 #ifdef MPI_PARALLEL
         MPI_Finalize();
 #endif
@@ -134,7 +155,7 @@ int main(int argc, char *argv[])
       break;
       case 'h':
       default:
-        if(Globals::my_rank==0) {
+        if (Globals::my_rank==0) {
           std::cout<<"Athena++ "<< athena_version <<std::endl;
           std::cout<<"Usage: "<<argv[0]<<" [options] [block/par=value ...]"<<std::endl;
           std::cout<<"Options:" << std::endl;
@@ -157,7 +178,7 @@ int main(int argc, char *argv[])
     } // else if argv[i] not of form "-?" ignore it here (tested in ModifyFromCmdline)
   }
 
-  if(restart_filename==NULL && input_filename==NULL) {
+  if (restart_filename==NULL && input_filename==NULL) {
     // no input file is given
     std::cout << "### FATAL ERROR in main" << std::endl
               << "No input file or restart file is specified." << std::endl;
@@ -169,7 +190,7 @@ int main(int argc, char *argv[])
 
   // Set up the signal handler
   SignalHandler::SignalHandlerInit();
-  if(Globals::my_rank==0 && wtlim > 0)
+  if (Globals::my_rank==0 && wtlim > 0)
     SignalHandler::SetWallTimeAlarm(wtlim);
 
 // Note steps 3-6 are protected by a simple error handler
@@ -181,14 +202,17 @@ int main(int argc, char *argv[])
   IOWrapper infile, restartfile;
   try {
     pinput = new ParameterInput;
-    if(res_flag==1) {
-      restartfile.Open(restart_filename,IO_WRAPPER_READ_MODE);
+    if (res_flag==1) {
+      restartfile.Open(restart_filename, IO_WRAPPER_READ_MODE);
       pinput->LoadFromFile(restartfile);
+      // If both -r and -i are specified, make sure next_time gets corrected.
+      // This needs to be corrected on the restart file because we need the old dt.
+      if(iarg_flag==1) pinput->RollbackNextTime();
       // leave the restart file open for later use
     }
-    if(iarg_flag==1) {
+    if (iarg_flag==1) {
       // if both -r and -i are specified, override the parameters using the input file
-      infile.Open(input_filename,IO_WRAPPER_READ_MODE);
+      infile.Open(input_filename, IO_WRAPPER_READ_MODE);
       pinput->LoadFromFile(infile);
       infile.Close();
     }
@@ -198,7 +222,7 @@ int main(int argc, char *argv[])
     std::cout << "### FATAL ERROR in main" << std::endl
               << "memory allocation failed initializing class ParameterInput: "
               << ba.what() << std::endl;
-    if(res_flag==1) restartfile.Close();
+    if (res_flag==1) restartfile.Close();
 #ifdef MPI_PARALLEL
     MPI_Finalize();
 #endif
@@ -206,17 +230,7 @@ int main(int argc, char *argv[])
   }
   catch(std::exception const& ex) {
     std::cout << ex.what() << std::endl;  // prints diagnostic message
-    if(res_flag==1) restartfile.Close();
-#ifdef MPI_PARALLEL
-    MPI_Finalize();
-#endif
-    return(0);
-  }
-
-  // Dump input parameters and quit if code was run with -n option.
-  if (narg_flag){
-    if(Globals::my_rank==0) pinput->ParameterDump(std::cout);
-    if(res_flag==1) restartfile.Close();
+    if (res_flag==1) restartfile.Close();
 #ifdef MPI_PARALLEL
     MPI_Finalize();
 #endif
@@ -228,9 +242,9 @@ int main(int argc, char *argv[])
 
   Mesh *pmesh;
   try {
-    if(res_flag==0)
+    if (res_flag==0) {
       pmesh = new Mesh(pinput, mesh_flag);
-    else {
+    } else {
       pmesh = new Mesh(pinput, restartfile, mesh_flag);
       ncstart=pmesh->ncycle;
     }
@@ -239,7 +253,7 @@ int main(int argc, char *argv[])
     std::cout << "### FATAL ERROR in main" << std::endl
               << "memory allocation failed initializing class Mesh: "
               << ba.what() << std::endl;
-    if(res_flag==1) restartfile.Close();
+    if (res_flag==1) restartfile.Close();
 #ifdef MPI_PARALLEL
     MPI_Finalize();
 #endif
@@ -247,16 +261,33 @@ int main(int argc, char *argv[])
   }
   catch(std::exception const& ex) {
     std::cout << ex.what() << std::endl;  // prints diagnostic message
-    if(res_flag==1) restartfile.Close();
+    if (res_flag==1) restartfile.Close();
 #ifdef MPI_PARALLEL
     MPI_Finalize();
 #endif
     return(0);
   }
-  if(res_flag==1) restartfile.Close(); // close the restart file here
+
+  // With current mesh time possibly read from restart file, correct next_time for outputs
+  if (iarg_flag == 1 && res_flag == 1) {
+    // if both -r and -i are specified, ensure that next_time  >= mesh_time - dt
+    pinput->ForwardNextTime(pmesh->time);
+  }
+
+  // Dump input parameters and quit if code was run with -n option.
+  if (narg_flag) {
+    if (Globals::my_rank==0) pinput->ParameterDump(std::cout);
+    if (res_flag==1) restartfile.Close();
+#ifdef MPI_PARALLEL
+    MPI_Finalize();
+#endif
+    return(0);
+  }
+
+  if (res_flag==1) restartfile.Close(); // close the restart file here
 
   // Quit if -m was on cmdline.  This option builds and outputs mesh structure.
-  if (mesh_flag>0){
+  if (mesh_flag>0) {
 #ifdef MPI_PARALLEL
     MPI_Finalize();
 #endif
@@ -317,7 +348,7 @@ int main(int argc, char *argv[])
   try {
     ChangeRunDir(prundir);
     pouts = new Outputs(pmesh, pinput);
-    if(res_flag==0) pouts->MakeOutputs(pmesh,pinput);
+    if (res_flag==0) pouts->MakeOutputs(pmesh,pinput);
   }
   catch(std::bad_alloc& ba) {
     std::cout << "### FATAL ERROR in main" << std::endl
@@ -340,7 +371,7 @@ int main(int argc, char *argv[])
 // For performance, there is no error handler protecting this step (except outputs)
 
 
-  if(Globals::my_rank==0) {
+  if (Globals::my_rank==0) {
     std::cout<<std::endl<<"Setup complete, entering main loop..."<<std::endl<<std::endl;
   }
 
@@ -350,14 +381,16 @@ int main(int argc, char *argv[])
 #endif
 
   while ((pmesh->time < pmesh->tlim) &&
-         (pmesh->nlim < 0 || pmesh->ncycle < pmesh->nlim)){
+         (pmesh->nlim < 0 || pmesh->ncycle < pmesh->nlim)) {
 
-    if(Globals::my_rank==0) {
-      if (pmesh->ncycle_out != 0)
+    if (Globals::my_rank==0) {
+      if (pmesh->ncycle_out != 0) {
         if (pmesh->ncycle % pmesh->ncycle_out == 0) {
-          std::cout << "cycle=" << pmesh->ncycle<< std::scientific <<std::setprecision(14)
+          std::cout << "cycle=" << pmesh->ncycle<< std::scientific
+                    << std::setprecision(std::numeric_limits<Real>::max_digits10 - 1)
                     << " time=" << pmesh->time << " dt=" << pmesh->dt <<std::endl;
         }
+      }
     }
 
     //time radiation
@@ -375,24 +408,24 @@ int main(int argc, char *argv[])
 #ifdef INCLUDE_CHEMISTRY
     pchemlist->DoTaskListOneSubstep(pmesh, 1);
 #endif
-    if(pmesh->turb_flag == 2) pmesh->ptrbd->Driving(); // driven turbulence
+    if (pmesh->turb_flag > 1) pmesh->ptrbd->Driving(); // driven turbulence
 
-    for (int step=1; step<=ptlist->nsub_steps; ++step) {
-      if(SELF_GRAVITY_ENABLED == 1) // fft (flag 0 for discrete kernel, 1 for continuous)
-        pmesh->pfgrd->Solve(step,0);
-      else if(SELF_GRAVITY_ENABLED == 2) // multigrid
-        pmesh->pmgrd->Solve(step);
+    for (int stage=1; stage<=ptlist->nstages; ++stage) {
+      if (SELF_GRAVITY_ENABLED == 1) // fft (flag 0 for discrete kernel, 1 for continuous)
+        pmesh->pfgrd->Solve(stage, 0);
+      else if (SELF_GRAVITY_ENABLED == 2) // multigrid
+        pmesh->pmgrd->Solve(stage);
       //TODO: for now, there is a post-processing flag to calculte the new
       //timestep. May just remove this for post-processing in the future
       if (POST_PROCESSING_ENABLED == 0) {
-        ptlist->DoTaskListOneSubstep(pmesh, step);
+        ptlist->DoTaskListOneStage(pmesh, stage);
       }
     }
 
     pmesh->ncycle++;
     pmesh->time += pmesh->dt;
 
-    if(pmesh->adaptive==true)
+    if (pmesh->adaptive==true)
       pmesh->AdaptiveMeshRefinement(pinput);
 
     //TODO: for now, there is a post-processing flag to calculte the new
@@ -424,7 +457,7 @@ int main(int argc, char *argv[])
   } // END OF MAIN INTEGRATION LOOP ======================================================
 // Make final outputs, print diagnostics, clean up and terminate
 
-  if(Globals::my_rank==0 && wtlim > 0)
+  if (Globals::my_rank==0 && wtlim > 0)
     SignalHandler::CancelWallTimeAlarm();
 
   // make the final outputs
@@ -450,7 +483,7 @@ int main(int argc, char *argv[])
   pmesh->UserWorkAfterLoop(pinput);
 
   // print diagnostic messages
-  if(Globals::my_rank==0) {
+  if (Globals::my_rank==0) {
     std::cout << "cycle=" << pmesh->ncycle << " time=" << pmesh->time
               << " dt=" << pmesh->dt << std::endl;
 
@@ -469,7 +502,7 @@ int main(int argc, char *argv[])
     std::cout << "time=" << pmesh->time << " cycle=" << pmesh->ncycle << std::endl;
     std::cout << "tlim=" << pmesh->tlim << " nlim=" << pmesh->nlim << std::endl;
 
-    if(pmesh->adaptive==true) {
+    if (pmesh->adaptive==true) {
       std::cout << std::endl << "Number of MeshBlocks = " << pmesh->nbtotal
                 << "; " << pmesh->nbnew << "  created, " << pmesh->nbdel
                 << " destroyed during this simulation." << std::endl;
@@ -480,14 +513,15 @@ int main(int argc, char *argv[])
     double omp_time = omp_get_wtime() - omp_start_time;;
 #endif
     clock_t tstop = clock();
-    float cpu_time = (tstop>tstart ? (float)(tstop-tstart) : 1.0)/(float)CLOCKS_PER_SEC;
+    float cpu_time = (tstop>tstart ? static_cast<float> (tstop-tstart) :
+                      1.0)/static_cast<float> (CLOCKS_PER_SEC);
     int64_t zones = pmesh->GetTotalCells();
-    float zc_cpus = (float)(zones*(pmesh->ncycle-ncstart))/cpu_time;
+    float zc_cpus = static_cast<float> (zones*(pmesh->ncycle-ncstart))/cpu_time;
 
     std::cout << std::endl << "cpu time used  = " << cpu_time << std::endl;
     std::cout << "zone-cycles/cpu_second = " << zc_cpus << std::endl;
 #ifdef OPENMP_PARALLEL
-    float zc_omps = (float)(zones*(pmesh->ncycle-ncstart))/omp_time;
+    float zc_omps = static_cast<float> (zones*(pmesh->ncycle-ncstart))/omp_time;
     std::cout << std::endl << "omp wtime used = " << omp_time << std::endl;
     std::cout << "zone-cycles/omp_wsecond = " << zc_omps << std::endl;
 #endif

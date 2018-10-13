@@ -1,5 +1,5 @@
-#ifndef MG_TASK_LIST_HPP
-#define MG_TASK_LIST_HPP
+#ifndef TASK_LIST_MG_TASK_LIST_HPP_
+#define TASK_LIST_MG_TASK_LIST_HPP_
 //========================================================================================
 // Athena++ astrophysical MHD code
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
@@ -26,7 +26,7 @@ class MultigridTaskList;
 //  \brief data and function pointer for an individual MGTask
 
 struct MGTask {
-  uint64_t task_id;      // encodes step & task using bit positions in HydroTasks
+  uint64_t task_id;      // encodes task using bit positions in MultigridTaskNames
   uint64_t dependency;   // encodes dependencies to other tasks using " " " "
   enum TaskStatus (MultigridTaskList::*TaskFunc)(Multigrid*);  // ptr to a task
 };
@@ -38,16 +38,16 @@ struct MGTask {
 
 class MultigridTaskList {
 public:
-  MultigridTaskList(MultigridDriver *pmd) : pmy_mgdriver_(pmd) {};
-  ~MultigridTaskList() {};
+  explicit MultigridTaskList(MultigridDriver *pmd) : pmy_mgdriver_(pmd) {}
+  ~MultigridTaskList() {}
 
   // data
   int ntasks;     // number of tasks in this list
 
   // functions
   enum TaskListStatus DoAllAvailableTasks(Multigrid *pmg, TaskState &ts);
-  void DoTaskListOneSubStep(MultigridDriver *pmd);
-  void ClearTaskList(void) {ntasks=0;};
+  void DoTaskListOneStage(MultigridDriver *pmd);
+  void ClearTaskList(void) {ntasks=0;}
   void AddMultigridTask(uint64_t id, uint64_t dep);
 
   // functions
@@ -121,6 +121,6 @@ namespace MultigridTaskNames {
   const uint64_t MG_RESTRICT    = 1LL<<38;
   const uint64_t MG_PROLONG     = 1LL<<39;
   const uint64_t MG_FMGPROLONG  = 1LL<<40;
-};
+}; // namespace MultigridTaskNames
 
-#endif // MG_TASK_LIST_HPP
+#endif // TASK_LIST_MG_TASK_LIST_HPP_

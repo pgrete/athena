@@ -1,5 +1,5 @@
-#ifndef ATHENA_HPP
-#define ATHENA_HPP
+#ifndef ATHENA_HPP_
+#define ATHENA_HPP_
 //========================================================================================
 // Athena++ astrophysical MHD code
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
@@ -8,9 +8,15 @@
 //! \file athena.hpp
 //  \brief contains Athena++ general purpose types, structures, enums, etc.
 
-#include "defs.hpp"
-#include "athena_arrays.hpp"
+// C headers
 #include <math.h>
+#include <stdint.h>  // int64_t
+
+// C++ headers
+
+// Athena++ headers
+#include "athena_arrays.hpp"
+#include "defs.hpp"
 
 // typedefs that allow code to run with either floats or doubles
 #if SINGLE_PRECISION_ENABLED
@@ -25,21 +31,36 @@
   #endif
 #endif
 
+// for OpenMP 4.0 SIMD vectorization, control width of SIMD lanes
+#if defined(__AVX512F__)
+#define SIMD_WIDTH 8
+#elif defined(__AVX__)
+#define SIMD_WIDTH 4
+#elif defined(__SSE2__)
+#define SIMD_WIDTH 2
+#else
+#define SIMD_WIDTH 4
+#endif
+
+#define CACHELINE_BYTES 64
+
 class MeshBlock;
 class Coordinates;
 class ParameterInput;
 struct RegionSize;
-
+class HydroDiffusion;
+class FieldDiffusion;
 
 //--------------------------------------------------------------------------------------
 //! \struct LogicalLocation
 //  \brief stores logical location and level of meshblock
 
 typedef struct LogicalLocation {
-  long int lx1, lx2, lx3;
+  // These values can exceed the range of int32_t if >= 30 levels of AMR are used
+  int64_t lx1, lx2, lx3;
   int level;
 
-  LogicalLocation() : lx1(-1), lx2(-1), lx3(-1), level(-1) {};
+  LogicalLocation() : lx1(-1), lx2(-1), lx3(-1), level(-1) {}
 
   // operators useful for sorting
   bool operator==(LogicalLocation &ll)
@@ -60,6 +81,7 @@ typedef struct RegionSize {
   Real x1min, x2min, x3min;
   Real x1max, x2max, x3max;
   Real x1rat, x2rat, x3rat; // ratio of x(i)/x(i-1)
+  // the size of the root grid or a MeshBlock should not exceed int32_t limits
   int nx1, nx2, nx3;        // number of active cells (not including ghost zones)
 } RegionSize;
 
@@ -83,7 +105,7 @@ typedef struct EdgeField {
 //----------------------------------------------------------------------------------------
 // enums used everywhere
 
-// array indices for conserved: density, momemtum, total energy, face-centered field 
+// array indices for conserved: density, momemtum, total energy, face-centered field
 enum {IDN=0, IM1=1, IM2=2, IM3=3, IEN=4};
 enum {IB1=0, IB2=1, IB3=2};
 
@@ -103,7 +125,7 @@ enum CoordinateDirection {X1DIR=0, X2DIR=1, X3DIR=2};
 // needed wherever MPI communications are used.  Must be < 32 and unique
 enum Athena_MPI_Tag {TAG_HYDRO=0, TAG_FIELD=1, TAG_RAD=2, TAG_SPECIES=3, TAG_HYDFLX=4,
   TAG_FLDFLX=5, TAG_RADFLX=6, TAG_CHMFLX=7, TAG_AMR=8, TAG_FLDFLX_POLE=9, TAG_GRAVITY=11,
-  TAG_MGGRAV=12, TAG_SIXRAY=13};
+  TAG_MGGRAV=12,TAG_SHBOX_HYDRO=13,TAG_SHBOX_FIELD=14,TAG_SHBOX_EMF=15, TAG_SIXRAY=16};
 
 enum BoundaryType {BNDRY_HYDRO=0, BNDRY_FIELD=1, BNDRY_GRAVITY=2, BNDRY_MGGRAV=3,
                    BNDRY_MGGRAVF=4, BNDRY_FLCOR=5, BNDRY_EMFCOR=6,
@@ -115,7 +137,8 @@ enum FluxCorrectionType {FLUX_HYDRO=0};
 // function pointer prototypes for user-defined modules set at runtime
 
 typedef void (*BValFunc_t)(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-  FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+                           FaceField &b, Real time, Real dt,
+                           int is, int ie, int js, int je, int ks, int ke, int ngh);
 typedef int (*AMRFlagFunc_t)(MeshBlock *pmb);
 typedef Real (*MeshGenFunc_t)(Real x, RegionSize rs);
 typedef void (*SrcTermFunc_t)(MeshBlock *pmb, const Real time, const Real dt,
@@ -131,5 +154,15 @@ typedef void (*MGBoundaryFunc_t)(AthenaArray<Real> &dst,Real time, int nvar,
 typedef void (*GravityBoundaryFunc_t)(MeshBlock *pmb, Coordinates *pco,
              AthenaArray<Real> &dst, Real time, Real dt,
              int is, int ie, int js, int je, int ks, int ke);
+typedef void (*ViscosityCoeff_t)(HydroDiffusion *phdif, MeshBlock *pmb,
+             const  AthenaArray<Real> &w, const AthenaArray<Real> &bc,
+             int is, int ie, int js, int je, int ks, int ke);
+typedef void (*ConductionCoeff_t)(HydroDiffusion *phdif, MeshBlock *pmb,
+              const AthenaArray<Real> &w, const AthenaArray<Real> &bc,
+              int is, int ie, int js, int je, int ks, int ke);
+typedef void (*FieldDiffusionCoeff_t)(FieldDiffusion *pfdif, MeshBlock *pmb,
+                                      const AthenaArray<Real> &w,
+                                      const AthenaArray<Real> &bmag,
+                                      int is, int ie, int js, int je, int ks, int ke);
 
-#endif // ATHENA_HPP
+#endif // ATHENA_HPP_

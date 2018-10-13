@@ -36,7 +36,7 @@
 #endif
 
 #ifdef OPENMP_PARALLEL
-#include "omp.h"
+#include <omp.h>
 #endif
 
 #if MAGNETIC_FIELDS_ENABLED
@@ -47,13 +47,12 @@
 static Real ang_2, ang_3; // Rotation angles about the y and z' axis
 static Real sin_a2, cos_a2, sin_a3, cos_a3;
 static Real amp, njeans, lambda, kwave; // amplitude, Wavelength, 2*PI/wavelength
-static Real cs2,gam,gm1,omega,omega2, grav_mean_rho, gconst;
+static Real cs2,gam,gm1,omega,omega2, gconst;
 static Real ev[NWAVE], rem[NWAVE][NWAVE], lem[NWAVE][NWAVE];
 static Real d0,p0,v0,u0,w0,va,b0;
 
 
-void Mesh::InitUserMeshData(ParameterInput *pin)
-{
+void Mesh::InitUserMeshData(ParameterInput *pin) {
   Real x1size = mesh_size.x1max - mesh_size.x1min;
   Real x2size = mesh_size.x2max - mesh_size.x2min;
   Real x3size = mesh_size.x3max - mesh_size.x3min;
@@ -91,17 +90,32 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
     cs2 = SQR(iso_cs);
   }
   gconst = cs2*PI*njeans*njeans/(d0*lambda*lambda);
-  grav_mean_rho = d0;
 
   kwave = 2.0*PI/lambda;
   omega2 = SQR(kwave)*cs2*(1.0 - SQR(njeans));
-  omega = sqrt(fabs(omega2));
+  omega = std::sqrt(fabs(omega2));
 
-  if(SELF_GRAVITY_ENABLED) {
+  if (SELF_GRAVITY_ENABLED) {
     SetGravitationalConstant(gconst);
     Real eps = pin->GetOrAddReal("problem","grav_eps", 0.0);
     SetGravityThreshold(eps);
+    SetMeanDensity(d0);
   }
+
+  if (Globals::my_rank==0) {
+    //moved print statements here from Meshblock::ProblemGenerator
+    std::cout << "four_pi_G " << gconst*4.0*PI << std::endl;
+    std::cout << "lambda " << lambda << std::endl;
+    std::cout << "period " << (2*PI/omega) << std::endl;
+    std::cout << "angle2 " << ang_2*180./PI << " "
+              << sin_a2 << " " << cos_a2 << std::endl;
+    std::cout << "angle3 " << ang_3*180./PI << " "
+              << sin_a3 << " " << cos_a3 << std::endl;
+  }
+
+
+
+
   return;
 }
 
@@ -110,8 +124,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 //  \brief
 //========================================================================================
 
-void MeshBlock::ProblemGenerator(ParameterInput *pin)
-{
+void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real x, sinkx, coskx;
 
   for (int k=ks; k<=ke; ++k) {
@@ -124,6 +137,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 
     phydro->u(IDN,k,j,i) = d0*(1.0+amp*sinkx+amp*amp*sin(pcoord->x1v(i)*kwave));
 
+    //when unstable initial v omega/kwave*amp*coskx
+    //when stable initial v 0
     Real m = (omega2 < 0) ? d0*(omega/kwave)*amp*coskx:0.0;
 
     phydro->u(IM1,k,j,i) = m*cos_a3*cos_a2;
@@ -138,26 +153,14 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     }
   }}}
 
-  if(Globals::my_rank==0) {
-    std::cout << "four_pi_G " << gconst*4.0*PI << std::endl;
-    std::cout << "lambda " << lambda << std::endl;
-    std::cout << "period " << (2*PI/omega) << std::endl;
-    std::cout << "angle2 " << ang_2*180./PI << " " << sin_a2 << " " << cos_a2 << std::endl;
-    std::cout << "angle3 " << ang_3*180./PI << " " << sin_a3 << " " << cos_a3 << std::endl;
-  }
-
 //  pmy_mesh->tlim=pin->SetReal("time","tlim",2.0*PI/omega*2.0);
 
-  if(SELF_GRAVITY_ENABLED){
-    pgrav->grav_mean_rho = grav_mean_rho;
-  } // self-gravity
 }
 
-void Mesh::UserWorkAfterLoop(ParameterInput *pin)
-{
+void Mesh::UserWorkAfterLoop(ParameterInput *pin) {
   if (!pin->GetOrAddBoolean("problem","compute_error",false)) return;
-  if (omega2 < 0){ 
-    if(Globals::my_rank==0)
+  if (omega2 < 0) {
+    if (Globals::my_rank==0)
       std::cout << "This problem is Jeans unstable, njeans = " << njeans << std::endl;
     //    return;
   }
@@ -183,21 +186,23 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-        Real x = cos_a2*(pcoord->x1v(i)*cos_a3 + pcoord->x2v(j)*sin_a3) 
+        Real x = cos_a2*(pcoord->x1v(i)*cos_a3 + pcoord->x2v(j)*sin_a3)
                + pcoord->x3v(k)*sin_a2;
         sinkx = sin(x*kwave);
         coskx = cos(x*kwave);
-	if (omega2 < 0) {
-	  sinot = exp(omega*tlim);//time dependent factor of vel
-	  cosot = exp(omega*tlim);//time dependent factor of rho
-	} 
-	else {
-	  sinot = sin(omega*tlim);//time dependent factor of vel
-	  cosot = cos(omega*tlim);//time dependent factor of rho
-	}
+        if (omega2 < 0) {
+          sinot = -exp(omega*tlim);//time dependent factor of vel
+          // unstable case v = amp*omega/k * coskx * e^omega*t
+          // minus sign counters minus sign in m
+          cosot = exp(omega*tlim);//time dependent factor of rho
+        } else {
+          sinot = sin(omega*tlim);//time dependent factor of vel
+          cosot = cos(omega*tlim);//time dependent factor of rho
+        }
         Real den=d0*(1.0+amp*sinkx*cosot);
         l1_err[IDN] += fabs(den - phydro->u(IDN,k,j,i));
-        max_err[IDN] = std::max((Real)fabs(den - phydro->u(IDN,k,j,i)),max_err[IDN]);
+        max_err[IDN] = std::max(static_cast<Real>(fabs(den - phydro->u(IDN,k,j,i))),
+                                max_err[IDN]);
 
         Real m = -den*(omega/kwave)*amp*coskx*sinot;
         Real m1 = m*cos_a3*cos_a2;
@@ -207,20 +212,26 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
         l1_err[IM1] += fabs(m1-phydro->u(IM1,k,j,i));
         l1_err[IM2] += fabs(m2-phydro->u(IM2,k,j,i));
         l1_err[IM3] += fabs(m3-phydro->u(IM3,k,j,i));
-        max_err[IM1] = std::max((Real)fabs(m1-phydro->u(IM1,k,j,i)),max_err[IM1]);
-        max_err[IM2] = std::max((Real)fabs(m2-phydro->u(IM2,k,j,i)),max_err[IM2]);
-        max_err[IM3] = std::max((Real)fabs(m3-phydro->u(IM3,k,j,i)),max_err[IM3]);
+        max_err[IM1] = std::max(static_cast<Real>(fabs(m1-phydro->u(IM1,k,j,i))),
+                                max_err[IM1]);
+        max_err[IM2] = std::max(static_cast<Real>(fabs(m2-phydro->u(IM2,k,j,i))),
+                                max_err[IM2]);
+        max_err[IM3] = std::max(static_cast<Real>(fabs(m3-phydro->u(IM3,k,j,i))),
+                                max_err[IM3]);
         if (NON_BAROTROPIC_EOS) {
           Real e0 = p0*(1 + gam*amp*sinkx*cosot);///gm1 + 0.5*m*m/den;
           l1_err[IEN] += fabs(e0 - phydro->w(IEN,k,j,i));
-          max_err[IEN] = std::max((Real)fabs(e0 - phydro->w(IEN,k,j,i)),max_err[IEN]);
+          max_err[IEN] = std::max(static_cast<Real>(fabs(e0 - phydro->w(IEN,k,j,i))),
+                                  max_err[IEN]);
         }
       }
     }}
     pmb=pmb->next;
   }
 
-  for (int i=0; i<(NHYDRO+NFIELD); ++i) l1_err[i] = l1_err[i]/(float)GetTotalCells();
+  for (int i=0; i<(NHYDRO+NFIELD); ++i) {
+    l1_err[i] = l1_err[i]/static_cast<Real>(GetTotalCells());
+  }
   Real rms_err = 0.0, max_max_over_l1=0.0;
 #ifdef MPI_PARALLEL
   if (Globals::my_rank == 0) {
@@ -243,7 +254,7 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
        rms_err += SQR(l1_err[i]);
        max_max_over_l1 = std::max(max_max_over_l1, (max_err[i]/l1_err[i]));
     }
-    rms_err = sqrt(rms_err);
+    rms_err = std::sqrt(rms_err);
 
     // open output file and write out errors
     std::string fname;
@@ -252,8 +263,8 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
     FILE *pfile;
 
     // The file exists -- reopen the file in append mode
-    if((pfile = fopen(fname.c_str(),"r")) != NULL){
-      if((pfile = freopen(fname.c_str(),"a",pfile)) == NULL){
+    if ((pfile = fopen(fname.c_str(),"r")) != NULL) {
+      if ((pfile = freopen(fname.c_str(),"a",pfile)) == NULL) {
         msg << "### FATAL ERROR in function [Mesh::UserWorkAfterLoop]"
             << std::endl << "Error output file could not be opened" <<std::endl;
         throw std::runtime_error(msg.str().c_str());
@@ -261,7 +272,7 @@ void Mesh::UserWorkAfterLoop(ParameterInput *pin)
 
     // The file does not exist -- open the file in write mode and add headers
     } else {
-      if((pfile = fopen(fname.c_str(),"w")) == NULL){
+      if ((pfile = fopen(fname.c_str(),"w")) == NULL) {
         msg << "### FATAL ERROR in function [Mesh::UserWorkAfterLoop]"
             << std::endl << "Error output file could not be opened" <<std::endl;
         throw std::runtime_error(msg.str().c_str());

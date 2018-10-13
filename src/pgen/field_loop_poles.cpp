@@ -5,7 +5,7 @@
 //========================================================================================
 //! \file field_loop_poles.c
 //  \brief Advection of a field loop THROUGH the poles in spherical_polar coordinates.
-// 
+//
 //  Originally developed by ZZ.  Sets up constant uniform-density flow in x-direction
 //  through poles, and follows advection of loop.  Set xz>0 (xz<0) for loop through
 //  upper (lower) pole.  Works in 2D and 3D.
@@ -41,13 +41,13 @@ static Real A1(const Real x1, const Real x2, const Real x3);
 
 // User-defined boundary conditions along inner/outer edges (not poles)
 void LoopInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+       Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 void LoopOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+       Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 void LoopInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+       Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 void LoopOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+       Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 
 // problem parameters which are useful to make global to this file
 static Real vy0, rho0, isocs2, gamma_gas;
@@ -60,15 +60,14 @@ static Real xc, yc, zc, beta, b0;
 //  functions in this file.  Called in Mesh constructor.
 //========================================================================================
 
-void Mesh::InitUserMeshData(ParameterInput *pin)
-{
+void Mesh::InitUserMeshData(ParameterInput *pin) {
   // Get parameters for initial density and velocity
   rho0 = pin->GetReal("problem","rho0");
   vy0 = pin->GetOrAddReal("problem","vy0",0.0);
 
   // Get parameters of initial pressure and cooling parameters
   isocs2=SQR(pin->GetReal("hydro","iso_sound_speed"));
-  if(NON_BAROTROPIC_EOS){
+  if (NON_BAROTROPIC_EOS) {
     gamma_gas = pin->GetReal("hydro","gamma");
   }
 
@@ -76,22 +75,22 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
   xc = pin->GetOrAddReal("problem","xc",1.0);
   yc = pin->GetOrAddReal("problem","yc",0.0);
   zc = pin->GetOrAddReal("problem","zc",0.0);
-  if (MAGNETIC_FIELDS_ENABLED){
+  if (MAGNETIC_FIELDS_ENABLED) {
     beta = pin->GetReal("problem","beta");
-    b0=sqrt(2.*isocs2*rho0/beta);
+    b0=std::sqrt(2.*isocs2*rho0/beta);
   }
 
   // setup boundary condition
-  if(mesh_bcs[INNER_X1] == GetBoundaryFlag("user")) {
+  if (mesh_bcs[INNER_X1] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(INNER_X1, LoopInnerX1);
   }
-  if(mesh_bcs[OUTER_X1] == GetBoundaryFlag("user")) {
+  if (mesh_bcs[OUTER_X1] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(OUTER_X1, LoopOuterX1);
   }
-  if(mesh_bcs[INNER_X2] == GetBoundaryFlag("user")) {
+  if (mesh_bcs[INNER_X2] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(INNER_X2, LoopInnerX2);
   }
-  if(mesh_bcs[OUTER_X2] == GetBoundaryFlag("user")) {
+  if (mesh_bcs[OUTER_X2] == GetBoundaryFlag("user")) {
     EnrollUserBoundaryFunction(OUTER_X2, LoopOuterX2);
   }
 
@@ -103,12 +102,11 @@ void Mesh::InitUserMeshData(ParameterInput *pin)
 //  \brief Initializes field loop advection through pole.
 //========================================================================================
 
-void MeshBlock::ProblemGenerator(ParameterInput *pin)
-{
+void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real rad, phi, z;
   Real v1, v2, v3;
   // Set initial magnetic fields
-  if (MAGNETIC_FIELDS_ENABLED){
+  if (MAGNETIC_FIELDS_ENABLED) {
     AthenaArray<Real> a1,a2,a3;
     int nx1 = (ie-is)+1 + 2*(NGHOST);
     int nx2 = (je-js)+1 + 2*(NGHOST);
@@ -132,7 +130,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
     area.NewAthenaArray(nx1);
     len.NewAthenaArray(nx1);
     len_p1.NewAthenaArray(nx1);
- 
+
     // for 1,2,3-D
     for (int k=ks; k<=ke; ++k) {
       // reset loop limits for polar boundary
@@ -217,26 +215,26 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   }
 
   //  Initialize density
-  for(int k=ks; k<=ke; ++k) {
+  for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
       for (int i=is; i<=ie; ++i) {
-	phydro->u(IDN,k,j,i) = rho0 ;
-	VelProfileCyl(pcoord->x1v(i),pcoord->x2v(j),pcoord->x3v(k),v1,v2,v3);
+        phydro->u(IDN,k,j,i) = rho0 ;
+        VelProfileCyl(pcoord->x1v(i),pcoord->x2v(j),pcoord->x3v(k),v1,v2,v3);
         phydro->u(IM1,k,j,i) = phydro->u(IDN,k,j,i)*v1;
         phydro->u(IM2,k,j,i) = phydro->u(IDN,k,j,i)*v2;
         phydro->u(IM3,k,j,i) = phydro->u(IDN,k,j,i)*v3;
-	if (NON_BAROTROPIC_EOS){
+        if (NON_BAROTROPIC_EOS) {
           phydro->u(IEN,k,j,i) = isocs2*phydro->u(IDN,k,j,i)/(gamma_gas - 1.0);
           phydro->u(IEN,k,j,i) += 0.5*(SQR(phydro->u(IM1,k,j,i))
                                       +SQR(phydro->u(IM2,k,j,i))
                                       +SQR(phydro->u(IM3,k,j,i)))/phydro->u(IDN,k,j,i);
-	  if (MAGNETIC_FIELDS_ENABLED){
-	    phydro->u(IEN,k,j,i) +=
+          if (MAGNETIC_FIELDS_ENABLED) {
+            phydro->u(IEN,k,j,i) +=
               0.5*(SQR(0.5*(pfield->b.x1f(k,j,i+1) + pfield->b.x1f(k,j,i)))
                  + SQR(0.5*(pfield->b.x2f(k,j+1,i) + pfield->b.x2f(k,j,i)))
                  + SQR(0.5*(pfield->b.x3f(k+1,j,i) + pfield->b.x3f(k,j,i))));
           }
-	}
+        }
       }
     }
   }
@@ -248,19 +246,17 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 //! \f transforms uniform velocity in x-directin in spherical polar coords
 
 static void VelProfileCyl(const Real x1, const Real x2, const Real x3,
-                          Real &v1, Real &v2, Real &v3)
-{
+                          Real &v1, Real &v2, Real &v3) {
   v1 = vy0*sin(x2)*sin(x3);
   v2 = vy0*cos(x2)*sin(x3);
   v3 = vy0*cos(x3);
   return;
-} 
+}
 
 //----------------------------------------------------------------------------------------
 //! \f compute 3-compnent of vector potential
 
-static Real A3(const Real x1, const Real x2, const Real x3)
-{
+static Real A3(const Real x1, const Real x2, const Real x3) {
   Real a3=0.0;
   return a3;
 }
@@ -268,19 +264,18 @@ static Real A3(const Real x1, const Real x2, const Real x3)
 //----------------------------------------------------------------------------------------
 //! \f compute 2-compnent of vector potential
 
-static Real A2(const Real x1, const Real x2, const Real x3)
- {
+static Real A2(const Real x1, const Real x2, const Real x3) {
   Real a2=0.0;
   Real az=0.0;
   Real x=x1*fabs(sin(x2))*cos(x3);
   Real y=x1*fabs(sin(x2))*sin(x3);
-  if(x2<0.0||x2>PI){
+  if (x2<0.0||x2>PI) {
    x=-x;
    y=-y;
   }
   Real z=x1*cos(x2);
-  if(sqrt(SQR(x-xc)+SQR(y-yc))<=0.5 && fabs(z-zc)<0.2){
-    az=b0*(0.5-sqrt(SQR(x-xc)+SQR(y-yc)));
+  if (std::sqrt(SQR(x-xc)+SQR(y-yc))<=0.5 && fabs(z-zc)<0.2) {
+    az=b0*(0.5-std::sqrt(SQR(x-xc)+SQR(y-yc)));
   }
   a2=-az*fabs(sin(x2));
   return a2;
@@ -289,19 +284,18 @@ static Real A2(const Real x1, const Real x2, const Real x3)
 //----------------------------------------------------------------------------------------
 //! \f compute 1-compnent of vector potential
 
-static Real A1(const Real x1, const Real x2, const Real x3)
-{
+static Real A1(const Real x1, const Real x2, const Real x3) {
   Real a1=0.0;
   Real az=0.0;
   Real x=x1*fabs(sin(x2))*cos(x3);
   Real y=x1*fabs(sin(x2))*sin(x3);
-  if(x2<0.0||x2>PI){
+  if (x2<0.0||x2>PI) {
    x=-x;
    y=-y;
   }
   Real z=x1*cos(x2);
-  if(sqrt(SQR(x-xc)+SQR(y-yc))<=0.5 && fabs(z-zc)<0.2){
-    az=b0*(0.5-sqrt(SQR(x-xc)+SQR(y-yc)));
+  if (std::sqrt(SQR(x-xc)+SQR(y-yc))<=0.5 && fabs(z-zc)<0.2) {
+    az=b0*(0.5-std::sqrt(SQR(x-xc)+SQR(y-yc)));
   }
   a1=az*cos(x2);
   return a1;
@@ -311,14 +305,13 @@ static Real A1(const Real x1, const Real x2, const Real x3)
 //!\f: User-defined boundary Conditions: LoopInnerX1
 
 void LoopInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
-{
+       Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   Real rad,phi,z;
   Real v1, v2, v3;
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
-      for (int i=1; i<=(NGHOST); ++i) {
-        prim(IDN,k,j,is-i) = rho0; 
+      for (int i=1; i<=ngh; ++i) {
+        prim(IDN,k,j,is-i) = rho0;
         VelProfileCyl(pco->x1v(is-i),pco->x2v(j),pco->x3v(k),v1,v2,v3);
         prim(IM1,k,j,is-i) = v1;
         prim(IM2,k,j,is-i) = v2;
@@ -333,7 +326,7 @@ void LoopInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
 #pragma omp simd
-      for (int i=1; i<=(NGHOST); ++i) {
+      for (int i=1; i<=ngh; ++i) {
         b.x1f(k,j,(is-i)) = b.x1f(k,j,is);
       }
     }}
@@ -341,7 +334,7 @@ void LoopInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je+1; ++j) {
 #pragma omp simd
-      for (int i=1; i<=(NGHOST); ++i) {
+      for (int i=1; i<=ngh; ++i) {
         b.x2f(k,j,(is-i)) = b.x2f(k,j,is);
       }
     }}
@@ -349,7 +342,7 @@ void LoopInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
     for (int k=ks; k<=ke+1; ++k) {
     for (int j=js; j<=je; ++j) {
 #pragma omp simd
-      for (int i=1; i<=(NGHOST); ++i) {
+      for (int i=1; i<=ngh; ++i) {
         b.x3f(k,j,(is-i)) = b.x3f(k,j,is);
       }
     }}
@@ -360,14 +353,13 @@ void LoopInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 //!\f: User-defined boundary Conditions: LoopOuterX1
 
 void LoopOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
-{
+       Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   Real rad,phi,z;
   Real v1, v2, v3;
   for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
-      for (int i=1; i<=(NGHOST); ++i) {
-        prim(IDN,k,j,ie+i) = rho0; 
+      for (int i=1; i<=ngh; ++i) {
+        prim(IDN,k,j,ie+i) = rho0;
         VelProfileCyl(pco->x1v(ie+i),pco->x2v(j),pco->x3v(k),v1,v2,v3);
         prim(IM1,k,j,ie+i) = v1;
         prim(IM2,k,j,ie+i) = v2;
@@ -382,15 +374,15 @@ void LoopOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
     for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je; ++j) {
 #pragma omp simd
-      for (int i=1; i<=(NGHOST); ++i) {
+      for (int i=1; i<=ngh; ++i) {
         b.x1f(k,j,(ie+i+1)) = b.x1f(k,j,(ie+1));
       }
     }}
 
-    for (int k=ks; k<=ke; ++k) { 
+    for (int k=ks; k<=ke; ++k) {
     for (int j=js; j<=je+1; ++j) {
 #pragma omp simd
-      for (int i=1; i<=(NGHOST); ++i) {
+      for (int i=1; i<=ngh; ++i) {
         b.x2f(k,j,(ie+i)) = b.x2f(k,j,ie);
       }
     }}
@@ -398,7 +390,7 @@ void LoopOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
     for (int k=ks; k<=ke+1; ++k) {
     for (int j=js; j<=je; ++j) {
 #pragma omp simd
-      for (int i=1; i<=(NGHOST); ++i) {
+      for (int i=1; i<=ngh; ++i) {
         b.x3f(k,j,(ie+i)) = b.x3f(k,j,ie);
       }
     }}
@@ -409,14 +401,13 @@ void LoopOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 //!\f: User-defined boundary Conditions: LoopInnerX2
 
 void LoopInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
-{
+       Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   Real rad,phi,z;
   Real v1, v2, v3;
   for (int k=ks; k<=ke; ++k) {
-    for (int j=1; j<=(NGHOST); ++j) {
+    for (int j=1; j<=ngh; ++j) {
       for (int i=is; i<=ie; ++i) {
-        prim(IDN,k,js-j,i) = rho0; 
+        prim(IDN,k,js-j,i) = rho0;
         VelProfileCyl(pco->x1v(i),pco->x2v(js-j),pco->x3v(k),v1,v2,v3);
         prim(IM1,k,js-j,i) = v1;
         prim(IM2,k,js-j,i) = v2;
@@ -429,7 +420,7 @@ void LoopInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
   // copy face-centered magnetic fields into ghost zones
   if (MAGNETIC_FIELDS_ENABLED) {
     for (int k=ks; k<=ke; ++k) {
-    for (int j=1; j<=(NGHOST); ++j) {
+    for (int j=1; j<=ngh; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie+1; ++i) {
         b.x1f(k,(js-j),i) = b.x1f(k,js,i);
@@ -437,7 +428,7 @@ void LoopInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
     }}
 
     for (int k=ks; k<=ke; ++k) {
-    for (int j=1; j<=(NGHOST); ++j) {
+    for (int j=1; j<=ngh; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
         b.x2f(k,(js-j),i) = b.x2f(k,js,i);
@@ -445,7 +436,7 @@ void LoopInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
     }}
 
     for (int k=ks; k<=ke+1; ++k) {
-    for (int j=1; j<=(NGHOST); ++j) {
+    for (int j=1; j<=ngh; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
         b.x3f(k,(js-j),i) = b.x3f(k,js,i);
@@ -458,14 +449,13 @@ void LoopInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
 //!\f: User-defined boundary Conditions: LoopOuterX2
 
 void LoopOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceField &b,
-                 Real time, Real dt, int is, int ie, int js, int je, int ks, int ke)
-{
+       Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   Real rad,phi,z;
   Real v1, v2, v3;
   for (int k=ks; k<=ke; ++k) {
-    for (int j=1; j<=(NGHOST); ++j) {
+    for (int j=1; j<=ngh; ++j) {
       for (int i=is; i<=ie; ++i) {
-        prim(IDN,k,je+j,i) = rho0; 
+        prim(IDN,k,je+j,i) = rho0;
         VelProfileCyl(pco->x1v(i),pco->x2v(je+j),pco->x3v(k),v1,v2,v3);
         prim(IM1,k,je+j,i) = v1;
         prim(IM2,k,je+j,i) = v2;
@@ -478,7 +468,7 @@ void LoopOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
   // copy face-centered magnetic fields into ghost zones
   if (MAGNETIC_FIELDS_ENABLED) {
     for (int k=ks; k<=ke; ++k) {
-    for (int j=1; j<=(NGHOST); ++j) {
+    for (int j=1; j<=ngh; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie+1; ++i) {
         b.x1f(k,(je+j  ),i) = b.x1f(k,(je  ),i);
@@ -486,7 +476,7 @@ void LoopOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
     }}
 
     for (int k=ks; k<=ke; ++k) {
-    for (int j=1; j<=(NGHOST); ++j) {
+    for (int j=1; j<=ngh; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
         b.x2f(k,(je+j+1),i) = b.x2f(k,(je+1),i);
@@ -494,7 +484,7 @@ void LoopOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,FaceF
     }}
 
     for (int k=ks; k<=ke+1; ++k) {
-    for (int j=1; j<=(NGHOST); ++j) {
+    for (int j=1; j<=ngh; ++j) {
 #pragma omp simd
       for (int i=is; i<=ie; ++i) {
         b.x3f(k,(je+j  ),i) = b.x3f(k,(je  ),i);
