@@ -137,6 +137,7 @@ private:
 
   // Instance methods
   virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
+  virtual void AddSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
   virtual void ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
   virtual void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
                              AthenaArray<Real>& meshdst) {}
@@ -196,6 +197,7 @@ private:
   // Instance methods.
   void AssignShorthands();
   void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc);
+  void AddSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
                      AthenaArray<Real>& meshdst);
 

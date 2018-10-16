@@ -201,6 +201,7 @@ void Particles::Integrate(int stage) {
   }
 
   EulerStep(t, dt, pmy_block->phydro->w);
+  AddSourceTerms(t, dt, pmy_block->phydro->w);
   ReactToMeshAux(t, dt, pmy_block->phydro->w);
 }
 

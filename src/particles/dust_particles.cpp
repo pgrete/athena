@@ -125,6 +125,15 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void DustParticles::AddSourceTerms(Real t, Real dt,
+//                                         const AthenaArray<Real>& meshsrc)
+//  \brief adds additional source terms to particles, overloaded by the user.
+
+void __attribute__((weak)) DustParticles::AddSourceTerms(
+    Real t, Real dt, const AthenaArray<Real>& meshsrc) {
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void DustParticles::DepositToMesh(Real t, Real dt,
 //               const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst);
 //  \brief Deposits meshaux to Mesh.
