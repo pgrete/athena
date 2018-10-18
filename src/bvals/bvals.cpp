@@ -1295,6 +1295,7 @@ void BoundaryValues::StartReceivingForInit(bool cons_and_field) {
           MPI_Start(&bd_species_.req_recv[nb.bufid]);
         }
       }
+    }
   }
 // find send_block_id and recv_block_id;
   if (SHEARING_BOX) {
