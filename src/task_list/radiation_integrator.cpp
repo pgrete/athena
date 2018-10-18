@@ -40,7 +40,7 @@
 RadiationIntegratorTaskList::RadiationIntegratorTaskList(ParameterInput *pin, Mesh *pm)
   : TaskList(pm)
 {
-  nsub_steps = 1;
+  nstages = 1;
   integrator = RADIATION_INTEGRATOR;
   // Now assemble list of tasks for each step of chemistry integrator
   {using namespace RadiationIntegratorTaskNames;

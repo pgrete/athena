@@ -39,7 +39,7 @@
 ChemistryIntegratorTaskList::ChemistryIntegratorTaskList(ParameterInput *pin, Mesh *pm)
   : TaskList(pm)
 {
-  nsub_steps = 1;
+  nstages = 1;
   // Now assemble list of tasks for each step of chemistry integrator
   {using namespace ChemistryIntegratorTaskNames;
     AddChemistryIntegratorTask(START_SPEC_RECV, NONE);

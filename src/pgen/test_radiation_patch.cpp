@@ -41,17 +41,17 @@
 #include "../coordinates/coordinates.hpp"
 
 void SixRayBoundaryInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 void SixRayBoundaryOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 void SixRayBoundaryInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 void SixRayBoundaryOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 void SixRayBoundaryInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 void SixRayBoundaryOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke);
+     FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh);
 
 
 //======================================================================================
@@ -147,13 +147,13 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 
 
 void SixRayBoundaryInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // set species and column boundary to zero
   for (int n=0; n<(NSPECIES); ++n) {
     for (int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
 #pragma simd
-        for (int i=1; i<=(NGHOST); ++i) {
+        for (int i=1; i<=ngh; ++i) {
           pmb->pspec->s(n,k,j,is-i) = 0;
         }
       }
@@ -164,7 +164,7 @@ void SixRayBoundaryInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
     for (int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
 #pragma simd
-        for (int i=1; i<=(NGHOST); ++i) {
+        for (int i=1; i<=ngh; ++i) {
           prim(n,k,j,is-i) = 0;
         }
       }
@@ -174,11 +174,11 @@ void SixRayBoundaryInnerX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
 }
 
 void SixRayBoundaryInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // set species and column boundary to zero
   for (int n=0; n<(NSPECIES); ++n) {
     for (int k=ks; k<=ke; ++k) {
-      for (int j=1; j<=(NGHOST); ++j) {
+      for (int j=1; j<=ngh; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
           pmb->pspec->s(n,k,js-j,i) = 0;
@@ -189,7 +189,7 @@ void SixRayBoundaryInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
   //set hydro variables to zero
   for (int n=0; n<(NHYDRO); ++n) {
     for (int k=ks; k<=ke; ++k) {
-      for (int j=1; j<=(NGHOST); ++j) {
+      for (int j=1; j<=ngh; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
           prim(n,k,js-j,i) = 0;
@@ -201,10 +201,10 @@ void SixRayBoundaryInnerX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
 }
 
 void SixRayBoundaryInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // set species and column boundary to zero
   for (int n=0; n<(NSPECIES); ++n) {
-    for (int k=1; k<=(NGHOST); ++k) {
+    for (int k=1; k<=ngh; ++k) {
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
@@ -215,7 +215,7 @@ void SixRayBoundaryInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
   }
   //set hydro variables to zero
   for (int n=0; n<(NHYDRO); ++n) {
-    for (int k=1; k<=(NGHOST); ++k) {
+    for (int k=1; k<=ngh; ++k) {
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
@@ -228,13 +228,13 @@ void SixRayBoundaryInnerX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
 }
 
 void SixRayBoundaryOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // set species and column boundary to zero
   for (int n=0; n<(NSPECIES); ++n) {
     for (int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
 #pragma simd
-        for (int i=1; i<=(NGHOST); ++i) {
+        for (int i=1; i<=ngh; ++i) {
           pmb->pspec->s(n,k,j,ie+i) = 0;
         }
       }
@@ -245,7 +245,7 @@ void SixRayBoundaryOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
     for (int k=ks; k<=ke; ++k) {
       for (int j=js; j<=je; ++j) {
 #pragma simd
-        for (int i=1; i<=(NGHOST); ++i) {
+        for (int i=1; i<=ngh; ++i) {
           prim(n,k,j,ie+i) = 0;
         }
       }
@@ -255,11 +255,11 @@ void SixRayBoundaryOuterX1(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
 }
 
 void SixRayBoundaryOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // set species and column boundary to zero
   for (int n=0; n<(NSPECIES); ++n) {
     for (int k=ks; k<=ke; ++k) {
-      for (int j=1; j<=(NGHOST); ++j) {
+      for (int j=1; j<=ngh; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
           pmb->pspec->s(n,k,je+j,i) = 0;
@@ -270,7 +270,7 @@ void SixRayBoundaryOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
   //set hydro variables to zero
   for (int n=0; n<(NHYDRO); ++n) {
     for (int k=ks; k<=ke; ++k) {
-      for (int j=1; j<=(NGHOST); ++j) {
+      for (int j=1; j<=ngh; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
           prim(n,k,je+j,i) = 0;
@@ -282,10 +282,10 @@ void SixRayBoundaryOuterX2(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
 }
 
 void SixRayBoundaryOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &prim,
-    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke) {
+    FaceField &b, Real time, Real dt, int is, int ie, int js, int je, int ks, int ke, int ngh) {
   // set species and column boundary to zero
   for (int n=0; n<(NSPECIES); ++n) {
-    for (int k=1; k<=(NGHOST); ++k) {
+    for (int k=1; k<=ngh; ++k) {
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {
@@ -296,7 +296,7 @@ void SixRayBoundaryOuterX3(MeshBlock *pmb, Coordinates *pco, AthenaArray<Real> &
   }
   //set hydro variables to zero
   for (int n=0; n<(NHYDRO); ++n) {
-    for (int k=1; k<=(NGHOST); ++k) {
+    for (int k=1; k<=ngh; ++k) {
       for (int j=js; j<=je; ++j) {
 #pragma simd
         for (int i=is; i<=ie; ++i) {

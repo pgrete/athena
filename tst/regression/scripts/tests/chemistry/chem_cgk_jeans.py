@@ -10,7 +10,7 @@ import scripts.utils.comparison as comparison  # more utilities explicitly for t
 sys.path.insert(0, '../../vis/python')         # insert path to Python read scripts
 import athena_read                             # utilities for reading Athena++ data
 
-def prepare():
+def prepare(**kwargs):
   athena.configure('pp', 
       prob='read_vtk',
       chemistry='gow16', 
@@ -22,7 +22,7 @@ def prepare():
       )
   athena.make()
 
-def run():
+def run(**kwargs):
   arguments = [ 
           'problem/G0=1.0',
           'time/tlim=3e14',

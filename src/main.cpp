@@ -396,7 +396,7 @@ int main(int argc, char *argv[]) {
     //time radiation
     if (RADIATION_ENABLED) {
       clock_t tstart_rad = clock();
-      pradlist->DoTaskListOneSubstep(pmesh, 1);
+      pradlist->DoTaskListOneStage(pmesh, 1);
       clock_t tstop_rad = clock();
       float cpu_time_rad = (tstop_rad>tstart_rad ? (float)(tstop_rad-tstart_rad) : 1.0)/(float)CLOCKS_PER_SEC;
       int64_t zones_rad = pmesh->GetTotalCells();
@@ -406,7 +406,7 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef INCLUDE_CHEMISTRY
-    pchemlist->DoTaskListOneSubstep(pmesh, 1);
+    pchemlist->DoTaskListOneStage(pmesh, 1);
 #endif
     if (pmesh->turb_flag > 1) pmesh->ptrbd->Driving(); // driven turbulence
 
