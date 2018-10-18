@@ -82,11 +82,9 @@ ParticleMesh::ParticleMesh(Particles *ppar) {
   dxi3_ = active3_ ? RINF : 0;
 
   // Determine the dimensions of the block for boundary communication.
-  int dim = 0;
   nx1_ = nx2_ = nx3_ = 1;
 
   if (active1_) {
-    ++dim;
     is = NGPM;
     ie = NGPM + block_size.nx1 - 1;
     nx1_ = block_size.nx1 + 2 * NGPM;
@@ -95,7 +93,6 @@ ParticleMesh::ParticleMesh(Particles *ppar) {
   }
 
   if (active2_) {
-    ++dim;
     js = NGPM;
     je = NGPM + block_size.nx2 - 1;
     nx2_ = block_size.nx2 + 2 * NGPM;
@@ -104,7 +101,6 @@ ParticleMesh::ParticleMesh(Particles *ppar) {
   }
 
   if (active3_) {
-    ++dim;
     ks = NGPM;
     ke = NGPM + block_size.nx3 - 1;
     nx3_ = block_size.nx3 + 2 * NGPM;
