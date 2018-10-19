@@ -201,7 +201,6 @@ void Particles::Integrate(int stage) {
   }
 
   EulerStep(t, dt, pmy_block->phydro->w);
-  AddSourceTerms(t, dt, pmy_block->phydro->w);
   ReactToMeshAux(t, dt, pmy_block->phydro->w);
 }
 
@@ -646,6 +645,7 @@ void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
   // Get the accelerations.
   ZeroAcceleration();
   AddAcceleration(t, dt, meshsrc);
+  AddSourceTerms(t, dt, meshsrc);
 
   // Update the positions and velocities **from the beginning of the time step**.
   for (int k = 0; k < npar; ++k) {
