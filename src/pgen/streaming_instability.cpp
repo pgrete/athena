@@ -57,14 +57,10 @@ void SourceTermsForGas(MeshBlock *pmb, const Real time, const Real dt,
 //  \brief Adds source terms to the particles.
 //======================================================================================
 void DustParticles::AddSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
-  // Preprocess the constants.
-  Real dt_two_omega = dt * two_omega,
-       dt_omega_half = dt * omega_half;
-
   // Apply the Coriolis and centrifugal forces, and linear gravity from the star.
   for (int k = 0; k < npar; ++k) {
-    vpx(k) += dt_two_omega * vpz0(k);
-    vpz(k) -= dt_omega_half * vpx0(k);
+    apx(k) += two_omega * vpz(k),
+    apz(k) -= omega_half * vpx(k);
   }
 }
 
@@ -77,10 +73,10 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   // Preprocess constants.
   Real cs0 = pin->GetReal("hydro", "iso_sound_speed");
   Real omega = pin->GetOrAddReal("problem", "omega", OMEGA);
-  Real dux0 = pin->GetReal("problem", "dux0");
+  Real duy0 = cs0 * pin->GetReal("problem", "duy0");
   two_omega = 2.0 * omega;
   omega_half = 0.5 * omega;
-  gas_accel_x = 2.0 * dux0 * cs0 * omega;
+  gas_accel_x = two_omega * duy0;
 
   // Enroll source terms.
   EnrollUserExplicitSourceFunction(SourceTermsForGas);
@@ -95,28 +91,45 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   // Get the dust-to-gas density ratio.
   Real dtog = pin->GetReal("problem", "dtog");
 
-  // Get the stopping time.
-  Real taus = pin->GetReal("particles", "taus");
+  // Get the dimensionless stopping time.
   Real omega = pin->GetOrAddReal("problem", "omega", OMEGA);
-  taus *= omega;
+  Real taus = omega * pin->GetReal("particles", "taus");
+
+  // Get the wave number.
+  Real cs0 = pin->GetReal("hydro", "iso_sound_speed");
+  Real duy0 = cs0 * pin->GetReal("problem", "duy0");
+  Real length = duy0 / omega;
+  Real kx = pin->GetOrAddReal("problem", "kx", 0.0) / length,
+       kz = pin->GetOrAddReal("problem", "kz", 0.0) / length;
 
   // Find the Nakagawa-Sekiya-Hayashi (1986) equilibrium solution.
-  Real dux0 = pin->GetReal("problem", "dux0");
-  Real cs0 = pin->GetReal("hydro", "iso_sound_speed");
-  dux0 *= cs0 / (std::pow(1.0 + dtog, 2) + std::pow(taus, 2));
-  Real ux0 = 2.0 * dtog * taus * dux0,
-       uy0 = -((1.0 + dtog) + std::pow(taus, 2)) * dux0,
-       vpx0 = -2.0 * taus * dux0,
-       vpy0 = -(1.0 + dtog) * dux0;
+  Real v = duy0 / (std::pow(1.0 + dtog, 2) + std::pow(taus, 2));
+  Real ux0 = 2.0 * dtog * taus * v,
+       uy0 = -((1.0 + dtog) + std::pow(taus, 2)) * v,
+       vpx0 = -2.0 * taus * v,
+       vpy0 = -(1.0 + dtog) * v;
 
-  // Set a uniform, steady gas.
+  // Perturb the gas.
+  Real amp = pin->GetOrAddReal("problem", "amplitude", 1e-6), dv = amp * duy0;
+  Real drhog_re = amp * pin->GetOrAddReal("problem", "drhog_re", 0.0),
+       drhog_im = amp * pin->GetOrAddReal("problem", "drhog_im", 0.0),
+       dux_re = dv * pin->GetOrAddReal("problem", "dux_re", 0.0),
+       dux_im = dv * pin->GetOrAddReal("problem", "dux_im", 0.0),
+       duy_re = dv * pin->GetOrAddReal("problem", "duy_re", 0.0),
+       duy_im = dv * pin->GetOrAddReal("problem", "duy_im", 0.0),
+       duz_re = dv * pin->GetOrAddReal("problem", "duz_re", 0.0),
+       duz_im = dv * pin->GetOrAddReal("problem", "duz_im", 0.0);
+
   for (int k = ks; k <= ke; ++k) {
     for (int j = js; j <= je; ++j) {
+      Real coskz = std::cos(kz * pcoord->x2v(j)), sinkz = std::sin(kz * pcoord->x2v(j));
       for (int i = is; i <= ie; ++i) {
-        phydro->u(IDN,k,j,i) = 1.0;
-        phydro->u(IM1,k,j,i) = ux0;
-        phydro->u(IM2,k,j,i) = 0.0;
-        phydro->u(IM3,k,j,i) = uy0;
+        Real coskx = std::cos(kx * pcoord->x1v(i)), sinkx = std::sin(kx * pcoord->x1v(i));
+        Real rhog = 1.0 + (drhog_re * coskx - drhog_im * sinkx) * coskz;
+        phydro->u(IDN,k,j,i) = rhog;
+        phydro->u(IM1,k,j,i) = rhog * (ux0 + (dux_re * coskx - dux_im * sinkx) * coskz);
+        phydro->u(IM3,k,j,i) = rhog * (uy0 + (duy_re * coskx - duy_im * sinkx) * coskz);
+        phydro->u(IM2,k,j,i) = -rhog * (duz_im * coskx + duz_re * sinkx) * sinkz;
       }
     }
   }
@@ -132,7 +145,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
   // Find the mass of each particle and the distance between adjacent particles.
   Real vol = 1.0;
-  Real dx1 = 0.0, dx2 = 0.0, dx3 = 0.0, length;
+  Real dx1 = 0.0, dx2 = 0.0, dx3 = 0.0;
 
   length = mesh_size.x1max - mesh_size.x1min;
   dx1 = length / npx1;
@@ -173,7 +186,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     return;
   }
 
-  // Assign the particles.
+  // Uniformly distribute the particles.
   int ipar = 0, id = ix1 + npx1 * (ix2 + npx2 * ix3);
   for (int k = 0; k < npx3_loc; ++k) {
     Real zp1 = block_size.x3min + (k + 0.5) * dx3;
@@ -195,4 +208,30 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     id += npx1 * (npx2 - npx2_loc);
   }
   ppar->npar = ipar;
+  if (kx == 0.0 && kz == 0.0) return;
+
+  // Perturb the particle position.
+  Real a = 0.5 * amp / (kx * kx + kz * kz);
+  for (int k = 0; k < ppar->npar; ++k) {
+    Real arg1 = kx * ppar->xp(k) + kz * ppar->yp(k),
+         arg2 = kx * ppar->xp(k) - kz * ppar->yp(k);
+    Real d = amp * std::sin(2.0 * arg1);
+    ppar->xp(k) -= a * kx * (std::sin(arg1) + std::sin(arg2) - d);
+    ppar->yp(k) -= a * kz * (std::sin(arg1) - std::sin(arg2) - d);
+  }
+
+  // Perturb the particle velocity.
+  Real dvpx_re = dv * pin->GetOrAddReal("problem", "dvpx_re", 0.0),
+       dvpx_im = dv * pin->GetOrAddReal("problem", "dvpx_im", 0.0),
+       dvpy_re = dv * pin->GetOrAddReal("problem", "dvpy_re", 0.0),
+       dvpy_im = dv * pin->GetOrAddReal("problem", "dvpy_im", 0.0),
+       dvpz_re = dv * pin->GetOrAddReal("problem", "dvpz_re", 0.0),
+       dvpz_im = dv * pin->GetOrAddReal("problem", "dvpz_im", 0.0);
+  for (int k = 0; k < ppar->npar; ++k) {
+    Real coskx = std::cos(kx * ppar->xp(k)), sinkx = std::sin(kx * ppar->xp(k));
+    Real coskz = std::cos(kz * ppar->yp(k)), sinkz = std::sin(kz * ppar->yp(k));
+    ppar->vpx(k) += (dvpx_re * coskx - dvpx_im * sinkx) * coskz;
+    ppar->vpz(k) += (dvpy_re * coskx - dvpy_im * sinkx) * coskz;
+    ppar->vpy(k) -= (dvpz_im * coskx + dvpz_re * sinkx) * sinkz;
+  }
 }
