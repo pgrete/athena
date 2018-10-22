@@ -656,6 +656,9 @@ void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
     vpy(k) = vpy0(k) + dt * apy(k);
     vpz(k) = vpz0(k) + dt * apz(k);
   }
+
+  // Update the position index.
+  SetPositionIndices();
 }
 
 //--------------------------------------------------------------------------------------
