@@ -973,14 +973,17 @@ void BoundaryValues::Initialize(void) {
                     nb.rank,tag,MPI_COMM_WORLD,&(bd_hydro_.req_recv[nb.bufid]));
       if (SPECIES_ENABLED) {
         tag=CreateBvalsMPITag(nb.lid, TAG_SPECIES, nb.targetid);
+        if(bd_species_.req_send[nb.bufid]!=MPI_REQUEST_NULL) {
+          MPI_Request_free(&bd_species_.req_send[nb.bufid]);
+        }
         MPI_Send_init(bd_species_.send[nb.bufid],ssize*NSPECIES/NHYDRO,MPI_ATHENA_REAL,
             nb.rank,tag,MPI_COMM_WORLD,&(bd_species_.req_send[nb.bufid]));
         tag=CreateBvalsMPITag(pmb->lid, TAG_SPECIES, nb.bufid);
-        MPI_Recv_init(bd_species_.recv[nb.bufid],rsize*NSPECIES/NHYDRO,MPI_ATHENA_REAL,
-            nb.rank,tag,MPI_COMM_WORLD,&(bd_species_.req_recv[nb.bufid]));
         if(bd_species_.req_recv[nb.bufid]!=MPI_REQUEST_NULL) {
           MPI_Request_free(&bd_species_.req_recv[nb.bufid]);
         }
+        MPI_Recv_init(bd_species_.recv[nb.bufid],rsize*NSPECIES/NHYDRO,MPI_ATHENA_REAL,
+            nb.rank,tag,MPI_COMM_WORLD,&(bd_species_.req_recv[nb.bufid]));
       }
 
       // flux correction
