@@ -237,7 +237,9 @@ BoundaryValues::BoundaryValues(MeshBlock *pmb, enum BoundaryFlag *input_bcs,
     num_south_polar_blocks_ = 0;
   }
   InitBoundaryData(bd_hydro_, BNDRY_HYDRO);
-  InitBoundaryData(bd_species_, BNDRY_SPECIES);
+  if (SPECIES_ENABLED) {
+    InitBoundaryData(bd_species_, BNDRY_SPECIES);
+  }
 #ifdef INCLUDE_CHEMISTRY
   InitBoundaryData(bd_sixray_, BNDRY_SIXRAY);
 #endif
@@ -517,7 +519,9 @@ BoundaryValues::~BoundaryValues() {
   MeshBlock *pmb=pmy_block_;
 
   DestroyBoundaryData(bd_hydro_);
-  DestroyBoundaryData(bd_species_);
+  if (SPECIES_ENABLED) {
+    DestroyBoundaryData(bd_species_);
+  }
 #ifdef INCLUDE_CHEMISTRY
   DestroyBoundaryData(bd_sixray_);
 #endif
@@ -967,8 +971,6 @@ void BoundaryValues::Initialize(void) {
         MPI_Request_free(&bd_hydro_.req_recv[nb.bufid]);
       MPI_Recv_init(bd_hydro_.recv[nb.bufid],rsize,MPI_ATHENA_REAL,
                     nb.rank,tag,MPI_COMM_WORLD,&(bd_hydro_.req_recv[nb.bufid]));
-      if(bd_hydro_.req_recv[nb.bufid]!=MPI_REQUEST_NULL)
-        MPI_Request_free(&bd_hydro_.req_recv[nb.bufid]);
       if (SPECIES_ENABLED) {
         tag=CreateBvalsMPITag(nb.lid, TAG_SPECIES, nb.targetid);
         MPI_Send_init(bd_species_.send[nb.bufid],ssize*NSPECIES/NHYDRO,MPI_ATHENA_REAL,
