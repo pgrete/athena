@@ -152,7 +152,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast density.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+            MPI_FLOAT, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast density.\n");
@@ -178,7 +178,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast pressure.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+            MPI_FLOAT, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast pressure.\n");
@@ -213,7 +213,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast velocity 0.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+            MPI_FLOAT, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast velocity 0.\n");
@@ -236,7 +236,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast velocity 1.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+            MPI_FLOAT, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast velocity 1.\n");
@@ -259,7 +259,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast velocity 2.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
+            MPI_FLOAT, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast velocity 2.\n");
@@ -642,6 +642,7 @@ static void readvtk(MeshBlock *mb, std::string filename, std::string field,
             }
           }
         }
+        printf("Finished Reading %s...\n", variable);
         fclose(fp);
         return;
       } else {
