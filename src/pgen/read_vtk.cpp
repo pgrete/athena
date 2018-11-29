@@ -642,7 +642,6 @@ static void readvtk(MeshBlock *mb, std::string filename, std::string field,
             }
           }
         }
-        printf("Finished Reading %s...\n", variable);
         fclose(fp);
         return;
       } else {
