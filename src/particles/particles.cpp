@@ -286,14 +286,14 @@ void Particles::SendToNeighbors() {
 
     // Find the neighbor block to send it to.
     Neighbor *pn = FindTargetNeighbor(ox1, ox2, ox3, xi1i, xi2i, xi3i);
-    if (pn == NULL) {
+    NeighborBlock *pnb = pn->pnb;
+    if (pnb == NULL) {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
           << "cannot find the neighbor block to send the particle to. " << std::endl;
       throw std::runtime_error(msg.str().data());
       continue;
     }
-    NeighborBlock *pnb = pn->pnb;
 
     // Determine which particle buffer to use.
     ParticleBuffer *ppb = NULL;

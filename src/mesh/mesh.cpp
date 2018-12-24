@@ -496,9 +496,17 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) {
       pblock = pblock->next;
     }
     pblock->pbval->SearchAndSetNeighbors(tree, ranklist, nslist);
-    if (PARTICLES) pblock->ppar->LinkNeighbors();
   }
   pblock=pfirst;
+
+  // Initialize neighbor lists in Particle class.
+  if (PARTICLES) {
+    MeshBlock *pmb = pfirst;
+    while (pmb != NULL) {
+      pmb->ppar->LinkNeighbors();
+      pmb = pmb->next;
+    }
+  }
 
   if (SELF_GRAVITY_ENABLED==1)
     pfgrd = new FFTGravityDriver(this, pin);
@@ -823,7 +831,6 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
       pblock = pblock->next;
     }
     pblock->pbval->SearchAndSetNeighbors(tree, ranklist, nslist);
-    if (PARTICLES) pblock->ppar->LinkNeighbors();
   }
   pblock=pfirst;
   delete [] mbdata;
@@ -837,6 +844,15 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
 
   // clean up
   delete [] offset;
+
+  // Initialize neighbor lists in Particle class.
+  if (PARTICLES) {
+    MeshBlock *pmb = pfirst;
+    while (pmb != NULL) {
+      pmb->ppar->LinkNeighbors();
+      pmb = pmb->next;
+    }
+  }
 
   if (SELF_GRAVITY_ENABLED==1)
     pfgrd = new FFTGravityDriver(this, pin);
