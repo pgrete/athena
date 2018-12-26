@@ -358,7 +358,7 @@ void Particles::SendToNeighbors() {
       MPI_Send(&npsend, 1, MPI_INT, nb.rank, send.tag, my_comm);
       if (npsend > 0) {
         MPI_Request req = MPI_REQUEST_NULL;
-        MPI_Isend(send.ibuf, npsend * ParticleBuffer::nint, MPI_LONG,
+        MPI_Isend(send.ibuf, npsend * ParticleBuffer::nint, MPI_INT,
                   dst, send.tag + 1, my_comm, &req);
         MPI_Request_free(&req);
         MPI_Isend(send.rbuf, npsend * ParticleBuffer::nreal, MPI_ATHENA_REAL,
@@ -427,7 +427,7 @@ bool Particles::ReceiveFromNeighbors() {
         // Receive data from the neighbor.
         if (!recv.flagi) {
           if (recv.reqi == MPI_REQUEST_NULL)
-            MPI_Irecv(recv.ibuf, recv.npar * ParticleBuffer::nint, MPI_LONG,
+            MPI_Irecv(recv.ibuf, recv.npar * ParticleBuffer::nint, MPI_INT,
                       nb.rank, recv.tag + 1, my_comm, &recv.reqi);
           else
             MPI_Test(&recv.reqi, &recv.flagi, MPI_STATUS_IGNORE);
