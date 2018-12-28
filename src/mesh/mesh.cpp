@@ -503,7 +503,7 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) {
   if (PARTICLES) {
     MeshBlock *pmb = pfirst;
     while (pmb != NULL) {
-      pmb->ppar->LinkNeighbors();
+      pmb->ppar->LinkNeighbors(tree, nrbx1, nrbx2, nrbx3, root_level);
       pmb = pmb->next;
     }
   }
@@ -849,7 +849,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   if (PARTICLES) {
     MeshBlock *pmb = pfirst;
     while (pmb != NULL) {
-      pmb->ppar->LinkNeighbors();
+      pmb->ppar->LinkNeighbors(tree, nrbx1, nrbx2, nrbx3, root_level);
       pmb = pmb->next;
     }
   }

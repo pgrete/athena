@@ -32,6 +32,7 @@ public:
 
   // accessor
   MeshBlockTree* GetLeaf(int ox, int oy, int oz) {return pleaf[oz][oy][ox];}
+  int GetGID() {return gid;}
 
   // functions
   void CreateRootGrid(int64_t nx, int64_t ny, int64_t nz, int nl);

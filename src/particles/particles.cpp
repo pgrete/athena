@@ -205,13 +205,16 @@ void Particles::Integrate(int stage) {
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::LinkNeighbors()
+//! \fn void Particles::LinkNeighbors(MeshBlockTree &tree,
+//          int64_t nrbx1, int64_t nrbx2, int64_t nrbx3, int root_level)
 //  \brief fetches neighbor information for later communication.
 
-void Particles::LinkNeighbors() {
+void Particles::LinkNeighbors(MeshBlockTree &tree,
+    int64_t nrbx1, int64_t nrbx2, int64_t nrbx3, int root_level) {
   // Construct links to neighbors.
   neighbor_[1][1][1].pmb = pmy_block;
 
+  // Save pointer to each neighbor.
   for (int i = 0; i < pbval_->nneighbor; ++i) {
     NeighborBlock& nb = pbval_->neighbor[i];
     Neighbor *pn = &neighbor_[nb.ox1+1][nb.ox2+1][nb.ox3+1];
@@ -230,6 +233,29 @@ void Particles::LinkNeighbors() {
       recv_[nb.bufid].tag = (pmy_block->gid<<8) | (nb.bufid<<2);
 #endif
     }
+  }
+
+  // Collect missing directions from fine to coarse level.
+  if (pmy_mesh->multilevel) {
+    int my_level = pbval_->loc.level;
+    for (int l = 0; l < 3; l++)
+      for (int m = 0; m < 3; m++)
+        for (int n = 0; n < 3; n++) {
+          Neighbor *pn = &neighbor_[l][m][n];
+          if (pn->pnb == NULL && pbval_->nblevel[n][m][l] < my_level) {
+            int ngid = tree.FindNeighbor(pbval_->loc, l-1, m-1, n-1, pbval_->block_bcs,
+                                         nrbx1, nrbx2, nrbx3, root_level)->GetGID();
+            for (int i = 0; i < pbval_->nneighbor; ++i) {
+              NeighborBlock& nb = pbval_->neighbor[i];
+              if (nb.gid == ngid) {
+                pn->pnb = &nb;
+                if (nb.rank == Globals::my_rank)
+                  pn->pmb = pmy_mesh->FindMeshBlock(ngid);
+                break;
+              }
+            }
+          }
+        }
   }
 
   // Initiate ParticleMesh boundary data.
@@ -702,7 +728,7 @@ struct Neighbor* Particles::FindTargetNeighbor(
   Neighbor *pn = &neighbor_[ox1+1][ox2+1][ox3+1];
 
   // Search down the list if the neighbor is at a finer level.
-  if (pn->pnb->level > pmy_block->loc.level) {
+  if (pmy_mesh->multilevel && pn->pnb->level > pmy_block->loc.level) {
     RegionSize& bs = pmy_block->block_size;
     int fi[2] = {0, 0}, i = 0;
     if (active1_ && ox1 == 0) fi[i++] = 2 * (xi1 - pmy_block->is) / bs.nx1;
