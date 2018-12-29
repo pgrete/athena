@@ -187,31 +187,32 @@ def analyze():
     uye, vpye = us2.velocities(te)
     uze, vpze = us3.velocities(te)
 
+    # Define the norm.
+    def norm(u, v):
+        s = 0
+        for a, b in zip(u, v):
+            s += (a - b)**2
+        return math.sqrt(s)
+
     # Find the absolute errors.
-    err_drp = math.sqrt((dxpavg[-1] - dxpe[-1])**2 +
-                        (dypavg[-1] - dype[-1])**2 +
-                        (dzpavg[-1] - dzpe[-1])**2)
-    err_v = math.sqrt((vpxavg[-1] - vpxe[-1])**2 +
-                      (vpyavg[-1] - vpye[-1])**2 +
-                      (vpzavg[-1] - vpze[-1])**2)
-    err_u = math.sqrt((uxavg[-1] - uxe[-1])**2 +
-                      (uyavg[-1] - uye[-1])**2 +
-                      (uzavg[-1] - uze[-1])**2)
+    err_drp = norm([dxpavg[-1], dypavg[-1], dzpavg[-1]],
+                   [dxpe[-1], dype[-1], dzpe[-1]])
+    err_v = norm([vpxavg[-1], vpyavg[-1], vpzavg[-1]],
+                 [vpxe[-1], vpye[-1], vpze[-1]])
+    err_u = norm([uxavg[-1], uyavg[-1], uzavg[-1]],
+                 [uxe[-1], uye[-1], uze[-1]])
     print("\nAbsolute Errors in:\n")
     print("\tParticle displacement = {}".format(err_drp))
     print("\tParticle velocity     = {}".format(err_v))
     print("\tGas velocity          = {}\n".format(err_u))
 
     # Evaluate the uniformity.
-    ddrp = math.sqrt((dxpmax[-1] - dxpmin[-1])**2 +
-                     (dypmax[-1] - dypmin[-1])**2 +
-                     (dzpmax[-1] - dzpmin[-1])**2)
-    dv = math.sqrt((vpxmax[-1] - vpxmin[-1])**2 +
-                   (vpymax[-1] - vpymin[-1])**2 +
-                   (vpzmax[-1] - vpzmin[-1])**2)
-    du = math.sqrt((uxmax[-1] - uxmin[-1])**2 +
-                   (uymax[-1] - uymin[-1])**2 +
-                   (uzmax[-1] - uzmin[-1])**2)
+    ddrp = norm([dxpmax[-1], dypmax[-1], dzpmax[-1]],
+                [dxpmin[-1], dypmin[-1], dzpmin[-1]])
+    dv = norm([vpxmax[-1], vpymax[-1], vpzmax[-1]],
+              [vpxmin[-1], vpymin[-1], vpzmin[-1]])
+    du = norm([uxmax[-1], uymax[-1], uzmax[-1]],
+              [uxmin[-1], uymin[-1], uzmin[-1]])
     print("\nData Range in:\n")
     print("\tParticle displacement = {}".format(ddrp))
     print("\tParticle velocity     = {}".format(dv))
