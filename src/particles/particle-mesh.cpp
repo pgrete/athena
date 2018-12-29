@@ -4,7 +4,7 @@
 // Licensed under the 3-clause BSD License, see LICENSE file for details
 //======================================================================================
 //! \file particle-mesh.cpp
-//  \brief implements ParticleMesh class used for operations involved in particle-mesh 
+//  \brief implements ParticleMesh class used for operations involved in particle-mesh
 //         methods.
 
 // Standard library
@@ -300,7 +300,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
   // Loop over each particle.
   int npar = ppar_->npar;
   for (int k = 0; k < npar; k += SIMD_WIDTH) {
-    #pragma omp simd simdlen(SIMD_WIDTH) 
+    #pragma omp simd simdlen(SIMD_WIDTH)
     for (int kk = 0; kk < std::min(SIMD_WIDTH, npar-k); ++kk) {
       int kkk = k + kk;
 
@@ -388,7 +388,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 //         data u from property index mb1 and mb1+nprop-1, divided by cell volume.
 
 void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u, int ma1, int mb1, int nprop) {
-  const int ibs = pmb_->is, jbs = pmb_->js, kbs = pmb_->ks, 
+  const int ibs = pmb_->is, jbs = pmb_->js, kbs = pmb_->ks,
             ibe = pmb_->ie, jbe = pmb_->je, kbe = pmb_->ke;
   const int offset1 = active1_ ? OFFSET : 0,
             offset2 = active2_ ? OFFSET : 0,
@@ -528,7 +528,7 @@ void ParticleMesh::SetBoundaryAttributes() {
           }
           if (active3_) {
             if (nb.fi2) {
-              xi3min = xi3mid - dxi; 
+              xi3min = xi3mid - dxi;
               xi3_0 = xi3mid;
               krs = ke - nx3h + 1;
             } else {
@@ -539,7 +539,7 @@ void ParticleMesh::SetBoundaryAttributes() {
         } else if (nb.ox2 != 0) {
           if (active1_) {
             if (nb.fi1) {
-              xi1min = xi1mid - dxi; 
+              xi1min = xi1mid - dxi;
               xi1_0 = xi1mid;
               irs = ie - nx1h + 1;
             } else {

@@ -6,7 +6,7 @@
 // Licensed under the 3-clause BSD License, see LICENSE file for details
 //======================================================================================
 //! \file particle-mesh.hpp
-//  \brief defines ParticleMesh class used for communication between meshblocks needed 
+//  \brief defines ParticleMesh class used for communication between meshblocks needed
 //         by particle-mesh methods.
 
 // C++ standard library

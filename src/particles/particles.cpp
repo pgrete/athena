@@ -999,7 +999,7 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op) {
 
 //--------------------------------------------------------------------------------------
 //! \fn void _CartesianToMeshCoords(x, y, z, x1, x2, x3)
-//  \brief returns in (x1, x2, x3) the coordinates used by the mesh from Cartesian 
+//  \brief returns in (x1, x2, x3) the coordinates used by the mesh from Cartesian
 //         coordinates (x, y, z).
 // TODO(ccyang): Currently only supports Cartesian to Cartensian.
 // TODO(ccyang): Generalize and move this to the Coordinates class.

@@ -48,7 +48,7 @@ friend class ParticleMesh;
 public:
   // Class methods
   static void Initialize(ParameterInput *pin);
-  static void FormattedTableOutput(Mesh *pm, OutputParameters op); 
+  static void FormattedTableOutput(Mesh *pm, OutputParameters op);
 
   // Constructor
   Particles(MeshBlock *pmb, ParameterInput *pin);
