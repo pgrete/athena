@@ -238,9 +238,12 @@ void Particles::LinkNeighbors(MeshBlockTree &tree,
   // Collect missing directions from fine to coarse level.
   if (pmy_mesh->multilevel) {
     int my_level = pbval_->loc.level;
-    for (int l = 0; l < 3; l++)
-      for (int m = 0; m < 3; m++)
+    for (int l = 0; l < 3; l++) {
+      if (!active1_ && l != 1) continue;
+      for (int m = 0; m < 3; m++) {
+        if (!active2_ && m != 1) continue;
         for (int n = 0; n < 3; n++) {
+          if (!active3_ && n != 1) continue;
           Neighbor *pn = &neighbor_[l][m][n];
           if (pn->pnb == NULL && pbval_->nblevel[n][m][l] < my_level) {
             int ngid = tree.FindNeighbor(pbval_->loc, l-1, m-1, n-1, pbval_->block_bcs,
@@ -256,6 +259,8 @@ void Particles::LinkNeighbors(MeshBlockTree &tree,
             }
           }
         }
+      }
+    }
   }
 
   // Initiate ParticleMesh boundary data.
