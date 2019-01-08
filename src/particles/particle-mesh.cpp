@@ -444,9 +444,10 @@ void ParticleMesh::SetBoundaryAttributes() {
   const int myfx1 = static_cast<int>(pbval_->loc.lx1 & 1L),
             myfx2 = static_cast<int>(pbval_->loc.lx2 & 1L),
             myfx3 = static_cast<int>(pbval_->loc.lx3 & 1L);
-  const int nx1h = active1_ ? block_size.nx1 / 2 + NGPM : 1,
-            nx2h = active2_ ? block_size.nx2 / 2 + NGPM : 1,
-            nx3h = active3_ ? block_size.nx3 / 2 + NGPM : 1;
+  const int NGH = (NGPM + 1) / 2, NG2 = 2 * NGPM;
+  const int nx1h = active1_ ? block_size.nx1 / 2 + NGH : 1,
+            nx2h = active2_ ? block_size.nx2 / 2 + NGH : 1,
+            nx3h = active3_ ? block_size.nx3 / 2 + NGH : 1;
 
   // Loop over each neighbor block.
   for (int n = 0; n < pbval_->nneighbor; ++n) {
@@ -460,54 +461,61 @@ void ParticleMesh::SetBoundaryAttributes() {
     int irs = is, ire = ie, jrs = js, jre = je, krs = ks, kre = ke;
     int iss = is, ise = ie, jss = js, jse = je, kss = ks, kse = ke;
 
-    // Find the radius of influence needed from the neighbor block.
-    Real dxi;
-    if (nb.level > mylevel)
-      dxi = 0.5 * RINF;
-    else if (nb.level < mylevel)
-      dxi = 2 * RINF;
-    else
-      dxi = RINF;
+    // Find several depths from the neighbor block.
+    Real dxip, dxig;
+    int dxir;
+    if (nb.level > mylevel) {
+      dxip = 0.5 * RINF;
+      dxig = NGPM;
+      dxir = NGH;
+    } else if (nb.level < mylevel) {
+      dxip = 2 * RINF;
+      dxig = 2 * NGH;
+      dxir = NG2;
+    } else {
+      dxip = RINF;
+      dxig = dxir = NGPM;
+    }
 
     // Consider the normal directions.
     if (nb.ox1 > 0) {
-      xi1min = xi1max - dxi;
+      xi1min = xi1max - dxip;
       xi1_0 = xi1max;
-      irs = ie - NGPM + 1;
+      irs = ie - dxir + 1;
       iss = ie + 1;
       ise += NGPM;
     } else if (nb.ox1 < 0) {
-      xi1max = xi1min + dxi;
-      xi1_0 = xi1min - dxi;
-      ire = is + NGPM - 1;
+      xi1max = xi1min + dxip;
+      xi1_0 = xi1min - dxig;
+      ire = is + dxir - 1;
       iss -= NGPM;
       ise = is - 1;
     }
 
     if (nb.ox2 > 0) {
-      xi2min = xi2max - dxi;
+      xi2min = xi2max - dxip;
       xi2_0 = xi2max;
-      jrs = je - NGPM + 1;
+      jrs = je - dxir + 1;
       jss = je + 1;
       jse += NGPM;
     } else if (nb.ox2 < 0) {
-      xi2max = xi2min + dxi;
-      xi2_0 = xi2min - dxi;
-      jre = js + NGPM - 1;
+      xi2max = xi2min + dxip;
+      xi2_0 = xi2min - dxig;
+      jre = js + dxir - 1;
       jss -= NGPM;
       jse = js - 1;
     }
 
     if (nb.ox3 > 0) {
-      xi3min = xi3max - dxi;
+      xi3min = xi3max - dxip;
       xi3_0 = xi3max;
-      krs = ke - NGPM + 1;
+      krs = ke - dxir + 1;
       kss = ke + 1;
       kse += NGPM;
     } else if (nb.ox3 < 0) {
-      xi3max = xi3min + dxi;
-      xi3_0 = xi3min - dxi;
-      kre = ks + NGPM - 1;
+      xi3max = xi3min + dxip;
+      xi3_0 = xi3min - dxig;
+      kre = ks + dxir - 1;
       kss -= NGPM;
       kse = ks - 1;
     }
@@ -518,63 +526,63 @@ void ParticleMesh::SetBoundaryAttributes() {
         if (nb.ox1 != 0) {
           if (active2_) {
             if (nb.fi1) {
-              xi2min = xi2mid - dxi;
+              xi2min = xi2mid - dxip;
               xi2_0 = xi2mid;
               jrs = je - nx2h + 1;
             } else {
-              xi2max = xi2mid + dxi;
+              xi2max = xi2mid + dxip;
               jre = js + nx2h - 1;
             }
           }
           if (active3_) {
             if (nb.fi2) {
-              xi3min = xi3mid - dxi;
+              xi3min = xi3mid - dxip;
               xi3_0 = xi3mid;
               krs = ke - nx3h + 1;
             } else {
-              xi3max = xi3mid + dxi;
+              xi3max = xi3mid + dxip;
               kre = ks + nx3h - 1;
             }
           }
         } else if (nb.ox2 != 0) {
           if (active1_) {
             if (nb.fi1) {
-              xi1min = xi1mid - dxi;
+              xi1min = xi1mid - dxip;
               xi1_0 = xi1mid;
               irs = ie - nx1h + 1;
             } else {
-              xi1max = xi1mid + dxi;
+              xi1max = xi1mid + dxip;
               ire = is + nx1h - 1;
             }
           }
           if (active3_) {
             if (nb.fi2) {
-              xi3min = xi3mid - dxi;
+              xi3min = xi3mid - dxip;
               xi3_0 = xi3mid;
               krs = ke - nx3h + 1;
             } else {
-              xi3max = xi3mid + dxi;
+              xi3max = xi3mid + dxip;
               kre = ks + nx3h - 1;
             }
           }
         } else {
           if (active1_) {
             if (nb.fi1) {
-              xi1min = xi1mid - dxi;
+              xi1min = xi1mid - dxip;
               xi1_0 = xi1mid;
               irs = ie - nx1h + 1;
             } else {
-              xi1max = xi1mid + dxi;
+              xi1max = xi1mid + dxip;
               ire = is + nx1h - 1;
             }
           }
           if (active2_) {
             if (nb.fi2) {
-              xi2min = xi2mid - dxi;
+              xi2min = xi2mid - dxip;
               xi2_0 = xi2mid;
               jrs = je - nx2h + 1;
             } else {
-              xi2max = xi2mid + dxi;
+              xi2max = xi2mid + dxip;
               jre = js + nx2h - 1;
             }
           }
@@ -583,33 +591,33 @@ void ParticleMesh::SetBoundaryAttributes() {
         if (nb.ox1 == 0) {
           if (active1_) {
             if (nb.fi1) {
-              xi1min = xi1mid - dxi;
+              xi1min = xi1mid - dxip;
               xi1_0 = xi1mid;
               irs = ie - nx1h + 1;
             } else {
-              xi1max = xi1mid + dxi;
+              xi1max = xi1mid + dxip;
               ire = is + nx1h - 1;
             }
           }
         } else if (nb.ox2 == 0) {
           if (active2_) {
             if (nb.fi1) {
-              xi2min = xi2mid - dxi;
+              xi2min = xi2mid - dxip;
               xi2_0 = xi2mid;
               jrs = je - nx2h + 1;
             } else {
-              xi2max = xi2mid + dxi;
+              xi2max = xi2mid + dxip;
               jre = js + nx2h - 1;
             }
           }
         } else {
           if (active3_) {
             if (nb.fi1) {
-              xi3min = xi3mid - dxi;
+              xi3min = xi3mid - dxip;
               xi3_0 = xi3mid;
               krs = ke - nx3h + 1;
             } else {
-              xi3max = xi3mid + dxi;
+              xi3max = xi3mid + dxip;
               kre = ks + nx3h - 1;
             }
           }
@@ -618,22 +626,22 @@ void ParticleMesh::SetBoundaryAttributes() {
     } else if (nb.level < mylevel) {  // Neighbor block is at a coarser level.
       if (nb.type == NEIGHBOR_FACE) {
         if (nb.ox1 != 0) {
-          if (active2_ && myfx2) xi2_0 = xi2min - dxi;
-          if (active3_ && myfx3) xi3_0 = xi3min - dxi;
+          if (active2_ && myfx2) xi2_0 = xi2min - dxig;
+          if (active3_ && myfx3) xi3_0 = xi3min - dxig;
         } else if (nb.ox2 != 0) {
-          if (active1_ && myfx1) xi1_0 = xi1min - dxi;
-          if (active3_ && myfx3) xi3_0 = xi3min - dxi;
+          if (active1_ && myfx1) xi1_0 = xi1min - dxig;
+          if (active3_ && myfx3) xi3_0 = xi3min - dxig;
         } else {
-          if (active1_ && myfx1) xi1_0 = xi1min - dxi;
-          if (active2_ && myfx2) xi2_0 = xi2min - dxi;
+          if (active1_ && myfx1) xi1_0 = xi1min - dxig;
+          if (active2_ && myfx2) xi2_0 = xi2min - dxig;
         }
       } else if (nb.type == NEIGHBOR_EDGE) {
         if (nb.ox1 == 0) {
-          if (active1_ && myfx1) xi1_0 = xi1min - dxi;
+          if (active1_ && myfx1) xi1_0 = xi1min - dxig;
         } else if (nb.ox2 == 0) {
-          if (active2_ && myfx2) xi2_0 = xi2min - dxi;
+          if (active2_ && myfx2) xi2_0 = xi2min - dxig;
         } else {
-          if (active3_ && myfx3) xi3_0 = xi3min - dxi;
+          if (active3_ && myfx3) xi3_0 = xi3min - dxig;
         }
       }
     }
@@ -650,14 +658,18 @@ void ParticleMesh::SetBoundaryAttributes() {
     ba.xi3_0 = xi3_0;
 
     // Set the dimensions of the ghost block.
-    if (nb.level < mylevel) {
-      ba.ngx1 = (nb.ox1 == 0) ? nx1h : NGPM;
-      ba.ngx2 = (nb.ox2 == 0) ? nx2h : NGPM;
-      ba.ngx3 = (nb.ox3 == 0) ? nx3h : NGPM;
-    } else {
+    if (nb.level == mylevel) {
       ba.ngx1 = (nb.ox1 == 0) ? block_size.nx1 : NGPM;
       ba.ngx2 = (nb.ox2 == 0) ? block_size.nx2 : NGPM;
       ba.ngx3 = (nb.ox3 == 0) ? block_size.nx3 : NGPM;
+    } else if (nb.level < mylevel) {
+      ba.ngx1 = (nb.ox1 == 0) ? nx1h : NGH;
+      ba.ngx2 = (nb.ox2 == 0) ? nx2h : NGH;
+      ba.ngx3 = (nb.ox3 == 0) ? nx3h : NGH;
+    } else {
+      ba.ngx1 = (nb.ox1 == 0) ? block_size.nx1 : NG2;
+      ba.ngx2 = (nb.ox2 == 0) ? block_size.nx2 : NG2;
+      ba.ngx3 = (nb.ox3 == 0) ? block_size.nx3 : NG2;
     }
     ba.ngtot = ba.ngx1 * ba.ngx2 * ba.ngx3;
 
