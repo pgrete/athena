@@ -60,8 +60,9 @@ lcov_capture_cmd="${lcov_cmd} --directory=${regression_abs_path}/obj/ --capture 
 # In order to condense the build log, --silent option suppresses only the stdout of Makefile calls. Don't use with pgen_compile.py:
 time python ./run_tests.py pgen/pgen_compile --config=--cflag="$(../ci/set_warning_cflag.sh g++)"
 # For (most) regression tests compiled with GCC, perform Gcov code coverage analysis via Lcov front end:
-time python ./run_tests.py particles/uniform_streaming --coverage="${lcov_capture_cmd}" --mpirun=srun --silent
 time python ./run_tests.py pgen/hdf5_reader_serial --coverage="${lcov_capture_cmd}" --silent
+time python ./run_tests.py particles/uniform_streaming --mpirun=srun --mpirun_opts=--job-name='GCC particles/uniform_streaming' \
+     --coverage="${lcov_capture_cmd}" --silent
 time python ./run_tests.py grav --mpirun=srun --mpirun_opts=--job-name='GCC grav/jeans_3d' \
      --coverage="${lcov_capture_cmd}" --silent
 time python ./run_tests.py mpi --mpirun=srun --mpirun_opts=--job-name='GCC mpi/mpi_linwave' \
@@ -164,7 +165,7 @@ module list
 
 time python ./run_tests.py pgen/pgen_compile --config=--cxx=icc --config=--cflag="$(../ci/set_warning_cflag.sh icc)"
 time python ./run_tests.py pgen/hdf5_reader_serial --silent
-time python ./run_tests.py particles/uniform_streaming --config=--cxx=icc --mpirun=srun --silent
+time python ./run_tests.py particles/uniform_streaming --config=--cxx=icc --mpirun=srun --mpirun_opts=--job-name='ICC particles/uniform_streaming' --silent
 time python ./run_tests.py grav --config=--cxx=icc --mpirun=srun --mpirun_opts=--job-name='ICC grav/jeans_3d' --silent
 time python ./run_tests.py mpi --config=--cxx=icc --mpirun=srun --mpirun_opts=--job-name='ICC mpi/mpi_linwave' --silent
 time python ./run_tests.py omp --config=--cxx=icc --silent
