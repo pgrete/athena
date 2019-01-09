@@ -30,9 +30,6 @@ MPI_Comm ParticleMesh::my_comm = MPI_COMM_NULL;
 // Local function prototypes.
 static Real _WeightFunction(Real dxi);
 
-// Local constants.
-const int OFFSET = NGHOST - NGPM;  // offset between meshblock and meshaux
-
 //--------------------------------------------------------------------------------------
 //! \fn void ParticleMesh::Initialize(ParameterInput *pin)
 //  \brief initiates the ParticleMesh class.
@@ -81,36 +78,19 @@ ParticleMesh::ParticleMesh(Particles *ppar) {
   dxi2_ = active2_ ? RINF : 0;
   dxi3_ = active3_ ? RINF : 0;
 
-  // Determine the dimensions of the block for boundary communication.
-  nx1_ = nx2_ = nx3_ = 1;
-
-  if (active1_) {
-    is = NGPM;
-    ie = NGPM + block_size.nx1 - 1;
-    nx1_ = block_size.nx1 + 2 * NGPM;
-  } else {
-    is = ie = 0;
-  }
-
-  if (active2_) {
-    js = NGPM;
-    je = NGPM + block_size.nx2 - 1;
-    nx2_ = block_size.nx2 + 2 * NGPM;
-  } else {
-    js = je = 0;
-  }
-
-  if (active3_) {
-    ks = NGPM;
-    ke = NGPM + block_size.nx3 - 1;
-    nx3_ = block_size.nx3 + 2 * NGPM;
-  } else {
-    ks = ke = 0;
-  }
-
-  // Allocate the block for particle-mesh.
+  // Establish the particle-mesh blocks.
+  nx1_ = active1_ ? block_size.nx1 + 2 * NGHOST : 1;
+  nx2_ = active2_ ? block_size.nx2 + 2 * NGHOST : 1;
+  nx3_ = active3_ ? block_size.nx3 + 2 * NGHOST : 1;
   meshaux.NewAthenaArray(nmeshaux, nx3_, nx2_, nx1_);
   ncells_ = nx1_ * nx2_ * nx3_;
+
+  is = pmb_->is;
+  ie = pmb_->ie;
+  js = pmb_->js;
+  je = pmb_->je;
+  ks = pmb_->ks;
+  ke = pmb_->ke;
 
   // Get a shorthand to weights.
   weight.InitWithShallowSlice(meshaux, 4, iweight, 1);
@@ -217,9 +197,7 @@ void ParticleMesh::AssignParticlesToMeshAux(
   // Loop over each particle.
   for (int k = 0; k < ppar_->npar; ++k) {
     // Find the domain the particle influences.
-    Real xi1 = ppar_->xi1(k) - (active1_ ? OFFSET : 0),
-         xi2 = ppar_->xi2(k) - (active2_ ? OFFSET : 0),
-         xi3 = ppar_->xi3(k) - (active3_ ? OFFSET : 0);
+    Real xi1 = ppar_->xi1(k), xi2 = ppar_->xi2(k), xi3 = ppar_->xi3(k);
     int ix1 = static_cast<int>(xi1 - dxi1_),
         ix2 = static_cast<int>(xi2 - dxi2_),
         ix3 = static_cast<int>(xi3 - dxi3_);
@@ -341,9 +319,6 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
         ps[i] = parsrc(ps1+i,kkk);
 
       int imb1 = imb1v[kk], imb2 = imb2v[kk], imb3 = imb3v[kk];
-      int ima1 = imb1 - (active1_ ? OFFSET : 0),
-          ima2 = imb2 - (active2_ ? OFFSET : 0),
-          ima3 = imb3 - (active3_ ? OFFSET : 0);
 
       #pragma loop count (NPC)
       for (int ipc3 = 0; ipc3 < npc3_; ++ipc3) {
@@ -354,7 +329,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
             Real w = w1[ipc1][kk] * w2[ipc2][kk] * w3[ipc3][kk];
 
             // Record the weights.
-            weight(ima3+ipc3,ima2+ipc2,ima1+ipc1) += w;
+            weight(imb3+ipc3,imb2+ipc2,imb1+ipc1) += w;
 
             // Interpolate meshsrc to particles.
             for (int n = 0; n < ni; ++n)
@@ -362,7 +337,7 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 
             // Assign particles to meshaux.
             for (int n = 0; n < na; ++n)
-              meshaux(ma1+n,ima3+ipc3,ima2+ipc2,ima1+ipc1) += w * ps[n];
+              meshaux(ma1+n,imb3+ipc3,imb2+ipc2,imb1+ipc1) += w * ps[n];
           }
         }
       }
@@ -388,20 +363,14 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
 //         data u from property index mb1 and mb1+nprop-1, divided by cell volume.
 
 void ParticleMesh::DepositMeshAux(AthenaArray<Real>& u, int ma1, int mb1, int nprop) {
-  const int ibs = pmb_->is, jbs = pmb_->js, kbs = pmb_->ks,
-            ibe = pmb_->ie, jbe = pmb_->je, kbe = pmb_->ke;
-  const int offset1 = active1_ ? OFFSET : 0,
-            offset2 = active2_ ? OFFSET : 0,
-            offset3 = active3_ ? OFFSET : 0;
   Coordinates *pc = pmb_->pcoord;
 
   #pragma ivdep
   for (int n = 0; n < nprop; ++n)
-    for (int k = kbs; k <= kbe; ++k)
-      for (int j = jbs; j <= jbe; ++j)
-        for (int i = ibs; i <= ibe; ++i)
-          u(mb1+n,k,j,i) += meshaux(ma1+n,k-offset3,j-offset2,i-offset1) /
-                            pc->GetCellVolume(k,j,i);
+    for (int k = ks; k <= ke; ++k)
+      for (int j = js; j <= je; ++j)
+        for (int i = is; i <= ie; ++i)
+          u(mb1+n,k,j,i) += meshaux(ma1+n,k,j,i) / pc->GetCellVolume(k,j,i);
 }
 
 //--------------------------------------------------------------------------------------
@@ -437,14 +406,14 @@ void ParticleMesh::InitiateBoundaryData() {
 
 void ParticleMesh::SetBoundaryAttributes() {
   const RegionSize& block_size = pmb_->block_size;
-  const Real xi1mid = (pmb_->is + pmb_->ie + 1) / 2,
-             xi2mid = (pmb_->js + pmb_->je + 1) / 2,
-             xi3mid = (pmb_->ks + pmb_->ke + 1) / 2;
+  const Real xi1mid = (is + ie + 1) / 2,
+             xi2mid = (js + je + 1) / 2,
+             xi3mid = (ks + ke + 1) / 2;
   const int mylevel = pmb_->loc.level;
   const int myfx1 = static_cast<int>(pbval_->loc.lx1 & 1L),
             myfx2 = static_cast<int>(pbval_->loc.lx2 & 1L),
             myfx3 = static_cast<int>(pbval_->loc.lx3 & 1L);
-  const int NGH = (NGPM + 1) / 2, NG2 = 2 * NGPM;
+  const int NGH = (NGHOST + 1) / 2, NG2 = 2 * NGHOST;
   const int nx1h = active1_ ? block_size.nx1 / 2 + NGH : 1,
             nx2h = active2_ ? block_size.nx2 / 2 + NGH : 1,
             nx3h = active3_ ? block_size.nx3 / 2 + NGH : 1;
@@ -454,9 +423,9 @@ void ParticleMesh::SetBoundaryAttributes() {
     NeighborBlock& nb = pbval_->neighbor[n];
 
     // Find the index domain.
-    Real xi1min = pmb_->is, xi1max = pmb_->ie + 1,
-         xi2min = pmb_->js, xi2max = pmb_->je + 1,
-         xi3min = pmb_->ks, xi3max = pmb_->ke + 1;
+    Real xi1min = is, xi1max = ie + 1,
+         xi2min = js, xi2max = je + 1,
+         xi3min = ks, xi3max = ke + 1;
     Real xi1_0 = xi1min, xi2_0 = xi2min, xi3_0 = xi3min;
     int irs = is, ire = ie, jrs = js, jre = je, krs = ks, kre = ke;
     int iss = is, ise = ie, jss = js, jse = je, kss = ks, kse = ke;
@@ -466,7 +435,7 @@ void ParticleMesh::SetBoundaryAttributes() {
     int dxir;
     if (nb.level > mylevel) {
       dxip = 0.5 * RINF;
-      dxig = NGPM;
+      dxig = NGHOST;
       dxir = NGH;
     } else if (nb.level < mylevel) {
       dxip = 2 * RINF;
@@ -474,7 +443,7 @@ void ParticleMesh::SetBoundaryAttributes() {
       dxir = NG2;
     } else {
       dxip = RINF;
-      dxig = dxir = NGPM;
+      dxig = dxir = NGHOST;
     }
 
     // Consider the normal directions.
@@ -483,12 +452,12 @@ void ParticleMesh::SetBoundaryAttributes() {
       xi1_0 = xi1max;
       irs = ie - dxir + 1;
       iss = ie + 1;
-      ise += NGPM;
+      ise += NGHOST;
     } else if (nb.ox1 < 0) {
       xi1max = xi1min + dxip;
       xi1_0 = xi1min - dxig;
       ire = is + dxir - 1;
-      iss -= NGPM;
+      iss -= NGHOST;
       ise = is - 1;
     }
 
@@ -497,12 +466,12 @@ void ParticleMesh::SetBoundaryAttributes() {
       xi2_0 = xi2max;
       jrs = je - dxir + 1;
       jss = je + 1;
-      jse += NGPM;
+      jse += NGHOST;
     } else if (nb.ox2 < 0) {
       xi2max = xi2min + dxip;
       xi2_0 = xi2min - dxig;
       jre = js + dxir - 1;
-      jss -= NGPM;
+      jss -= NGHOST;
       jse = js - 1;
     }
 
@@ -511,12 +480,12 @@ void ParticleMesh::SetBoundaryAttributes() {
       xi3_0 = xi3max;
       krs = ke - dxir + 1;
       kss = ke + 1;
-      kse += NGPM;
+      kse += NGHOST;
     } else if (nb.ox3 < 0) {
       xi3max = xi3min + dxip;
       xi3_0 = xi3min - dxig;
       kre = ks + dxir - 1;
-      kss -= NGPM;
+      kss -= NGHOST;
       kse = ks - 1;
     }
 
@@ -659,9 +628,9 @@ void ParticleMesh::SetBoundaryAttributes() {
 
     // Set the dimensions of the ghost block.
     if (nb.level == mylevel) {
-      ba.ngx1 = (nb.ox1 == 0) ? block_size.nx1 : NGPM;
-      ba.ngx2 = (nb.ox2 == 0) ? block_size.nx2 : NGPM;
-      ba.ngx3 = (nb.ox3 == 0) ? block_size.nx3 : NGPM;
+      ba.ngx1 = (nb.ox1 == 0) ? block_size.nx1 : NGHOST;
+      ba.ngx2 = (nb.ox2 == 0) ? block_size.nx2 : NGHOST;
+      ba.ngx3 = (nb.ox3 == 0) ? block_size.nx3 : NGHOST;
     } else if (nb.level < mylevel) {
       ba.ngx1 = (nb.ox1 == 0) ? nx1h : NGH;
       ba.ngx2 = (nb.ox2 == 0) ? nx2h : NGH;

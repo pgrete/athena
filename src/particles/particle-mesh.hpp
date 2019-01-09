@@ -24,9 +24,8 @@
 
 // Particle-mesh constants.
 const Real RINF = 1;  // radius of influence
-const int NGPM = static_cast<int>(std::ceil(RINF));  // number of ghost cells needed.
 
-// Define the size of a particle cloud = 2 * NGPM + 1
+// Define the size of a particle cloud = 2 * RINF + 1
 #define NPC 3
 
 // Forward declaration
