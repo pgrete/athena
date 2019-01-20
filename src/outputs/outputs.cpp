@@ -67,6 +67,7 @@
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
+#include "../particles/particles.hpp"
 #include "outputs.hpp"
 
 //----------------------------------------------------------------------------------------
@@ -544,6 +545,32 @@ void OutputType::LoadOutputData(MeshBlock *pmb) {
 
   } // endif (MAGNETIC_FIELDS_ENABLED)
 
+  if (PARTICLES) {
+    ParticleMesh *ppm = pmb->ppar->ppm;
+
+    // particle number density
+    if (output_params.variable.compare("np") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "np";
+      pod->data.InitWithShallowCopy(ppm->weight);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+
+    // particle velocity field
+    if (output_params.variable.compare("vp") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "vp";
+      pod->data.InitWithShallowSlice(ppm->meshaux, 4, Particles::imvpx, 3);
+      AppendOutputDataNode(pod);
+      num_vars_ += 3;
+    }
+  }
+
   if (output_params.variable.compare(0, 3, "uov") == 0
    || output_params.variable.compare(0, 12, "user_out_var") == 0) {
     int iv, ns=0, ne=pmb->nuser_out_var-1;
@@ -664,6 +691,7 @@ void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag) {
         (wtflag==true && ptype->output_params.file_type=="rst")) {
       if (first && ptype->output_params.file_type!="hst") {
         pm->ApplyUserWorkBeforeOutput(pin);
+        if (PARTICLES) Particles::PrepareForOutputs(pm);
         first=false;
       }
       ptype->WriteOutputFile(pm, pin, wtflag);

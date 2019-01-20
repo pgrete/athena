@@ -43,12 +43,14 @@ struct Neighbor {
 class Particles {
 
 friend class MeshBlock;  // Make writing initial conditions possible.
+friend class OutputType;
 friend class ParticleMesh;
 
 public:
   // Class methods
   static void Initialize(ParameterInput *pin);
   static void FormattedTableOutput(Mesh *pm, OutputParameters op);
+  static void PrepareForOutputs(Mesh *pm);
 
   // Constructor
   Particles(MeshBlock *pmb, ParameterInput *pin);
@@ -96,6 +98,9 @@ protected:
   static int ixi1, ixi2, ixi3;     // indices for position indices
   static int iapx, iapy, iapz;     // indices for acceleration components
 
+  static int imvpx, imvpy, imvpz;  // indices for velocity components on mesh
+                                   // (only used for outputs)
+
   // Instance methods
   virtual void AssignShorthands();  // Needs to be called everytime
                                     // intprop, realprop, & auxprop are resized
@@ -115,7 +120,7 @@ protected:
   ParticleMesh *ppm;  // ptr to particle-mesh
 
                                        // Shorthands:
-  AthenaArray<int> pid;               //   particle ID
+  AthenaArray<int> pid;                //   particle ID
   AthenaArray<Real> xp, yp, zp;        //   position
   AthenaArray<Real> vpx, vpy, vpz;     //   velocity
   AthenaArray<Real> xi1, xi2, xi3;     //   position indices in local meshblock

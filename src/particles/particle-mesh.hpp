@@ -40,6 +40,7 @@ class ParticleMesh {
 
 friend class Particles;
 friend class DustParticles;
+friend class OutputType;
 
 public:
   // Class methods

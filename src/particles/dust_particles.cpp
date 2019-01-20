@@ -43,9 +43,9 @@ void DustParticles::Initialize(ParameterInput *pin) {
     if (taus == 0.0) backreaction = false;
 
     if (backreaction) {
-      idpx = ParticleMesh::AddMeshAux();
-      idpy = ParticleMesh::AddMeshAux();
-      idpz = ParticleMesh::AddMeshAux();
+      idpx = imvpx;
+      idpy = imvpy;
+      idpz = imvpz;
     }
 
     initialized = true;

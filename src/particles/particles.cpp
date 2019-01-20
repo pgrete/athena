@@ -12,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -34,6 +35,7 @@ int Particles::ixp0 = -1, Particles::iyp0 = -1, Particles::izp0 = -1;
 int Particles::ivpx0 = -1, Particles::ivpy0 = -1, Particles::ivpz0 = -1;
 int Particles::ixi1 = -1, Particles::ixi2 = -1, Particles::ixi3 = -1;
 int Particles::iapx = -1, Particles::iapy = -1, Particles::iapz = -1;
+int Particles::imvpx = -1, Particles::imvpy = -1, Particles::imvpz = -1;
 #ifdef MPI_PARALLEL
 MPI_Comm Particles::my_comm = MPI_COMM_NULL;
 #endif
@@ -89,6 +91,9 @@ void Particles::Initialize(ParameterInput *pin) {
 
   // Initiate ParticleMesh class.
   ParticleMesh::Initialize(pin);
+  imvpx = ParticleMesh::AddMeshAux();
+  imvpy = ParticleMesh::AddMeshAux();
+  imvpz = ParticleMesh::AddMeshAux();
 
 #ifdef MPI_PARALLEL
   // Get my MPI communicator.
@@ -96,6 +101,61 @@ void Particles::Initialize(ParameterInput *pin) {
 #endif
 
   initialized = true;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::PrepareForOutputs(Mesh *pm)
+//  \brief constructs the output data.
+
+void Particles::PrepareForOutputs(Mesh *pm) {
+  // Assign particle velocity to mesh and send boundary.
+  ParticleMesh *ppm;
+  int nblocks = 0;
+  MeshBlock *pmb = pm->pblock;
+  while (pmb != NULL) {
+    ++nblocks;
+    ppm = pmb->ppar->ppm;
+    ppm->StartReceiving();
+    ppm->AssignParticlesToMeshAux(pmb->ppar->realprop, ivpx, imvpx, 3);
+    ppm->SendBoundary();
+    pmb = pmb->next;
+  }
+
+  std::vector<bool> completed(nblocks, false);
+  bool pending = true;
+  while (pending) {
+    pending = false;
+    pmb = pm->pblock;
+    for (int i = 0; i < nblocks; ++i) {
+      Coordinates *pc = pmb->pcoord;
+      ppm = pmb->ppar->ppm;
+      if (!completed[i]) {
+        // Finalize boundary communications.
+        if ((completed[i] = ppm->ReceiveBoundary())) {
+          const int is = ppm->is, ie = ppm->ie;
+          const int js = ppm->js, je = ppm->je;
+          const int ks = ppm->ks, ke = ppm->ke;
+          // Compute the velocity field.
+          for (int l = imvpx; l <= imvpz; ++l)
+            for (int k = ks; k <= ke; ++k)
+              for (int j = js; j <= je; ++j)
+                for (int i = is; i <= ie; ++i) {
+                  Real w = ppm->weight(k,j,i);
+                  ppm->meshaux(l,k,j,i) /= (w != 0) ? w : 1;
+                }
+          // Compute the number density.
+          for (int k = ks; k <= ke; ++k)
+            for (int j = js; j <= je; ++j)
+              for (int i = is; i <= ie; ++i)
+                ppm->weight(k,j,i) /= pc->GetCellVolume(k,j,i);
+          ppm->ClearBoundary();
+        } else {
+          pending = true;
+        }
+      }
+      pmb = pmb->next;
+    }
+  }
 }
 
 //--------------------------------------------------------------------------------------
