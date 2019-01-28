@@ -268,9 +268,15 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
           u(k,j,i,n) = meshsrc(ms1+n,k,j,i);
 
   // Allocate space for SIMD.
-  Real w1[npc1_][SIMD_WIDTH] __attribute__((aligned(64)));
-  Real w2[npc2_][SIMD_WIDTH] __attribute__((aligned(64)));
-  Real w3[npc3_][SIMD_WIDTH] __attribute__((aligned(64)));
+  Real **w1 __attribute__((aligned(64))) = new Real*[npc1_];
+  Real **w2 __attribute__((aligned(64))) = new Real*[npc2_];
+  Real **w3 __attribute__((aligned(64))) = new Real*[npc3_];
+  for (int i = 0; i < npc1_; ++i)
+    w1[i] = new Real[SIMD_WIDTH];
+  for (int i = 0; i < npc2_; ++i)
+    w2[i] = new Real[SIMD_WIDTH];
+  for (int i = 0; i < npc3_; ++i)
+    w3[i] = new Real[SIMD_WIDTH];
   Real imb1v[SIMD_WIDTH] __attribute__((aligned(64)));
   Real imb2v[SIMD_WIDTH] __attribute__((aligned(64)));
   Real imb3v[SIMD_WIDTH] __attribute__((aligned(64)));
@@ -312,7 +318,8 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
       int kkk = k + kk;
 
       // Initiate interpolation and fetch particle properties.
-      Real pd[ni], ps[na];
+      Real *pd = new Real[ni];
+      Real *ps = new Real[na];
       for (int i = 0; i < ni; ++i)
         pd[i] = 0.0;
       for (int i = 0; i < na; ++i)
@@ -345,11 +352,20 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
       // Record the final interpolated properties.
       for (int n = 0; n < ni; ++n)
         pardst(pd1+n,kkk) = pd[n];
+
+      delete [] pd, ps;
     }
   }
 
   // Release working array.
   u.DeleteAthenaArray();
+  for (int i = 0; i < npc1_; ++i)
+    delete [] w1[i];
+  for (int i = 0; i < npc2_; ++i)
+    delete [] w2[i];
+  for (int i = 0; i < npc3_; ++i)
+    delete [] w3[i];
+  delete [] w1, w2, w3;
 
   // Treat neighbors of different levels.
   if (pmesh_->multilevel)
@@ -686,7 +702,8 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
     for (int j = 0; j < ba.ngtot; ++j)
       *bufw++ = 0.0;
 
-    Real *pbuf[nprop], *buf[nprop];
+    Real **pbuf = new Real*[nprop];
+    Real **buf = new Real*[nprop];
     for (int n = 0; n < nprop; ++n) {
       buf[n] = pbuf[n] = pbuf0 + (ma1 + n) * ba.ngtot;
       for (int j = 0; j < ba.ngtot; ++j)
@@ -762,6 +779,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
       }
       delete [] prop;
     }
+    delete [] pbuf, buf;
 
     // Set the boundary flag.
     if (nb.rank == Globals::my_rank)
