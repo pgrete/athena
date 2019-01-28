@@ -9,6 +9,7 @@
 // C++ Standard Libraries
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -349,7 +350,7 @@ void Particles::SendToNeighbors() {
   const int KE = pmy_block->ke;
 
   // TODO(ccyang): Currently only works for Cartesian.
-  if (COORDINATE_SYSTEM != "cartesian") {
+  if (std::strcmp(COORDINATE_SYSTEM, "cartesian") != 0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
         << "Non-Cartesian coordinates not yet implemented. " << std::endl;
