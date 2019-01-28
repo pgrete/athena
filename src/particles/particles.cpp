@@ -955,8 +955,6 @@ std::size_t Particles::GetSizeInBytes() {
 //! \fn Particles::ReadRestart()
 //  \brief reads the particle data from the restart file.
 
-#include <cstring>
-
 void Particles::ReadRestart(char *mbdata, std::size_t &os) {
   // Read number of particles.
   std::memcpy(&npar, &(mbdata[os]), sizeof(npar));
