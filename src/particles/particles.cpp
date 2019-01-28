@@ -17,8 +17,8 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-#include "../globals.hpp"
 #include "../coordinates/coordinates.hpp"
+#include "../globals.hpp"
 #include "../hydro/hydro.hpp"
 #include "particles.hpp"
 
@@ -247,7 +247,6 @@ void Particles::Integrate(int stage) {
   Real t, dt;
 
   switch (stage) {
-
   case 1:
     t = pmy_mesh->time;
     dt = 0.5 * pmy_mesh->dt;
@@ -537,7 +536,6 @@ bool Particles::ReceiveFromNeighbors() {
 #endif
 
     switch (bstatus) {
-
       case BNDRY_COMPLETED:
         break;
 
@@ -573,7 +571,6 @@ bool Particles::ReceiveParticleMesh(int stage) {
     Real t, dt;
 
     switch (stage) {
-
     case 1:
       t = pmy_mesh->time;
       dt = 0.5 * pmy_mesh->dt;
@@ -1142,7 +1139,7 @@ void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
 //  \brief returns -1 if xi < xi1, +1 if xi > xi2, or 0 otherwise.
 
 inline int CheckSide(int xi, int xi1, int xi2) {
-   if (xi < xi1) return -1;
-   if (xi > xi2) return +1;
-   return 0;
+  if (xi < xi1) return -1;
+  if (xi > xi2) return +1;
+  return 0;
 }

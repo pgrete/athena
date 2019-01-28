@@ -150,7 +150,7 @@ void DustParticles::DepositToMesh(
 
   // Compute the momentum change.
   Real c = dt * mass / taus;
-  #pragma ivdep
+#pragma ivdep
   for (int k = 0; k < nx3; ++k)
     for (int j = 0; j < nx2; ++j)
       for (int i = 0; i < nx1; ++i) {

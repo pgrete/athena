@@ -37,12 +37,11 @@ class ParameterInput;
 //  \brief defines the class for particle-mesh methods
 
 class ParticleMesh {
-
 friend class Particles;
 friend class DustParticles;
 friend class OutputType;
 
-public:
+ public:
   // Class methods
   static void Initialize(ParameterInput *pin);
   static int AddMeshAux();
@@ -51,7 +50,7 @@ public:
   explicit ParticleMesh(Particles *ppar);
   ~ParticleMesh();
 
-protected:
+ protected:
   // Class variables
   static int nmeshaux;  // number of auxiliaries to the meshblock
   static int iweight;   // index to weight in meshaux
@@ -78,7 +77,7 @@ protected:
   void StartReceiving();
   bool ReceiveBoundary();
 
-private:
+ private:
   struct BoundaryAttributes {
     Real xi1min, xi1max, xi2min, xi2max, xi3min, xi3max;
                                // domain that influences the ghost block

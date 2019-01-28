@@ -41,12 +41,11 @@ struct Neighbor {
 //  \brief defines the bass class for all implementations of particles.
 
 class Particles {
-
 friend class MeshBlock;  // Make writing initial conditions possible.
 friend class OutputType;
 friend class ParticleMesh;
 
-public:
+ public:
   // Class methods
   static void Initialize(ParameterInput *pin);
   static void FormattedTableOutput(Mesh *pm, OutputParameters op);
@@ -75,7 +74,7 @@ public:
   void ReadRestart(char *mbdata, std::size_t &os);
   void WriteRestart(char *&pdata);
 
-protected:
+ protected:
   // Class methods
   static int AddIntProperty();
   static int AddRealProperty();
@@ -131,7 +130,7 @@ protected:
   MeshBlock* pmy_block;  // MeshBlock pointer
   Mesh* pmy_mesh;        // Mesh pointer
 
-private:
+ private:
   // Class methods
   static void GetPositionIndices(MeshBlock *pmb, int npar,
                                  const AthenaArray<Real>& xp,
@@ -176,10 +175,9 @@ private:
 //         force.
 
 class DustParticles : public Particles {
-
 friend class MeshBlock;
 
-public:
+ public:
   // Class methods
   static void Initialize(ParameterInput *pin);
 
@@ -189,12 +187,12 @@ public:
   // Destructor
   ~DustParticles();
 
-protected:
+ protected:
   static bool backreaction;  // on/off of back reaction
   static Real mass;          // mass of each particle
   static Real taus;          // stopping time (in code units)
 
-private:
+ private:
   // Class variables
   static bool initialized;      // whether or not the class is initialized
   static int iwx, iwy, iwz;     // indices for working arrays

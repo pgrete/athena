@@ -21,10 +21,9 @@
 //  \brief defines the class for managing buffers for transporting particles.
 
 class ParticleBuffer {
-
 friend class Particles;
 
-public:
+ public:
   // Class methods
   static void SetNumberOfProperties(int nint0, int nreal0);
 
@@ -36,7 +35,7 @@ public:
   // Instance method
   void Reallocate(int new_nparmax);
 
-protected:
+ protected:
   // Class variables
   static int nint;   // number of integer properties per particle
   static int nreal;  // number of real properties per particle
