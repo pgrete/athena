@@ -245,7 +245,7 @@ void Particles::ClearBoundary() {
 //  \brief updates all particle positions and velocities from t to t + dt.
 
 void Particles::Integrate(int stage) {
-  Real t, dt;
+  Real t = 0, dt = 0;
 
   switch (stage) {
   case 1:
@@ -569,7 +569,7 @@ bool Particles::ReceiveParticleMesh(int stage) {
   if (flag) {
     // Deposit ParticleMesh meshaux to MeshBlock.
     Hydro *phydro = pmy_block->phydro;
-    Real t, dt;
+    Real t = 0, dt = 0;
 
     switch (stage) {
     case 1:
