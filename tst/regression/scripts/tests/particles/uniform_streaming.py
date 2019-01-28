@@ -220,16 +220,16 @@ def analyze():
 
     # Detect anomalies.
     ok = True
-    if err_drp > 1.85E-6:
+    if err_drp > 2.10E-6:
         print("*** Too much error in particle displacement")
         ok = False
-    if err_v > 4.44E-6:
+    if err_v > 5.03E-6:
         print("*** Too much error in particle velocity")
         ok = False
-    if err_u > 8.88E-7:
+    if err_u > 1.01E-6:
         print("*** Too much error in gas velocity")
         ok = False
-    if ddrp > 3E-15:
+    if ddrp > 2E-15:
         print("*** Not uniform in particle displacement")
         ok = False
     if dv > 2E-15:
