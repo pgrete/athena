@@ -353,7 +353,8 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
       for (int n = 0; n < ni; ++n)
         pardst(pd1+n,kkk) = pd[n];
 
-      delete [] pd, ps;
+      delete [] pd;
+      delete [] ps;
     }
   }
 
@@ -365,7 +366,9 @@ void ParticleMesh::InterpolateMeshAndAssignParticles(
     delete [] w2[i];
   for (int i = 0; i < npc3_; ++i)
     delete [] w3[i];
-  delete [] w1, w2, w3;
+  delete [] w1;
+  delete [] w2;
+  delete [] w3;
 
   // Treat neighbors of different levels.
   if (pmesh_->multilevel)
@@ -779,7 +782,8 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
       }
       delete [] prop;
     }
-    delete [] pbuf, buf;
+    delete [] pbuf;
+    delete [] buf;
 
     // Set the boundary flag.
     if (nb.rank == Globals::my_rank)
