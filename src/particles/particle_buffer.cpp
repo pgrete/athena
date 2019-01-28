@@ -28,7 +28,7 @@ void ParticleBuffer::SetNumberOfProperties(int nint0, int nreal0) {
     msg << "### FATAL ERROR in function [ParticleBuffer::SetNumberOfProperties]"
         << std::endl
         << "Invalid nint0 = " << nint0 << " or nreal0 = " << nreal0 << std::endl;
-    throw std::runtime_error(msg.str().data());
+    ATHENA_ERROR(msg);
     return;
   }
 
@@ -62,7 +62,7 @@ ParticleBuffer::ParticleBuffer(int nparmax0) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [ParticleBuffer::ParticleBuffer]" << std::endl
         << "Invalid nparmax0 = " << nparmax0 << std::endl;
-    throw std::runtime_error(msg.str().data());
+    ATHENA_ERROR(msg);
 
     ibuf = NULL;
     rbuf = NULL;
@@ -105,14 +105,14 @@ void ParticleBuffer::Reallocate(int new_nparmax) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [ParticleBuffer::Reallocate]" << std::endl
         << "Invalid new_nparmax = " << new_nparmax << std::endl;
-    throw std::runtime_error(msg.str().data());
+    ATHENA_ERROR(msg);
     return;
   }
   if (new_nparmax < npar) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [ParticleBuffer::Reallocate]" << std::endl
         << "new_nparmax = " << new_nparmax << " < npar = " << npar << std::endl;
-    throw std::runtime_error(msg.str().data());
+    ATHENA_ERROR(msg);
     return;
   }
 #ifdef MPI_PARALLEL
@@ -120,7 +120,7 @@ void ParticleBuffer::Reallocate(int new_nparmax) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [ParticleBuffer::Reallocate]" << std::endl
         << "MPI requests are active. " << std::endl;
-    throw std::runtime_error(msg.str().data());
+    ATHENA_ERROR(msg);
     return;
   }
 #endif

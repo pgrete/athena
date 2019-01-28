@@ -354,7 +354,7 @@ void Particles::SendToNeighbors() {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
         << "Non-Cartesian coordinates not yet implemented. " << std::endl;
-    throw std::runtime_error(msg.str().c_str());
+    ATHENA_ERROR(msg);
     return;
   }
 
@@ -382,7 +382,7 @@ void Particles::SendToNeighbors() {
       std::stringstream msg;
       msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
           << "cannot find the neighbor block to send the particle to. " << std::endl;
-      throw std::runtime_error(msg.str().data());
+      ATHENA_ERROR(msg);
       continue;
     }
 
@@ -614,7 +614,7 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
             << "Non-periodic boundary for inner x1 not supported. " << std::endl;
-        throw std::runtime_error(msg.str().c_str());
+        ATHENA_ERROR(msg);
       }
       flag = true;
     } else if (x1 >= mesh_size.x1max) {
@@ -627,7 +627,7 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
             << "Non-periodic boundary for outer x1 not supported. " << std::endl;
-        throw std::runtime_error(msg.str().c_str());
+        ATHENA_ERROR(msg);
       }
       flag = true;
     }
@@ -644,7 +644,7 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
             << "Non-periodic boundary for inner x2 not supported. " << std::endl;
-        throw std::runtime_error(msg.str().c_str());
+        ATHENA_ERROR(msg);
       }
       flag = true;
     } else if (x2 >= mesh_size.x2max) {
@@ -657,7 +657,7 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
             << "Non-periodic boundary for outer x2 not supported. " << std::endl;
-        throw std::runtime_error(msg.str().c_str());
+        ATHENA_ERROR(msg);
       }
       flag = true;
     }
@@ -674,7 +674,7 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
             << "Non-periodic boundary for inner x3 not supported. " << std::endl;
-        throw std::runtime_error(msg.str().c_str());
+        ATHENA_ERROR(msg);
       }
       flag = true;
     } else if (x3 >= mesh_size.x3max) {
@@ -687,7 +687,7 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
         msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
             << std::endl
             << "Non-periodic boundary for outer x3 not supported. " << std::endl;
-        throw std::runtime_error(msg.str().c_str());
+        ATHENA_ERROR(msg);
       }
       flag = true;
     }
@@ -963,7 +963,7 @@ void Particles::ReadRestart(char *mbdata, std::size_t &os) {
     std::stringstream msg;
     msg << "### FATAL ERROR in function [Particles::ReadRestart]" << std::endl
         << "npar = " << npar << " > nparmax = " << nparmax << std::endl;
-    throw std::runtime_error(msg.str().c_str());
+    ATHENA_ERROR(msg);
   }
 
   if (npar > 0) {
@@ -1038,7 +1038,7 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op) {
       msg << "### FATAL ERROR in function [Particles::FormattedTableOutput]"
           << std::endl << "Output file '" << fname.str() << "' could not be opened"
           << std::endl;
-      throw std::runtime_error(msg.str().c_str());
+      ATHENA_ERROR(msg);
     }
 
     // Write the time.
