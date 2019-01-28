@@ -947,8 +947,8 @@ void Particles::NewBlockTimeStep() {
 //! \fn Particles::GetSizeInBytes()
 //  \brief returns the data size in bytes in the meshblock.
 
-size_t Particles::GetSizeInBytes() {
-  size_t size = sizeof(npar);
+std::size_t Particles::GetSizeInBytes() {
+  std::size_t size = sizeof(npar);
   if (npar > 0) size += npar * (nint * sizeof(int) + nreal * sizeof(Real));
   return size;
 }
@@ -959,7 +959,7 @@ size_t Particles::GetSizeInBytes() {
 
 #include <cstring>
 
-void Particles::ReadRestart(char *mbdata, int &os) {
+void Particles::ReadRestart(char *mbdata, std::size_t &os) {
   // Read number of particles.
   std::memcpy(&npar, &(mbdata[os]), sizeof(npar));
   os += sizeof(npar);
@@ -972,7 +972,7 @@ void Particles::ReadRestart(char *mbdata, int &os) {
 
   if (npar > 0) {
     // Read integer properties.
-    size_t size = npar * sizeof(int);
+    std::size_t size = npar * sizeof(int);
     for (int k = 0; k < nint; ++k) {
       std::memcpy(&(intprop(k,0)), &(mbdata[os]), size);
       os += size;
@@ -998,7 +998,7 @@ void Particles::WriteRestart(char *&pdata) {
 
   if (npar > 0) {
     // Write integer properties.
-    size_t size = npar * sizeof(int);
+    std::size_t size = npar * sizeof(int);
     for (int k = 0; k < nint; ++k) {
       std::memcpy(pdata, &(intprop(k,0)), size);
       pdata += size;

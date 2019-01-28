@@ -72,7 +72,7 @@ public:
   bool ReceiveParticleMesh(int step);
 
   size_t GetSizeInBytes();
-  void ReadRestart(char *mbdata, int &os);
+  void ReadRestart(char *mbdata, std::size_t &os);
   void WriteRestart(char *&pdata);
 
 protected:
