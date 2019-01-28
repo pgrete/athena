@@ -10,7 +10,9 @@
 
 // C++ standard libraries
 #include <cmath>
+#include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -182,7 +184,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     std::ostringstream msg;
     msg << "### FATAL ERROR in function [MeshBlock::ProblemGenerator]" << std::endl
         << "nparmax is too small" << std::endl;
-    throw std::runtime_error(msg.str().c_str());
+    ATHENA_ERROR(msg);
     return;
   }
 
