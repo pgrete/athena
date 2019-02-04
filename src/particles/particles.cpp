@@ -43,12 +43,6 @@ MPI_Comm Particles::my_comm = MPI_COMM_NULL;
 #endif
 
 // Local function prototypes
-static void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3);
-static void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z);
-static void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
-                                 Real& xi1, Real& xi2, Real& xi3);
-static void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
-                                 Real& x1, Real& x2, Real& x3);
 static int CheckSide(int xi, int xi1, int xi2);
 
 //--------------------------------------------------------------------------------------
@@ -350,15 +344,6 @@ void Particles::SendToNeighbors() {
   const int KS = pmy_block->ks;
   const int KE = pmy_block->ke;
 
-  // TODO(ccyang): Currently only works for Cartesian.
-  if (std::strcmp(COORDINATE_SYSTEM, "cartesian") != 0) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
-        << "Non-Cartesian coordinates not yet implemented. " << std::endl;
-    ATHENA_ERROR(msg);
-    return;
-  }
-
   for (int k = 0; k < npar; ) {
     // Check if a particle is outside the boundary.
     int xi1i = static_cast<int>(xi1(k)),
@@ -392,7 +377,7 @@ void Particles::SendToNeighbors() {
     if (pnb->rank == Globals::my_rank) {
       // No need to send if back to the same block.
       if (pnb->gid == pmy_block->gid) {
-        _MeshCoordsToIndices(pmy_block, x1, x2, x3, xi1(k), xi2(k), xi3(k));
+        pmy_block->pcoord->MeshCoordsToIndices(x1, x2, x3, xi1(k), xi2(k), xi3(k));
         ++k;
         continue;
       }
@@ -601,8 +586,8 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
 
   // Find the mesh coordinates.
   Real x10, x20, x30;
-  _IndicesToMeshCoords(pmy_block, xi1(k), xi2(k), xi3(k), x1, x2, x3);
-  _CartesianToMeshCoords(xp0(k), yp0(k), zp0(k), x10, x20, x30);
+  pmy_block->pcoord->IndicesToMeshCoords(xi1(k), xi2(k), xi3(k), x1, x2, x3);
+  pmy_block->pcoord->CartesianToMeshCoords(xp0(k), yp0(k), zp0(k), x10, x20, x30);
 
   if (active1_) {
     if (x1 < mesh_size.x1min) {
@@ -695,8 +680,8 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
   }
 
   if (flag) {
-    _MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
-    _MeshCoordsToCartesian(x10, x20, x30, xp0(k), yp0(k), zp0(k));
+    pmy_block->pcoord->MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
+    pmy_block->pcoord->MeshCoordsToCartesian(x10, x20, x30, xp0(k), yp0(k), zp0(k));
   }
 }
 
@@ -720,10 +705,10 @@ void Particles::GetPositionIndices(MeshBlock *pmb, int npar,
   for (int k = 0; k < npar; ++k) {
     // Convert to the Mesh coordinates.
     Real x1, x2, x3;
-    _CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
+    pmb->pcoord->CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
 
     // Convert to the index space.
-    _MeshCoordsToIndices(pmb, x1, x2, x3, xi1(k), xi2(k), xi3(k));
+    pmb->pcoord->MeshCoordsToIndices(x1, x2, x3, xi1(k), xi2(k), xi3(k));
   }
 }
 
@@ -1057,81 +1042,6 @@ void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op) {
     fname.str("");
     pmb = pmb->next;
   }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void _CartesianToMeshCoords(x, y, z, x1, x2, x3)
-//  \brief returns in (x1, x2, x3) the coordinates used by the mesh from Cartesian
-//         coordinates (x, y, z).
-// TODO(ccyang): Currently only supports Cartesian to Cartensian.
-// TODO(ccyang): Generalize and move this to the Coordinates class.
-
-inline void _CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) {
-  x1 = x;
-  x2 = y;
-  x3 = z;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void _MeshCoordsToCartesian(x1, x2, x3, x, y, z)
-//  \brief returns in Cartesian coordinates (x, y, z) from (x1, x2, x3) the coordinates
-//         used by the mesh.
-// TODO(ccyang): Currently only supports Cartesian to Cartensian.
-// TODO(ccyang): Generalize and move this to the Coordinates class.
-
-inline void _MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) {
-  x = x1;
-  y = x2;
-  z = x3;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
-//                                Real& xi1, Real& xi2, Real& xi3)
-//  \brief returns in index coordinates (xi1, xi2, xi3) with respect to the local
-//         grid of MeshBlock pmb from the physical coordinates (x1, x2, x3).
-// TODO(ccyang): Currently only supports uniform mesh.
-// TODO(ccyang): Generalize and move this to the Coordinates class.
-
-void _MeshCoordsToIndices(MeshBlock *pmb, Real x1, Real x2, Real x3,
-                          Real& xi1, Real& xi2, Real& xi3) {
-  // Get the meshblock info.
-  const int IS = pmb->is;
-  const int JS = pmb->js;
-  const int KS = pmb->ks;
-  const RegionSize& block_size = pmb->block_size;
-  const Coordinates *pcoord = pmb->pcoord;
-
-  // Make the conversion.
-  xi1 = (block_size.nx1 > 1) ? IS + (x1 - block_size.x1min) / pcoord->dx1f(IS) : IS;
-  xi2 = (block_size.nx2 > 1) ? JS + (x2 - block_size.x2min) / pcoord->dx2f(JS) : JS;
-  xi3 = (block_size.nx3 > 1) ? KS + (x3 - block_size.x3min) / pcoord->dx3f(KS) : KS;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
-//                                Real& x1, Real& x2, Real& x3)
-//  \brief returns in mesh coordinates (x1, x2, x3) from index coordinates
-//         (xi1, xi2, xi3) with respect to the local grid of MeshBlock pmb.
-// TODO(ccyang): Currently only supports uniform mesh.
-// TODO(ccyang): Generalize and move this to the Coordinates class.
-
-void _IndicesToMeshCoords(MeshBlock *pmb, Real xi1, Real xi2, Real xi3,
-                          Real& x1, Real& x2, Real& x3) {
-  // Get the meshblock info.
-  const int IS = pmb->is;
-  const int JS = pmb->js;
-  const int KS = pmb->ks;
-  const RegionSize& block_size = pmb->block_size;
-  const Coordinates *pcoord = pmb->pcoord;
-
-  // Make the conversion.
-  x1 = (block_size.nx1 > 1) ?
-           block_size.x1min + (xi1 - IS) * pcoord->dx1f(IS) : pcoord->x1v(IS);
-  x2 = (block_size.nx2 > 1) ?
-           block_size.x2min + (xi2 - JS) * pcoord->dx2f(JS) : pcoord->x2v(JS);
-  x3 = (block_size.nx3 > 1) ?
-           block_size.x3min + (xi3 - KS) * pcoord->dx3f(KS) : pcoord->x3v(KS);
 }
 
 //--------------------------------------------------------------------------------------

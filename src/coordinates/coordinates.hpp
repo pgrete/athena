@@ -15,6 +15,7 @@
 
 // C++ headers
 #include <iostream>
+#include <sstream>
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -129,6 +130,15 @@ class Coordinates {
   // ...to determine if index is a pole
   bool IsPole(int j);
 
+  // ...to make coordinate transformations
+  virtual void CartesianToMeshCoords(
+      Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const;
+  virtual void MeshCoordsToCartesian(
+      Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const;
+  virtual void MeshCoordsToIndices(
+      Real x1, Real x2, Real x3, Real& xi1, Real& xi2, Real& xi3) const;
+  virtual void IndicesToMeshCoords(
+      Real xi1, Real xi2, Real xi3, Real& x1, Real& x2, Real& x3) const;
 
   // In GR, functions...
   // ...to return private variables
@@ -286,6 +296,14 @@ class Cartesian : public Coordinates {
  public:
   Cartesian(MeshBlock *pmb, ParameterInput *pin, bool flag);
   ~Cartesian();
+
+  // functions to make coordinate transformations.
+  void CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const;
+  void MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const;
+  void MeshCoordsToIndices(
+      Real x1, Real x2, Real x3, Real& xi1, Real& xi2, Real& xi3) const;
+  void IndicesToMeshCoords(
+      Real xi1, Real xi2, Real xi3, Real& x1, Real& x2, Real& x3) const;
 };
 
 //----------------------------------------------------------------------------------------
@@ -737,5 +755,42 @@ class GRUser : public Coordinates {
   void LowerVectorCell(Real a0, Real a1, Real a2, Real a3, int k, int j, int i,
                        Real *pa_0, Real *pa_1, Real *pa_2, Real *pa_3) final;
 };
+
+// Stub functions.
+inline void Coordinates::CartesianToMeshCoords(
+    Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::CartesianToMeshCoords]" << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
+
+inline void Coordinates::MeshCoordsToCartesian(
+    Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::MeshCoordsToCartesian]" << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
+
+inline void Coordinates::MeshCoordsToIndices(
+    Real x1, Real x2, Real x3, Real& xi1, Real& xi2, Real& xi3) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::MeshCoordsToIndices]" << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
+
+inline void Coordinates::IndicesToMeshCoords(
+    Real xi1, Real xi2, Real xi3, Real& x1, Real& x2, Real& x3) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::IndicesToMeshCoords]" << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
 
 #endif // COORDINATES_COORDINATES_HPP_
