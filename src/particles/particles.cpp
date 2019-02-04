@@ -452,7 +452,7 @@ void Particles::SendToNeighbors() {
 //  \brief updates position indices of particles.
 
 void Particles::SetPositionIndices() {
-  GetPositionIndices(pmy_block, npar, xp, yp, zp, xi1, xi2, xi3);
+  GetPositionIndices(npar, xp, yp, zp, xi1, xi2, xi3);
 }
 
 //--------------------------------------------------------------------------------------
@@ -686,33 +686,6 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::GetPositionIndices(MeshBlock *pmb, int npar,
-//                                         const AthenaArray<Real>& xp,
-//                                         const AthenaArray<Real>& yp,
-//                                         const AthenaArray<Real>& zp,
-//                                         AthenaArray<Real>& xi1,
-//                                         AthenaArray<Real>& xi2,
-//                                         AthenaArray<Real>& xi3)
-//  \brief finds the position indices of each particle with respect to the local grid.
-
-void Particles::GetPositionIndices(MeshBlock *pmb, int npar,
-                                   const AthenaArray<Real>& xp,
-                                   const AthenaArray<Real>& yp,
-                                   const AthenaArray<Real>& zp,
-                                   AthenaArray<Real>& xi1,
-                                   AthenaArray<Real>& xi2,
-                                   AthenaArray<Real>& xi3) {
-  for (int k = 0; k < npar; ++k) {
-    // Convert to the Mesh coordinates.
-    Real x1, x2, x3;
-    pmb->pcoord->CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
-
-    // Convert to the index space.
-    pmb->pcoord->MeshCoordsToIndices(x1, x2, x3, xi1(k), xi2(k), xi3(k));
-  }
-}
-
-//--------------------------------------------------------------------------------------
 //! \fn void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc)
 //  \brief evolves the particle positions and velocities by one Euler step.
 
@@ -734,6 +707,33 @@ void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
 
   // Update the position index.
   SetPositionIndices();
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::GetPositionIndices(int npar,
+//                                         const AthenaArray<Real>& xp,
+//                                         const AthenaArray<Real>& yp,
+//                                         const AthenaArray<Real>& zp,
+//                                         AthenaArray<Real>& xi1,
+//                                         AthenaArray<Real>& xi2,
+//                                         AthenaArray<Real>& xi3)
+//  \brief finds the position indices of each particle with respect to the local grid.
+
+void Particles::GetPositionIndices(int npar,
+                                   const AthenaArray<Real>& xp,
+                                   const AthenaArray<Real>& yp,
+                                   const AthenaArray<Real>& zp,
+                                   AthenaArray<Real>& xi1,
+                                   AthenaArray<Real>& xi2,
+                                   AthenaArray<Real>& xi3) {
+  for (int k = 0; k < npar; ++k) {
+    // Convert to the Mesh coordinates.
+    Real x1, x2, x3;
+    pmy_block->pcoord->CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
+
+    // Convert to the index space.
+    pmy_block->pcoord->MeshCoordsToIndices(x1, x2, x3, xi1(k), xi2(k), xi3(k));
+  }
 }
 
 //--------------------------------------------------------------------------------------
@@ -835,7 +835,7 @@ void Particles::FlushReceiveBuffer(ParticleBuffer& recv) {
   xi1s.InitWithShallowSlice(xi1, 1, npar, nprecv);
   xi2s.InitWithShallowSlice(xi2, 1, npar, nprecv);
   xi3s.InitWithShallowSlice(xi3, 1, npar, nprecv);
-  GetPositionIndices(pmy_block, nprecv, xps, yps, zps, xi1s, xi2s, xi3s);
+  GetPositionIndices(nprecv, xps, yps, zps, xi1s, xi2s, xi3s);
 
   // Clear the receive buffers.
   npar += nprecv;

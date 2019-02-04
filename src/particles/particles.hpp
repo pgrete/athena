@@ -131,15 +131,6 @@ friend class ParticleMesh;
   Mesh* pmy_mesh;        // Mesh pointer
 
  private:
-  // Class methods
-  static void GetPositionIndices(MeshBlock *pmb, int npar,
-                                 const AthenaArray<Real>& xp,
-                                 const AthenaArray<Real>& yp,
-                                 const AthenaArray<Real>& zp,
-                                 AthenaArray<Real>& xi1,
-                                 AthenaArray<Real>& xi2,
-                                 AthenaArray<Real>& xi3);
-
   // Instance methods
   virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
   virtual void AddSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
@@ -150,6 +141,13 @@ friend class ParticleMesh;
   void ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3);
   void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void FlushReceiveBuffer(ParticleBuffer& recv);
+  void GetPositionIndices(int npar,
+                          const AthenaArray<Real>& xp,
+                          const AthenaArray<Real>& yp,
+                          const AthenaArray<Real>& zp,
+                          AthenaArray<Real>& xi1,
+                          AthenaArray<Real>& xi2,
+                          AthenaArray<Real>& xi3);
   void SaveStatus();
   void ZeroAcceleration();
   struct Neighbor* FindTargetNeighbor(
