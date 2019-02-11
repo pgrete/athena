@@ -38,6 +38,7 @@ int Particles::ivpx0 = -1, Particles::ivpy0 = -1, Particles::ivpz0 = -1;
 int Particles::ixi1 = -1, Particles::ixi2 = -1, Particles::ixi3 = -1;
 int Particles::iapx = -1, Particles::iapy = -1, Particles::iapz = -1;
 int Particles::imvpx = -1, Particles::imvpy = -1, Particles::imvpz = -1;
+Real Particles::cfl_par = 1;
 #ifdef MPI_PARALLEL
 MPI_Comm Particles::my_comm = MPI_COMM_NULL;
 #endif
@@ -46,10 +47,10 @@ MPI_Comm Particles::my_comm = MPI_COMM_NULL;
 static int CheckSide(int xi, int xi1, int xi2);
 
 //--------------------------------------------------------------------------------------
-//! \fn Particles::Initialize(ParameterInput *pin)
+//! \fn Particles::Initialize(Mesh *pm, ParameterInput *pin)
 //  \brief initializes the class.
 
-void Particles::Initialize(ParameterInput *pin) {
+void Particles::Initialize(Mesh *pm, ParameterInput *pin) {
   if (initialized) return;
 
   // Add particle ID.
@@ -90,6 +91,9 @@ void Particles::Initialize(ParameterInput *pin) {
   imvpx = ParticleMesh::AddMeshAux();
   imvpy = ParticleMesh::AddMeshAux();
   imvpz = ParticleMesh::AddMeshAux();
+
+  // Get the CFL number for particles.
+  cfl_par = pin->GetOrAddReal("particles", "cfl_par", pm->cfl_number);
 
 #ifdef MPI_PARALLEL
   // Get my MPI communicator.
@@ -914,15 +918,15 @@ void Particles::NewBlockTimeStep() {
   Real dt_inv2_max = 0.0, dt_inv2;
   for (int k = 0; k < npar; ++k) {
     dt_inv2 = 0.0;
-    if (active1_) dt_inv2 += std::pow(vpx(k) / pc->dx1f(static_cast<int>(xi1(k))), 2);
-    if (active2_) dt_inv2 += std::pow(vpy(k) / pc->dx2f(static_cast<int>(xi2(k))), 2);
-    if (active3_) dt_inv2 += std::pow(vpz(k) / pc->dx3f(static_cast<int>(xi3(k))), 2);
+    dt_inv2 += active1_ ? std::pow(vpx(k) / pc->dx1f(static_cast<int>(xi1(k))), 2) : 0;
+    dt_inv2 += active2_ ? std::pow(vpy(k) / pc->dx2f(static_cast<int>(xi2(k))), 2) : 0;
+    dt_inv2 += active3_ ? std::pow(vpz(k) / pc->dx3f(static_cast<int>(xi3(k))), 2) : 0;
     dt_inv2_max = std::max(dt_inv2_max, dt_inv2);
   }
 
   // Constrain the time step by the minimum.
   if (dt_inv2_max > 0.0) {
-    Real dt_min = 1.0 / std::sqrt(dt_inv2_max);
+    Real dt_min = cfl_par / std::sqrt(dt_inv2_max);
     if (dt_min < pmy_block->new_block_dt) pmy_block->new_block_dt = dt_min;
   }
 }

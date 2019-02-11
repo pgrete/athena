@@ -484,7 +484,7 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) {
   //    gflag=2;
 
   // Initialize Particles class
-  if (PARTICLES) DustParticles::Initialize(pin);
+  if (PARTICLES) DustParticles::Initialize(this, pin);
 
   // create MeshBlock list for this process
   int nbs=nslist[Globals::my_rank];
@@ -810,7 +810,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   //    gflag=2;
 
   // Initialize Particles class
-  if (PARTICLES) DustParticles::Initialize(pin);
+  if (PARTICLES) DustParticles::Initialize(this, pin);
 
   // allocate data buffer
   int nb=nblist[Globals::my_rank];

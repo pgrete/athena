@@ -19,12 +19,12 @@ bool DustParticles::backreaction = false;
 Real DustParticles::mass = 1.0, DustParticles::taus = 0.0;
 
 //--------------------------------------------------------------------------------------
-//! \fn DustParticles::Initialize()
+//! \fn void DustParticles::Initialize(Mesh *pm, ParameterInput *pin)
 //  \brief initializes the class.
 
-void DustParticles::Initialize(ParameterInput *pin) {
+void DustParticles::Initialize(Mesh *pm, ParameterInput *pin) {
   // Initialize first the parent class.
-  if (!Particles::initialized) Particles::Initialize(pin);
+  Particles::Initialize(pm, pin);
 
   if (!initialized) {
     // Add gas velocity at each particle.

@@ -47,7 +47,7 @@ friend class ParticleMesh;
 
  public:
   // Class methods
-  static void Initialize(ParameterInput *pin);
+  static void Initialize(Mesh *pm, ParameterInput *pin);
   static void FormattedTableOutput(Mesh *pm, OutputParameters op);
   static void PrepareForOutputs(Mesh *pm);
 
@@ -99,6 +99,8 @@ friend class ParticleMesh;
 
   static int imvpx, imvpy, imvpz;  // indices for velocity components on mesh
                                    // (only used for outputs)
+
+  static Real cfl_par;  // CFL number for particles
 
   // Instance methods
   virtual void AssignShorthands();  // Needs to be called everytime
@@ -177,7 +179,7 @@ friend class MeshBlock;
 
  public:
   // Class methods
-  static void Initialize(ParameterInput *pin);
+  static void Initialize(Mesh *pm, ParameterInput *pin);
 
   // Constructor
   DustParticles(MeshBlock *pmb, ParameterInput *pin);
