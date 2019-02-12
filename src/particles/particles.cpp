@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -908,27 +909,25 @@ void Particles::AssignShorthands() {
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::NewBlockTimeStep();
-//  \brief constrains the time step by particles in the block.
+//! \fn Real Particles::NewBlockTimeStep();
+//  \brief returns the time step required by particles in the block.
 
-void Particles::NewBlockTimeStep() {
+Real Particles::NewBlockTimeStep() {
   Coordinates *pc = pmy_block->pcoord;
 
-  // Find the allowed time step for each particle.
-  Real dt_inv2_max = 0.0, dt_inv2;
+  // Find the maximum coordinate speed.
+  Real dt_inv2_max = 0.0;
   for (int k = 0; k < npar; ++k) {
-    dt_inv2 = 0.0;
+    Real dt_inv2 = 0.0;
     dt_inv2 += active1_ ? std::pow(vpx(k) / pc->dx1f(static_cast<int>(xi1(k))), 2) : 0;
     dt_inv2 += active2_ ? std::pow(vpy(k) / pc->dx2f(static_cast<int>(xi2(k))), 2) : 0;
     dt_inv2 += active3_ ? std::pow(vpz(k) / pc->dx3f(static_cast<int>(xi3(k))), 2) : 0;
     dt_inv2_max = std::max(dt_inv2_max, dt_inv2);
   }
 
-  // Constrain the time step by the minimum.
-  if (dt_inv2_max > 0.0) {
-    Real dt_min = cfl_par / std::sqrt(dt_inv2_max);
-    if (dt_min < pmy_block->new_block_dt) pmy_block->new_block_dt = dt_min;
-  }
+  // Return the time step constrained by the coordinate speed.
+  return dt_inv2_max > 0.0 ? cfl_par / std::sqrt(dt_inv2_max)
+                           : std::numeric_limits<Real>::max();
 }
 
 //--------------------------------------------------------------------------------------

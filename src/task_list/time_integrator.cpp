@@ -1044,7 +1044,10 @@ enum TaskStatus TimeIntegratorTaskList::NewBlockTimeStep(MeshBlock *pmb, int sta
   if (stage != nstages) return TASK_SUCCESS; // only do on last stage
 
   pmb->phydro->NewBlockTimeStep();
-  if (PARTICLES) pmb->ppar->NewBlockTimeStep();
+  if (PARTICLES) {
+    Real min_dt = pmb->ppar->NewBlockTimeStep();
+    pmb->new_block_dt = std::min(pmb->new_block_dt, min_dt);
+  }
   return TASK_SUCCESS;
 }
 

@@ -62,13 +62,13 @@ friend class ParticleMesh;
   void Integrate(int step);
   void LinkNeighbors(MeshBlockTree &tree, int64_t nrbx1, int64_t nrbx2, int64_t nrbx3,
                      int root_level);
-  void NewBlockTimeStep();
   void SendParticleMesh();
   void SendToNeighbors();
   void SetPositionIndices();
   void StartReceiving();
   bool ReceiveFromNeighbors();
   bool ReceiveParticleMesh(int step);
+  Real NewBlockTimeStep();
 
   size_t GetSizeInBytes();
   void ReadRestart(char *mbdata, std::size_t &os);

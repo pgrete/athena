@@ -58,8 +58,8 @@ class MeshBlock {
   friend class GravityBoundaryValues;
   friend class Mesh;
   friend class Hydro;
-  friend class Particles;
   friend class TaskList;
+  friend class TimeIntegratorTaskList;
 #ifdef HDF5OUTPUT
   friend class ATHDF5Output;
 #endif
