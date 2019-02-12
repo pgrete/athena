@@ -8,6 +8,8 @@
 
 // Athena++ headers
 #include "../athena.hpp"
+#include "../coordinates/coordinates.hpp"
+#include "../hydro/hydro.hpp"
 #include "particles.hpp"
 
 // Class variable initialization
@@ -82,6 +84,38 @@ DustParticles::~DustParticles() {
     dpy.DeleteAthenaArray();
     dpz.DeleteAthenaArray();
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn Real DustParticles::NewBlockTimeStep();
+//  \brief returns the time step required by particles in the block.
+
+Real DustParticles::NewBlockTimeStep() {
+  // Run first the parent class.
+  Real dt = Particles::NewBlockTimeStep();
+
+  // Nothing to do for tracer particles.
+  if (taus <= 0.0) return dt;
+
+  Real epsmax = 0;
+  if (backreaction) {
+    // Find the maximum local solid-to-gas density ratio.
+    Coordinates *pc = pmy_block->pcoord;
+    Hydro *phydro = pmy_block->phydro;
+    const int is = ppm->is, js = ppm->js, ks = ppm->ks;
+    const int ie = ppm->ie, je = ppm->je, ke = ppm->ke;
+    for (int k = ks; k <= ke; ++k)
+      for (int j = js; j <= je; ++j)
+        for (int i = is; i <= ie; ++i) {
+          Real epsilon = ppm->weight(k,j,i) / (
+                         pc->GetCellVolume(k,j,i) * phydro->u(IDN,k,j,i));
+          epsmax = std::max(epsmax, epsilon);
+        }
+    epsmax *= mass;
+  }
+
+  // Return the drag timescale.
+  return std::min(dt, cfl_par * taus / (1.0 + epsmax));
 }
 
 //--------------------------------------------------------------------------------------

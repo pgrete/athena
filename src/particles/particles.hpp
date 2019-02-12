@@ -178,7 +178,7 @@ class DustParticles : public Particles {
 friend class MeshBlock;
 
  public:
-  // Class methods
+  // Class method
   static void Initialize(Mesh *pm, ParameterInput *pin);
 
   // Constructor
@@ -186,6 +186,9 @@ friend class MeshBlock;
 
   // Destructor
   ~DustParticles();
+
+  // Instance method
+  Real NewBlockTimeStep();
 
  protected:
   static bool backreaction;  // on/off of back reaction
