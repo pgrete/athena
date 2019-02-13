@@ -176,24 +176,17 @@ void DustParticles::DepositToMesh(
          Real t, Real dt, const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst) {
   if (!backreaction) return;
 
-  const int ias = ppm->is, jas = ppm->js, kas = ppm->ks;
-  const int ibs = pmy_block->is, jbs = pmy_block->js, kbs = pmy_block->ks;
-  const int nx1 = pmy_block->block_size.nx1,
-            nx2 = pmy_block->block_size.nx2,
-            nx3 = pmy_block->block_size.nx3;
-
   // Compute the momentum change.
-  Real c = dt * mass / taus;
-#pragma ivdep
-  for (int k = 0; k < nx3; ++k)
-    for (int j = 0; j < nx2; ++j)
-      for (int i = 0; i < nx1; ++i) {
-        int ia = ias + i, ja = jas + j, ka = kas + k;
-        int ib = ibs + i, jb = jbs + j, kb = kbs + k;
-        Real w = ppm->weight(ka,ja,ia);
-        dpx(ka,ja,ia) = c * (dpx(ka,ja,ia) - w * meshsrc(IVX,kb,jb,ib));
-        dpy(ka,ja,ia) = c * (dpy(ka,ja,ia) - w * meshsrc(IVY,kb,jb,ib));
-        dpz(ka,ja,ia) = c * (dpz(ka,ja,ia) - w * meshsrc(IVZ,kb,jb,ib));
+  const Real c = dt * mass / taus;
+  const int is = ppm->is, js = ppm->js, ks = ppm->ks;
+  const int ie = ppm->ie, je = ppm->je, ke = ppm->ke;
+  for (int k = ks; k <= ke; ++k)
+    for (int j = js; j <= je; ++j)
+      for (int i = is; i <= ie; ++i) {
+        Real w = ppm->weight(k,j,i);
+        dpx(k,j,i) = c * (dpx(k,j,i) - w * meshsrc(IVX,k,j,i));
+        dpy(k,j,i) = c * (dpy(k,j,i) - w * meshsrc(IVY,k,j,i));
+        dpz(k,j,i) = c * (dpz(k,j,i) - w * meshsrc(IVZ,k,j,i));
       }
 
   // Deposit it to the mesh.
