@@ -1,7 +1,7 @@
 <comment>
 problem   = Uniform Streaming
 reference = 
-configure = --prob=uniform_streaming
+configure = --prob=uniform_streaming -p
 
 <job>
 problem_id  = UniStream # problem ID: basename of output filenames
