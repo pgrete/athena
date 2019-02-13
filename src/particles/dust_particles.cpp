@@ -6,6 +6,9 @@
 //! \file dust_particles.cpp
 //  \brief implements functions in the DustParticles class
 
+// C++ headers
+#include <algorithm>  // min()
+
 // Athena++ headers
 #include "../athena.hpp"
 #include "../coordinates/coordinates.hpp"

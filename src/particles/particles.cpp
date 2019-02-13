@@ -140,7 +140,7 @@ void Particles::GetNumberDensityOnMesh(Mesh *pm, bool include_velocity) {
           const int is = ppm->is, ie = ppm->ie;
           const int js = ppm->js, je = ppm->je;
           const int ks = ppm->ks, ke = ppm->ke;
-          if (include_velocity)
+          if (include_velocity) {
             // Compute the velocity field.
             for (int l = imvpx; l <= imvpz; ++l)
               for (int k = ks; k <= ke; ++k)
@@ -149,6 +149,7 @@ void Particles::GetNumberDensityOnMesh(Mesh *pm, bool include_velocity) {
                     Real w = ppm->weight(k,j,i);
                     ppm->meshaux(l,k,j,i) /= (w != 0) ? w : 1;
                   }
+          }
           // Compute the number density.
           for (int k = ks; k <= ke; ++k)
             for (int j = js; j <= je; ++j)

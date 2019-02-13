@@ -10,6 +10,7 @@
 // C headers
 
 // C++ headers
+#include <algorithm>  // min()
 #include <iostream>   // endl
 #include <sstream>    // sstream
 #include <stdexcept>  // runtime_error
