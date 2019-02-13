@@ -49,7 +49,7 @@ friend class ParticleMesh;
   // Class methods
   static void Initialize(Mesh *pm, ParameterInput *pin);
   static void FormattedTableOutput(Mesh *pm, OutputParameters op);
-  static void PrepareForOutputs(Mesh *pm);
+  static void GetNumberDensityOnMesh(Mesh *pm, bool include_velocity);
 
   // Constructor
   Particles(MeshBlock *pmb, ParameterInput *pin);

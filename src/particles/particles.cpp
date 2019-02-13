@@ -105,11 +105,12 @@ void Particles::Initialize(Mesh *pm, ParameterInput *pin) {
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Particles::PrepareForOutputs(Mesh *pm)
-//  \brief constructs the output data.
+//! \fn void Particles::GetNumberDensityOnMesh(Mesh *pm, bool include_velocity)
+//  \brief finds the number density of particles on the mesh.  If include_velocity is
+//    true, the velocity field is also included.
 
-void Particles::PrepareForOutputs(Mesh *pm) {
-  // Assign particle velocity to mesh and send boundary.
+void Particles::GetNumberDensityOnMesh(Mesh *pm, bool include_velocity) {
+  // Assign particle properties to mesh and send boundary.
   ParticleMesh *ppm;
   int nblocks = 0;
   MeshBlock *pmb = pm->pblock;
@@ -117,7 +118,10 @@ void Particles::PrepareForOutputs(Mesh *pm) {
     ++nblocks;
     ppm = pmb->ppar->ppm;
     ppm->StartReceiving();
-    ppm->AssignParticlesToMeshAux(pmb->ppar->realprop, ivpx, imvpx, 3);
+    if (include_velocity)
+      ppm->AssignParticlesToMeshAux(pmb->ppar->realprop, ivpx, imvpx, 3);
+    else
+      ppm->AssignParticlesToMeshAux(pmb->ppar->realprop, 0, ppm->iweight, 0);
     ppm->SendBoundary();
     pmb = pmb->next;
   }
@@ -136,14 +140,15 @@ void Particles::PrepareForOutputs(Mesh *pm) {
           const int is = ppm->is, ie = ppm->ie;
           const int js = ppm->js, je = ppm->je;
           const int ks = ppm->ks, ke = ppm->ke;
-          // Compute the velocity field.
-          for (int l = imvpx; l <= imvpz; ++l)
-            for (int k = ks; k <= ke; ++k)
-              for (int j = js; j <= je; ++j)
-                for (int i = is; i <= ie; ++i) {
-                  Real w = ppm->weight(k,j,i);
-                  ppm->meshaux(l,k,j,i) /= (w != 0) ? w : 1;
-                }
+          if (include_velocity)
+            // Compute the velocity field.
+            for (int l = imvpx; l <= imvpz; ++l)
+              for (int k = ks; k <= ke; ++k)
+                for (int j = js; j <= je; ++j)
+                  for (int i = is; i <= ie; ++i) {
+                    Real w = ppm->weight(k,j,i);
+                    ppm->meshaux(l,k,j,i) /= (w != 0) ? w : 1;
+                  }
           // Compute the number density.
           for (int k = ks; k <= ke; ++k)
             for (int j = js; j <= je; ++j)
