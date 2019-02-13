@@ -118,7 +118,7 @@ Real DustParticles::NewBlockTimeStep() {
   }
 
   // Return the drag timescale.
-  return std::min(dt, cfl_par * taus / (1.0 + epsmax));
+  return std::min(dt, static_cast<Real>(cfl_par * taus / (1.0 + epsmax)));
 }
 
 //--------------------------------------------------------------------------------------

@@ -920,6 +920,6 @@ bool ParticleMesh::ReceiveBoundary() {
 //  \brief evaluates the weight function given index distance.
 
 Real _WeightFunction(Real dxi) {
-  dxi = std::min(std::abs(dxi), Real(1.5));
+  dxi = std::min(std::abs(dxi), static_cast<Real>(1.5));
   return dxi < 0.5 ? 0.75 - dxi * dxi : 0.5 * ((1.5 - dxi) * (1.5 - dxi));
 }
