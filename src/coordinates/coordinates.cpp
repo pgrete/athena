@@ -757,3 +757,64 @@ void Coordinates::Metric(
   pmy_block->pmy_mesh->UserMetric_(x1, x2, x3, pin, g, g_inv, dg_dx1, dg_dx2, dg_dx3);
   return;
 }
+
+//----------------------------------------------------------------------------------------
+// Stub functions.
+
+void Coordinates::CartesianToMeshCoords(
+    Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::CartesianToMeshCoords]" << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
+
+void Coordinates::MeshCoordsToCartesian(
+    Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::MeshCoordsToCartesian]" << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
+
+void Coordinates::MeshCoordsToIndices(
+    Real x1, Real x2, Real x3, Real& xi1, Real& xi2, Real& xi3) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::MeshCoordsToIndices]" << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
+
+void Coordinates::IndicesToMeshCoords(
+    Real xi1, Real xi2, Real xi3, Real& x1, Real& x2, Real& x3) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::IndicesToMeshCoords]" << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
+
+void Coordinates::CartesianToMeshCoordsVector(
+    Real x, Real y, Real z, Real vx, Real vy, Real vz,
+    Real& vx1, Real& vx2, Real& vx3) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::CartesianToMeshCoordsVector]"
+      << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
+
+void Coordinates::MeshCoordsToCartesianVector(
+    Real x1, Real x2, Real x3, Real vx1, Real vx2, Real vx3,
+    Real& vx, Real& vy, Real& vz) const {
+  std::stringstream msg;
+  msg << "### FATAL ERROR in function [Coordinates::MeshCoordsToCartesianVector]"
+      << std::endl
+      << "not implemented yet. " << std::endl;
+  ATHENA_ERROR(msg);
+  return;
+}
