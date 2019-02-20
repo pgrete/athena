@@ -310,6 +310,12 @@ class Cartesian : public Coordinates {
       Real x1, Real x2, Real x3, Real& xi1, Real& xi2, Real& xi3) const;
   void IndicesToMeshCoords(
       Real xi1, Real xi2, Real xi3, Real& x1, Real& x2, Real& x3) const;
+  void CartesianToMeshCoordsVector(
+      Real x, Real y, Real z, Real vx, Real vy, Real vz,
+      Real& vx1, Real& vx2, Real& vx3) const;
+  void MeshCoordsToCartesianVector(
+      Real x1, Real x2, Real x3, Real vx1, Real vx2, Real vx3,
+      Real& vx, Real& vy, Real& vz) const;
 };
 
 //----------------------------------------------------------------------------------------
