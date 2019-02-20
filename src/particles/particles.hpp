@@ -197,9 +197,9 @@ friend class MeshBlock;
 
  private:
   // Class variables
-  static bool initialized;      // whether or not the class is initialized
-  static int iwx, iwy, iwz;     // indices for working arrays
-  static int idpx, idpy, idpz;  // indices for momentum change
+  static bool initialized;         // whether or not the class is initialized
+  static int iwx, iwy, iwz;        // indices for working arrays
+  static int idpx1, idpx2, idpx3;  // indices for momentum change
 
   // Instance methods.
   void AssignShorthands();
@@ -209,8 +209,8 @@ friend class MeshBlock;
                      AthenaArray<Real>& meshdst);
 
   // Instance variables
-  AthenaArray<Real> wx, wy, wz;     // shorthand for working arrays
-  AthenaArray<Real> dpx, dpy, dpz;  // shorthand for momentum change
+  AthenaArray<Real> wx, wy, wz;        // shorthand for working arrays
+  AthenaArray<Real> dpx1, dpx2, dpx3;  // shorthand for momentum change
 };
 
 #endif  // PARTICLES_PARTICLES_HPP_

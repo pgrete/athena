@@ -18,7 +18,7 @@
 // Class variable initialization
 bool DustParticles::initialized = false;
 int DustParticles::iwx = -1, DustParticles::iwy = -1, DustParticles::iwz = -1;
-int DustParticles::idpx = -1, DustParticles::idpy = -1, DustParticles::idpz = -1;
+int DustParticles::idpx1 = -1, DustParticles::idpx2 = -1, DustParticles::idpx3 = -1;
 
 bool DustParticles::backreaction = false;
 Real DustParticles::mass = 1.0, DustParticles::taus = 0.0;
@@ -48,9 +48,9 @@ void DustParticles::Initialize(Mesh *pm, ParameterInput *pin) {
     if (taus == 0.0) backreaction = false;
 
     if (backreaction) {
-      idpx = imvpx;
-      idpy = imvpy;
-      idpz = imvpz;
+      idpx1 = imvpx;
+      idpx2 = imvpy;
+      idpx3 = imvpz;
     }
 
     initialized = true;
@@ -67,9 +67,9 @@ DustParticles::DustParticles(MeshBlock *pmb, ParameterInput *pin)
   AssignShorthands();
 
   if (backreaction) {
-    dpx.InitWithShallowSlice(ppm->meshaux, 4, idpx, 1);
-    dpy.InitWithShallowSlice(ppm->meshaux, 4, idpy, 1);
-    dpz.InitWithShallowSlice(ppm->meshaux, 4, idpz, 1);
+    dpx1.InitWithShallowSlice(ppm->meshaux, 4, idpx1, 1);
+    dpx2.InitWithShallowSlice(ppm->meshaux, 4, idpx2, 1);
+    dpx3.InitWithShallowSlice(ppm->meshaux, 4, idpx3, 1);
   }
 }
 
@@ -83,9 +83,9 @@ DustParticles::~DustParticles() {
   wz.DeleteAthenaArray();
 
   if (backreaction) {
-    dpx.DeleteAthenaArray();
-    dpy.DeleteAthenaArray();
-    dpz.DeleteAthenaArray();
+    dpx1.DeleteAthenaArray();
+    dpx2.DeleteAthenaArray();
+    dpx3.DeleteAthenaArray();
   }
 }
 
@@ -140,7 +140,7 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
   // Interpolate gas velocity onto particles.
   if (backreaction)
     ppm->InterpolateMeshAndAssignParticles(meshsrc, IVX, work, iwx, 3,
-                                           realprop, ivpx, idpx, 3);
+                                           realprop, ivpx, idpx1, 3);
   else
     ppm->InterpolateMeshToParticles(meshsrc, IVX, work, iwx, 3);
 
@@ -187,11 +187,11 @@ void DustParticles::DepositToMesh(
     for (int j = js; j <= je; ++j)
       for (int i = is; i <= ie; ++i) {
         Real w = ppm->weight(k,j,i);
-        dpx(k,j,i) = c * (dpx(k,j,i) - w * meshsrc(IVX,k,j,i));
-        dpy(k,j,i) = c * (dpy(k,j,i) - w * meshsrc(IVY,k,j,i));
-        dpz(k,j,i) = c * (dpz(k,j,i) - w * meshsrc(IVZ,k,j,i));
+        dpx1(k,j,i) = c * (dpx1(k,j,i) - w * meshsrc(IVX,k,j,i));
+        dpx2(k,j,i) = c * (dpx2(k,j,i) - w * meshsrc(IVY,k,j,i));
+        dpx3(k,j,i) = c * (dpx3(k,j,i) - w * meshsrc(IVZ,k,j,i));
       }
 
   // Deposit it to the mesh.
-  ppm->DepositMeshAux(meshdst, idpx, IM1, 3);
+  ppm->DepositMeshAux(meshdst, idpx1, IM1, 3);
 }
