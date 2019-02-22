@@ -253,6 +253,7 @@ void Particles::ClearBoundary() {
 void Particles::Integrate(int stage) {
   Real t = 0, dt = 0;
 
+  // Determine the integration cofficients.
   switch (stage) {
   case 1:
     t = pmy_mesh->time;
@@ -266,8 +267,12 @@ void Particles::Integrate(int stage) {
     break;
   }
 
+  // Conduct one stage of the integration.
   EulerStep(t, dt, pmy_block->phydro->w);
   ReactToMeshAux(t, dt, pmy_block->phydro->w);
+
+  // Update the position index.
+  SetPositionIndices();
 }
 
 //--------------------------------------------------------------------------------------
@@ -715,9 +720,6 @@ void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
     vpy(k) = vpy0(k) + dt * apy(k);
     vpz(k) = vpz0(k) + dt * apz(k);
   }
-
-  // Update the position index.
-  SetPositionIndices();
 }
 
 //--------------------------------------------------------------------------------------
