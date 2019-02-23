@@ -95,7 +95,6 @@ friend class ParticleMesh;
   static int ivpx0, ivpy0, ivpz0;  // indices for beginning velocity components
 
   static int ixi1, ixi2, ixi3;     // indices for position indices
-  static int iapx, iapy, iapz;     // indices for acceleration components
 
   static int imvpx, imvpy, imvpz;  // indices for velocity components on mesh
                                    // (only used for outputs)
@@ -125,7 +124,6 @@ friend class ParticleMesh;
   AthenaArray<Real> xp, yp, zp;        //   position
   AthenaArray<Real> vpx, vpy, vpz;     //   velocity
   AthenaArray<Real> xi1, xi2, xi3;     //   position indices in local meshblock
-  AthenaArray<Real> apx, apy, apz;     //   acceleration
   AthenaArray<Real> xp0, yp0, zp0;     //   beginning position
   AthenaArray<Real> vpx0, vpy0, vpz0;  //   beginning velocity
 
@@ -134,8 +132,8 @@ friend class ParticleMesh;
 
  private:
   // Instance methods
-  virtual void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
-  virtual void AddSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
+  virtual void SourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
+  virtual void UserSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
   virtual void ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
   virtual void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
                              AthenaArray<Real>& meshdst) {}
@@ -151,7 +149,6 @@ friend class ParticleMesh;
                           AthenaArray<Real>& xi2,
                           AthenaArray<Real>& xi3);
   void SaveStatus();
-  void ZeroAcceleration();
   struct Neighbor* FindTargetNeighbor(
       int ox1, int ox2, int ox3, int xi1, int xi2, int xi3);
 
@@ -203,8 +200,8 @@ friend class MeshBlock;
 
   // Instance methods.
   void AssignShorthands();
-  void AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc);
-  void AddSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc);
+  void SourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc);
+  void UserSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
                      AthenaArray<Real>& meshdst);

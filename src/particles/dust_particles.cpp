@@ -133,10 +133,10 @@ void DustParticles::AssignShorthands() {
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void DustParticles::AddAcceleration()
+//! \fn void DustParticles::SourceTerms()
 //  \brief adds acceleration to particles.
 
-void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
+void DustParticles::SourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
   // Interpolate gas velocity onto particles.
   ppm->InterpolateMeshToParticles(meshsrc, IVX, work, iwx, 3);
 
@@ -150,14 +150,14 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
 
   // Add drag force to particles.
   if (taus > 0.0) {
-    Real taus1 = 1.0 / taus;
+    Real c = dt / taus;
     for (int k = 0; k < npar; ++k) {
-      wx(k) = taus1 * (vpx(k) - wx(k));
-      wy(k) = taus1 * (vpy(k) - wy(k));
-      wz(k) = taus1 * (vpz(k) - wz(k));
-      apx(k) -= wx(k);
-      apy(k) -= wy(k);
-      apz(k) -= wz(k);
+      wx(k) = c * (vpx(k) - wx(k));
+      wy(k) = c * (vpy(k) - wy(k));
+      wz(k) = c * (vpz(k) - wz(k));
+      vpx(k) = vpx0(k) - wx(k);
+      vpy(k) = vpy0(k) - wy(k);
+      vpz(k) = vpz0(k) - wz(k);
     }
   } else if (taus == 0.0) {
     for (int k = 0; k < npar; ++k) {
@@ -169,11 +169,11 @@ void DustParticles::AddAcceleration(Real t, Real dt, const AthenaArray<Real>& me
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void DustParticles::AddSourceTerms(Real t, Real dt,
-//                                         const AthenaArray<Real>& meshsrc)
+//! \fn void DustParticles::UserSourceTerms(Real t, Real dt,
+//                                          const AthenaArray<Real>& meshsrc)
 //  \brief adds additional source terms to particles, overloaded by the user.
 
-void __attribute__((weak)) DustParticles::AddSourceTerms(
+void __attribute__((weak)) DustParticles::UserSourceTerms(
     Real t, Real dt, const AthenaArray<Real>& meshsrc) {
 }
 
@@ -187,11 +187,10 @@ void DustParticles::ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& mes
   if (!backreaction) return;
 
   // Compute the momentum change.
-  Real c = mass * dt;
   for (int k = 0; k < npar; ++k) {
-    wx(k) *= c;
-    wy(k) *= c;
-    wz(k) *= c;
+    wx(k) *= mass;
+    wy(k) *= mass;
+    wz(k) *= mass;
   }
 
   // Transform the momentum change in mesh coordinates.

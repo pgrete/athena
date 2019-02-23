@@ -54,15 +54,17 @@ void SourceTermsForGas(MeshBlock *pmb, const Real time, const Real dt,
 }
 
 //======================================================================================
-//! \fn void DustParticles::AddSourceTerms(Real t, Real dt,
+//! \fn void DustParticles::UserSourceTerms(Real t, Real dt,
 //                              const AthenaArray<Real>& meshsrc)
 //  \brief Adds source terms to the particles.
 //======================================================================================
-void DustParticles::AddSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
+void DustParticles::UserSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
   // Apply the Coriolis and centrifugal forces, and linear gravity from the star.
+  Real cx = dt * two_omega, cz = dt * omega_half;
   for (int k = 0; k < npar; ++k) {
-    apx(k) += two_omega * vpz(k),
-    apz(k) -= omega_half * vpx(k);
+    Real dvpx = cx * vpz(k), dvpz = cz * vpx(k);
+    vpx(k) += dvpx;
+    vpz(k) -= dvpz;
   }
 }
 

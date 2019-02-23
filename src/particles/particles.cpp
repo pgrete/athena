@@ -37,7 +37,6 @@ int Particles::ivpx = -1, Particles::ivpy = -1, Particles::ivpz = -1;
 int Particles::ixp0 = -1, Particles::iyp0 = -1, Particles::izp0 = -1;
 int Particles::ivpx0 = -1, Particles::ivpy0 = -1, Particles::ivpz0 = -1;
 int Particles::ixi1 = -1, Particles::ixi2 = -1, Particles::ixi3 = -1;
-int Particles::iapx = -1, Particles::iapy = -1, Particles::iapz = -1;
 int Particles::imvpx = -1, Particles::imvpy = -1, Particles::imvpz = -1;
 Real Particles::cfl_par = 1;
 #ifdef MPI_PARALLEL
@@ -81,11 +80,6 @@ void Particles::Initialize(Mesh *pm, ParameterInput *pin) {
   ixi1 = AddWorkingArray();
   ixi2 = AddWorkingArray();
   ixi3 = AddWorkingArray();
-
-  // Add acceleration components.
-  iapx = AddWorkingArray();
-  iapy = AddWorkingArray();
-  iapz = AddWorkingArray();
 
   // Initiate ParticleMesh class.
   ParticleMesh::Initialize(pin);
@@ -706,20 +700,16 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
 //  \brief evolves the particle positions and velocities by one Euler step.
 
 void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
-  // Get the accelerations.
-  ZeroAcceleration();
-  AddAcceleration(t, dt, meshsrc);
-  AddSourceTerms(t, dt, meshsrc);
-
-  // Update the positions and velocities **from the beginning of the time step**.
+  // Update positions.
   for (int k = 0; k < npar; ++k) {
     xp(k) = xp0(k) + dt * vpx(k);
     yp(k) = yp0(k) + dt * vpy(k);
     zp(k) = zp0(k) + dt * vpz(k);
-    vpx(k) = vpx0(k) + dt * apx(k);
-    vpy(k) = vpy0(k) + dt * apy(k);
-    vpz(k) = vpz0(k) + dt * apz(k);
   }
+
+  // Integrate the source terms (e.g., acceleration).
+  SourceTerms(t, dt, meshsrc);
+  UserSourceTerms(t, dt, meshsrc);
 }
 
 //--------------------------------------------------------------------------------------
@@ -764,18 +754,6 @@ void Particles::SaveStatus() {
     vpx0(k) = vpx(k);
     vpy0(k) = vpy(k);
     vpz0(k) = vpz(k);
-  }
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Particles::ZeroAcceleration()
-//  \brief initializes acceleration with zeros.
-
-void Particles::ZeroAcceleration() {
-  for (int k = 0; k < npar; ++k) {
-    apx(k) = 0.0;
-    apy(k) = 0.0;
-    apz(k) = 0.0;
   }
 }
 
@@ -911,9 +889,6 @@ void Particles::AssignShorthands() {
   xi1.InitWithShallowSlice(work, 2, ixi1, 1);
   xi2.InitWithShallowSlice(work, 2, ixi2, 1);
   xi3.InitWithShallowSlice(work, 2, ixi3, 1);
-  apx.InitWithShallowSlice(work, 2, iapx, 1);
-  apy.InitWithShallowSlice(work, 2, iapy, 1);
-  apz.InitWithShallowSlice(work, 2, iapz, 1);
 }
 
 //--------------------------------------------------------------------------------------
