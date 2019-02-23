@@ -1047,7 +1047,7 @@ enum TaskStatus TimeIntegratorTaskList::NewBlockTimeStep(MeshBlock *pmb, int sta
   pmb->phydro->NewBlockTimeStep();
   if (PARTICLES) {
     Real min_dt = pmb->ppar->NewBlockTimeStep();
-    pmb->new_block_dt = std::min(pmb->new_block_dt, min_dt);
+    pmb->new_block_dt_ = std::min(pmb->new_block_dt_, min_dt);
   }
   return TASK_SUCCESS;
 }

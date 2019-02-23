@@ -17,6 +17,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "../globals.hpp"
 #include "../utils/buffer_utils.hpp"
+#include "particle-mesh.hpp"
 #include "particles.hpp"
 
 // Class variable initialization

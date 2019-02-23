@@ -61,13 +61,6 @@ EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) {
     }
   }
   gamma_ = 0.0; // Not actually used
-  PrepEOS(pin);
-}
-
-// destructor
-
-EquationOfState::~EquationOfState() {
-  CleanEOS();
 }
 
 //----------------------------------------------------------------------------------------
@@ -205,8 +198,9 @@ void EquationOfState::ApplyPrimitiveConservedFloors(
   // ensure cons density matches
   u_d = w_d;
 
+  Real e_k = 0.5*w_d*(SQR(prim(IVX,k,j,i)) + SQR(prim(IVY,k,j,i)) + SQR(prim(IVZ,k,j,i)));
   // apply pressure floor, correct total energy
-  u_e = (w_p > energy_floor_) ? u_e : energy_floor_;
+  u_e = (w_p > energy_floor_) ? u_e : energy_floor_ + e_k;
   w_p = (w_p > pressure_floor_) ? w_p : pressure_floor_;
 
   return;
