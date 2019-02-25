@@ -202,7 +202,6 @@ friend class MeshBlock;
   void AssignShorthands();
   void SourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void UserSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc);
-  void ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
                      AthenaArray<Real>& meshdst);
 

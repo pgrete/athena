@@ -137,29 +137,45 @@ void DustParticles::AssignShorthands() {
 //  \brief adds acceleration to particles.
 
 void DustParticles::SourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
-  // Interpolate gas velocity onto particles.
-  ppm->InterpolateMeshToParticles(meshsrc, IVX, work, iwx, 3);
-
-  // Transform the gas velocity into Cartesian.
+  // Transform the particle velocity in mesh coordinates.
   const Coordinates *pc = pmy_block->pcoord;
+  for (int k = 0; k < npar; ++k)
+    pc->CartesianToMeshCoordsVector(xp(k), yp(k), zp(k), vpx(k), vpy(k), vpz(k),
+                                    vpx(k), vpy(k), vpz(k));
+
+  // Communicate gas and particle velocities.
+  if (backreaction)
+    ppm->InterpolateMeshAndAssignParticles(meshsrc, IVX, work, iwx, 3,
+                                           realprop, ivpx, idpx1, 3);
+  else
+    ppm->InterpolateMeshToParticles(meshsrc, IVX, work, iwx, 3);
+
+  if (taus > 0.0) {
+    // Compute the drag force.
+    Real c = dt / taus;
+    for (int k = 0; k < npar; ++k) {
+      wx(k) = c * (wx(k) - vpx(k));
+      wy(k) = c * (wy(k) - vpy(k));
+      wz(k) = c * (wz(k) - vpz(k));
+    }
+  }
+
+  // Transform the drag force or the gas velocity back in Cartesian.
   for (int k = 0; k < npar; ++k) {
     Real x1, x2, x3;
     pc->CartesianToMeshCoords(xp(k), yp(k), zp(k), x1, x2, x3);
     pc->MeshCoordsToCartesianVector(x1, x2, x3, wx(k), wy(k), wz(k), wx(k), wy(k), wz(k));
   }
 
-  // Add drag force to particles.
   if (taus > 0.0) {
-    Real c = dt / taus;
+    // Add the drag force to particles.
     for (int k = 0; k < npar; ++k) {
-      wx(k) = c * (vpx(k) - wx(k));
-      wy(k) = c * (vpy(k) - wy(k));
-      wz(k) = c * (vpz(k) - wz(k));
-      vpx(k) = vpx0(k) - wx(k);
-      vpy(k) = vpy0(k) - wy(k);
-      vpz(k) = vpz0(k) - wz(k);
+      vpx(k) = vpx0(k) + wx(k);
+      vpy(k) = vpy0(k) + wy(k);
+      vpz(k) = vpz0(k) + wz(k);
     }
   } else if (taus == 0.0) {
+    // Assign gas velocity to particle velocity for tracer particles.
     for (int k = 0; k < npar; ++k) {
       vpx(k) = wx(k);
       vpy(k) = wy(k);
@@ -178,39 +194,27 @@ void __attribute__((weak)) DustParticles::UserSourceTerms(
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void DustParticles::ReactToMeshAux(
-//               Real t, Real dt, const AthenaArray<Real>& meshsrc)
-//  \brief Reacts to meshaux before boundary communications.
-
-void DustParticles::ReactToMeshAux(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
-  // Nothing to do if no back reaction.
-  if (!backreaction) return;
-
-  // Compute the momentum change.
-  for (int k = 0; k < npar; ++k) {
-    wx(k) *= mass;
-    wy(k) *= mass;
-    wz(k) *= mass;
-  }
-
-  // Transform the momentum change in mesh coordinates.
-  const Coordinates *pc = pmy_block->pcoord;
-  for (int k = 0; k < npar; ++k)
-    pc->CartesianToMeshCoordsVector(xp(k), yp(k), zp(k), wx(k), wy(k), wz(k),
-                                    wx(k), wy(k), wz(k));
-
-  // Assign the momentum change onto mesh.
-  ppm->AssignParticlesToMeshAux(work, iwx, idpx1, 3);
-}
-
-//--------------------------------------------------------------------------------------
 //! \fn void DustParticles::DepositToMesh(Real t, Real dt,
 //               const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst);
 //  \brief Deposits meshaux to Mesh.
 
 void DustParticles::DepositToMesh(
          Real t, Real dt, const AthenaArray<Real>& meshsrc, AthenaArray<Real>& meshdst) {
-  if (backreaction)
-    // Deposit particle momentum changes to the gas.
-    ppm->DepositMeshAux(meshdst, idpx1, IM1, 3);
+  if (!backreaction) return;
+
+  // Compute the momentum change.
+  const Real c = dt * mass / taus;
+  const int is = ppm->is, js = ppm->js, ks = ppm->ks;
+  const int ie = ppm->ie, je = ppm->je, ke = ppm->ke;
+  for (int k = ks; k <= ke; ++k)
+    for (int j = js; j <= je; ++j)
+      for (int i = is; i <= ie; ++i) {
+        Real w = ppm->weight(k,j,i);
+        dpx1(k,j,i) = c * (dpx1(k,j,i) - w * meshsrc(IVX,k,j,i));
+        dpx2(k,j,i) = c * (dpx2(k,j,i) - w * meshsrc(IVY,k,j,i));
+        dpx3(k,j,i) = c * (dpx3(k,j,i) - w * meshsrc(IVZ,k,j,i));
+      }
+
+  // Deposit particle momentum changes to the gas.
+  ppm->DepositMeshAux(meshdst, idpx1, IM1, 3);
 }
