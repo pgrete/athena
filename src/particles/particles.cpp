@@ -589,6 +589,7 @@ bool Particles::ReceiveParticleMesh(int stage) {
 //! \fn void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3)
 //  \brief applies boundary conditions to particle k and returns its updated mesh
 //         coordinates (x1,x2,x3).
+// TODO(ccyang): implement nonperiodic boundary conditions.
 
 void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
   bool flag = false;
@@ -602,29 +603,13 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
   if (active1_) {
     if (x1 < mesh_size.x1min) {
       // Inner x1
-      if (pmy_mesh->mesh_bcs[INNER_X1] == PERIODIC_BNDRY) {
-        x1 += mesh_size.x1len;
-        x10 += mesh_size.x1len;
-      } else {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
-            << std::endl
-            << "Non-periodic boundary for inner x1 not supported. " << std::endl;
-        ATHENA_ERROR(msg);
-      }
+      x1 += mesh_size.x1len;
+      x10 += mesh_size.x1len;
       flag = true;
     } else if (x1 >= mesh_size.x1max) {
       // Outer x1
-      if (pmy_mesh->mesh_bcs[OUTER_X1] == PERIODIC_BNDRY) {
-        x1 -= mesh_size.x1len;
-        x10 -= mesh_size.x1len;
-      } else {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
-            << std::endl
-            << "Non-periodic boundary for outer x1 not supported. " << std::endl;
-        ATHENA_ERROR(msg);
-      }
+      x1 -= mesh_size.x1len;
+      x10 -= mesh_size.x1len;
       flag = true;
     }
   }
@@ -632,29 +617,13 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
   if (active2_) {
     if (x2 < mesh_size.x2min) {
       // Inner x2
-      if (pmy_mesh->mesh_bcs[INNER_X2] == PERIODIC_BNDRY) {
-        x2 += mesh_size.x2len;
-        x20 += mesh_size.x2len;
-      } else {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
-            << std::endl
-            << "Non-periodic boundary for inner x2 not supported. " << std::endl;
-        ATHENA_ERROR(msg);
-      }
+      x2 += mesh_size.x2len;
+      x20 += mesh_size.x2len;
       flag = true;
     } else if (x2 >= mesh_size.x2max) {
       // Outer x2
-      if (pmy_mesh->mesh_bcs[OUTER_X2] == PERIODIC_BNDRY) {
-        x2 -= mesh_size.x2len;
-        x20 -= mesh_size.x2len;
-      } else {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
-            << std::endl
-            << "Non-periodic boundary for outer x2 not supported. " << std::endl;
-        ATHENA_ERROR(msg);
-      }
+      x2 -= mesh_size.x2len;
+      x20 -= mesh_size.x2len;
       flag = true;
     }
   }
@@ -662,29 +631,13 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
   if (active3_) {
     if (x3 < mesh_size.x3min) {
       // Inner x3
-      if (pmy_mesh->mesh_bcs[INNER_X3] == PERIODIC_BNDRY) {
-        x3 += mesh_size.x3len;
-        x30 += mesh_size.x3len;
-      } else {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
-            << std::endl
-            << "Non-periodic boundary for inner x3 not supported. " << std::endl;
-        ATHENA_ERROR(msg);
-      }
+      x3 += mesh_size.x3len;
+      x30 += mesh_size.x3len;
       flag = true;
     } else if (x3 >= mesh_size.x3max) {
       // Outer x3
-      if (pmy_mesh->mesh_bcs[OUTER_X3] == PERIODIC_BNDRY) {
-        x3 -= mesh_size.x3len;
-        x30 -= mesh_size.x3len;
-      } else {
-        std::stringstream msg;
-        msg << "### FATAL ERROR in function [Particles::ApplyBoundaryConditions]"
-            << std::endl
-            << "Non-periodic boundary for outer x3 not supported. " << std::endl;
-        ATHENA_ERROR(msg);
-      }
+      x3 -= mesh_size.x3len;
+      x30 -= mesh_size.x3len;
       flag = true;
     }
   }
