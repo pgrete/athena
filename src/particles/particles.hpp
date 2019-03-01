@@ -106,6 +106,8 @@ friend class ParticleMesh;
                                     // intprop, realprop, & auxprop are resized
                                     // Be sure to call back when derived.
 
+  void UpdateCapacity(int new_nparmax);  // Change the capacity of particle arrays
+
   // Instance variables
   int npar;     // number of particles
   int nparmax;  // maximum number of particles per meshblock

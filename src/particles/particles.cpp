@@ -745,19 +745,8 @@ struct Neighbor* Particles::FindTargetNeighbor(
 void Particles::FlushReceiveBuffer(ParticleBuffer& recv) {
   // Check the memory size.
   int nprecv = recv.npar;
-  if (npar + nprecv > nparmax) {
-    // Increase maximum number of particles allowed.
-    nparmax += 2 * (npar + nprecv - nparmax);
-
-    // Increase size of property arrays
-    intprop.ResizeLastDimension(nparmax);
-    realprop.ResizeLastDimension(nparmax);
-    if (naux > 0) auxprop.ResizeLastDimension(nparmax);
-    if (nwork > 0) work.ResizeLastDimension(nparmax);
-
-    // Reassign the shorthands.
-    AssignShorthands();
-  }
+  if (npar + nprecv > nparmax)
+    UpdateCapacity(nparmax + 2 * (npar + nprecv - nparmax));
 
   // Flush the receive buffers.
   int *pi = recv.ibuf;
@@ -842,6 +831,22 @@ void Particles::AssignShorthands() {
   xi1.InitWithShallowSlice(work, 2, ixi1, 1);
   xi2.InitWithShallowSlice(work, 2, ixi2, 1);
   xi3.InitWithShallowSlice(work, 2, ixi3, 1);
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::UpdateCapacity(int new_nparmax)
+//  \brief changes the capacity of particle arrays while preserving existing data.
+
+void Particles::UpdateCapacity(int new_nparmax) {
+  // Increase size of property arrays
+  nparmax = new_nparmax;
+  intprop.ResizeLastDimension(nparmax);
+  realprop.ResizeLastDimension(nparmax);
+  if (naux > 0) auxprop.ResizeLastDimension(nparmax);
+  if (nwork > 0) work.ResizeLastDimension(nparmax);
+
+  // Reassign the shorthands.
+  AssignShorthands();
 }
 
 //--------------------------------------------------------------------------------------
