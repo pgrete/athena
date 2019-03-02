@@ -1318,9 +1318,11 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         MeshBlock *pmb=pmb_array[i];
         pmb->ProblemGenerator(pin);
         pmb->pbval->CheckBoundary();
-        if (PARTICLES) pmb->ppar->SetPositionIndices();
       }
     }
+
+    // Preprocess the Particles class.
+    if (PARTICLES) Particles::PostInitialize(this, pin);
 
     // add initial perturbation for decaying or impulsive turbulence
     if (((turb_flag == 1) || (turb_flag == 2)) && (res_flag == 0))

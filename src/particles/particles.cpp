@@ -99,6 +99,19 @@ void Particles::Initialize(Mesh *pm, ParameterInput *pin) {
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn Particles::PostInitialize(Mesh *pm, ParameterInput *pin)
+//  \brief preprocesses the class after problem generator and before the main loop.
+
+void Particles::PostInitialize(Mesh *pm, ParameterInput *pin) {
+  MeshBlock *pmb = pm->pblock;
+  while (pmb != NULL) {
+    Particles *ppar = pmb->ppar;
+    ppar->SetPositionIndices();
+    pmb = pmb->next;
+  }
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::GetNumberDensityOnMesh(Mesh *pm, bool include_velocity)
 //  \brief finds the number density of particles on the mesh.  If include_velocity is
 //    true, the velocity field is also included.

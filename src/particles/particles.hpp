@@ -48,6 +48,7 @@ friend class ParticleMesh;
  public:
   // Class methods
   static void Initialize(Mesh *pm, ParameterInput *pin);
+  static void PostInitialize(Mesh *pm, ParameterInput *pin);
   static void FormattedTableOutput(Mesh *pm, OutputParameters op);
   static void GetNumberDensityOnMesh(Mesh *pm, bool include_velocity);
 
