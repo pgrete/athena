@@ -134,6 +134,9 @@ friend class ParticleMesh;
   Mesh* pmy_mesh;        // Mesh pointer
 
  private:
+  // Class method
+  static void ProcessNewParticles(Mesh *pmesh);
+
   // Instance methods
   virtual void SourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
   virtual void UserSourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsrc) {}
@@ -141,6 +144,7 @@ friend class ParticleMesh;
   virtual void DepositToMesh(Real t, Real dt, const AthenaArray<Real>& meshsrc,
                              AthenaArray<Real>& meshdst) {}
 
+  int CountNewParticles() const;
   void ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3);
   void EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc);
   void FlushReceiveBuffer(ParticleBuffer& recv);
@@ -151,9 +155,13 @@ friend class ParticleMesh;
                           AthenaArray<Real>& xi1,
                           AthenaArray<Real>& xi2,
                           AthenaArray<Real>& xi3);
+  void SetNewParticleID(int id);
   void SaveStatus();
   struct Neighbor* FindTargetNeighbor(
       int ox1, int ox2, int ox3, int xi1, int xi2, int xi3);
+
+  // Class variable
+  static int idmax;
 
   // Instance variables
   bool active1_, active2_, active3_;  // active dimensions

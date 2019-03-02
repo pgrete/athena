@@ -27,6 +27,7 @@
 
 // Class variable initialization
 bool Particles::initialized = false;
+int Particles::idmax = 0;
 int Particles::nint = 0;
 int Particles::nreal = 0;
 int Particles::naux = 0;
@@ -103,6 +104,10 @@ void Particles::Initialize(Mesh *pm, ParameterInput *pin) {
 //  \brief preprocesses the class after problem generator and before the main loop.
 
 void Particles::PostInitialize(Mesh *pm, ParameterInput *pin) {
+  // Set particle IDs.
+  ProcessNewParticles(pm);
+
+  // Set position indices.
   MeshBlock *pmb = pm->pblock;
   while (pmb != NULL) {
     Particles *ppar = pmb->ppar;
@@ -599,6 +604,48 @@ bool Particles::ReceiveParticleMesh(int stage) {
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn void Particles::ProcessNewParticles()
+//  \brief searches for and books new particles.
+
+void Particles::ProcessNewParticles(Mesh *pmesh) {
+  // Count new particles.
+  const int nbtotal = pmesh->nbtotal;
+  AthenaArray<int> nnewpar;
+  nnewpar.NewAthenaArray(nbtotal);
+  MeshBlock *pmb = pmesh->pblock;
+  while (pmb != NULL) {
+    nnewpar(pmb->gid) = pmb->ppar->CountNewParticles();
+    pmb = pmb->next;
+  }
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE, &nnewpar(0), nbtotal, MPI_INT, MPI_MAX, my_comm);
+#endif
+
+  // Make the counts cumulative.
+  for (int i = 1; i < nbtotal; ++i)
+    nnewpar(i) += nnewpar(i-1);
+
+  // Set particle IDs.
+  pmb = pmesh->pblock;
+  while (pmb != NULL) {
+    pmb->ppar->SetNewParticleID(idmax + (pmb->gid > 0 ? nnewpar(pmb->gid - 1) : 0));
+    pmb = pmb->next;
+  }
+  idmax += nnewpar(nbtotal - 1);
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn int Particles::CountNewParticles()
+//  \brief counts new particles in the block.
+
+int Particles::CountNewParticles() const {
+  int n = 0;
+  for (int i = 0; i < npar; ++i)
+    if (pid(i) <= 0) ++n;
+  return n;
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3)
 //  \brief applies boundary conditions to particle k and returns its updated mesh
 //         coordinates (x1,x2,x3).
@@ -703,6 +750,15 @@ void Particles::GetPositionIndices(int npar,
     // Convert to the index space.
     pmy_block->pcoord->MeshCoordsToIndices(x1, x2, x3, xi1(k), xi2(k), xi3(k));
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::SetNewParticleID(int id0)
+//  \brief searches for new particles and assigns ID, beginning at id + 1.
+
+void Particles::SetNewParticleID(int id) {
+  for (int i = 0; i < npar; ++i)
+    if (pid(i) <= 0) pid(i) = ++id;
 }
 
 //--------------------------------------------------------------------------------------
