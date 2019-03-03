@@ -9,10 +9,7 @@
 // NOTE: In this setup, Y <-> Z.
 
 // C++ standard libraries
-#include <cmath>
-#include <iostream>
-#include <sstream>
-#include <stdexcept>
+#include <cmath>  // round()
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -23,12 +20,10 @@
 #include "../parameter_input.hpp"
 #include "../particles/particles.hpp"
 
-// Global constants
-static Real OMEGA = 1.0;
-
 // Global parameters
-static Real two_omega = 2.0 * OMEGA;
-static Real omega_half = 0.5 * OMEGA;
+static Real omega = 1.0;
+static Real two_omega = 2.0 * omega;
+static Real omega_half = 0.5 * omega;
 static Real gas_accel_x = 0.0;
 
 //======================================================================================
@@ -76,8 +71,8 @@ void DustParticles::UserSourceTerms(Real t, Real dt, const AthenaArray<Real>& me
 void Mesh::InitUserMeshData(ParameterInput *pin) {
   // Preprocess constants.
   Real cs0 = pin->GetReal("hydro", "iso_sound_speed");
-  Real omega = pin->GetOrAddReal("problem", "omega", OMEGA);
   Real duy0 = cs0 * pin->GetReal("problem", "duy0");
+  omega = pin->GetOrAddReal("problem", "omega", omega);
   two_omega = 2.0 * omega;
   omega_half = 0.5 * omega;
   gas_accel_x = two_omega * duy0;
@@ -96,7 +91,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real dtog = pin->GetReal("problem", "dtog");
 
   // Get the dimensionless stopping time.
-  Real omega = pin->GetOrAddReal("problem", "omega", OMEGA);
   Real taus = omega * pin->GetReal("particles", "taus");
 
   // Get the wave number.
@@ -147,51 +141,24 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       npx3 = (block_size.nx3 > 1) ?
                   pin->GetOrAddInteger("problem", "npx3", mesh_size.nx3) : 1;
 
+
   // Find the mass of each particle and the distance between adjacent particles.
-  Real vol = 1.0;
-  Real dx1 = 0.0, dx2 = 0.0, dx3 = 0.0;
-
-  length = mesh_size.x1max - mesh_size.x1min;
-  dx1 = length / npx1;
-  if (block_size.nx1 > 1) vol *= length;
-
-  length = mesh_size.x2max - mesh_size.x2min;
-  dx2 = length / npx2;
-  if (block_size.nx2 > 1) vol *= length;
-
-  length = mesh_size.x3max - mesh_size.x3min;
-  dx3 = length / npx3;
-  if (block_size.nx3 > 1) vol *= length;
-
+  Real vol = mesh_size.x1len * mesh_size.x2len * mesh_size.x3len;
+  Real dx1 = mesh_size.x1len / npx1,
+       dx2 = mesh_size.x2len / npx2,
+       dx3 = mesh_size.x3len / npx3;
   ppar->mass = dtog * vol / (npx1 * npx2 * npx3);
 
-  // Find the local number of particles and their beginning index.
-  int ix1 = 0, ix2 = 0, ix3 = 0;
-  int npx1_loc = 1, npx2_loc = 1, npx3_loc = 1;
-  if (block_size.nx1 > 1) {
-    ix1 = static_cast<int>(std::round((block_size.x1min - mesh_size.x1min) / dx1));
-    npx1_loc = static_cast<int>(std::round((block_size.x1max - block_size.x1min) / dx1));
-  }
-  if (block_size.nx2 > 1) {
-    ix2 = static_cast<int>(std::round((block_size.x2min - mesh_size.x2min) / dx2));
-    npx2_loc = static_cast<int>(std::round((block_size.x2max - block_size.x2min) / dx2));
-  }
-  if (block_size.nx3 > 1) {
-    ix3 = static_cast<int>(std::round((block_size.x3min - mesh_size.x3min) / dx3));
-    npx3_loc = static_cast<int>(std::round((block_size.x3max - block_size.x3min) / dx3));
-  }
-
-  // Check the memory allocation.
-  if (npx1_loc * npx2_loc * npx3_loc > ppar->nparmax) {
-    std::ostringstream msg;
-    msg << "### FATAL ERROR in function [MeshBlock::ProblemGenerator]" << std::endl
-        << "nparmax is too small" << std::endl;
-    ATHENA_ERROR(msg);
-    return;
-  }
+  // Determine number of particles in the block.
+  int npx1_loc = static_cast<int>(std::round(block_size.x1len / dx1)),
+      npx2_loc = static_cast<int>(std::round(block_size.x2len / dx2)),
+      npx3_loc = static_cast<int>(std::round(block_size.x3len / dx3));
+  int npar = ppar->npar = npx1_loc * npx2_loc * npx3_loc;
+  if (npar > ppar->nparmax)
+    ppar->UpdateCapacity(npar);
 
   // Uniformly distribute the particles.
-  int ipar = 0, id = ix1 + npx1 * (ix2 + npx2 * ix3);
+  int ipar = 0;
   for (int k = 0; k < npx3_loc; ++k) {
     Real zp1 = block_size.x3min + (k + 0.5) * dx3;
     for (int j = 0; j < npx2_loc; ++j) {
@@ -204,19 +171,15 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         ppar->vpx(ipar) = vpx0;
         ppar->vpy(ipar) = 0.0;
         ppar->vpz(ipar) = vpy0;
-        ppar->pid(ipar) = id++;
         ++ipar;
       }
-      id += npx1 - npx1_loc;
     }
-    id += npx1 * (npx2 - npx2_loc);
   }
-  ppar->npar = ipar;
   if (kx == 0.0 && kz == 0.0) return;
 
   // Perturb the particle position.
   Real a = 0.5 * amp / (kx * kx + kz * kz);
-  for (int k = 0; k < ppar->npar; ++k) {
+  for (int k = 0; k < npar; ++k) {
     Real arg1 = kx * ppar->xp(k) + kz * ppar->yp(k),
          arg2 = kx * ppar->xp(k) - kz * ppar->yp(k);
     Real d = amp * std::sin(2.0 * arg1);
@@ -231,7 +194,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
        dvpy_im = dv * pin->GetOrAddReal("problem", "dvpy_im", 0.0),
        dvpz_re = dv * pin->GetOrAddReal("problem", "dvpz_re", 0.0),
        dvpz_im = dv * pin->GetOrAddReal("problem", "dvpz_im", 0.0);
-  for (int k = 0; k < ppar->npar; ++k) {
+  for (int k = 0; k < npar; ++k) {
     Real coskx = std::cos(kx * ppar->xp(k)), sinkx = std::sin(kx * ppar->xp(k));
     Real coskz = std::cos(kz * ppar->yp(k)), sinkz = std::sin(kz * ppar->yp(k));
     ppar->vpx(k) += (dvpx_re * coskx - dvpx_im * sinkx) * coskz;

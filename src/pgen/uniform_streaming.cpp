@@ -7,10 +7,7 @@
 //  \brief tests one particle.
 
 // C++ standard libraries
-#include <cmath>
-#include <iostream>
-#include <sstream>
-#include <stdexcept>
+#include <cmath>  // round()
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -63,50 +60,22 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
                   pin->GetOrAddInteger("problem", "npx3", mesh_size.nx3) : 1;
 
   // Find the mass of each particle and the distance between adjacent particles.
-  Real vol = 1.0;
-  Real dx1 = 0.0, dx2 = 0.0, dx3 = 0.0, length;
-
-  length = mesh_size.x1max - mesh_size.x1min;
-  dx1 = length / npx1;
-  if (block_size.nx1 > 1) vol *= length;
-
-  length = mesh_size.x2max - mesh_size.x2min;
-  dx2 = length / npx2;
-  if (block_size.nx2 > 1) vol *= length;
-
-  length = mesh_size.x3max - mesh_size.x3min;
-  dx3 = length / npx3;
-  if (block_size.nx3 > 1) vol *= length;
-
+  Real vol = mesh_size.x1len * mesh_size.x2len * mesh_size.x3len;
+  Real dx1 = mesh_size.x1len / npx1,
+       dx2 = mesh_size.x2len / npx2,
+       dx3 = mesh_size.x3len / npx3;
   ppar->mass = dtog * vol / (npx1 * npx2 * npx3);
 
-  // Find the local number of particles and their beginning index.
-  int ix1 = 0, ix2 = 0, ix3 = 0;
-  int npx1_loc = 1, npx2_loc = 1, npx3_loc = 1;
-  if (block_size.nx1 > 1) {
-    ix1 = static_cast<int>(std::round((block_size.x1min - mesh_size.x1min) / dx1));
-    npx1_loc = static_cast<int>(std::round((block_size.x1max - block_size.x1min) / dx1));
-  }
-  if (block_size.nx2 > 1) {
-    ix2 = static_cast<int>(std::round((block_size.x2min - mesh_size.x2min) / dx2));
-    npx2_loc = static_cast<int>(std::round((block_size.x2max - block_size.x2min) / dx2));
-  }
-  if (block_size.nx3 > 1) {
-    ix3 = static_cast<int>(std::round((block_size.x3min - mesh_size.x3min) / dx3));
-    npx3_loc = static_cast<int>(std::round((block_size.x3max - block_size.x3min) / dx3));
-  }
-
-  // Check the memory allocation.
-  if (npx1_loc * npx2_loc * npx3_loc > ppar->nparmax) {
-    std::ostringstream msg;
-    msg << "### FATAL ERROR in function [MeshBlock::ProblemGenerator]" << std::endl
-        << "nparmax is too small" << std::endl;
-    ATHENA_ERROR(msg);
-    return;
-  }
+  // Determine number of particles in the block.
+  int npx1_loc = static_cast<int>(std::round(block_size.x1len / dx1)),
+      npx2_loc = static_cast<int>(std::round(block_size.x2len / dx2)),
+      npx3_loc = static_cast<int>(std::round(block_size.x3len / dx3));
+  int npar = ppar->npar = npx1_loc * npx2_loc * npx3_loc;
+  if (npar > ppar->nparmax)
+    ppar->UpdateCapacity(npar);
 
   // Assign the particles.
-  int ipar = 0, id = ix1 + npx1 * (ix2 + npx2 * ix3);
+  int ipar = 0;
   for (int k = 0; k < npx3_loc; ++k) {
     Real zp1 = block_size.x3min + (k + 0.5) * dx3;
     for (int j = 0; j < npx2_loc; ++j) {
@@ -119,12 +88,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         ppar->vpx(ipar) = vpx0;
         ppar->vpy(ipar) = vpy0;
         ppar->vpz(ipar) = vpz0;
-        ppar->pid(ipar) = id++;
         ++ipar;
       }
-      id += npx1 - npx1_loc;
     }
-    id += npx1 * (npx2 - npx2_loc);
   }
-  ppar->npar = ipar;
 }

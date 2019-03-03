@@ -68,7 +68,6 @@ gamma           = 1.4   # gamma = C_p/C_v
 iso_sound_speed = 1.0   # isothermal sound speed
 
 <particles>
-nparmax = 262144     # maximum number of particles per meshblock
 taus = 0.5           # drag stopping time
 backreaction = true  # turn on/off the back reaction of the gas drag
 
