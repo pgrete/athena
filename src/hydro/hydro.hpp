@@ -8,16 +8,18 @@
 //! \file hydro.hpp
 //  \brief definitions for Hydro class
 
-// Athena++ classes headers
+// C headers
+
+// C++ headers
+
+// Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
-//#include "../task_list/task_list.hpp"
 
 class MeshBlock;
 class ParameterInput;
 class HydroSourceTerms;
 class HydroDiffusion;
-struct IntegratorWeight;
 
 //! \class Hydro
 //  \brief hydro data and functions
@@ -25,7 +27,7 @@ struct IntegratorWeight;
 class Hydro {
   friend class Field;
   friend class EquationOfState;
-public:
+ public:
   Hydro(MeshBlock *pmb, ParameterInput *pin);
   ~Hydro();
 
@@ -46,27 +48,30 @@ public:
   HydroDiffusion *phdif;
 
   // functions
-  Real NewBlockTimeStep(void);    // computes new timestep on a MeshBlock
+  void NewBlockTimeStep();    // computes new timestep on a MeshBlock
   void WeightedAveU(AthenaArray<Real> &u_out, AthenaArray<Real> &u_in1,
-    AthenaArray<Real> &u_in2, const Real wght[3]);
+                    AthenaArray<Real> &u_in2, const Real wght[3]);
   void AddFluxDivergenceToAverage(AthenaArray<Real> &w, AthenaArray<Real> &bcc,
-    const Real wght, AthenaArray<Real> &u_out);
+                                  const Real wght, AthenaArray<Real> &u_out);
   void CalculateFluxes(AthenaArray<Real> &w, FaceField &b,
-    AthenaArray<Real> &bcc, const int order);
-  void RiemannSolver(const int kl, const int ku, const int jl, const int ju,
-    const int il, const int iu, const int ivx, const AthenaArray<Real> &bx,
-    AthenaArray<Real> &wl, AthenaArray<Real> &wr, AthenaArray<Real> &flx,
-    AthenaArray<Real> &e1, AthenaArray<Real> &e2);
+                       AthenaArray<Real> &bcc, const int order);
+  void CalculateFluxes_STS();
 
-  void AddGravityFlux(void);
-  void AddGravityFluxWithGflx(void);
+  void RiemannSolver(
+      const int k, const int j, const int il, const int iu,
+      const int ivx, const AthenaArray<Real> &bx,
+      AthenaArray<Real> &wl, AthenaArray<Real> &wr, AthenaArray<Real> &flx,
+      AthenaArray<Real> &ey, AthenaArray<Real> &ez,
+      AthenaArray<Real> &wct, const AthenaArray<Real> &dxw);
+
+  void AddGravityFlux();
+  void AddGravityFluxWithGflx();
   void CalculateGravityFlux(AthenaArray<Real> &phi_in);
-  void CorrectGravityFlux(void);
 
-private:
+ private:
   AthenaArray<Real> dt1_, dt2_, dt3_;  // scratch arrays used in NewTimeStep
   // scratch space used to compute fluxes
-  AthenaArray<Real> wl_, wr_;
+  AthenaArray<Real> wl_, wr_, wlb_;
   AthenaArray<Real> dxw_;
   AthenaArray<Real> x1face_area_, x2face_area_, x3face_area_;
   AthenaArray<Real> x2face_area_p1_, x3face_area_p1_;
@@ -85,9 +90,12 @@ private:
 
   // fourth-order hydro
   // 4D scratch arrays
-  AthenaArray<Real> wl_fc_, wr_fc_, flux_fc_;
   AthenaArray<Real> scr1_nkji_, scr2_nkji_;
+  AthenaArray<Real> wl3d_, wr3d_;
+  AthenaArray<Real> laplacian_l_fc_, laplacian_r_fc_;
 
-  TimeStepFunc_t UserTimeStep_;
+  TimeStepFunc UserTimeStep_;
+
+  Real GetWeightForCT(Real dflx, Real rhol, Real rhor, Real dx, Real dt);
 };
 #endif // HYDRO_HYDRO_HPP_

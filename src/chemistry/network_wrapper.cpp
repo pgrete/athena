@@ -24,9 +24,9 @@ NetworkWrapper::NetworkWrapper() {}
 
 NetworkWrapper::~NetworkWrapper() {}
 
-int NetworkWrapper::WrapJacobian(const long int n, const realtype t,
+int NetworkWrapper::WrapJacobian(const realtype t,
                           const N_Vector y, const N_Vector fy, 
-                          DlsMat jac, void *user_data,
+                          SUNMatrix jac, void *user_data,
                           N_Vector tmp1, N_Vector tmp2, N_Vector tmp3) {
   Real t1 = t;
   //copy y and fy values
@@ -51,7 +51,7 @@ int NetworkWrapper::WrapJacobian(const long int n, const realtype t,
   }
   for (int i=0; i<NSPECIES; i++) {
     for (int j=0; j<NSPECIES; j++) {
-      DENSE_ELEM(jac, i, j) = jac1[i][j];
+      SM_ELEMENT_D(jac, i, j) = jac1[i][j];
     }
   }
   return 0;

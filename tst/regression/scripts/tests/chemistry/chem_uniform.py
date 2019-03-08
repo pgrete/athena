@@ -15,8 +15,9 @@ def prepare(**kwargs):
       prob='uniform_chem',
       chemistry='gow16', 
       radiation='const',
-      #cvode_path='/usr/local',
-      #cxx = 'g++'
+      #cvode_path='/usr/local/sundials',
+      #cxx = 'g++',
+      #machine="mac"
       cvode_path='/home/munan/install',
       cxx="icc"
       )

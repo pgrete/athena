@@ -18,7 +18,7 @@
 //CVODE headers. 
 #include <sundials/sundials_types.h> // realtype type
 #include <nvector/nvector_serial.h> // N_Vector type
-#include <sundials/sundials_dense.h> // definitions DlsMat DENSE_ELEM
+#include <sunmatrix/sunmatrix_dense.h> /* access to dense SUNMatrix            */
 
 
 class Species;
@@ -32,9 +32,9 @@ public:
   NetworkWrapper();
   virtual ~NetworkWrapper();
 
-  static int WrapJacobian(const long int n, const realtype t,
+  static int WrapJacobian(const realtype t,
                           const N_Vector y, const N_Vector fy, 
-                          DlsMat jac, void *user_data,
+                          SUNMatrix jac, void *user_data,
                           N_Vector tmp1, N_Vector tmp2, N_Vector tmp3);
   static int WrapRHS(const realtype t, const N_Vector y,
                      N_Vector ydot, void *user_data);

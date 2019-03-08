@@ -13,7 +13,7 @@
 // You should have received a copy of GNU GPL in the file LICENSE included in the code
 // distribution.  If not see <http://www.gnu.org/licenses/>.
 //======================================================================================
-//! \file radiation_integrator.cpp
+//! \file radiation_task_list.cpp
 //  \brief derived class for radiation integrator task list.
 //======================================================================================
 
@@ -30,9 +30,7 @@
 #include "../radiation/integrators/rad_integrators.hpp"
 #include "../radiation/radiation.hpp"
 #include "../utils/cgk_utils.hpp"
-
-
-// this class header
+#include "radiation_task_list.hpp"
 #include "task_list.hpp"
 
 //--------------------------------------------------------------------------------------
@@ -48,7 +46,6 @@ RadiationIntegratorTaskList::RadiationIntegratorTaskList(ParameterInput *pin, Me
       AddRadiationIntegratorTask(INT_LOC_JEANS,NONE);
     } else if (integrator == "six_ray") {
       //add six ray
-      AddRadiationIntegratorTask(START_SIXRAY_RECV,NONE);
       AddRadiationIntegratorTask(GET_COL_MB0,NONE);
       AddRadiationIntegratorTask(RECV_SEND_COL0,GET_COL_MB0);
       AddRadiationIntegratorTask(GET_COL_MB1,NONE);
@@ -99,11 +96,6 @@ void RadiationIntegratorTaskList::AddRadiationIntegratorTask(uint64_t id, uint64
         (&RadiationIntegratorTaskList::ConstRadiation);
       break;
     //add six ray here
-    case (START_SIXRAY_RECV):
-      task_list_[ntasks].TaskFunc=
-        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
-        (&RadiationIntegratorTaskList::StartSixrayReceive);
-      break;
     case (GET_COL_MB0):
       task_list_[ntasks].TaskFunc=
         static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
@@ -184,6 +176,13 @@ void RadiationIntegratorTaskList::AddRadiationIntegratorTask(uint64_t id, uint64
   return;
 }
 
+void RadiationIntegratorTaskList::StartupTaskList(MeshBlock *pmb, int stage) {
+#ifdef INCLUDE_CHEMISTRY
+  pmb->pbval->StartReceivingSixray();
+#endif
+  return;
+}
+
 //--------------------------------------------------------------------------------------
 // Functions to integrate Radiation
 enum TaskStatus RadiationIntegratorTaskList::LocalIntegratorJeans(MeshBlock *pmb,
@@ -205,15 +204,6 @@ enum TaskStatus RadiationIntegratorTaskList::ConstRadiation(MeshBlock *pmb, int 
 }
 
 //add six ray here
-
-enum TaskStatus RadiationIntegratorTaskList::StartSixrayReceive(MeshBlock *pmb, 
-                                                                int step)
-{
-#ifdef INCLUDE_CHEMISTRY
-  pmb->pbval->StartReceivingSixray();
-#endif
-  return TASK_SUCCESS;
-}
 
 enum TaskStatus RadiationIntegratorTaskList::GetColMB0(MeshBlock *pmb, int step)
 {

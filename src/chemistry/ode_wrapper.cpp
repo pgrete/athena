@@ -29,20 +29,14 @@
 #include "../mesh/mesh.hpp"
 #include "../species/species.hpp"
 
-#include <cvode/cvode.h> // CV_SUCCESS
-#include <nvector/nvector_serial.h> // N_Vector
-#include <sundials/sundials_dense.h> // definitions DlsMat DENSE_ELEM
-#include <sundials/sundials_types.h> // realtype 
-#include <cvode/cvode.h>            // CVODE solver fcts., consts
-#include <cvode/cvode_dense.h>       // prototype for CVDense 
-
 // this class header
 #include "ode_wrapper.hpp"
 
 ODEWrapper::ODEWrapper(Species *pspec, ParameterInput *pin) {
   int flag;
   pmy_spec_ = pspec;
-
+  dense_matrix_ = NULL,
+  dense_ls_ = NULL,
   //allocate y_
   y_ = N_VNew_Serial(NSPECIES);
   CheckFlag((void *)y_, "N_VNew_Serial", 0);
@@ -102,9 +96,17 @@ ODEWrapper::ODEWrapper(Species *pspec, ParameterInput *pin) {
   flag = CVodeSVtolerances(cvode_mem_, reltol_, abstol_vec);
   CheckFlag(&flag, "CVodeSVtolerances", 1);
 
-  // Call CVDense to specify the CVDENSE dense linear solver
-  flag = CVDense(cvode_mem_, NSPECIES);
-  CheckFlag(&flag, "CVDense", 1);
+  // Create dense SUNMatrix for use in linear solves 
+  dense_matrix_ = SUNDenseMatrix(NSPECIES, NSPECIES);
+  CheckFlag((void *)dense_matrix_, "SUNDenseMatrix", 0);
+
+  /* Create dense SUNLinearSolver object for use by CVode */
+  dense_ls_ = SUNDenseLinearSolver(y_, dense_matrix_);
+  CheckFlag((void *)dense_ls_, "SUNDenseLinearSolver", 0);
+
+  /* Call CVDlsSetLinearSolver to attach the matrix and linear solver to CVode */
+  flag = CVDlsSetLinearSolver(cvode_mem_, dense_ls_, dense_matrix_);
+  CheckFlag(&flag, "CVDlsSetLinearSolver", 1);
 
   //set maximum number of steps
   flag = CVodeSetMaxNumSteps(cvode_mem_, maxsteps);
@@ -133,7 +135,7 @@ ODEWrapper::ODEWrapper(Species *pspec, ParameterInput *pin) {
 
   // Set the Jacobian routine to Jac (user-supplied)
 	if (user_jac) {
-		flag = CVDlsSetDenseJacFn(cvode_mem_, pmy_spec_->pchemnet->WrapJacobian);
+		flag = CVDlsSetJacFn(cvode_mem_, pmy_spec_->pchemnet->WrapJacobian);
 		CheckFlag(&flag, "CVDlsSetDenseJacFn", 1);
 	}
 

@@ -13,7 +13,7 @@
 // You should have received a copy of GNU GPL in the file LICENSE included in the code
 // distribution.  If not see <http://www.gnu.org/licenses/>.
 //======================================================================================
-//! \file chemistry_integrator.cpp
+//! \file chemistry_task_list.cpp
 //  \brief derived class for chemistry integrator task list.
 //======================================================================================
 
@@ -30,8 +30,7 @@
 #ifdef INCLUDE_CHEMISTRY
 #include "../chemistry/network/network.hpp" 
 #endif
-
-// this class header
+#include "chemistry_task_list.hpp"
 #include "task_list.hpp"
 
 //--------------------------------------------------------------------------------------
@@ -42,11 +41,10 @@ ChemistryIntegratorTaskList::ChemistryIntegratorTaskList(ParameterInput *pin, Me
   nstages = 1;
   // Now assemble list of tasks for each step of chemistry integrator
   {using namespace ChemistryIntegratorTaskNames;
-    AddChemistryIntegratorTask(START_SPEC_RECV, NONE);
     AddChemistryIntegratorTask(INT_CHEM_SRC,NONE);
     //MPI boundary
     AddChemistryIntegratorTask(SEND_SPEC, INT_CHEM_SRC);
-    AddChemistryIntegratorTask(RECV_SPEC, START_SPEC_RECV);
+    AddChemistryIntegratorTask(RECV_SPEC, NONE);
     AddChemistryIntegratorTask(CLEAR_SPEC_RECV, RECV_SPEC);
 
     //add advection term here
@@ -67,11 +65,6 @@ void ChemistryIntegratorTaskList::AddChemistryIntegratorTask(uint64_t id, uint64
       task_list_[ntasks].TaskFunc=
         static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
         (&ChemistryIntegratorTaskList::IntegrateSourceTerm);
-      break;
-    case (START_SPEC_RECV):
-      task_list_[ntasks].TaskFunc=
-        static_cast<enum TaskStatus (TaskList::*)(MeshBlock*,int)>
-        (&ChemistryIntegratorTaskList::StartSpeciesReceive);
       break;
     case (CLEAR_SPEC_RECV):
       task_list_[ntasks].TaskFunc=
@@ -99,6 +92,13 @@ void ChemistryIntegratorTaskList::AddChemistryIntegratorTask(uint64_t id, uint64
   return;
 }
 
+void ChemistryIntegratorTaskList::StartupTaskList(MeshBlock *pmb, int stage) {
+#ifdef INCLUDE_CHEMISTRY
+  pmb->pbval->StartReceivingSpecies();
+#endif
+  return;
+}
+
 //--------------------------------------------------------------------------------------
 // Functions to integrate chemistry
 enum TaskStatus ChemistryIntegratorTaskList::IntegrateSourceTerm(MeshBlock *pmb,
@@ -106,16 +106,6 @@ enum TaskStatus ChemistryIntegratorTaskList::IntegrateSourceTerm(MeshBlock *pmb,
 {
 #ifdef INCLUDE_CHEMISTRY
   pmb->pspec->podew->Integrate();
-#endif
-  return TASK_SUCCESS;
-}
-
-//MPI boundary
-enum TaskStatus ChemistryIntegratorTaskList::StartSpeciesReceive(MeshBlock *pmb,
-                                                                 int step)
-{
-#ifdef INCLUDE_CHEMISTRY
-  pmb->pbval->StartReceivingSpecies();
 #endif
   return TASK_SUCCESS;
 }

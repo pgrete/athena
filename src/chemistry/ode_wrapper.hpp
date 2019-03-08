@@ -13,6 +13,14 @@
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
 #include "network/network.hpp" 
+//CVODE headers
+#include <sundials/sundials_types.h> /* realtype type*/
+#include <sundials/sundials_dense.h>
+#include <nvector/nvector_serial.h> /* N_Vector type*/
+#include <cvode/cvode.h>            /* CVODE solver fcts., consts. */
+#include <cvode/cvode_direct.h>       /* prototype for CVDense */
+#include <sunmatrix/sunmatrix_dense.h> /* access to dense SUNMatrix            */
+#include <sunlinsol/sunlinsol_dense.h> /* access to dense SUNLinearSolver      */
 
 class ParameterInput;
 class Species;
@@ -55,6 +63,8 @@ private:
   Species *pmy_spec_;
   Real reltol_;//relative tolerance
   Real abstol_[NSPECIES];//absolute tolerance
+  SUNMatrix dense_matrix_;
+  SUNLinearSolver dense_ls_;
   void *cvode_mem_;
   N_Vector y_;
   Real *ydata_;
