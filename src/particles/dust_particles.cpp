@@ -170,9 +170,14 @@ void DustParticles::SourceTerms(Real t, Real dt, const AthenaArray<Real>& meshsr
   if (taus > 0.0) {
     // Add the drag force to particles.
     for (int k = 0; k < npar; ++k) {
-      vpx(k) = vpx0(k) + wx(k);
-      vpy(k) = vpy0(k) + wy(k);
-      vpz(k) = vpz0(k) + wz(k);
+      // TODO(ccyang): This is a temporary hack; to be fixed.
+      Real tmpx = wx(k), tmpy = wy(k), tmpz = wz(k);
+      wx(k) = vpx(k);
+      wy(k) = vpy(k);
+      wz(k) = vpz(k);
+      vpx(k) = vpx0(k) + tmpx;
+      vpy(k) = vpy0(k) + tmpy;
+      vpz(k) = vpz0(k) + tmpz;
     }
   } else if (taus == 0.0) {
     // Assign gas velocity to particle velocity for tracer particles.
