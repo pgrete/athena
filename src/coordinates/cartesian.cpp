@@ -220,48 +220,6 @@ void Cartesian::MeshCoordsToCartesian(
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn void Cartesian::MeshCoordsToIndices(
-//          Real x1, Real x2, Real x3, Real& xi1, Real& xi2, Real& xi3) const
-//  \brief returns in index coordinates (xi1, xi2, xi3) with respect to the local
-//         grid of MeshBlock pmb from the physical coordinates (x1, x2, x3).
-// TODO(ccyang): Currently only supports uniform mesh.
-
-void Cartesian::MeshCoordsToIndices(
-    Real x1, Real x2, Real x3, Real& xi1, Real& xi2, Real& xi3) const {
-  // Get the meshblock info.
-  const int is = pmy_block->is;
-  const int js = pmy_block->js;
-  const int ks = pmy_block->ks;
-  const RegionSize& block_size = pmy_block->block_size;
-
-  // Make the conversion.
-  xi1 = (block_size.nx1 > 1) ? is + (x1 - block_size.x1min) / dx1f(is) : is;
-  xi2 = (block_size.nx2 > 1) ? js + (x2 - block_size.x2min) / dx2f(js) : js;
-  xi3 = (block_size.nx3 > 1) ? ks + (x3 - block_size.x3min) / dx3f(ks) : ks;
-}
-
-//--------------------------------------------------------------------------------------
-//! \fn void Cartesian::IndicesToMeshCoords(
-//          Real xi1, Real xi2, Real xi3, Real& x1, Real& x2, Real& x3) const
-//  \brief returns in mesh coordinates (x1, x2, x3) from index coordinates
-//         (xi1, xi2, xi3) with respect to the local grid of MeshBlock pmb.
-// TODO(ccyang): Currently only supports uniform mesh.
-
-void Cartesian::IndicesToMeshCoords(
-    Real xi1, Real xi2, Real xi3, Real& x1, Real& x2, Real& x3) const {
-  // Get the meshblock info.
-  const int is = pmy_block->is;
-  const int js = pmy_block->js;
-  const int ks = pmy_block->ks;
-  const RegionSize& block_size = pmy_block->block_size;
-
-  // Make the conversion.
-  x1 = (block_size.nx1 > 1) ? block_size.x1min + (xi1 - is) * dx1f(is) : x1v(is);
-  x2 = (block_size.nx2 > 1) ? block_size.x2min + (xi2 - js) * dx2f(js) : x2v(js);
-  x3 = (block_size.nx3 > 1) ? block_size.x3min + (xi3 - ks) * dx3f(ks) : x3v(ks);
-}
-
-//--------------------------------------------------------------------------------------
 //! \fn void Coordinates::CartesianToMeshCoordsVector(
 //               Real x, Real y, Real z, Real vx, Real vy, Real vz,
 //               Real& vx1, Real& vx2, Real& vx3)

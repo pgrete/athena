@@ -306,10 +306,6 @@ class Cartesian : public Coordinates {
   // functions to make coordinate transformations.
   void CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const;
   void MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const;
-  void MeshCoordsToIndices(
-      Real x1, Real x2, Real x3, Real& xi1, Real& xi2, Real& xi3) const;
-  void IndicesToMeshCoords(
-      Real xi1, Real xi2, Real xi3, Real& x1, Real& x2, Real& x3) const;
   void CartesianToMeshCoordsVector(
       Real x, Real y, Real z, Real vx, Real vy, Real vz,
       Real& vx1, Real& vx2, Real& vx3) const;
