@@ -936,10 +936,12 @@ Real Particles::NewBlockTimeStep() {
   // Find the maximum coordinate speed.
   Real dt_inv2_max = 0.0;
   for (int k = 0; k < npar; ++k) {
-    Real dt_inv2 = 0.0;
-    dt_inv2 += active1_ ? std::pow(vpx(k) / pc->dx1f(static_cast<int>(xi1(k))), 2) : 0;
-    dt_inv2 += active2_ ? std::pow(vpy(k) / pc->dx2f(static_cast<int>(xi2(k))), 2) : 0;
-    dt_inv2 += active3_ ? std::pow(vpz(k) / pc->dx3f(static_cast<int>(xi3(k))), 2) : 0;
+    Real dt_inv2 = 0.0, vpx1, vpx2, vpx3;
+    pc->CartesianToMeshCoordsVector(xp(k), yp(k), zp(k), vpx(k), vpy(k), vpz(k),
+                                    vpx1, vpx2, vpx3);
+    dt_inv2 += active1_ ? std::pow(vpx1 / pc->dx1f(static_cast<int>(xi1(k))), 2) : 0;
+    dt_inv2 += active2_ ? std::pow(vpx2 / pc->dx2f(static_cast<int>(xi2(k))), 2) : 0;
+    dt_inv2 += active3_ ? std::pow(vpx3 / pc->dx3f(static_cast<int>(xi3(k))), 2) : 0;
     dt_inv2_max = std::max(dt_inv2_max, dt_inv2);
   }
 
