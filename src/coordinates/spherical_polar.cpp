@@ -605,3 +605,68 @@ void SphericalPolar::CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
 
   return;
 }
+
+//--------------------------------------------------------------------------------------
+//! \fn void SphericalPolar::CartesianToMeshCoords(
+//          Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const
+//  \brief returns in (x1, x2, x3) the coordinates used by the mesh from Cartesian
+//         coordinates (x, y, z).
+
+void SphericalPolar::CartesianToMeshCoords(
+    Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const {
+  x1 = std::sqrt(x * x + y * y + z * z);
+  x2 = std::acos(z / x1);
+  x3 = std::atan2(x, y);
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void SphericalPolar::MeshCoordsToCartesian(
+//          Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const
+//  \brief returns in Cartesian coordinates (x, y, z) from (x1, x2, x3) the coordinates
+//         used by the mesh.
+
+void SphericalPolar::MeshCoordsToCartesian(
+    Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const {
+  Real rsin = x1 * std::sin(x2);
+  x = rsin * std::cos(x3);
+  y = rsin * std::sin(x3);
+  z = x1 * std::cos(x2);
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void SphericalPolar::CartesianToMeshCoordsVector(
+//               Real x, Real y, Real z, Real vx, Real vy, Real vz,
+//               Real& vx1, Real& vx2, Real& vx3)
+//  \brief returns in (vx1, vx2, vx3) the components of a vector in Mesh coordinates
+//      when the vector is (vx, vy, vz) at (x, y, z) in Cartesian coordinates.
+
+void SphericalPolar::CartesianToMeshCoordsVector(
+    Real x, Real y, Real z, Real vx, Real vy, Real vz,
+    Real& vx1, Real& vx2, Real& vx3) const {
+  Real rh = x * x + y * y, r = std::sqrt(rh + z * z);
+  rh = std::sqrt(rh);
+  Real costh = z / r, sinth = std::sqrt(1.0 - costh * costh);
+  Real cosph = x / rh, sinph = y / rh;
+  Real v = vx * cosph + vy * sinph;
+  vx1 = v * sinth + vz * costh;
+  vx2 = v * costh - vz * sinth;
+  vx3 = vy * cosph - vx * sinph;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void SphericalPolar::MeshCoordsToCartesianVector(
+//               Real x1, Real x2, Real x3, Real vx1, Real vx2, Real vx3,
+//               Real& vx, Real& vy, Real& vz)
+//  \brief returns in (vx, vy, vz) the components of a vector in Cartesian coordinates
+//      when the vector is (vx1, vy1, vz1) at (x1, x2, x3) in Mesh coordinates.
+
+void SphericalPolar::MeshCoordsToCartesianVector(
+    Real x1, Real x2, Real x3, Real vx1, Real vx2, Real vx3,
+    Real& vx, Real& vy, Real& vz) const {
+  Real costh = std::cos(x2), sinth = std::sin(x2);
+  Real cosph = std::cos(x3), sinph = std::sin(x3);
+  Real v = vx1 * sinth + vx2 * costh;
+  vx = v * cosph - vx3 * sinph;
+  vy = v * sinph + vx3 * cosph;
+  vz = vx1 * costh - vx2 * sinth;
+}

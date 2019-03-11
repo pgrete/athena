@@ -418,6 +418,16 @@ class SphericalPolar : public Coordinates {
   void CoordSrcTerms(const Real dt, const AthenaArray<Real> *flux,
                      const AthenaArray<Real> &prim, const AthenaArray<Real> &bcc,
                      AthenaArray<Real> &u) final;
+
+  // functions to make coordinate transformations.
+  void CartesianToMeshCoords(Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const;
+  void MeshCoordsToCartesian(Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const;
+  void CartesianToMeshCoordsVector(
+      Real x, Real y, Real z, Real vx, Real vy, Real vz,
+      Real& vx1, Real& vx2, Real& vx3) const;
+  void MeshCoordsToCartesianVector(
+      Real x1, Real x2, Real x3, Real vx1, Real vx2, Real vx3,
+      Real& vx, Real& vy, Real& vz) const;
 };
 
 //----------------------------------------------------------------------------------------
