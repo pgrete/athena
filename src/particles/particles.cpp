@@ -411,10 +411,7 @@ void Particles::SendToNeighbors() {
     Neighbor *pn = FindTargetNeighbor(ox1, ox2, ox3, xi1i, xi2i, xi3i);
     NeighborBlock *pnb = pn->pnb;
     if (pnb == NULL) {
-      std::stringstream msg;
-      msg << "### FATAL ERROR in function [Particles::SendToNeighbors]" << std::endl
-          << "cannot find the neighbor block to send the particle to. " << std::endl;
-      ATHENA_ERROR(msg);
+      RemoveOneParticle(k);
       continue;
     }
 
