@@ -41,7 +41,6 @@
 #   --cflag=string    append string whenever invoking compiler/linker
 #   --include=path    use -Ipath when compiling
 #   --lib=path        use -Lpath when linking
-#   --machine=choice  allow machine specific compiling options
 # ----------------------------------------------------------------------------------------
 
 # Modules
@@ -174,11 +173,6 @@ parser.add_argument('-pp',
     action='store_true',
     default=False,
     help='enable post-processing')
-
-# --machine argument
-parser.add_argument('--machine',
-    default=None,
-    help='machine specific compiling options')
 
 # --std=[name] argument
 parser.add_argument('--std',
@@ -675,9 +669,7 @@ if args['std'] != None:
 if args['cvode_path'] != '':
   makefile_options['PREPROCESSOR_FLAGS'] += '-I%s/include' % args['cvode_path']
   makefile_options['LINKER_FLAGS'] += '-L%s/lib' % args['cvode_path']
-  #mac compiling
-  if args["machine"] == "mac":
-    makefile_options['LINKER_FLAGS'] += " -Wl,-rpath," + '%s/lib' % args['cvode_path']
+  makefile_options['LINKER_FLAGS'] += " -Wl,-rpath," + '%s/lib' % args['cvode_path']
 # --nspecies argument
 if args['nspecies'] != None:
   definitions['SPECIES_ENABLED'] = '1'
