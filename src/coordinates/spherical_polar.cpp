@@ -616,7 +616,7 @@ void SphericalPolar::CartesianToMeshCoords(
     Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const {
   x1 = std::sqrt(x * x + y * y + z * z);
   x2 = std::acos(z / x1);
-  x3 = std::atan2(x, y);
+  x3 = std::atan2(y, x);
 }
 
 //--------------------------------------------------------------------------------------
