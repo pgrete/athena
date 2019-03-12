@@ -130,10 +130,21 @@ void Particles::GetNumberDensityOnMesh(Mesh *pm, bool include_velocity) {
     ++nblocks;
     ppm = pmb->ppar->ppm;
     ppm->StartReceiving();
-    if (include_velocity)
-      ppm->AssignParticlesToMeshAux(pmb->ppar->realprop, ivpx, imvpx, 3);
-    else
-      ppm->AssignParticlesToMeshAux(pmb->ppar->realprop, 0, ppm->iweight, 0);
+    const Particles *ppar = pmb->ppar;
+    if (include_velocity) {
+      AthenaArray<Real> vp, vp1, vp2, vp3;
+      vp.NewAthenaArray(3, ppar->npar);
+      vp1.InitWithShallowSlice(vp, 2, 0, 1);
+      vp2.InitWithShallowSlice(vp, 2, 1, 1);
+      vp3.InitWithShallowSlice(vp, 2, 2, 1);
+      const Coordinates *pcoord = pmb->pcoord;
+      for (int k = 0; k < ppar->npar; ++k)
+        pcoord->CartesianToMeshCoordsVector(ppar->xp(k), ppar->yp(k), ppar->zp(k),
+            ppar->vpx(k), ppar->vpy(k), ppar->vpz(k), vp1(k), vp2(k), vp3(k));
+      ppm->AssignParticlesToMeshAux(vp, 0, imvpx, 3);
+    } else {
+      ppm->AssignParticlesToMeshAux(ppar->realprop, 0, ppm->iweight, 0);
+    }
     ppm->SendBoundary();
     pmb = pmb->next;
   }
