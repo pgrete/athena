@@ -190,6 +190,7 @@ friend class MeshBlock;
  public:
   // Class method
   static void Initialize(Mesh *pm, ParameterInput *pin);
+  static void SetOneParticleMass(Real new_mass);
 
   // Constructor
   DustParticles(MeshBlock *pmb, ParameterInput *pin);
@@ -222,5 +223,13 @@ friend class MeshBlock;
   AthenaArray<Real> wx, wy, wz;        // shorthand for working arrays
   AthenaArray<Real> dpx1, dpx2, dpx3;  // shorthand for momentum change
 };
+
+//--------------------------------------------------------------------------------------
+//! \fn void DustParticles::SetOneParticleMass(Real new_mass)
+//  \brief sets the mass of each particle.
+
+inline void DustParticles::SetOneParticleMass(Real new_mass) {
+  mass = new_mass;
+}
 
 #endif  // PARTICLES_PARTICLES_HPP_
