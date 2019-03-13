@@ -1028,7 +1028,7 @@ void Particles::ReadRestart(char *mbdata, std::size_t &os) {
 
 void Particles::WriteRestart(char *&pdata) {
   // Write number of particles.
-  memcpy(pdata, &npar, sizeof(npar));
+  std::memcpy(pdata, &npar, sizeof(npar));
   pdata += sizeof(npar);
 
   if (npar > 0) {
