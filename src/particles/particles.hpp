@@ -191,6 +191,7 @@ friend class MeshBlock;
   // Class method
   static void Initialize(Mesh *pm, ParameterInput *pin);
   static void SetOneParticleMass(Real new_mass);
+  static bool GetBackReaction();
 
   // Constructor
   DustParticles(MeshBlock *pmb, ParameterInput *pin);
@@ -230,6 +231,14 @@ friend class MeshBlock;
 
 inline void DustParticles::SetOneParticleMass(Real new_mass) {
   mass = new_mass;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn bool DustParticles::GetBackReaction()
+//  \brief returns if the back reaction of the drag is on or off.
+
+inline bool DustParticles::GetBackReaction() {
+  return backreaction;
 }
 
 #endif  // PARTICLES_PARTICLES_HPP_
