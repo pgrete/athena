@@ -51,6 +51,7 @@ friend class ParticleMesh;
   static void PostInitialize(Mesh *pm, ParameterInput *pin);
   static void FormattedTableOutput(Mesh *pm, OutputParameters op);
   static void GetNumberDensityOnMesh(Mesh *pm, bool include_velocity);
+  static int GetTotalNumber(Mesh *pm);
 
   // Constructor
   Particles(MeshBlock *pmb, ParameterInput *pin);

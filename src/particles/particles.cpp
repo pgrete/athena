@@ -189,6 +189,23 @@ void Particles::GetNumberDensityOnMesh(Mesh *pm, bool include_velocity) {
 }
 
 //--------------------------------------------------------------------------------------
+//! \fn int Particles::GetTotalNumber(Mesh *pm)
+//  \brief returns total number of particles (from all processes).
+
+int Particles::GetTotalNumber(Mesh *pm) {
+  int npartot = 0;
+  MeshBlock *pmb = pm->pblock;
+  while (pmb != NULL) {
+    npartot += pmb->ppar->npar;
+    pmb = pmb->next;
+  }
+#ifdef MPI_PARALLEL
+  MPI_Allreduce(MPI_IN_PLACE, &npartot, 1, MPI_INT, MPI_SUM, my_comm);
+#endif
+  return npartot;
+}
+
+//--------------------------------------------------------------------------------------
 //! \fn Particles::Particles(MeshBlock *pmb, ParameterInput *pin)
 //  \brief constructs a Particles instance.
 
