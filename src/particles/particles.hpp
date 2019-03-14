@@ -192,6 +192,7 @@ friend class MeshBlock;
   static void Initialize(Mesh *pm, ParameterInput *pin);
   static void SetOneParticleMass(Real new_mass);
   static bool GetBackReaction();
+  static Real GetStoppingTime();
 
   // Constructor
   DustParticles(MeshBlock *pmb, ParameterInput *pin);
@@ -239,6 +240,14 @@ inline void DustParticles::SetOneParticleMass(Real new_mass) {
 
 inline bool DustParticles::GetBackReaction() {
   return backreaction;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn Real DustParticles::GetStoppingTime()
+//  \brief returns the stopping time of the drag.
+
+inline Real DustParticles::GetStoppingTime() {
+  return taus;
 }
 
 #endif  // PARTICLES_PARTICLES_HPP_
