@@ -279,6 +279,9 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) {
     max_level = 63;
   }
 
+  // Initialize Particles class.
+  if (PARTICLES) DustParticles::Initialize(this, pin);
+
   if (EOS_TABLE_ENABLED) peos_table = new EosTable(pin);
   InitUserMeshData(pin);
 
@@ -481,9 +484,6 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) {
   //  if (SELF_GRAVITY_ENABLED==2 && ...) // independent allocation
   //    gflag=2;
 
-  // Initialize Particles class
-  if (PARTICLES) DustParticles::Initialize(this, pin);
-
   // create MeshBlock list for this process
   int nbs=nslist[Globals::my_rank];
   int nbe=nbs+nblist[Globals::my_rank]-1;
@@ -683,6 +683,9 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
     max_level = 63;
   }
 
+  // Initialize Particles class.
+  if (PARTICLES) DustParticles::Initialize(this, pin);
+
   if (EOS_TABLE_ENABLED) peos_table = new EosTable(pin);
   InitUserMeshData(pin);
 
@@ -806,9 +809,6 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   if (SELF_GRAVITY_ENABLED) gflag=1;
   //  if (SELF_GRAVITY_ENABLED==2 && ...) // independent allocation
   //    gflag=2;
-
-  // Initialize Particles class
-  if (PARTICLES) DustParticles::Initialize(this, pin);
 
   // allocate data buffer
   int nb=nblist[Globals::my_rank];
