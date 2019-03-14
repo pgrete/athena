@@ -748,7 +748,7 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
 void Particles::EulerStep(Real t, Real dt, const AthenaArray<Real>& meshsrc) {
   // Update positions.
   for (int k = 0; k < npar; ++k) {
-    // TODO: This is a temporary hack.
+    // TODO(ccyang): This is a temporary hack.
     Real tmpx = xp(k), tmpy = yp(k), tmpz = zp(k);
     xp(k) = xp0(k) + dt * vpx(k);
     yp(k) = yp0(k) + dt * vpy(k);
