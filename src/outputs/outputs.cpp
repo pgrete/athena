@@ -545,8 +545,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb) {
     ParticleMesh *ppm = pmb->ppar->ppm;
 
     // particle number density
-    if (output_params.variable.compare("np") == 0 ||
-        output_params.variable.compare("prim") == 0) {
+    if (output_params.variable.compare("np") == 0) {
       pod = new OutputData;
       pod->type = "SCALARS";
       pod->name = "np";
@@ -564,6 +563,25 @@ void OutputType::LoadOutputData(MeshBlock *pmb) {
       pod->data.InitWithShallowSlice(ppm->meshaux, 4, Particles::imvpx, 3);
       AppendOutputDataNode(pod);
       num_vars_ += 3;
+    }
+
+    // particle mass density
+    if (output_params.variable.compare("rhop") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "rhop";
+      pod->data.NewAthenaArray(ppm->weight.GetDim3(),
+                               ppm->weight.GetDim2(), ppm->weight.GetDim1());
+      const int is = ppm->is, js = ppm->js, ks = ppm->ks;
+      const int ie = ppm->ie, je = ppm->je, ke = ppm->ke;
+      const Real mass = DustParticles::GetOneParticleMass();
+      for (int k = ks; k <= ke; ++k)
+        for (int j = js; j <= je; ++j)
+          for (int i = is; i <= ie; ++i)
+            pod->data(k,j,i) = mass * ppm->weight(k,j,i);
+      AppendOutputDataNode(pod);
+      num_vars_++;
     }
   }
 
