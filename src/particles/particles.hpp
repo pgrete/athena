@@ -192,6 +192,7 @@ friend class MeshBlock;
   static void Initialize(Mesh *pm, ParameterInput *pin);
   static void SetOneParticleMass(Real new_mass);
   static bool GetBackReaction();
+  static Real GetOneParticleMass();
   static Real GetStoppingTime();
 
   // Constructor
@@ -240,6 +241,14 @@ inline void DustParticles::SetOneParticleMass(Real new_mass) {
 
 inline bool DustParticles::GetBackReaction() {
   return backreaction;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn Real DustParticles::GetOneParticleMass()
+//  \brief returns the mass of each particle.
+
+inline Real DustParticles::GetOneParticleMass() {
+  return mass;
 }
 
 //--------------------------------------------------------------------------------------
