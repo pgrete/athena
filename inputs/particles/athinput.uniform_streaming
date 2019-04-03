@@ -17,6 +17,7 @@ cfl_number  = 0.3       # The Courant, Friedrichs, & Lewy (CFL) Number
 nlim        = -1        # cycle limit
 tlim        = 1.0       # time limit
 integrator  = vl2       # time integration algorithm
+ncycle_out  = 50        # interval for writing summary info to stdout
 
 <mesh>
 nx1         = 16        # Number of zones in X1-direction
