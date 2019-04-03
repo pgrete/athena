@@ -273,7 +273,7 @@ Particles::~Particles() {
 void Particles::ClearBoundary() {
   for (int i = 0; i < pbval_->nneighbor; ++i) {
     NeighborBlock& nb = pbval_->neighbor[i];
-    bstatus_[nb.bufid] = BNDRY_WAITING;
+    bstatus_[nb.bufid] = BoundaryStatus::waiting;
 #ifdef MPI_PARALLEL
     if (nb.rank != Globals::my_rank) {
       ParticleBuffer& recv = recv_[nb.bufid];
@@ -488,7 +488,8 @@ void Particles::SendToNeighbors() {
     if (dst == Globals::my_rank) {
       Particles *ppar = pmy_mesh->FindMeshBlock(nb.gid)->ppar;
       ppar->bstatus_[nb.targetid] =
-          (ppar->recv_[nb.targetid].npar > 0) ? BNDRY_ARRIVED : BNDRY_COMPLETED;
+          (ppar->recv_[nb.targetid].npar > 0) ? BoundaryStatus::arrived
+                                              : BoundaryStatus::completed;
     } else {
 #ifdef MPI_PARALLEL
       ParticleBuffer& send = send_[nb.bufid];
@@ -538,7 +539,7 @@ bool Particles::ReceiveFromNeighbors() {
 
 #ifdef MPI_PARALLEL
     // Communicate with neighbor processes.
-    if (nb.rank != Globals::my_rank && bstatus == BNDRY_WAITING) {
+    if (nb.rank != Globals::my_rank && bstatus == BoundaryStatus::waiting) {
       ParticleBuffer& recv = recv_[nb.bufid];
       if (!recv.flagn) {
         // Get the number of incoming particles.
@@ -557,7 +558,7 @@ bool Particles::ReceiveFromNeighbors() {
             }
           } else {
             // No incoming particles.
-            bstatus = BNDRY_COMPLETED;
+            bstatus = BoundaryStatus::completed;
           }
         }
       }
@@ -578,23 +579,23 @@ bool Particles::ReceiveFromNeighbors() {
             MPI_Test(&recv.reqr, &recv.flagr, MPI_STATUS_IGNORE);
         }
         if (recv.flagi && recv.flagr)
-          bstatus = BNDRY_ARRIVED;
+          bstatus = BoundaryStatus::arrived;
       }
     }
 #endif
 
     switch (bstatus) {
-      case BNDRY_COMPLETED:
+      case BoundaryStatus::completed:
         break;
 
-      case BNDRY_WAITING:
+      case BoundaryStatus::waiting:
         flag = false;
         break;
 
-      case BNDRY_ARRIVED:
+      case BoundaryStatus::arrived:
         ParticleBuffer& recv = recv_[nb.bufid];
         FlushReceiveBuffer(recv);
-        bstatus = BNDRY_COMPLETED;
+        bstatus = BoundaryStatus::completed;
         break;
     }
   }

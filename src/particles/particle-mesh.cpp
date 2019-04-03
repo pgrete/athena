@@ -104,7 +104,7 @@ ParticleMesh::ParticleMesh(Particles *ppar) {
   // Initialize boundary data.
   bd_.nbmax = 56;
   for (int n = 0; n < bd_.nbmax; n++) {
-    bd_.flag[n] = BNDRY_WAITING;
+    bd_.flag[n] = BoundaryStatus::waiting;
     bd_.send[n] = NULL;
     bd_.recv[n] = NULL;
 #ifdef MPI_PARALLEL
@@ -511,7 +511,7 @@ void ParticleMesh::SetBoundaryAttributes() {
 
     // Consider the transverse directions.
     if (nb.level > mylevel) {  // Neighbor block is at a finer level.
-      if (nb.type == NEIGHBOR_FACE) {
+      if (nb.type == NeighborConnect::face) {
         if (nb.ox1 != 0) {
           if (active2_) {
             if (nb.fi1) {
@@ -576,7 +576,7 @@ void ParticleMesh::SetBoundaryAttributes() {
             }
           }
         }
-      } else if (nb.type == NEIGHBOR_EDGE) {
+      } else if (nb.type == NeighborConnect::edge) {
         if (nb.ox1 == 0) {
           if (active1_) {
             if (nb.fi1) {
@@ -613,7 +613,7 @@ void ParticleMesh::SetBoundaryAttributes() {
         }
       }
     } else if (nb.level < mylevel) {  // Neighbor block is at a coarser level.
-      if (nb.type == NEIGHBOR_FACE) {
+      if (nb.type == NeighborConnect::face) {
         if (nb.ox1 != 0) {
           if (active2_ && myfx2) xi2_0 = xi2min - dxig;
           if (active3_ && myfx3) xi3_0 = xi3min - dxig;
@@ -624,7 +624,7 @@ void ParticleMesh::SetBoundaryAttributes() {
           if (active1_ && myfx1) xi1_0 = xi1min - dxig;
           if (active2_ && myfx2) xi2_0 = xi2min - dxig;
         }
-      } else if (nb.type == NEIGHBOR_EDGE) {
+      } else if (nb.type == NeighborConnect::edge) {
         if (nb.ox1 == 0) {
           if (active1_ && myfx1) xi1_0 = xi1min - dxig;
         } else if (nb.ox2 == 0) {
@@ -788,7 +788,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
 
     // Set the boundary flag.
     if (nb.rank == Globals::my_rank)
-      pnbd->flag[nb.targetid] = BNDRY_ARRIVED;
+      pnbd->flag[nb.targetid] = BoundaryStatus::arrived;
 #ifdef MPI_PARALLEL
     else
       MPI_Start(&bd_.req_send[nb.bufid]);
@@ -832,7 +832,7 @@ void ParticleMesh::ClearBoundary() {
     if (nb.rank != Globals::my_rank)
       MPI_Wait(&bd_.req_send[nb.bufid], MPI_STATUS_IGNORE);
 #endif
-    bd_.flag[nb.bufid] = BNDRY_WAITING;
+    bd_.flag[nb.bufid] = BoundaryStatus::waiting;
   }
 }
 
@@ -851,7 +851,7 @@ void ParticleMesh::SendBoundary() {
       if (nb.rank == Globals::my_rank) {
         BoundaryData *pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
         LoadBoundaryBufferSameLevel(pnbd->recv[nb.targetid], ba_[n]);
-        pnbd->flag[nb.targetid] = BNDRY_ARRIVED;
+        pnbd->flag[nb.targetid] = BoundaryStatus::arrived;
       } else {
 #ifdef MPI_PARALLEL
         LoadBoundaryBufferSameLevel(bd_.send[nb.bufid], ba_[n]);
@@ -890,7 +890,7 @@ bool ParticleMesh::ReceiveBoundary() {
     NeighborBlock& nb = pbval_->neighbor[n];
     enum BoundaryStatus& bstatus = bd_.flag[nb.bufid];
 
-    if (bstatus == BNDRY_WAITING) {
+    if (bstatus == BoundaryStatus::waiting) {
       if (nb.rank == Globals::my_rank) {
         completed = false;
         continue;
@@ -902,14 +902,14 @@ bool ParticleMesh::ReceiveBoundary() {
           completed = false;
           continue;
         }
-        bstatus = BNDRY_ARRIVED;
+        bstatus = BoundaryStatus::arrived;
 #endif
       }
     }
 
-    if (bstatus == BNDRY_ARRIVED) {
+    if (bstatus == BoundaryStatus::arrived) {
       AddBoundaryBuffer(bd_.recv[nb.bufid], ba_[n]);
-      bstatus = BNDRY_COMPLETED;
+      bstatus = BoundaryStatus::completed;
     }
   }
 
