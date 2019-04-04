@@ -179,7 +179,7 @@ Real Shielding::fShield_C(const Real NC, const Real NH2) {
   const Real AH2 = 1.17e-8;
   const Real tau_H2 = 1.2e-14 * 2 * NH2i;
   const Real y = AH2 * tau_H2;
-  const Real ry = exp(-y) * (1. + y);
+  const Real ry = exp(-y) / (1. + y);
   const Real rc = exp(-1.6e-17*NCi);
   return rc * ry;
 }
