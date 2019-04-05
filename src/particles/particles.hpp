@@ -74,8 +74,8 @@ friend class ParticleMesh;
   Real NewBlockTimeStep();
 
   size_t GetSizeInBytes();
-  void ReadRestart(char *mbdata, std::size_t &os);
-  void WriteRestart(char *&pdata);
+  void UnpackParticlesForRestart(char *mbdata, std::size_t &os);
+  void PackParticlesForRestart(char *&pdata);
 
  protected:
   // Class methods

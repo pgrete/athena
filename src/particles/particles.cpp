@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -917,7 +919,7 @@ int Particles::AddWorkingArray() {
 
 //--------------------------------------------------------------------------------------
 //! \fn void Particles::AssignShorthands()
-//  \brief assigns shorthands by shallow coping slices of the data.
+//  \brief assigns shorthands by shallow copying slices of the data.
 
 void Particles::AssignShorthands() {
   pid.InitWithShallowSlice(intprop, 2, ipid, 1);
@@ -992,19 +994,15 @@ std::size_t Particles::GetSizeInBytes() {
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn Particles::ReadRestart()
+//! \fn Particles::UnpackParticlesForRestart()
 //  \brief reads the particle data from the restart file.
 
-void Particles::ReadRestart(char *mbdata, std::size_t &os) {
+void Particles::UnpackParticlesForRestart(char *mbdata, std::size_t &os) {
   // Read number of particles.
   std::memcpy(&npar, &(mbdata[os]), sizeof(npar));
   os += sizeof(npar);
-  if (npar > nparmax) {
-    std::stringstream msg;
-    msg << "### FATAL ERROR in function [Particles::ReadRestart]" << std::endl
-        << "npar = " << npar << " > nparmax = " << nparmax << std::endl;
-    ATHENA_ERROR(msg);
-  }
+  if (nparmax < npar)
+    UpdateCapacity(npar);
 
   if (npar > 0) {
     // Read integer properties.
@@ -1024,10 +1022,10 @@ void Particles::ReadRestart(char *mbdata, std::size_t &os) {
 }
 
 //--------------------------------------------------------------------------------------
-//! \fn Particles::WriteRestart()
-//  \brief writes the particle data to the restart file.
+//! \fn Particles::PackParticlesForRestart()
+//  \brief pack the particle data for restart dump.
 
-void Particles::WriteRestart(char *&pdata) {
+void Particles::PackParticlesForRestart(char *&pdata) {
   // Write number of particles.
   std::memcpy(pdata, &npar, sizeof(npar));
   pdata += sizeof(npar);
@@ -1039,22 +1037,20 @@ void Particles::WriteRestart(char *&pdata) {
       std::memcpy(pdata, &(intprop(k,0)), size);
       pdata += size;
     }
-
+    std::cout << intprop(0,100) << std::endl;
     // Write real properties.
     size = npar * sizeof(Real);
     for (int k = 0; k < nreal; ++k) {
       std::memcpy(pdata, &(realprop(k,0)), size);
       pdata += size;
     }
+    std::cout << realprop(0,100) << std::endl;
   }
 }
 
 //--------------------------------------------------------------------------------------
 //! \fn Particles::FormattedTableOutput()
 //  \brief outputs the particle data in tabulated format.
-
-#include <fstream>
-#include <iomanip>
 
 void Particles::FormattedTableOutput(Mesh *pm, OutputParameters op) {
   MeshBlock *pmb = pm->pblock;

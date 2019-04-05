@@ -15,6 +15,7 @@
 // C headers
 
 // C++ headers
+#include <algorithm>  // min()
 #include <cstddef>  // size_t
 #include <cstring>  // memset
 
@@ -332,8 +333,6 @@ void AthenaArray<T>::SwapAthenaArray(AthenaArray<T>& array2) {
 //--------------------------------------------------------------------------------------
 //! \fn void AthenaArray<T>::ResizeLastDimension()
 //  \brief resizes the last dimension either by augmenting zeros or cutting the data.
-
-#include <algorithm>  // min()
 
 template<typename T>
 void AthenaArray<T>::ResizeLastDimension(int new_nx1) {

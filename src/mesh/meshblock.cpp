@@ -255,11 +255,8 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
   }
 
   // NEW_PHYSICS: add load of new physics from restart file here
-  if (SELF_GRAVITY_ENABLED >= 1) {
-    std::memcpy(pgrav->phi.data(), &(mbdata[os]), pgrav->phi.GetSizeInBytes());
-    os += pgrav->phi.GetSizeInBytes();
-  }
-  if (PARTICLES) ppar->ReadRestart(mbdata, os);
+
+  if (PARTICLES) ppar->UnpackParticlesForRestart(mbdata, os);
 
   // load user MeshBlock data
   for (int n=0; n<nint_user_meshblock_data_; n++) {

@@ -537,8 +537,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   RegionSize block_size;
   BoundaryFlag block_bcs[6];
   MeshBlock *pfirst{};
-  IOWrapperSizeT *offset{};
-  IOWrapperSizeT datasize, listsize, headeroffset;
+  IOWrapperSizeT mdsize, headeroffset;
 
   // mesh test
   if (mesh_test>0) Globals::nranks=mesh_test;
@@ -585,8 +584,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   headeroffset=resfile.GetPosition();
   // read the restart file
   // the file is already open and the pointer is set to after <par_end>
-  IOWrapperSizeT headersize = sizeof(int)*3+sizeof(Real)*2
-                              + sizeof(RegionSize)+sizeof(IOWrapperSizeT);
+  IOWrapperSizeT headersize = sizeof(int)*3+sizeof(Real)*2+sizeof(RegionSize);
   char *headerdata = new char[headersize];
   if (Globals::my_rank==0) { // the master process reads the header data
     if (resfile.Read(headerdata, 1, headersize)!=headersize) {
@@ -613,8 +611,6 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   hdos+=sizeof(Real);
   std::memcpy(&ncycle, &(headerdata[hdos]), sizeof(int));
   hdos+=sizeof(int);
-  std::memcpy(&datasize, &(headerdata[hdos]), sizeof(IOWrapperSizeT));
-  hdos+=sizeof(IOWrapperSizeT);
 
   delete [] headerdata;
 
@@ -624,11 +620,11 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
 
   // initialize
   loclist=new LogicalLocation[nbtotal];
-  offset=new IOWrapperSizeT[nbtotal];
   costlist=new Real[nbtotal];
   ranklist=new int[nbtotal];
   nslist=new int[Globals::nranks];
   nblist=new int[Globals::nranks];
+  IOWrapperSizeT *sizelist=new IOWrapperSizeT[nbtotal];
 
   block_size.nx1 = pin->GetOrAddInteger("meshblock","nx1",mesh_size.nx1);
   block_size.nx2 = pin->GetOrAddInteger("meshblock","nx2",mesh_size.nx2);
@@ -736,11 +732,11 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   }
 
   // read the ID list
-  listsize=sizeof(LogicalLocation)+sizeof(Real);
-  //allocate the idlist buffer
-  char *idlist = new char[listsize*nbtotal];
+  mdsize=sizeof(LogicalLocation)+sizeof(Real)+sizeof(IOWrapperSizeT);
+  //allocate the mbmetadata buffer
+  char *mbmetadata = new char[mdsize*nbtotal];
   if (Globals::my_rank==0) { // only the master process reads the ID list
-    if (resfile.Read(idlist,listsize,nbtotal)!=static_cast<unsigned int>(nbtotal)) {
+    if (resfile.Read(mbmetadata,mdsize,nbtotal)!=static_cast<unsigned int>(nbtotal)) {
       msg << "### FATAL ERROR in Mesh constructor" << std::endl
           << "The restart file is broken." << std::endl;
       ATHENA_ERROR(msg);
@@ -748,21 +744,24 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   }
 #ifdef MPI_PARALLEL
   // then broadcast the ID list
-  MPI_Bcast(idlist, listsize*nbtotal, MPI_BYTE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(mbmetadata, mdsize*nbtotal, MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif
 
   int os=0;
   for (int i=0; i<nbtotal; i++) {
-    std::memcpy(&(loclist[i]), &(idlist[os]), sizeof(LogicalLocation));
+    std::memcpy(&(loclist[i]), &(mbmetadata[os]), sizeof(LogicalLocation));
     os+=sizeof(LogicalLocation);
-    std::memcpy(&(costlist[i]), &(idlist[os]), sizeof(Real));
+    std::memcpy(&(costlist[i]), &(mbmetadata[os]), sizeof(Real));
     os+=sizeof(Real);
+    std::memcpy(&(sizelist[i]), &(mbmetadata[os]), sizeof(IOWrapperSizeT));
+    os+=sizeof(IOWrapperSizeT);
     if (loclist[i].level>current_level) current_level=loclist[i].level;
+    std::cout << "MB " << i << " " << costlist[i] <<" " << sizelist[i]<< std::endl;
   }
-  delete [] idlist;
+  delete [] mbmetadata;
 
   // calculate the header offset and seek
-  headeroffset+=headersize+udsize+listsize*nbtotal;
+  headeroffset+=headersize+udsize+mdsize*nbtotal;
   if (Globals::my_rank!=0)
     resfile.Seek(headeroffset);
 
@@ -790,7 +789,6 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
       std::cout << "### Warning in Mesh constructor" << std::endl
                 << "Too few mesh blocks: nbtotal ("<< nbtotal <<") < nranks ("
                 << Globals::nranks << ")" << std::endl;
-      delete [] offset;
       return;
     }
   }
@@ -812,7 +810,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   // Output MeshBlock list and quit (mesh test only); do not create meshes
   if (mesh_test>0) {
     if (Globals::my_rank==0) OutputMeshStructure(dim);
-    delete [] offset;
+    delete [] sizelist;
     return;
   }
 
@@ -826,44 +824,43 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
   int nb=nblist[Globals::my_rank];
   int nbs=nslist[Globals::my_rank];
   int nbe=nbs+nb-1;
-  char *mbdata = new char[datasize*nb];
+  IOWrapperSizeT mysize=0, myoffset=headeroffset;
+  for (int n=nbs; n<=nbe; n++)
+    mysize+=sizelist[n];
+  for (int n=0; n<nbs; n++)
+    myoffset+=sizelist[n];
+  char *mbdata = new char[mysize];
+
   // load MeshBlocks (parallel)
-  if (resfile.Read_at_all(mbdata, datasize, nb, headeroffset+nbs*datasize) !=
-      static_cast<unsigned int>(nb)) {
+  if (resfile.Read_at_all(mbdata, mysize, 1, myoffset) != 1) {
     msg << "### FATAL ERROR in Mesh constructor" << std::endl
         << "The restart file is broken or input parameters are inconsistent."
         << std::endl;
     ATHENA_ERROR(msg);
+    delete [] sizelist;
+    delete [] mbdata;
   }
+
+  std::uint64_t buff_os = 0;
   for (int i=nbs; i<=nbe; i++) {
-    // Match fixed-width integer precision of IOWrapperSizeT datasize
-    std::uint64_t buff_os = datasize * (i-nbs);
     SetBlockSizeAndBoundaries(loclist[i], block_size, block_bcs);
     // create a block and add into the link list
     if (i==nbs) {
       pblock = new MeshBlock(i, i-nbs, this, pin, loclist[i], block_size,
-                             block_bcs, costlist[i], mbdata+buff_os, gflag);
+                             block_bcs, costlist[i], &mbdata[buff_os], gflag);
       pfirst = pblock;
     } else {
       pblock->next = new MeshBlock(i, i-nbs, this, pin, loclist[i], block_size,
-                                   block_bcs, costlist[i], mbdata+buff_os, gflag);
+                                   block_bcs, costlist[i], &mbdata[buff_os], gflag);
       pblock->next->prev = pblock;
       pblock = pblock->next;
     }
     pblock->pbval->SearchAndSetNeighbors(tree, ranklist, nslist);
+    buff_os+=sizelist[i];
   }
   pblock=pfirst;
-  delete [] mbdata;
-  // check consistency
-  if (datasize!=pblock->GetBlockSizeInBytes()) {
-    msg << "### FATAL ERROR in Mesh constructor" << std::endl
-        << "The restart file is broken or input parameters are inconsistent."
-        << std::endl;
-    ATHENA_ERROR(msg);
-  }
 
-  // clean up
-  delete [] offset;
+  delete [] mbdata;
 
   // Initialize neighbor lists in Particle class.
   if (PARTICLES) {
@@ -881,6 +878,20 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
 
   if (turb_flag > 0)
     ptrbd = new TurbulenceDriver(this, pin);
+
+  // check consistency
+  MeshBlock *pmb=pblock;
+  while (pmb!=nullptr) {
+    if (sizelist[pmb->gid]!=pmb->GetBlockSizeInBytes()) {
+      msg << "### FATAL ERROR in Mesh constructor" << std::endl
+          << "The restart file is broken or input parameters are inconsistent."
+          << std::endl;
+      ATHENA_ERROR(msg);
+    }
+    pmb=pmb->next;
+  }
+
+  delete [] sizelist;
 }
 
 //----------------------------------------------------------------------------------------
@@ -1603,7 +1614,10 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
 #pragma omp parallel for num_threads(nthreads)
   for (int i=0; i<nmb; ++i) {
     pmb_array[i]->phydro->NewBlockTimeStep();
-    if (PARTICLES) pmb_array[i]->ppar->NewBlockTimeStep();
+    if (PARTICLES) {
+      Real min_dt=pmb_array[i]->ppar->NewBlockTimeStep();
+      pmb_array[i]->new_block_dt_ = std::min(pmb_array[i]->new_block_dt_, min_dt);
+    }
   }
 
   NewTimeStep();
