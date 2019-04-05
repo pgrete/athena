@@ -756,7 +756,6 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) {
     std::memcpy(&(sizelist[i]), &(mbmetadata[os]), sizeof(IOWrapperSizeT));
     os+=sizeof(IOWrapperSizeT);
     if (loclist[i].level>current_level) current_level=loclist[i].level;
-    std::cout << "MB " << i << " " << costlist[i] <<" " << sizelist[i]<< std::endl;
   }
   delete [] mbmetadata;
 

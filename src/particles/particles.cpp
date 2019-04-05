@@ -1037,14 +1037,12 @@ void Particles::PackParticlesForRestart(char *&pdata) {
       std::memcpy(pdata, &(intprop(k,0)), size);
       pdata += size;
     }
-    std::cout << intprop(0,100) << std::endl;
     // Write real properties.
     size = npar * sizeof(Real);
     for (int k = 0; k < nreal; ++k) {
       std::memcpy(pdata, &(realprop(k,0)), size);
       pdata += size;
     }
-    std::cout << realprop(0,100) << std::endl;
   }
 }
 

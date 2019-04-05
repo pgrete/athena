@@ -196,6 +196,8 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_wr
     // also update MeshBlock::GetBlockSizeInBytes accordingly and MeshBlock constructor
     // for restarts.
 
+    // Self-gravity outout is removed, as the implemented solvers do not need to save phi
+
     if (PARTICLES) pmb->ppar->PackParticlesForRestart(pdata);
 
     // pack the user MeshBlock data

@@ -256,6 +256,12 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
 
   // NEW_PHYSICS: add load of new physics from restart file here
 
+  // Removed self-gravity as the implemented solvers do not need to (re)store phi
+  // if (SELF_GRAVITY_ENABLED >= 1) {
+  //   std::memcpy(pgrav->phi.data(), &(mbdata[os]), pgrav->phi.GetSizeInBytes());
+  //   os += pgrav->phi.GetSizeInBytes();
+  // }
+
   if (PARTICLES) ppar->UnpackParticlesForRestart(mbdata, os);
 
   // load user MeshBlock data
@@ -394,8 +400,10 @@ std::size_t MeshBlock::GetBlockSizeInBytes() {
   if (MAGNETIC_FIELDS_ENABLED)
     size+=(pfield->b.x1f.GetSizeInBytes()+pfield->b.x2f.GetSizeInBytes()
            +pfield->b.x3f.GetSizeInBytes());
-  if (SELF_GRAVITY_ENABLED)
-    size+=pgrav->phi.GetSizeInBytes();
+
+  // Removed self-gravity as the implemented solvers do not need to (re)store phi
+  // if (SELF_GRAVITY_ENABLED)
+  //   size+=pgrav->phi.GetSizeInBytes();
 
   // NEW_PHYSICS: modify the size counter here when new physics is introduced
   if (PARTICLES) size += ppar->GetSizeInBytes();
