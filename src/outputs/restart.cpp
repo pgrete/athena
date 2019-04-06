@@ -99,8 +99,8 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_wr
   }
 #ifdef MPI_PARALLEL
   // collect the size list - assuming IOWrapperSizeT is 64bit integer
-  MPI_Allgatherv(MPI_IN_PLACE, mynb, MPI_INTEGER8, sizelist, pm->nblist, pm->nslist,
-                 MPI_INTEGER8, MPI_COMM_WORLD);
+  MPI_Allgatherv(MPI_IN_PLACE, mynb, MPI_UINT64_T, sizelist, pm->nblist, pm->nslist,
+                 MPI_UINT64_T, MPI_COMM_WORLD);
 #endif
 
   // write the header; this part is serial
