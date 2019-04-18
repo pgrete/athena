@@ -63,7 +63,7 @@ static std::vector<std::string> split(std::string str, char delimiter);
 static void trim(std::string &s);
 //function to read data field from vtk file
 static void readvtk(MeshBlock *mb, std::string filename, std::string field,
-                    int component, AthenaArray<float> &data, int isjoinedvtk);
+                    int component, AthenaArray<Real> &data, int isjoinedvtk);
 //swap bytes
 static void ath_bswap(void *vdat, int len, int cnt);
 
@@ -95,7 +95,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
   int ierr;
   //read joined or unjoined vtk files
   int isjoinedvtk = pin->GetOrAddInteger("problem", "is_joined_vtk", 0);
-  AthenaArray<float> data; //temporary array to store data;
+  AthenaArray<Real> data; //temporary array to store data;
   AthenaArray<Real> b; //needed for PrimitiveToConserved()
   if (isjoinedvtk != 0) {
 #ifdef DEBUG
@@ -152,7 +152,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast density.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_FLOAT, 0, MPI_COMM_WORLD);
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast density.\n");
@@ -178,7 +178,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast pressure.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_FLOAT, 0, MPI_COMM_WORLD);
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast pressure.\n");
@@ -213,7 +213,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast velocity 0.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_FLOAT, 0, MPI_COMM_WORLD);
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast velocity 0.\n");
@@ -236,7 +236,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast velocity 1.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_FLOAT, 0, MPI_COMM_WORLD);
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast velocity 1.\n");
@@ -259,7 +259,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         printf("Start to MPI broadcast velocity 2.\n");
 #endif
         ierr = MPI_Bcast(data.data(), Nx_mesh*Ny_mesh*Nz_mesh,
-            MPI_FLOAT, 0, MPI_COMM_WORLD);
+            MPI_ATHENA_REAL, 0, MPI_COMM_WORLD);
 #ifdef DEBUG
         MPI_Barrier(MPI_COMM_WORLD);
         printf("End MPI brocast velocity 2.\n");
@@ -453,7 +453,7 @@ static void trim(std::string &s)
 
 //TODO: put comments here and declaration at top.
 static void readvtk(MeshBlock *mb, std::string filename, std::string field,
-                    int component, AthenaArray<float> &data, int isjoinedvtk) {
+                    int component, AthenaArray<Real> &data, int isjoinedvtk) {
   std::stringstream msg;
   FILE *fp = NULL;
   char cline[256], type[256], variable[256], format[256], t_type[256], t_format[256];
