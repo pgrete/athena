@@ -1330,6 +1330,14 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
       Field *pfield;
       BoundaryValues *pbval;
 
+      // prepare to receive conserved variables
+#pragma omp for private(pmb,pbval)
+      for (int i=0; i<nmb; ++i) {
+        pmb=pmb_array[i]; pbval=pmb->pbval;
+        pbval->Initialize();
+        pbval->StartReceivingForInit(true);
+      }
+
     // send conserved variables
 #pragma omp for private(pmb,pbval)
     for (int i=0; i<nmb; ++i) {
