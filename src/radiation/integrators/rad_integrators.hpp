@@ -53,6 +53,9 @@ public:
 private:
   Real rad_G0_; //unshielded radiation field strengh, uniform.
   Real unit_length_in_cm_;
+  //six_ray: factors for column in current and previous cell
+  Real f_cell;
+  Real f_prev; 
   //index for direction of rays in six-ray
   NeighborBlock* pfacenb_[6]; //TODO:uniform mesh for now
 };
