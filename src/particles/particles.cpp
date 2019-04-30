@@ -690,12 +690,21 @@ int Particles::CountNewParticles() const {
 void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
   bool flag = false;
   RegionSize& mesh_size = pmy_mesh->mesh_size;
+  Coordinates *pcoord = pmy_block->pcoord;
 
   // Find the mesh coordinates.
   Real x10, x20, x30;
-  pmy_block->pcoord->IndicesToMeshCoords(xi1(k), xi2(k), xi3(k), x1, x2, x3);
-  pmy_block->pcoord->CartesianToMeshCoords(xp0(k), yp0(k), zp0(k), x10, x20, x30);
+  pcoord->IndicesToMeshCoords(xi1(k), xi2(k), xi3(k), x1, x2, x3);
+  pcoord->CartesianToMeshCoords(xp0(k), yp0(k), zp0(k), x10, x20, x30);
 
+  // Convert velocity vectors in mesh coordinates.
+  Real vp1, vp2, vp3, vp10, vp20, vp30;
+  pcoord->CartesianToMeshCoordsVector(xp(k), yp(k), zp(k),
+                                      vpx(k), vpy(k), vpz(k), vp1, vp2, vp3);
+  pcoord->CartesianToMeshCoordsVector(xp0(k), yp0(k), zp0(k),
+                                      vpx0(k), vpy0(k), vpz0(k), vp10, vp20, vp30);
+
+  // Apply periodic boundary conditions in X1.
   if (active1_) {
     if (x1 < mesh_size.x1min) {
       // Inner x1
@@ -710,6 +719,7 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
     }
   }
 
+  // Apply periodic boundary conditions in X2.
   if (active2_) {
     if (x2 < mesh_size.x2min) {
       // Inner x2
@@ -724,6 +734,7 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
     }
   }
 
+  // Apply periodic boundary conditions in X3.
   if (active3_) {
     if (x3 < mesh_size.x3min) {
       // Inner x3
@@ -739,8 +750,13 @@ void Particles::ApplyBoundaryConditions(int k, Real &x1, Real &x2, Real &x3) {
   }
 
   if (flag) {
-    pmy_block->pcoord->MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
-    pmy_block->pcoord->MeshCoordsToCartesian(x10, x20, x30, xp0(k), yp0(k), zp0(k));
+    // Convert positions and velocities back in Cartesian coordinates.
+    pcoord->MeshCoordsToCartesian(x1, x2, x3, xp(k), yp(k), zp(k));
+    pcoord->MeshCoordsToCartesian(x10, x20, x30, xp0(k), yp0(k), zp0(k));
+    pcoord->MeshCoordsToCartesianVector(x1, x2, x3,
+                                        vp1, vp2, vp3, vpx(k), vpy(k), vpz(k));
+    pcoord->MeshCoordsToCartesianVector(x10, x20, x30,
+                                        vp10, vp20, vp30, vpx0(k), vpy0(k), vpz0(k));
   }
 }
 
