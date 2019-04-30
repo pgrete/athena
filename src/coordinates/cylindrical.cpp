@@ -396,3 +396,64 @@ void Cylindrical::CoordSrcTerms(
 
   return;
 }
+
+//--------------------------------------------------------------------------------------
+//! \fn void Cylindrical::CartesianToMeshCoords(
+//          Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const
+//  \brief returns in (x1, x2, x3) the coordinates used by the mesh from Cartesian
+//         coordinates (x, y, z).
+
+void Cylindrical::CartesianToMeshCoords(
+    Real x, Real y, Real z, Real& x1, Real& x2, Real& x3) const {
+  x1 = std::sqrt(x * x + y * y);
+  x2 = std::atan2(y, x);
+  x3 = z;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Cylindrical::MeshCoordsToCartesian(
+//          Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const
+//  \brief returns in Cartesian coordinates (x, y, z) from (x1, x2, x3) the coordinates
+//         used by the mesh.
+
+void Cylindrical::MeshCoordsToCartesian(
+    Real x1, Real x2, Real x3, Real& x, Real& y, Real& z) const {
+  x = x1 * std::cos(x2);
+  y = x1 * std::sin(x2);
+  z = x3;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Cylindrical::CartesianToMeshCoordsVector(
+//               Real x, Real y, Real z, Real vx, Real vy, Real vz,
+//               Real& vx1, Real& vx2, Real& vx3)
+//  \brief returns in (vx1, vx2, vx3) the components of a vector in Mesh coordinates
+//      when the vector is (vx, vy, vz) at (x, y, z) in Cartesian coordinates.
+
+void Cylindrical::CartesianToMeshCoordsVector(
+    Real x, Real y, Real z, Real vx, Real vy, Real vz,
+    Real& vx1, Real& vx2, Real& vx3) const {
+  z = std::sqrt(x * x + y * y);
+  x /= z > 0 ? z : 1;
+  y /= z > 0 ? z : 1;
+  vx1 = vx * x + vy * y;
+  vx2 = vy * x - vx * y;
+  vx3 = vz;
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Cylindrical::MeshCoordsToCartesianVector(
+//               Real x1, Real x2, Real x3, Real vx1, Real vx2, Real vx3,
+//               Real& vx, Real& vy, Real& vz)
+//  \brief returns in (vx, vy, vz) the components of a vector in Cartesian coordinates
+//      when the vector is (vx1, vy1, vz1) at (x1, x2, x3) in Mesh coordinates.
+
+void Cylindrical::MeshCoordsToCartesianVector(
+    Real x1, Real x2, Real x3, Real vx1, Real vx2, Real vx3,
+    Real& vx, Real& vy, Real& vz) const {
+  x1 = std::cos(x2);
+  x2 = std::sin(x2);
+  vx = vx1 * x1 - vx2 * x2;
+  vy = vx1 * x2 + vx2 * x1;
+  vz = vx3;
+}
