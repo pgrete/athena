@@ -229,7 +229,7 @@ def analyze():
     if err_u > 9.60E-7:
         print("*** Too much error in gas velocity")
         ok = False
-    if ddrp > 2E-15:
+    if ddrp > 3E-15:
         print("*** Not uniform in particle displacement")
         ok = False
     if dv > 2E-15:
