@@ -118,6 +118,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
 	const Real gm1 = peos->GetGamma() - 1.0;
   //initial abundance
   const Real s_init = pin->GetOrAddReal("problem", "s_init", 1e-10);
+  const Real sH2_init = pin->GetOrAddReal("problem", "sH2_init", 1e-10);
 
   //parse input parameters
   std::string vtkfile0 = pin->GetString("problem", "vtkfile");//id0 file
@@ -400,6 +401,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin)
         for (int ispec=0; ispec < NSPECIES; ++ispec) {
           pspec->s(ispec, k, j, i) = s_init;
         }
+        pspec->s(pspec->pchemnet->iH2_, k, j, i) = sH2_init;
         pspec->s(pspec->pchemnet->iCplus_, k, j, i) = pspec->pchemnet->xC_;
         pspec->s(pspec->pchemnet->iSiplus_, k, j, i) = pspec->pchemnet->xSi_;
         pspec->s(pspec->pchemnet->iE_, k, j, i) = 
