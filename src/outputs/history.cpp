@@ -100,7 +100,8 @@ void HistoryOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
   }  // end loop over MeshBlocks
 
   // Get history output from Particles class.
-  Particles::FindHistoryOutput(pm, data_sum, NHYDRO + NFIELD + 3);
+  if (PARTICLES)
+    Particles::FindHistoryOutput(pm, data_sum, NHYDRO + NFIELD + 3);
 
 #ifdef MPI_PARALLEL
   // sum over all ranks
