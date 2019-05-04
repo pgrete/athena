@@ -28,14 +28,13 @@
 #include "../mesh/mesh.hpp"
 #include "outputs.hpp"
 
-#define NHISTORY_VARS ((NHYDRO)+(NFIELD)+3)
-
 //----------------------------------------------------------------------------------------
 // HistoryOutput constructor
 // destructor - not needed for this derived class
 
 HistoryOutput::HistoryOutput(OutputParameters oparams)
     : OutputType(oparams) {
+  num_vars_ = (NHYDRO) + (NFIELD) + 3;
 }
 
 //----------------------------------------------------------------------------------------
@@ -48,7 +47,7 @@ void HistoryOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
 
   int ncells1 = pmb->block_size.nx1 + 2*(NGHOST);
   vol.NewAthenaArray(ncells1);
-  int nhistory_output=NHISTORY_VARS+pm->nuser_history_output_;
+  int nhistory_output = num_vars_ + pm->nuser_history_output_;
 
   Real *data_sum = new Real[nhistory_output];
   for (int n=0; n<nhistory_output; ++n) data_sum[n]=0.0;
@@ -93,7 +92,7 @@ void HistoryOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
     }
     for (int n=0; n<pm->nuser_history_output_; n++) { // user-defined history outputs
       if (pm->user_history_func_[n]!=nullptr)
-        data_sum[NHISTORY_VARS+n] += pm->user_history_func_[n](pmb, n);
+        data_sum[num_vars_+n] += pm->user_history_func_[n](pmb, n);
     }
     pmb=pmb->next;
   }  // end loop over MeshBlocks
