@@ -26,6 +26,7 @@
 #include "../globals.hpp"
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
+#include "../particles/particles.hpp"
 #include "outputs.hpp"
 
 //----------------------------------------------------------------------------------------
@@ -35,6 +36,7 @@
 HistoryOutput::HistoryOutput(OutputParameters oparams)
     : OutputType(oparams) {
   num_vars_ = (NHYDRO) + (NFIELD) + 3;
+  if (PARTICLES) num_vars_ += Particles::NHISTORY;
 }
 
 //----------------------------------------------------------------------------------------
@@ -97,6 +99,9 @@ void HistoryOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
     pmb=pmb->next;
   }  // end loop over MeshBlocks
 
+  // Get history output from Particles class.
+  Particles::FindHistoryOutput(pm, data_sum, NHYDRO + NFIELD + 3);
+
 #ifdef MPI_PARALLEL
   // sum over all ranks
   if (Globals::my_rank == 0) {
@@ -142,6 +147,12 @@ void HistoryOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
         std::fprintf(pfile,"[%d]=1-ME    ", iout++);
         std::fprintf(pfile,"[%d]=2-ME    ", iout++);
         std::fprintf(pfile,"[%d]=3-ME    ", iout++);
+      }
+      if (PARTICLES) {
+        std::string output_names[Particles::NHISTORY];
+        Particles::GetHistoryOutputNames(output_names);
+        for (int i = 0; i < Particles::NHISTORY; ++i)
+          std::fprintf(pfile, "[%d]=%-8s", iout++, output_names[i].data());
       }
       for (int n=0; n<pm->nuser_history_output_; n++)
         std::fprintf(pfile,"[%d]=%-8s", iout++,

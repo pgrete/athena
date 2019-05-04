@@ -9,6 +9,7 @@
 // C++ Standard Libraries
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -116,6 +117,58 @@ void Particles::PostInitialize(Mesh *pm, ParameterInput *pin) {
     ppar->SetPositionIndices();
     pmb = pmb->next;
   }
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::FindHistoryOutput(Mesh *pm, Real data_sum[], int pos)
+//  \brief finds the data sums of history output from particles in my process and assign
+//    them to data_sum beginning at index pos.
+
+void Particles::FindHistoryOutput(Mesh *pm, Real data_sum[], int pos) {
+  const int NSUM = NHISTORY - 1;
+
+  // Initiate the summations.
+  std::int64_t np = 0;
+  std::vector<Real> sum(NSUM, 0.0);
+
+  // Sum over each meshblock.
+  Real vp1, vp2, vp3;
+  MeshBlock *pmb = pm->pblock;
+  while (pmb != NULL) {
+    const Particles *ppar = pmb->ppar;
+    np += ppar->npar;
+    const Coordinates *pcoord = pmb->pcoord;
+    for (int k = 0; k < ppar->npar; ++k) {
+      pcoord->CartesianToMeshCoordsVector(ppar->xp(k), ppar->yp(k), ppar->zp(k),
+          ppar->vpx(k), ppar->vpy(k), ppar->vpz(k), vp1, vp2, vp3);
+      sum[0] += vp1;
+      sum[1] += vp2;
+      sum[2] += vp3;
+      sum[3] += vp1 * vp1;
+      sum[4] += vp2 * vp2;
+      sum[5] += vp3 * vp3;
+    }
+    pmb = pmb->next;
+  }
+
+  // Assign the values to output variables.
+  data_sum[pos++] = static_cast<Real>(np);
+  for (int i = 0; i < NSUM; ++i)
+    data_sum[pos++] = sum[i];
+}
+
+//--------------------------------------------------------------------------------------
+//! \fn void Particles::GetHistoryOutputNames(std::string output_names[])
+//  \brief gets the names of the history output variables in history_output_names[].
+
+void Particles::GetHistoryOutputNames(std::string output_names[]) {
+  output_names[0] = "np";
+  output_names[1] = "vp1";
+  output_names[2] = "vp2";
+  output_names[3] = "vp3";
+  output_names[4] = "vp1^2";
+  output_names[5] = "vp2^2";
+  output_names[6] = "vp3^2";
 }
 
 //--------------------------------------------------------------------------------------

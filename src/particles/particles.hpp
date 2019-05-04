@@ -8,6 +8,9 @@
 //  \brief defines classes for particle dynamics.
 //======================================================================================
 
+// C/C++ Standard Libraries
+#include <string>
+
 // Athena headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
@@ -49,9 +52,14 @@ friend class ParticleMesh;
   // Class methods
   static void Initialize(Mesh *pm, ParameterInput *pin);
   static void PostInitialize(Mesh *pm, ParameterInput *pin);
+  static void FindHistoryOutput(Mesh *pm, Real data_sum[], int pos);
   static void FormattedTableOutput(Mesh *pm, OutputParameters op);
+  static void GetHistoryOutputNames(std::string output_names[]);
   static void GetNumberDensityOnMesh(Mesh *pm, bool include_velocity);
   static int GetTotalNumber(Mesh *pm);
+
+  // Class constant
+  static const int NHISTORY = 7;  // number of variables in history output
 
   // Constructor
   Particles(MeshBlock *pmb, ParameterInput *pin);
