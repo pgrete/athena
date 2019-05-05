@@ -411,16 +411,19 @@ void Particles::LinkNeighbors(MeshBlockTree &tree,
         for (int n = 0; n < 3; n++) {
           if (!active3_ && n != 1) continue;
           Neighbor *pn = &neighbor_[l][m][n];
-          if (pn->pnb == NULL && pbval_->nblevel[n][m][l] < my_level) {
-            int ngid = tree.FindNeighbor(pbval_->loc, l-1, m-1, n-1, pbval_->block_bcs,
-                                         nrbx1, nrbx2, nrbx3, root_level)->GetGID();
-            for (int i = 0; i < pbval_->nneighbor; ++i) {
-              NeighborBlock& nb = pbval_->neighbor[i];
-              if (nb.gid == ngid) {
-                pn->pnb = &nb;
-                if (nb.rank == Globals::my_rank)
-                  pn->pmb = pmy_mesh->FindMeshBlock(ngid);
-                break;
+          if (pn->pnb == NULL) {
+            int nblevel = pbval_->nblevel[n][m][l];
+            if (0 <= nblevel && nblevel < my_level) {
+              int ngid = tree.FindNeighbor(pbval_->loc, l-1, m-1, n-1, pbval_->block_bcs,
+                                           nrbx1, nrbx2, nrbx3, root_level)->GetGID();
+              for (int i = 0; i < pbval_->nneighbor; ++i) {
+                NeighborBlock& nb = pbval_->neighbor[i];
+                if (nb.gid == ngid) {
+                  pn->pnb = &nb;
+                  if (nb.rank == Globals::my_rank)
+                    pn->pmb = pmy_mesh->FindMeshBlock(ngid);
+                  break;
+                }
               }
             }
           }
