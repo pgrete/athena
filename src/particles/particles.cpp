@@ -903,7 +903,7 @@ struct Neighbor* Particles::FindTargetNeighbor(
   Neighbor *pn = &neighbor_[ox1+1][ox2+1][ox3+1];
 
   // Search down the list if the neighbor is at a finer level.
-  if (pmy_mesh->multilevel && pn->pnb->level > pmy_block->loc.level) {
+  if (pmy_mesh->multilevel && pn->pnb != NULL && pn->pnb->level > pmy_block->loc.level) {
     RegionSize& bs = pmy_block->block_size;
     int fi[2] = {0, 0}, i = 0;
     if (active1_ && ox1 == 0) fi[i++] = 2 * (xi1 - pmy_block->is) / bs.nx1;
