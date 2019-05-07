@@ -58,8 +58,9 @@ private:
 	static const int n_ph_ = 6;
 	static const int n_gr_ = 5;
 	static const int nE_ = 15;
-	static const int n_freq_ = n_ph_ + 1;
+	static const int n_freq_ = n_ph_ + 2;
 	static const int index_gpe_ = n_ph_;
+	static const int index_cr_ = n_ph_ + 1;
 	//other variables
 	static const std::string ghost_species_names_[ngs_];
 	std::string species_names_all_[NSPECIES+ngs_];//all species
@@ -77,6 +78,8 @@ private:
   int is_H2_rovib_cooling_;//whether to include H2 rovibrational cooling
 	//maximum temperature above which heating and cooling is turned off 
 	int is_const_temp_; //flag for constant temperature
+  //CR shielding
+  int is_cr_shielding_;
 	//parameters of the netowork
 	Real zdg_;
 	Real xHe_;
@@ -86,7 +89,7 @@ private:
 	Real xC_;
 	Real xO_;
 	Real xSi_;
-	Real cr_rate_;
+	Real cr_rate0_;
 	//index of species
 	static const int iHeplus_;
 	static const int iOHx_;

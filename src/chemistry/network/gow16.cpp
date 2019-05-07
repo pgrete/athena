@@ -287,10 +287,10 @@ ChemNetwork::ChemNetwork(Species *pspec, ParameterInput *pin) {
   //check whether number of frequencies equal to the input file specification
   const int nfreq = pin->GetOrAddInteger("radiation", "n_frequency",1);
   std::stringstream msg; //error message
-  if (nfreq != n_freq_) {
+  if (nfreq != n_freq_-1) {
     msg << "### FATAL ERROR in ChemNetwork constructor" << std::endl
       << "number of frequencies in radiation: " << nfreq 
-      << " not equal to that in chemistry: " << n_freq_  << std::endl;
+      << " not equal to that in chemistry: " << n_freq_-1  << std::endl;
     throw std::runtime_error(msg.str().c_str());
   }
 
@@ -302,7 +302,7 @@ ChemNetwork::ChemNetwork(Species *pspec, ParameterInput *pin) {
 	xO_std_ = pin->GetOrAddReal("chemistry", "xO", 3.2e-4);
 	xSi_std_ = pin->GetOrAddReal("chemistry", "xSi", 1.7e-6);
 	//cosmic ray ionization rate per H
-	cr_rate_ = pin->GetOrAddReal("chemistry", "CR", 2e-16);
+	cr_rate0_ = pin->GetOrAddReal("chemistry", "CR", 2e-16);
   //units of density and radiation
 	unit_density_in_nH_ = pin->GetReal("chemistry", "unit_density_in_nH");
 	unit_length_in_cm_ = pin->GetReal("chemistry", "unit_length_in_cm");
@@ -316,6 +316,8 @@ ChemNetwork::ChemNetwork(Species *pspec, ParameterInput *pin) {
   } else {
     temperature_ = 0.;
   }
+  //CR shielding
+  is_cr_shielding_ = pin->GetOrAddInteger("chemistry", "is_cr_shielding", 0);
   //H2 rovibrational cooling
   is_H2_rovib_cooling_ = pin->GetOrAddInteger("chemistry", "isH2RVcooling", 1);
 	//temperature above or below which heating and cooling is turned off
@@ -470,24 +472,6 @@ void ChemNetwork::RHS(const Real t, const Real y[NSPECIES], Real ydot[NSPECIES])
 	for (int i=0; i<NSPECIES; i++) {
 		ydot[i] = ydotg[i];
 	}
-//#ifdef DEBUG
-//  printf("ydot: ");
-//  for (int j=0; j<NSPECIES; j++) {
-//    printf("%s: %.2e  ", species_names[j].c_str(), ydot[j]);
-//  }
-//  printf("abundances: ");
-//  for (int j=0; j<NSPECIES+ngs_; j++) {
-//    printf("%s: %.2e  ", species_names_all_[j].c_str(), yprev[j]);
-//  }
-//  printf("\n");
-//  OutputRates(stdout);
-//  printf("rad_ = ");
-//  for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
-//    printf("%.2e  ", rad_[ifreq]);
-//  }
-//  printf("\n");
-//  printf("nH_ = %.2e\n", nH_);
-//#endif
 
   //throw error if nan, or inf, or large value occurs
   for (int i=0; i<NSPECIES; i++) {
@@ -590,17 +574,36 @@ void ChemNetwork::Jacobian(const Real t,
 }
 
 void ChemNetwork::InitializeNextStep(const int k, const int j, const int i) {
-  Real rad_sum, temp, NCO_sum;
+  Real rad_sum, temp, NCO_sum, NH;
   int nang = pmy_mb_->prad->nang;
+  const Real NH0 = 9.35e20;
   //density
   nH_ = pmy_mb_->phydro->w(IDN, k, j, i) / unit_density_in_nH_;
   //average radiation field of all angles
   for (int ifreq=0; ifreq < n_freq_; ++ifreq) {
     rad_sum = 0;
-    for (int iang=0; iang < nang; ++iang) {
-      rad_sum += pmy_mb_->prad->ir(k, j, i, ifreq * nang + iang);
+    if (ifreq == index_cr_) {
+      //cosmic_ray
+      if (is_cr_shielding_) {
+        for (int iang=0; iang < nang; ++iang) {
+          NH = pmy_mb_->prad->pradintegrator->col(iang, k, j, i, iNHtot_);
+          if (NH <= NH0) {
+            rad_sum += cr_rate0_;
+          } else {
+            rad_sum += cr_rate0_ * (NH0/NH);
+          }
+        }
+        rad_[index_cr_] = rad_sum / float(nang);
+      } else {
+        rad_[index_cr_] = cr_rate0_;
+      }
+    } else {
+      //radiation
+      for (int iang=0; iang < nang; ++iang) {
+        rad_sum += pmy_mb_->prad->ir(k, j, i, ifreq * nang + iang);
+      }
+      rad_[ifreq] = rad_sum / float(nang) / unit_radiation_in_draine1987_;
     }
-    rad_[ifreq] = rad_sum / float(nang) / unit_radiation_in_draine1987_;
 #ifdef DEBUG
     if (isnan(rad_[ifreq])) {
       printf("InitializeNextStep: ");
@@ -715,7 +718,7 @@ void ChemNetwork::UpdateRates(const Real y[NSPECIES+ngs_]) {
   Real t1_CHx, t2_CHx;
 	//cosmic ray reactions
 	for (int i=0; i<n_cr_; i++) {
-		kcr_[i] = kcr_base_[i] * cr_rate_;
+		kcr_[i] = kcr_base_[i] * rad_[index_cr_];
 	}
   //cosmic ray induced photo-reactions, proportional to x(H2)
   //(0) cr + H2 -> H2+ + *e
