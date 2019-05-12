@@ -12,7 +12,6 @@
 // C++ headers
 #include <algorithm>  // max(), min()
 #include <cmath>      // abs(), cbrt(), isfinite(), NAN, sqrt()
-#include <limits>
 
 // Athena++ headers
 #include "../athena.hpp"                   // enums, macros
@@ -37,16 +36,14 @@ Real EResidualPrime(Real w_guess, Real dd, Real m_sq, Real bb_sq, Real ss_sq,
 //   pmb: pointer to MeshBlock
 //   pin: pointer to runtime inputs
 
-EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) {
-  pmy_block_ = pmb;
-  gamma_ = pin->GetReal("hydro", "gamma");
-  Real float_min = std::numeric_limits<float>::min();
-  density_floor_ = pin->GetOrAddReal("hydro", "dfloor", std::sqrt(1024*(float_min)) );
-  pressure_floor_ = pin->GetOrAddReal("hydro", "pfloor", std::sqrt(1024*(float_min)) );
-  sigma_max_ = pin->GetOrAddReal("hydro", "sigma_max",  0.0);
-  beta_min_ = pin->GetOrAddReal("hydro", "beta_min", 0.0);
-  gamma_max_ = pin->GetOrAddReal("hydro", "gamma_max", 1000.0);
-}
+EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) :
+    pmy_block_(pmb),
+    gamma_{pin->GetReal("hydro", "gamma")},
+    density_floor_{pin->GetOrAddReal("hydro", "dfloor", std::sqrt(1024*float_min))},
+    pressure_floor_{pin->GetOrAddReal("hydro", "pfloor", std::sqrt(1024*float_min))},
+    sigma_max_{pin->GetOrAddReal("hydro", "sigma_max",  0.0)},
+    beta_min_{pin->GetOrAddReal("hydro", "beta_min", 0.0)},
+    gamma_max_{pin->GetOrAddReal("hydro", "gamma_max", 1000.0)} {}
 
 //----------------------------------------------------------------------------------------
 // Variable inverter
@@ -81,8 +78,8 @@ void EquationOfState::ConservedToPrimitive(
 #pragma omp simd simdlen(SIMD_WIDTH)
       for (int i=il; i<=iu; ++i) {
         // Extract conserved quantities
-        Real dd = cons(IDN,k,j,i);
-        Real ee = cons(IEN,k,j,i);
+        Real &dd = cons(IDN,k,j,i);
+        Real &ee = cons(IEN,k,j,i);
 
         Real mx = cons(IM1,k,j,i);
         Real my = cons(IM2,k,j,i);
@@ -174,8 +171,8 @@ void EquationOfState::ConservedToPrimitive(
           ee = gamma_sq * w - SQR(bt) - (pgas + pmag);
         }
 
-        cons(IDN,k,j,i) = dd;
-        cons(IEN,k,j,i) = ee;
+        // cons(IDN,k,j,i) = dd;
+        // cons(IEN,k,j,i) = ee;
 
         prim(IDN,k,j,i) = rho;
         prim(IPR,k,j,i) = pgas;
@@ -501,8 +498,8 @@ Real EResidualPrime(Real w_guess, Real dd, Real m_sq, Real bb_sq, Real ss_sq,
 } // namespace
 
 //---------------------------------------------------------------------------------------
-// \!fn void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim,
-//           int k, int j, int i)
+// \!fn void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim, int k, int j,
+//                                                 int i)
 // \brief Apply density and pressure floors to reconstructed L/R cell interface states
 
 void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim, int k, int j, int i) {

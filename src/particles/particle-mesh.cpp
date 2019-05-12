@@ -408,13 +408,14 @@ void ParticleMesh::InitiateBoundaryData() {
     bd_.recv[nb.bufid] = new Real[nrecv];
 
 #ifdef MPI_PARALLEL
-    if (nb.rank != Globals::my_rank) {
+    int nb_rank = nb.snb.rank;
+    if (nb_rank != Globals::my_rank) {
       int nsend = ba.ngtot * nmeshaux;
       bd_.send[nb.bufid] = new Real[nsend];
-      MPI_Recv_init(bd_.recv[nb.bufid], nrecv, MPI_ATHENA_REAL, nb.rank,
+      MPI_Recv_init(bd_.recv[nb.bufid], nrecv, MPI_ATHENA_REAL, nb_rank,
                     (pmb_->lid<<6) | nb.bufid, my_comm, &bd_.req_recv[nb.bufid]);
-      MPI_Send_init(bd_.send[nb.bufid], nsend, MPI_ATHENA_REAL, nb.rank,
-                    (nb.lid<<6) | nb.targetid, my_comm, &bd_.req_send[nb.bufid]);
+      MPI_Send_init(bd_.send[nb.bufid], nsend, MPI_ATHENA_REAL, nb_rank,
+                    (nb.snb.lid<<6) | nb.targetid, my_comm, &bd_.req_send[nb.bufid]);
     }
 #endif
   }
@@ -453,11 +454,12 @@ void ParticleMesh::SetBoundaryAttributes() {
     // Find several depths from the neighbor block.
     Real dxip, dxig;
     int dxir;
-    if (nb.level > mylevel) {
+    int nblevel = nb.snb.level;
+    if (nblevel > mylevel) {
       dxip = 0.5 * RINF;
       dxig = NGHOST;
       dxir = NGH;
-    } else if (nb.level < mylevel) {
+    } else if (nblevel < mylevel) {
       dxip = 2 * RINF;
       dxig = 2 * NGH;
       dxir = NG2;
@@ -467,13 +469,14 @@ void ParticleMesh::SetBoundaryAttributes() {
     }
 
     // Consider the normal directions.
-    if (nb.ox1 > 0) {
+    NeighborIndexes& ni = nb.ni;
+    if (ni.ox1 > 0) {
       xi1min = xi1max - dxip;
       xi1_0 = xi1max;
       irs = ie - dxir + 1;
       iss = ie + 1;
       ise += NGHOST;
-    } else if (nb.ox1 < 0) {
+    } else if (ni.ox1 < 0) {
       xi1max = xi1min + dxip;
       xi1_0 = xi1min - dxig;
       ire = is + dxir - 1;
@@ -481,13 +484,13 @@ void ParticleMesh::SetBoundaryAttributes() {
       ise = is - 1;
     }
 
-    if (nb.ox2 > 0) {
+    if (ni.ox2 > 0) {
       xi2min = xi2max - dxip;
       xi2_0 = xi2max;
       jrs = je - dxir + 1;
       jss = je + 1;
       jse += NGHOST;
-    } else if (nb.ox2 < 0) {
+    } else if (ni.ox2 < 0) {
       xi2max = xi2min + dxip;
       xi2_0 = xi2min - dxig;
       jre = js + dxir - 1;
@@ -495,13 +498,13 @@ void ParticleMesh::SetBoundaryAttributes() {
       jse = js - 1;
     }
 
-    if (nb.ox3 > 0) {
+    if (ni.ox3 > 0) {
       xi3min = xi3max - dxip;
       xi3_0 = xi3max;
       krs = ke - dxir + 1;
       kss = ke + 1;
       kse += NGHOST;
-    } else if (nb.ox3 < 0) {
+    } else if (ni.ox3 < 0) {
       xi3max = xi3min + dxip;
       xi3_0 = xi3min - dxig;
       kre = ks + dxir - 1;
@@ -510,11 +513,11 @@ void ParticleMesh::SetBoundaryAttributes() {
     }
 
     // Consider the transverse directions.
-    if (nb.level > mylevel) {  // Neighbor block is at a finer level.
-      if (nb.type == NeighborConnect::face) {
-        if (nb.ox1 != 0) {
+    if (nblevel > mylevel) {  // Neighbor block is at a finer level.
+      if (ni.type == NeighborConnect::face) {
+        if (ni.ox1 != 0) {
           if (active2_) {
-            if (nb.fi1) {
+            if (ni.fi1) {
               xi2min = xi2mid - dxip;
               xi2_0 = xi2mid;
               jrs = je - nx2h + 1;
@@ -524,7 +527,7 @@ void ParticleMesh::SetBoundaryAttributes() {
             }
           }
           if (active3_) {
-            if (nb.fi2) {
+            if (ni.fi2) {
               xi3min = xi3mid - dxip;
               xi3_0 = xi3mid;
               krs = ke - nx3h + 1;
@@ -533,9 +536,9 @@ void ParticleMesh::SetBoundaryAttributes() {
               kre = ks + nx3h - 1;
             }
           }
-        } else if (nb.ox2 != 0) {
+        } else if (ni.ox2 != 0) {
           if (active1_) {
-            if (nb.fi1) {
+            if (ni.fi1) {
               xi1min = xi1mid - dxip;
               xi1_0 = xi1mid;
               irs = ie - nx1h + 1;
@@ -545,7 +548,7 @@ void ParticleMesh::SetBoundaryAttributes() {
             }
           }
           if (active3_) {
-            if (nb.fi2) {
+            if (ni.fi2) {
               xi3min = xi3mid - dxip;
               xi3_0 = xi3mid;
               krs = ke - nx3h + 1;
@@ -556,7 +559,7 @@ void ParticleMesh::SetBoundaryAttributes() {
           }
         } else {
           if (active1_) {
-            if (nb.fi1) {
+            if (ni.fi1) {
               xi1min = xi1mid - dxip;
               xi1_0 = xi1mid;
               irs = ie - nx1h + 1;
@@ -566,7 +569,7 @@ void ParticleMesh::SetBoundaryAttributes() {
             }
           }
           if (active2_) {
-            if (nb.fi2) {
+            if (ni.fi2) {
               xi2min = xi2mid - dxip;
               xi2_0 = xi2mid;
               jrs = je - nx2h + 1;
@@ -576,10 +579,10 @@ void ParticleMesh::SetBoundaryAttributes() {
             }
           }
         }
-      } else if (nb.type == NeighborConnect::edge) {
-        if (nb.ox1 == 0) {
+      } else if (ni.type == NeighborConnect::edge) {
+        if (ni.ox1 == 0) {
           if (active1_) {
-            if (nb.fi1) {
+            if (ni.fi1) {
               xi1min = xi1mid - dxip;
               xi1_0 = xi1mid;
               irs = ie - nx1h + 1;
@@ -588,9 +591,9 @@ void ParticleMesh::SetBoundaryAttributes() {
               ire = is + nx1h - 1;
             }
           }
-        } else if (nb.ox2 == 0) {
+        } else if (ni.ox2 == 0) {
           if (active2_) {
-            if (nb.fi1) {
+            if (ni.fi1) {
               xi2min = xi2mid - dxip;
               xi2_0 = xi2mid;
               jrs = je - nx2h + 1;
@@ -601,7 +604,7 @@ void ParticleMesh::SetBoundaryAttributes() {
           }
         } else {
           if (active3_) {
-            if (nb.fi1) {
+            if (ni.fi1) {
               xi3min = xi3mid - dxip;
               xi3_0 = xi3mid;
               krs = ke - nx3h + 1;
@@ -612,22 +615,22 @@ void ParticleMesh::SetBoundaryAttributes() {
           }
         }
       }
-    } else if (nb.level < mylevel) {  // Neighbor block is at a coarser level.
-      if (nb.type == NeighborConnect::face) {
-        if (nb.ox1 != 0) {
+    } else if (nblevel < mylevel) {  // Neighbor block is at a coarser level.
+      if (ni.type == NeighborConnect::face) {
+        if (ni.ox1 != 0) {
           if (active2_ && myfx2) xi2_0 = xi2min - dxig;
           if (active3_ && myfx3) xi3_0 = xi3min - dxig;
-        } else if (nb.ox2 != 0) {
+        } else if (ni.ox2 != 0) {
           if (active1_ && myfx1) xi1_0 = xi1min - dxig;
           if (active3_ && myfx3) xi3_0 = xi3min - dxig;
         } else {
           if (active1_ && myfx1) xi1_0 = xi1min - dxig;
           if (active2_ && myfx2) xi2_0 = xi2min - dxig;
         }
-      } else if (nb.type == NeighborConnect::edge) {
-        if (nb.ox1 == 0) {
+      } else if (ni.type == NeighborConnect::edge) {
+        if (ni.ox1 == 0) {
           if (active1_ && myfx1) xi1_0 = xi1min - dxig;
-        } else if (nb.ox2 == 0) {
+        } else if (ni.ox2 == 0) {
           if (active2_ && myfx2) xi2_0 = xi2min - dxig;
         } else {
           if (active3_ && myfx3) xi3_0 = xi3min - dxig;
@@ -647,18 +650,18 @@ void ParticleMesh::SetBoundaryAttributes() {
     ba.xi3_0 = xi3_0;
 
     // Set the dimensions of the ghost block.
-    if (nb.level == mylevel) {
-      ba.ngx1 = (nb.ox1 == 0) ? block_size.nx1 : NGHOST;
-      ba.ngx2 = (nb.ox2 == 0) ? block_size.nx2 : NGHOST;
-      ba.ngx3 = (nb.ox3 == 0) ? block_size.nx3 : NGHOST;
-    } else if (nb.level < mylevel) {
-      ba.ngx1 = (nb.ox1 == 0) ? nx1h : NGH;
-      ba.ngx2 = (nb.ox2 == 0) ? nx2h : NGH;
-      ba.ngx3 = (nb.ox3 == 0) ? nx3h : NGH;
+    if (nblevel == mylevel) {
+      ba.ngx1 = (ni.ox1 == 0) ? block_size.nx1 : NGHOST;
+      ba.ngx2 = (ni.ox2 == 0) ? block_size.nx2 : NGHOST;
+      ba.ngx3 = (ni.ox3 == 0) ? block_size.nx3 : NGHOST;
+    } else if (nblevel < mylevel) {
+      ba.ngx1 = (ni.ox1 == 0) ? nx1h : NGH;
+      ba.ngx2 = (ni.ox2 == 0) ? nx2h : NGH;
+      ba.ngx3 = (ni.ox3 == 0) ? nx3h : NGH;
     } else {
-      ba.ngx1 = (nb.ox1 == 0) ? block_size.nx1 : NG2;
-      ba.ngx2 = (nb.ox2 == 0) ? block_size.nx2 : NG2;
-      ba.ngx3 = (nb.ox3 == 0) ? block_size.nx3 : NG2;
+      ba.ngx1 = (ni.ox1 == 0) ? block_size.nx1 : NG2;
+      ba.ngx2 = (ni.ox2 == 0) ? block_size.nx2 : NG2;
+      ba.ngx3 = (ni.ox3 == 0) ? block_size.nx3 : NG2;
     }
     ba.ngtot = ba.ngx1 * ba.ngx2 * ba.ngx3;
 
@@ -686,13 +689,14 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
   // Find neighbor blocks that are on a different level.
   for (int i = 0; i < pbval_->nneighbor; ++i) {
     NeighborBlock& nb = pbval_->neighbor[i];
-    if (nb.level == mylevel) continue;
+    SimpleNeighborBlock& snb = nb.snb;
+    if (snb.level == mylevel) continue;
 
     // Identify the buffer for assignment.
     Real *pbuf0 = NULL;
-    BoundaryData *pnbd = NULL;
-    if (nb.rank == Globals::my_rank) {
-      pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
+    BoundaryData<> *pnbd = NULL;
+    if (nb.snb.rank == Globals::my_rank) {
+      pnbd = &(pmesh_->FindMeshBlock(snb.gid)->ppar->ppm->bd_);
       pbuf0 = pnbd->recv[nb.targetid];
     }
 #ifdef MPI_PARALLEL
@@ -725,7 +729,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
       xi1 -= ba.xi1_0;
       xi2 -= ba.xi2_0;
       xi3 -= ba.xi3_0;
-      if (nb.level > mylevel) {
+      if (snb.level > mylevel) {
         xi1 *= 2;
         xi2 *= 2;
         xi3 *= 2;
@@ -787,7 +791,7 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
     delete [] buf;
 
     // Set the boundary flag.
-    if (nb.rank == Globals::my_rank)
+    if (snb.rank == Globals::my_rank)
       pnbd->flag[nb.targetid] = BoundaryStatus::arrived;
 #ifdef MPI_PARALLEL
     else
@@ -803,8 +807,8 @@ void ParticleMesh::AssignParticlesToDifferentLevels(
 
 int ParticleMesh::LoadBoundaryBufferSameLevel(Real *buf, const BoundaryAttributes& ba) {
   int p = 0;
-  BufferUtility::Pack4DData(meshaux, buf, 0, nmeshaux - 1,
-                            ba.iss, ba.ise, ba.jss, ba.jse, ba.kss, ba.kse, p);
+  BufferUtility::PackData(meshaux, buf, 0, nmeshaux - 1,
+                          ba.iss, ba.ise, ba.jss, ba.jse, ba.kss, ba.kse, p);
   return p;
 }
 
@@ -829,7 +833,7 @@ void ParticleMesh::ClearBoundary() {
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
 #ifdef MPI_PARALLEL
-    if (nb.rank != Globals::my_rank)
+    if (nb.snb.rank != Globals::my_rank)
       MPI_Wait(&bd_.req_send[nb.bufid], MPI_STATUS_IGNORE);
 #endif
     bd_.flag[nb.bufid] = BoundaryStatus::waiting;
@@ -845,11 +849,12 @@ void ParticleMesh::SendBoundary() {
 
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
+    SimpleNeighborBlock& snb = nb.snb;
 
     // Load boundary values.
-    if (nb.level == mylevel) {
-      if (nb.rank == Globals::my_rank) {
-        BoundaryData *pnbd = &(pmesh_->FindMeshBlock(nb.gid)->ppar->ppm->bd_);
+    if (snb.level == mylevel) {
+      if (snb.rank == Globals::my_rank) {
+        BoundaryData<> *pnbd = &(pmesh_->FindMeshBlock(snb.gid)->ppar->ppm->bd_);
         LoadBoundaryBufferSameLevel(pnbd->recv[nb.targetid], ba_[n]);
         pnbd->flag[nb.targetid] = BoundaryStatus::arrived;
       } else {
@@ -870,7 +875,7 @@ void ParticleMesh::StartReceiving() {
 #ifdef MPI_PARALLEL
   for (int n = 0; n < pbval_->nneighbor; n++) {
     NeighborBlock& nb = pbval_->neighbor[n];
-    if (nb.rank == Globals::my_rank) continue;
+    if (nb.snb.rank == Globals::my_rank) continue;
     MPI_Start(&bd_.req_recv[nb.bufid]);
   }
 #endif
@@ -891,7 +896,7 @@ bool ParticleMesh::ReceiveBoundary() {
     enum BoundaryStatus& bstatus = bd_.flag[nb.bufid];
 
     if (bstatus == BoundaryStatus::waiting) {
-      if (nb.rank == Globals::my_rank) {
+      if (nb.snb.rank == Globals::my_rank) {
         completed = false;
         continue;
       } else {

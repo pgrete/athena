@@ -29,12 +29,11 @@
 
 // constructor, initializes data structures and parameters
 
-FFTDriver::FFTDriver(Mesh *pm, ParameterInput *pin) {
-  pmy_mesh_=pm;
-
-  if (pm->use_uniform_meshgen_fn_[X1DIR]==false
-      || pm->use_uniform_meshgen_fn_[X2DIR]==false
-      || pm->use_uniform_meshgen_fn_[X3DIR]==false) {
+FFTDriver::FFTDriver(Mesh *pm, ParameterInput *pin) : nranks_(Globals::nranks),
+                                                      pmy_mesh_(pm), dim_(pm->ndim) {
+  if (!(pm->use_uniform_meshgen_fn_[X1DIR])
+      || !(pm->use_uniform_meshgen_fn_[X2DIR])
+      || !(pm->use_uniform_meshgen_fn_[X3DIR])) {
     std::stringstream msg;
     msg << "### FATAL ERROR in FFTDriver::FFTDriver" << std::endl
         << "Non-uniform mesh spacing is not supported." << std::endl;
@@ -42,19 +41,14 @@ FFTDriver::FFTDriver(Mesh *pm, ParameterInput *pin) {
     return;
   }
 
-  dim_ = 1;
-  if (pm->mesh_size.nx2 > 1) dim_=2;
-  if (pm->mesh_size.nx3 > 1) dim_=3;
-
   // Setting up the MPI information
   // *** this part should be modified when dedicate processes are allocated ***
   // *** we also need to construct another neighbor list for Multigrid ***
 
   ranklist_  = new int[pm->nbtotal];
   for (int n=0; n<pm->nbtotal; n++)
-    ranklist_[n]=pm->ranklist[n];
+    ranklist_[n] = pm->ranklist[n];
 
-  nranks_  = Globals::nranks;
   nslist_  = new int[nranks_];
   nblist_  = new int[nranks_];
 #ifdef MPI_PARALLEL
@@ -66,7 +60,7 @@ FFTDriver::FFTDriver(Mesh *pm, ParameterInput *pin) {
   }
 
   int ns = nslist_[Globals::my_rank];
-  int ne = ns+nblist_[Globals::my_rank];
+  int ne = ns + nblist_[Globals::my_rank];
 
   std::int64_t &lx1min = pm->loclist[ns].lx1;
   std::int64_t &lx2min = pm->loclist[ns].lx2;
@@ -81,12 +75,12 @@ FFTDriver::FFTDriver(Mesh *pm, ParameterInput *pin) {
     std::int64_t &lx1 = pm->loclist[n].lx1;
     std::int64_t &lx2 = pm->loclist[n].lx2;
     std::int64_t &lx3 = pm->loclist[n].lx3;
-    lx1min = lx1min<lx1?lx1min:lx1;
-    lx2min = lx2min<lx2?lx2min:lx2;
-    lx3min = lx3min<lx3?lx3min:lx3;
-    lx1max = lx1max>lx1?lx1min:lx1;
-    lx2max = lx2max>lx2?lx2min:lx2;
-    lx3max = lx3max>lx3?lx3min:lx3;
+    lx1min = lx1min < lx1 ? lx1min : lx1;
+    lx2min = lx2min < lx2 ? lx2min : lx2;
+    lx3min = lx3min < lx3 ? lx3min : lx3;
+    lx1max = lx1max > lx1 ? lx1min : lx1;
+    lx2max = lx2max > lx2 ? lx2min : lx2;
+    lx3max = lx3max > lx3 ? lx3min : lx3;
     if(pm->loclist[n].level > current_level) current_level = pm->loclist[n].level;
   }
   int ref_lev = current_level - pm->root_level;
@@ -95,9 +89,10 @@ FFTDriver::FFTDriver(Mesh *pm, ParameterInput *pin) {
   int nbx2 = static_cast<int>(lx2max-lx2min+1);
   int nbx3 = static_cast<int>(lx3max-lx3min+1);
 
-  nmb = nbx1*nbx2*nbx3; // number of mesh blocks to be loaded to the FFT block
+  nmb = nbx1*nbx2*nbx3; // number of MeshBlock to be loaded to the FFT block
   if (pm->nbtotal/nmb != nranks_) {
-    // Will be implemented later.
+    // this restriction (to a single cuboid FFTBlock that covers the union of all
+    // MeshBlocks owned by an MPI rank) should be relaxed in the future
     std::stringstream msg;
     msg << "### FATAL ERROR in FFTDriver::FFTDriver" << std::endl
         << nmb << " MeshBlocks will be loaded to the FFT block."  << std::endl
@@ -112,37 +107,25 @@ FFTDriver::FFTDriver(Mesh *pm, ParameterInput *pin) {
   fft_loclist_ = new LogicalLocation[nranks_];
 
   for (int n=0; n<nranks_; n++) {
-    int ns = nslist_[n];
-    fft_loclist_[n] = pm->loclist[ns];
+    int ns_inner = nslist_[n];
+    fft_loclist_[n] = pm->loclist[ns_inner];
     fft_loclist_[n].lx1 = fft_loclist_[n].lx1/nbx1;
     fft_loclist_[n].lx2 = fft_loclist_[n].lx2/nbx2;
     fft_loclist_[n].lx3 = fft_loclist_[n].lx3/nbx3;
   }
-  npx1 = (pm->nrbx1*(1<<ref_lev))/nbx1;
-  npx2 = (pm->nrbx2*(1<<ref_lev))/nbx2;
-  npx3 = (pm->nrbx3*(1<<ref_lev))/nbx3;
+  npx1 = (pm->nrbx1*(1 << ref_lev))/nbx1;
+  npx2 = (pm->nrbx2*(1 << ref_lev))/nbx2;
+  npx3 = (pm->nrbx3*(1 << ref_lev))/nbx3;
 
-  fft_mesh_size_=pm->mesh_size;
+  fft_mesh_size_ = pm->mesh_size;
 
   fft_mesh_size_.nx1 = pm->mesh_size.nx1*(1<<ref_lev);
   fft_mesh_size_.nx2 = pm->mesh_size.nx2*(1<<ref_lev);
   fft_mesh_size_.nx3 = pm->mesh_size.nx3*(1<<ref_lev);
 
-  RegionSize &bsize = (pm->pblock->block_size);
-
-  fft_block_size_.nx1=fft_mesh_size_.nx1/npx1;
-  fft_block_size_.nx2=fft_mesh_size_.nx2/npx2;
-  fft_block_size_.nx3=fft_mesh_size_.nx3/npx3;
-
-  Real x1size=bsize.x1max-bsize.x1min;
-  Real x2size=bsize.x2max-bsize.x2min;
-  Real x3size=bsize.x3max-bsize.x3min;
-  fft_block_size_.x1min=bsize.x1min;
-  fft_block_size_.x1max=bsize.x1min+x1size*nbx1;
-  fft_block_size_.x2min=bsize.x2min;
-  fft_block_size_.x2max=bsize.x2min+x2size*nbx2;
-  fft_block_size_.x3min=bsize.x3min;
-  fft_block_size_.x3max=bsize.x3min+x3size*nbx3;
+  fft_block_size_.nx1 = fft_mesh_size_.nx1/npx1;
+  fft_block_size_.nx2 = fft_mesh_size_.nx2/npx2;
+  fft_block_size_.nx3 = fft_mesh_size_.nx3/npx3;
 
   gcnt_ = fft_mesh_size_.nx1*fft_mesh_size_.nx2*fft_mesh_size_.nx3;
 
@@ -174,8 +157,8 @@ FFTDriver::~FFTDriver() {
 }
 
 void FFTDriver::InitializeFFTBlock(bool set_norm) {
-  int igid=Globals::my_rank;
-  pmy_fb=new FFTBlock(this, fft_loclist_[igid], igid, fft_mesh_size_, fft_block_size_);
+  int igid = Globals::my_rank;
+  pmy_fb = new FFTBlock(this, fft_loclist_[igid], igid, fft_mesh_size_, fft_block_size_);
   if (set_norm) pmy_fb->SetNormFactor(1./gcnt_);
 }
 

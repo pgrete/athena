@@ -28,20 +28,18 @@ using namespace MultigridTaskNames; // NOLINT (build/namespace)
 //  \brief completes all tasks in this list, will not return until all are tasks done
 
 void MultigridTaskList::DoTaskListOneStage(MultigridDriver *pmd) {
-  Multigrid *pmg = pmd->pmg_;
   int nmg_left = pmd->GetNumMultigrids();
 
-  while (pmg != nullptr)  {
+  for (auto itr = pmd->vmg_.begin(); itr<pmd->vmg_.end(); itr++) {
+    Multigrid *pmg = *itr;
     pmg->ts_.Reset(ntasks);
-    pmg=pmg->next;
   }
 
   // cycle through all MeshBlocks and perform all tasks possible
   while (nmg_left > 0) {
-    pmg = pmd->pmg_;
-    while (pmg != nullptr)  {
+    for (auto itr = pmd->vmg_.begin(); itr<pmd->vmg_.end(); itr++) {
+      Multigrid *pmg = *itr;
       if (DoAllAvailableTasks(pmg, pmg->ts_) == TaskListStatus::complete) nmg_left--;
-      pmg=pmg->next;
     }
   }
 
@@ -206,13 +204,13 @@ void MultigridTaskList::AddMultigridTask(std::uint64_t id, std::uint64_t dep) {
 }
 
 TaskStatus MultigridTaskList::StartReceive(Multigrid *pmg) {
-  int nc=pmg->GetCurrentNumberOfCells();
+  int nc = pmg->GetCurrentNumberOfCells();
   pmg->pmgbval->StartReceivingMultigrid(nc, pmg->btype);
   return TaskStatus::success;
 }
 
 TaskStatus MultigridTaskList::StartReceiveFace(Multigrid *pmg) {
-  int nc=pmg->GetCurrentNumberOfCells();
+  int nc = pmg->GetCurrentNumberOfCells();
   pmg->pmgbval->StartReceivingMultigrid(nc, pmg->btypef);
   return TaskStatus::success;
 }
@@ -228,33 +226,33 @@ TaskStatus MultigridTaskList::ClearBoundaryFace(Multigrid *pmg) {
 }
 
 TaskStatus MultigridTaskList::SendBoundary(Multigrid *pmg) {
-  int nc=pmg->GetCurrentNumberOfCells();
-  if (pmg->pmgbval->
-      SendMultigridBoundaryBuffers(pmg->GetCurrentData(), nc, pmg->btype)==false)
+  int nc = pmg->GetCurrentNumberOfCells();
+  if (!(pmg->pmgbval->
+        SendMultigridBoundaryBuffers(pmg->GetCurrentData(), nc, pmg->btype)))
     return TaskStatus::fail;
   return TaskStatus::success;
 }
 
 TaskStatus MultigridTaskList::SendBoundaryFace(Multigrid *pmg) {
-  int nc=pmg->GetCurrentNumberOfCells();
-  if (pmg->pmgbval->
-      SendMultigridBoundaryBuffers(pmg->GetCurrentData(), nc, pmg->btypef)==false)
+  int nc = pmg->GetCurrentNumberOfCells();
+  if (!(pmg->pmgbval->
+        SendMultigridBoundaryBuffers(pmg->GetCurrentData(), nc, pmg->btypef)))
     return TaskStatus::fail;
   return TaskStatus::success;
 }
 
 TaskStatus MultigridTaskList::ReceiveBoundary(Multigrid *pmg) {
-  int nc=pmg->GetCurrentNumberOfCells();
-  if (pmg->pmgbval->
-      ReceiveMultigridBoundaryBuffers(pmg->GetCurrentData(), nc, pmg->btype)==false)
+  int nc = pmg->GetCurrentNumberOfCells();
+  if (!(pmg->pmgbval->
+        ReceiveMultigridBoundaryBuffers(pmg->GetCurrentData(), nc, pmg->btype)))
     return TaskStatus::fail;
   return TaskStatus::next;
 }
 
 TaskStatus MultigridTaskList::ReceiveBoundaryFace(Multigrid *pmg) {
-  int nc=pmg->GetCurrentNumberOfCells();
-  if (pmg->pmgbval->
-      ReceiveMultigridBoundaryBuffers(pmg->GetCurrentData(), nc, pmg->btypef)==false)
+  int nc = pmg->GetCurrentNumberOfCells();
+  if (!(pmg->pmgbval->
+        ReceiveMultigridBoundaryBuffers(pmg->GetCurrentData(), nc, pmg->btypef)))
     return TaskStatus::fail;
   return TaskStatus::next;
 }

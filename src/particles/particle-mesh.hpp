@@ -102,7 +102,7 @@ friend class OutputType;
   MeshBlock *pmb_;             // ptr to my MeshBlock
   Mesh *pmesh_;                // ptr to my Mesh
   BoundaryValues *pbval_;      // ptr to my BoundaryValues
-  BoundaryData bd_;            // boundary data
+  BoundaryData<> bd_;            // boundary data
   BoundaryAttributes ba_[56];  // ghost block attributes
 
   // Instance methods

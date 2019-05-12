@@ -67,6 +67,8 @@ time python -u ./run_tests.py particles/uniform_streaming --mpirun=srun --mpirun
      --coverage="${lcov_capture_cmd}" --silent
 time python -u ./run_tests.py grav --mpirun=srun --mpirun_opts=--job-name='GCC grav/jeans_3d' \
      --coverage="${lcov_capture_cmd}" --silent
+time python -u ./run_tests.py turb --mpirun=srun --mpirun_opts=--job-name='GCC turb/' \
+     --coverage="${lcov_capture_cmd}" --silent
 time python -u ./run_tests.py mpi --mpirun=srun --mpirun_opts=--job-name='GCC mpi/mpi_linwave' \
      --coverage="${lcov_capture_cmd}" --silent
 time python -u ./run_tests.py omp --coverage="${lcov_capture_cmd}" --silent
@@ -139,15 +141,16 @@ eval "${lcov_cmd}" "${lcov_input_files}" -o lcov.info
 # Explicitly return count of individual Lcov tracefiles, and monitor any changes to this number (53 expected as of 2018-12-04):
 # (most Lcov failures will be silent and hidden in build log;, missing reports will be hard to notice in Lcov HTML and Codecov reports)
 echo "Detected ${lcov_counter} individual tracefiles and combined them -> lcov.info"
-set -e
 
 # Generate Lcov HTML report and backup to home directory on Perseus (never used by Codecov):
 gendesc scripts/tests/test_descriptions.txt --output-filename ./regression_tests.desc
 lcov_dir_name="${SLURM_JOB_NAME}_lcov_html"
+# TODO(felker): Address "lcov: ERROR: no valid records found in tracefile ./eos_eos_comparison_eos_hllc.info"
 genhtml --legend --show-details --keep-descriptions --description-file=regression_tests.desc \
 	--branch-coverage -o ${lcov_dir_name} lcov.info
 mv lcov.info ${lcov_dir_name}
-tar -cvzf "${lcov_dir_name}.tar.gz" ${lcov_dir_name}
+# GNU (but not BSD) tar supports --remove-files option for cleaning up files (and directories) after adding them to the archive:
+tar --remove-files -cvzf "${lcov_dir_name}.tar.gz" ${lcov_dir_name}
 mv "${lcov_dir_name}.tar.gz" $HOME  # ~2 MB. Manually rm HTML databases from $HOME on a reg. basis
 # genhtml requires that src/ is unmoved since compilation; works from $HOME on Perseus,
 # but lcov.info tracefile is not portable across sytems (without --to-package, etc.)
@@ -155,13 +158,14 @@ mv "${lcov_dir_name}.tar.gz" $HOME  # ~2 MB. Manually rm HTML databases from $HO
 
 # Ensure that no stale tracefiles are kept in Jenkins cached workspace
 rm -rf *.info
+set -e
 
 # Build step #2: regression tests using Intel compiler and MPI library
 module purge
 # Delete version info from module names to automatically use latest default version of these libraries as Princeton Research Computing updates them:
-# (Currently using pinned Intel 17.0 Release 5 versions as of November 2018 due to bugs on Perseus installation of ICC 19.0.
-# Intel's MPI Library 2019 version was not installed on Perseus since it is much slower than 2018 version on Mellanox Infiniband)
-module load intel/19.0/64/19.0.1.144 # intel/17.0/64/17.0.5.239 # intel ---intel/19.0/64/19.0.1.144 as of 2019-01-15
+# (Was using pinned Intel 17.0 Release 5 versions as of November 2018 due to bugs on Perseus installation of ICC 19.0.
+# Intel's MPI Library 2019 version was never installed on Perseus since it is much slower than 2018 version on Mellanox Infiniband)
+module load intel/18.0/64/18.0.3.222 # intel/17.0/64/17.0.5.239 # intel ---intel/19.0/64/19.0.3.199 latest version as of 2019-05-04
 module load intel-mpi/intel/2017.5/64 # intel-mpi --- intel-mpi/intel/2018.3/64
 # Always pinning these modules to a specific version, since new library versions are rarely compiled:
 module load fftw/gcc/3.3.4
@@ -179,6 +183,7 @@ time python -u ./run_tests.py pgen/pgen_compile --config=--cxx=icpc --config=--c
 time python -u ./run_tests.py pgen/hdf5_reader_serial --silent
 time python -u ./run_tests.py particles/uniform_streaming --config=--cxx=icpc --mpirun=srun --mpirun_opts=--job-name='ICC particles/uniform_streaming' --silent
 time python -u ./run_tests.py grav --config=--cxx=icpc --mpirun=srun --mpirun_opts=--job-name='ICC grav/jeans_3d' --silent
+time python -u ./run_tests.py turb --config=--cxx=icpc --mpirun=srun --mpirun_opts=--job-name='ICC turb/' --silent
 time python -u ./run_tests.py mpi --config=--cxx=icpc --mpirun=srun --mpirun_opts=--job-name='ICC mpi/mpi_linwave' --silent
 time python -u ./run_tests.py omp --config=--cxx=icpc --silent
 timeout --signal=TERM 60m time python -u ./run_tests.py hybrid --config=--cxx=icpc \

@@ -8,7 +8,7 @@
 //========================================================================================
 //! \file gravity.hpp
 //  \brief defines Gravity class which implements data and functions for gravitational
-//         potential
+//         potential. Shared by both Multigrid and FFT schemes for self-gravity.
 
 // C headers
 
@@ -17,11 +17,15 @@
 // Athena++ headers
 #include "../athena.hpp"
 #include "../athena_arrays.hpp"
+#include "../bvals/bvals.hpp"
+#include "../bvals/cc/bvals_cc.hpp"
 
 class MeshBlock;
 class ParameterInput;
 class Coordinates;
 class GravityBoundaryValues;
+class MGGravity;
+class MGGRavityDriver;
 
 //! \class Gravity
 //  \brief gravitational potential data and functions
@@ -29,17 +33,22 @@ class GravityBoundaryValues;
 class Gravity {
  public:
   Gravity(MeshBlock *pmb, ParameterInput *pin);
-  ~Gravity();
 
   MeshBlock* pmy_block;  // ptr to MeshBlock containing this Field
-
-  AthenaArray<Real> phi;  // gravitational potential
+  AthenaArray<Real> phi;   // gravitational potential
+  AthenaArray<Real> empty_flux[3];
   Real gconst, four_pi_G;
   Real grav_mean_rho;
   bool srcterm;
 
+  // TODO(felker): consider creating a CellCentered.. derived class, and changing to
+  //GravityBoundaryVariable *pgbval;
+  CellCenteredBoundaryVariable gbvar;
+
   void Initialize(ParameterInput *pin);
   void Solver(const AthenaArray<Real> &u);
+
+  friend class MGGravityDriver;
 
  private:
   bool gravity_tensor_momentum_;

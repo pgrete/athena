@@ -12,6 +12,7 @@
 // C headers
 
 // C++ headers
+#include <limits>     // std::numeric_limits<float>
 
 // Athena++ headers
 #include "../athena.hpp"         // Real
@@ -48,8 +49,30 @@ class EquationOfState {
   //   const AthenaArray<Real> &bc, AthenaArray<Real> &cons, Coordinates *pco, int il,
   //   int iu, int jl, int ju, int kl, int ku);
 
+  void PassiveScalarConservedToPrimitive(
+      AthenaArray<Real> &s, const AthenaArray<Real> &w, const AthenaArray<Real> &r_old,
+      AthenaArray<Real> &r,
+      Coordinates *pco, int il, int iu, int jl, int ju, int kl, int ku);
+  void PassiveScalarPrimitiveToConserved(
+    const AthenaArray<Real> &r, const AthenaArray<Real> &w,
+    AthenaArray<Real> &s, Coordinates *pco,
+    int il, int iu, int jl, int ju, int kl, int ku);
+  void PassiveScalarConservedToPrimitiveCellAverage(
+    AthenaArray<Real> &s, const AthenaArray<Real> &r_old, AthenaArray<Real> &r,
+    Coordinates *pco, int il, int iu, int jl, int ju, int kl, int ku);
+
+  // pass k, j, i to following 2x functions even though x1-sliced input array is expected
+  // in order to accomodate position-dependent floors
 #pragma omp declare simd simdlen(SIMD_WIDTH) uniform(this,prim,k,j) linear(i)
   void ApplyPrimitiveFloors(AthenaArray<Real> &prim, int k, int j, int i);
+
+#pragma omp declare simd simdlen(SIMD_WIDTH) uniform(this,s,n,k,j) linear(i)
+  void ApplyPassiveScalarFloors(AthenaArray<Real> &s, int n, int k, int j, int i);
+
+#pragma omp declare simd simdlen(SIMD_WIDTH) uniform(this,s,w,r,n,k,j) linear(i)
+  void ApplyPassiveScalarPrimitiveConservedFloors(
+    AthenaArray<Real> &s, const AthenaArray<Real> &w, AthenaArray<Real> &r,
+    int n, int k, int j, int i);
 
   // Sound speed functions in different regimes
 #if !RELATIVISTIC_DYNAMICS  // Newtonian: SR, GR defined as no-op
@@ -82,6 +105,7 @@ class EquationOfState {
       AthenaArray<Real> &, AthenaArray<Real> &, AthenaArray<Real> &,
       int, int, int) {return;}
 #if !MAGNETIC_FIELDS_ENABLED  // SR hydro: SR MHD defined as no-op
+#pragma omp declare simd simdlen(SIMD_WIDTH) uniform(this)
   void SoundSpeedsSR(Real rho_h, Real pgas, Real vx, Real gamma_lorentz_sq,
                      Real *plambda_plus, Real *plambda_minus);
   void FastMagnetosonicSpeedsSR(
@@ -100,20 +124,20 @@ class EquationOfState {
   void FastMagnetosonicSpeedsGR(Real, Real, Real, Real, Real, Real, Real, Real,
                                 Real *, Real *) {return;}
 #else  // GR: Newtonian defined as no-op
-  // don't use implicit destructor definition
-  ~EquationOfState();
   Real SoundSpeed(const Real[]) {return 0.0;}
   Real FastMagnetosonicSpeed(const Real[], const Real) {return 0.0;}
   void ApplyPrimitiveConservedFloors(
       AthenaArray<Real> &, AthenaArray<Real> &, AthenaArray<Real> &,
       int, int, int) {return;}
 #if !MAGNETIC_FIELDS_ENABLED  // GR hydro: GR+SR MHD defined as no-op
+#pragma omp declare simd simdlen(SIMD_WIDTH) uniform(this)
   void SoundSpeedsSR(Real rho_h, Real pgas, Real vx, Real gamma_lorentz_sq,
                      Real *plambda_plus, Real *plambda_minus);
   void FastMagnetosonicSpeedsSR(
       const AthenaArray<Real> &, const AthenaArray<Real> &,
       int, int, int, int, int, AthenaArray<Real> &,
       AthenaArray<Real> &) {return;}
+#pragma omp declare simd simdlen(SIMD_WIDTH) uniform(this)
   void SoundSpeedsGR(Real rho_h, Real pgas, Real u0, Real u1,
                      Real g00, Real g01, Real g11,
                      Real *plambda_plus, Real *plambda_minus);
@@ -127,6 +151,7 @@ class EquationOfState {
       AthenaArray<Real> &lambdas_p, AthenaArray<Real> &lambdas_m);
   void SoundSpeedsGR(Real, Real, Real, Real, Real, Real, Real, Real *, Real *)
   {return;}
+#pragma omp declare simd simdlen(SIMD_WIDTH) uniform(this)
   void FastMagnetosonicSpeedsGR(Real rho_h, Real pgas, Real u0, Real u1, Real b_sq,
                                 Real g00, Real g01, Real g11,
                                 Real *plambda_plus, Real *plambda_minus);
@@ -148,10 +173,13 @@ class EquationOfState {
 #endif
 
  private:
+  // (C++11) in-class Default Member Initializer (fallback option):
+  const Real float_min{std::numeric_limits<float>::min()};
   MeshBlock *pmy_block_;                 // ptr to MeshBlock containing this EOS
   Real iso_sound_speed_, gamma_;         // isothermal Cs, ratio of specific heats
   Real density_floor_, pressure_floor_;  // density and pressure floors
   Real energy_floor_;                    // energy floor
+  Real scalar_floor_{0.0};               // dimensionless concentration scalar floor
   Real sigma_max_, beta_min_;            // limits on ratios of gas quantities to pmag
   Real gamma_max_;                       // maximum Lorentz factor
   Real rho_min_, rho_pow_;               // variables to control power-law denity floor

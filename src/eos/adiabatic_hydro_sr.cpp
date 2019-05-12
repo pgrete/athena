@@ -11,7 +11,6 @@
 
 // C++ headers
 #include <cmath>   // atan2(), cbrt(), cos(), sqrt()
-#include <limits>
 
 // Athena++ headers
 #include "../athena.hpp"                   // enums, macros
@@ -28,14 +27,12 @@
 //   pmb: pointer to MeshBlock
 //   pin: pointer to runtime inputs
 
-EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) {
-  pmy_block_ = pmb;
-  gamma_ = pin->GetReal("hydro", "gamma");
-  Real float_min = std::numeric_limits<float>::min();
-  density_floor_ = pin->GetOrAddReal("hydro", "dfloor", std::sqrt(1024*(float_min)) );
-  pressure_floor_ = pin->GetOrAddReal("hydro", "pfloor", std::sqrt(1024*(float_min)) );
-  gamma_max_ = pin->GetOrAddReal("hydro", "gamma_max", 1000.0);
-}
+EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) :
+    pmy_block_(pmb),
+    gamma_{pin->GetReal("hydro", "gamma")},
+    density_floor_{pin->GetOrAddReal("hydro", "dfloor", std::sqrt(1024*float_min))},
+    pressure_floor_{pin->GetOrAddReal("hydro", "pfloor", std::sqrt(1024*float_min))},
+    gamma_max_{pin->GetOrAddReal("hydro", "gamma_max", 1000.0)} {}
 
 //----------------------------------------------------------------------------------------
 // Variable inverter
@@ -85,30 +82,25 @@ void EquationOfState::ConservedToPrimitive(
 
   const Real TINY_NUMBER_p2 = SQR(TINY_NUMBER);
 
-  // Make array copies for performance reasons
-  AthenaArray<Real> cons_copy,prim_copy;
-  cons_copy.InitWithShallowCopy(cons);
-  prim_copy.InitWithShallowCopy(prim);
-
   // Go through cells
   for (int k=kl; k<=ku; ++k) {
     for (int j=jl; j<=ju; ++j) {
 #pragma omp simd simdlen(SIMD_WIDTH)
       for (int i=il; i<=iu; ++i) {
         // Extract conserved quantities
-        Real d = cons_copy(IDN,k,j,i);
-        Real e = cons_copy(IEN,k,j,i);
+        Real &d = cons(IDN,k,j,i);
+        Real &e = cons(IEN,k,j,i);
 
-        Real mx = cons_copy(IVX,k,j,i);
-        Real my = cons_copy(IVY,k,j,i);
-        Real mz = cons_copy(IVZ,k,j,i);
+        Real mx = cons(IVX,k,j,i);
+        Real my = cons(IVY,k,j,i);
+        Real mz = cons(IVZ,k,j,i);
 
         // Extract primitives quantities
-        Real rho = prim_copy(IDN,k,j,i);
-        Real pgas = prim_copy(IPR,k,j,i);
-        Real vx = prim_copy(IVX,k,j,i);
-        Real vy = prim_copy(IVY,k,j,i);
-        Real vz = prim_copy(IVZ,k,j,i);
+        Real rho = prim(IDN,k,j,i);
+        Real pgas = prim(IPR,k,j,i);
+        Real vx = prim(IVX,k,j,i);
+        Real vy = prim(IVY,k,j,i);
+        Real vz = prim(IVZ,k,j,i);
 
         // Calculate total momentum
         Real m_sq = SQR(mx) + SQR(my) + SQR(mz);
@@ -187,13 +179,14 @@ void EquationOfState::ConservedToPrimitive(
           e = pgas/gamma_adi_minus_1 + e_tmp + rho;
         }
 
-        cons_copy(IDN,k,j,i) = d;
-        cons_copy(IEN,k,j,i) = e;
-        prim_copy(IDN,k,j,i) = rho;
-        prim_copy(IPR,k,j,i) = pgas;
-        prim_copy(IVX,k,j,i) = vx;
-        prim_copy(IVY,k,j,i) = vy;
-        prim_copy(IVZ,k,j,i) = vz;
+        // cons(IDN,k,j,i) = d;
+        // cons(IEN,k,j,i) = e;
+
+        prim(IDN,k,j,i) = rho;
+        prim(IPR,k,j,i) = pgas;
+        prim(IVX,k,j,i) = vx;
+        prim(IVY,k,j,i) = vy;
+        prim(IVZ,k,j,i) = vz;
       }
     }
   }
@@ -284,8 +277,8 @@ void EquationOfState::SoundSpeedsSR(Real rho_h, Real pgas, Real vx, Real gamma_l
 }
 
 //---------------------------------------------------------------------------------------
-// \!fn void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim,
-//           int k, int j, int i)
+// \!fn void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim, int k, int j,
+//                                                 int i)
 // \brief Apply density and pressure floors to reconstructed L/R cell interface states
 
 void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim, int k, int j, int i) {

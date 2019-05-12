@@ -330,7 +330,7 @@ void Particles::ClearBoundary() {
     NeighborBlock& nb = pbval_->neighbor[i];
     bstatus_[nb.bufid] = BoundaryStatus::waiting;
 #ifdef MPI_PARALLEL
-    if (nb.rank != Globals::my_rank) {
+    if (nb.snb.rank != Globals::my_rank) {
       ParticleBuffer& recv = recv_[nb.bufid];
       recv.flagn = recv.flagi = recv.flagr = 0;
       send_[nb.bufid].npar = 0;
@@ -383,7 +383,9 @@ void Particles::LinkNeighbors(MeshBlockTree &tree,
   // Save pointer to each neighbor.
   for (int i = 0; i < pbval_->nneighbor; ++i) {
     NeighborBlock& nb = pbval_->neighbor[i];
-    Neighbor *pn = &neighbor_[nb.ox1+1][nb.ox2+1][nb.ox3+1];
+    SimpleNeighborBlock& snb = nb.snb;
+    NeighborIndexes& ni = nb.ni;
+    Neighbor *pn = &neighbor_[ni.ox1+1][ni.ox2+1][ni.ox3+1];
     while (pn->next != NULL)
       pn = pn->next;
     if (pn->pnb != NULL) {
@@ -391,11 +393,11 @@ void Particles::LinkNeighbors(MeshBlockTree &tree,
       pn = pn->next;
     }
     pn->pnb = &nb;
-    if (nb.rank == Globals::my_rank) {
-      pn->pmb = pmy_mesh->FindMeshBlock(nb.gid);
+    if (snb.rank == Globals::my_rank) {
+      pn->pmb = pmy_mesh->FindMeshBlock(snb.gid);
     } else {
 #ifdef MPI_PARALLEL
-      send_[nb.bufid].tag = (nb.gid<<8) | (nb.targetid<<2),
+      send_[nb.bufid].tag = (snb.gid<<8) | (nb.targetid<<2),
       recv_[nb.bufid].tag = (pmy_block->gid<<8) | (nb.bufid<<2);
 #endif
     }
@@ -414,13 +416,12 @@ void Particles::LinkNeighbors(MeshBlockTree &tree,
           if (pn->pnb == NULL) {
             int nblevel = pbval_->nblevel[n][m][l];
             if (0 <= nblevel && nblevel < my_level) {
-              int ngid = tree.FindNeighbor(pbval_->loc, l-1, m-1, n-1, pbval_->block_bcs,
-                                           nrbx1, nrbx2, nrbx3, root_level)->GetGID();
+              int ngid = tree.FindNeighbor(pbval_->loc, l-1, m-1, n-1)->GetGID();
               for (int i = 0; i < pbval_->nneighbor; ++i) {
                 NeighborBlock& nb = pbval_->neighbor[i];
-                if (nb.gid == ngid) {
+                if (nb.snb.gid == ngid) {
                   pn->pnb = &nb;
-                  if (nb.rank == Globals::my_rank)
+                  if (nb.snb.rank == Globals::my_rank)
                     pn->pmb = pmy_mesh->FindMeshBlock(ngid);
                   break;
                 }
@@ -503,9 +504,9 @@ void Particles::SendToNeighbors() {
 
     // Determine which particle buffer to use.
     ParticleBuffer *ppb = NULL;
-    if (pnb->rank == Globals::my_rank) {
+    if (pnb->snb.rank == Globals::my_rank) {
       // No need to send if back to the same block.
-      if (pnb->gid == pmy_block->gid) {
+      if (pnb->snb.gid == pmy_block->gid) {
         pmy_block->pcoord->MeshCoordsToIndices(x1, x2, x3, xi1(k), xi2(k), xi3(k));
         ++k;
         continue;
@@ -542,9 +543,9 @@ void Particles::SendToNeighbors() {
   // Send to neighbor processes and update boundary status.
   for (int i = 0; i < pbval_->nneighbor; ++i) {
     NeighborBlock& nb = pbval_->neighbor[i];
-    int dst = nb.rank;
+    int dst = nb.snb.rank;
     if (dst == Globals::my_rank) {
-      Particles *ppar = pmy_mesh->FindMeshBlock(nb.gid)->ppar;
+      Particles *ppar = pmy_mesh->FindMeshBlock(nb.snb.gid)->ppar;
       ppar->bstatus_[nb.targetid] =
           (ppar->recv_[nb.targetid].npar > 0) ? BoundaryStatus::arrived
                                               : BoundaryStatus::completed;
@@ -552,7 +553,7 @@ void Particles::SendToNeighbors() {
 #ifdef MPI_PARALLEL
       ParticleBuffer& send = send_[nb.bufid];
       int npsend = send.npar;
-      MPI_Send(&npsend, 1, MPI_INT, nb.rank, send.tag, my_comm);
+      MPI_Send(&npsend, 1, MPI_INT, nb.snb.rank, send.tag, my_comm);
       if (npsend > 0) {
         MPI_Request req = MPI_REQUEST_NULL;
         MPI_Isend(send.ibuf, npsend * ParticleBuffer::nint, MPI_INT,
@@ -597,12 +598,13 @@ bool Particles::ReceiveFromNeighbors() {
 
 #ifdef MPI_PARALLEL
     // Communicate with neighbor processes.
-    if (nb.rank != Globals::my_rank && bstatus == BoundaryStatus::waiting) {
+    int nb_rank = nb.snb.rank;
+    if (nb_rank != Globals::my_rank && bstatus == BoundaryStatus::waiting) {
       ParticleBuffer& recv = recv_[nb.bufid];
       if (!recv.flagn) {
         // Get the number of incoming particles.
         if (recv.reqi == MPI_REQUEST_NULL)
-          MPI_Irecv(&recv.npar, 1, MPI_INT, nb.rank, recv.tag, my_comm, &recv.reqi);
+          MPI_Irecv(&recv.npar, 1, MPI_INT, nb_rank, recv.tag, my_comm, &recv.reqi);
         else
           MPI_Test(&recv.reqi, &recv.flagn, MPI_STATUS_IGNORE);
         if (recv.flagn) {
@@ -625,14 +627,14 @@ bool Particles::ReceiveFromNeighbors() {
         if (!recv.flagi) {
           if (recv.reqi == MPI_REQUEST_NULL)
             MPI_Irecv(recv.ibuf, recv.npar * ParticleBuffer::nint, MPI_INT,
-                      nb.rank, recv.tag + 1, my_comm, &recv.reqi);
+                      nb_rank, recv.tag + 1, my_comm, &recv.reqi);
           else
             MPI_Test(&recv.reqi, &recv.flagi, MPI_STATUS_IGNORE);
         }
         if (!recv.flagr) {
           if (recv.reqr == MPI_REQUEST_NULL)
             MPI_Irecv(recv.rbuf, recv.npar * ParticleBuffer::nreal, MPI_ATHENA_REAL,
-                      nb.rank, recv.tag + 2, my_comm, &recv.reqr);
+                      nb_rank, recv.tag + 2, my_comm, &recv.reqr);
           else
             MPI_Test(&recv.reqr, &recv.flagr, MPI_STATUS_IGNORE);
         }
@@ -903,15 +905,16 @@ struct Neighbor* Particles::FindTargetNeighbor(
   Neighbor *pn = &neighbor_[ox1+1][ox2+1][ox3+1];
 
   // Search down the list if the neighbor is at a finer level.
-  if (pmy_mesh->multilevel && pn->pnb != NULL && pn->pnb->level > pmy_block->loc.level) {
+  if (pmy_mesh->multilevel && pn->pnb != NULL &&
+      pn->pnb->snb.level > pmy_block->loc.level) {
     RegionSize& bs = pmy_block->block_size;
     int fi[2] = {0, 0}, i = 0;
     if (active1_ && ox1 == 0) fi[i++] = 2 * (xi1 - pmy_block->is) / bs.nx1;
     if (active2_ && ox2 == 0) fi[i++] = 2 * (xi2 - pmy_block->js) / bs.nx2;
     if (active3_ && ox3 == 0) fi[i++] = 2 * (xi3 - pmy_block->ks) / bs.nx3;
     while (pn != NULL) {
-      NeighborBlock *pnb = pn->pnb;
-      if (pnb->fi1 == fi[0] && pnb->fi2 == fi[1]) break;
+      NeighborIndexes& ni = pn->pnb->ni;
+      if (ni.fi1 == fi[0] && ni.fi2 == fi[1]) break;
       pn = pn->next;
     }
   }

@@ -23,32 +23,41 @@
 #include "multigrid.hpp"
 
 //----------------------------------------------------------------------------------------
-//! \fn Multigrid::Multigrid(MultigridDriver *pmd, LogicalLocation iloc, int igid,
-//                           int ilid, int invar, int nghost, RegionSize isize,
-//                           MGBoundaryFunc *MGBoundary, BoundaryFlag *input_bcs,
-//                           bool root);
+//! \fn Multigrid::Multigrid(MultigridDriver *pmd, MeshBlock *pmb, int invar, int nghost)
 //  \brief Multigrid constructor
 
-Multigrid::Multigrid(
-    MultigridDriver *pmd, LogicalLocation iloc, int igid, int ilid,
-    int invar, int nghost, RegionSize isize, MGBoundaryFunc *MGBoundary,
-    BoundaryFlag *input_bcs, bool root) {
+Multigrid::Multigrid(MultigridDriver *pmd, MeshBlock *pmb, int invar, int nghost) {
   pmy_driver_=pmd;
-  loc_=iloc;
-  gid_=igid;
-  lid_=ilid;
+  pmy_block_=pmb;
   ngh_=nghost;
-  size_=isize;
   nvar_=invar;
-  root_flag_=root;
+  if (pmy_block_ != nullptr) {
+    loc_ = pmy_block_->loc;
+    size_ = pmy_block_->block_size;
+    if (size_.nx1 != size_.nx2 || size_.nx1 != size_.nx3) {
+      std::stringstream msg;
+      msg << "### FATAL ERROR in Multigrid::Multigrid" << std::endl
+          << "The Multigrid solver requires logically cubic MeshBlock." << std::endl;
+      ATHENA_ERROR(msg);
+      return;
+    }
+    pmgbval = new MGBoundaryValues(this, pmy_block_->pbval->block_bcs);
+  } else {
+    loc_.lx1 = loc_.lx2 = loc_.lx3 = 0;
+    loc_.level = 0;
+    size_ = pmy_driver_->pmy_mesh_->mesh_size;
+    size_.nx1 = pmy_driver_->nrbx1_;
+    size_.nx2 = pmy_driver_->nrbx2_;
+    size_.nx3 = pmy_driver_->nrbx3_;
+    pmgbval = new MGBoundaryValues(this, pmy_driver_->pmy_mesh_->mesh_bcs);
+  }
+
   rdx_=(size_.x1max-size_.x1min)/static_cast<Real>(size_.nx1);
   rdy_=(size_.x2max-size_.x2min)/static_cast<Real>(size_.nx2);
   rdz_=(size_.x3max-size_.x3min)/static_cast<Real>(size_.nx3);
-  prev=nullptr;
-  next=nullptr;
 
   nlevel_=0;
-  if (root_flag_ == true) {
+  if (pmy_block_ == nullptr) { // root
     int nbx, nby, nbz;
     for (int l=0; l<20; l++) {
       if (size_.nx1%(1<<l)==0 && size_.nx2%(1<<l)==0 && size_.nx3%(1<<l)==0) {
@@ -98,8 +107,6 @@ Multigrid::Multigrid(
     }
   }
 
-  pmgbval = new MGBoundaryValues(this, input_bcs, MGBoundary);
-
   // allocate arrays
   u_ = new AthenaArray<Real>[nlevel_];
   src_ = new AthenaArray<Real>[nlevel_];
@@ -120,14 +127,6 @@ Multigrid::Multigrid(
 //  \brief Multigrid destroctor
 
 Multigrid::~Multigrid() {
-  if (prev!=nullptr) prev->next=next;
-  if (next!=nullptr) next->prev=prev;
-
-  for (int l=0; l<nlevel_; l++) {
-    u_[l].DeleteAthenaArray();
-    src_[l].DeleteAthenaArray();
-    def_[l].DeleteAthenaArray();
-  }
   delete [] u_;
   delete [] src_;
   delete [] def_;
@@ -507,12 +506,8 @@ Real Multigrid::CalculateDefectNorm(int n, int nrm) {
 //  \brief calculate the sum of the array (type: 0=src, 1=u)
 
 Real Multigrid::CalculateTotal(int type, int n) {
-  AthenaArray<Real> src;
-  int ll=nlevel_-1-current_level_;
-  if (type==0)
-    src.InitWithShallowCopy(src_[current_level_]);
-  else
-    src.InitWithShallowCopy(u_[current_level_]);
+  AthenaArray<Real> &src = (type == 0) ? src_[current_level_] : u_[current_level_];
+  int ll = nlevel_ - 1 - current_level_;
   Real s=0.0;
   int is, ie, js, je, ks, ke;
   is=js=ks=ngh_;
@@ -534,11 +529,7 @@ Real Multigrid::CalculateTotal(int type, int n) {
 //  \brief subtract the average value (type: 0=source, 1=u)
 
 void Multigrid::SubtractAverage(int type, int n, Real ave) {
-  AthenaArray<Real> dst;
-  if (type==0)
-    dst.InitWithShallowCopy(src_[nlevel_-1]);
-  else
-    dst.InitWithShallowCopy(u_[nlevel_-1]);
+  AthenaArray<Real> &dst = (type == 0) ? src_[nlevel_-1] : u_[nlevel_-1];
   int is, ie, js, je, ks, ke;
   is=js=ks=0;
   ie=is+size_.nx1+1, je=js+size_.nx2+1, ke=ks+size_.nx3+1;

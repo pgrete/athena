@@ -11,8 +11,7 @@
 
 // C++ headers
 #include <algorithm>  // max(), min()
-#include <cmath>      // abs(), cbrt(), isfinite(), isnan(), NAN, std::pow(), sqrt()
-#include <limits>
+#include <cmath>      // abs(), cbrt(), isfinite(), isnan(), NAN, pow(), sqrt()
 
 // Athena++ headers
 #include "../athena.hpp"                   // enums, macros
@@ -48,41 +47,28 @@ void PrimitiveToConservedSingle(
 //   pmb: pointer to MeshBlock
 //   pin: pointer to runtime inputs
 
-EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) {
-  pmy_block_ = pmb;
-  gamma_ = pin->GetReal("hydro", "gamma");
-  Real float_min = std::numeric_limits<float>::min();
-  density_floor_ = pin->GetOrAddReal("hydro", "dfloor", std::sqrt(1024*(float_min)) );
-  pressure_floor_ = pin->GetOrAddReal("hydro", "pfloor", std::sqrt(1024*(float_min)) );
-  rho_min_ = pin->GetOrAddReal("hydro", "rho_min", density_floor_);
-  rho_pow_ = pin->GetOrAddReal("hydro", "rho_pow", 0.0);
-  pgas_min_ = pin->GetOrAddReal("hydro", "pgas_min", pressure_floor_);
-  pgas_pow_ = pin->GetOrAddReal("hydro", "pgas_pow", 0.0);
-  sigma_max_ = pin->GetOrAddReal("hydro", "sigma_max",  0.0);
-  beta_min_ = pin->GetOrAddReal("hydro", "beta_min", 0.0);
-  gamma_max_ = pin->GetOrAddReal("hydro", "gamma_max", 1000.0);
-  int ncells1 = pmb->block_size.nx1 + 2*NGHOST;
-  g_.NewAthenaArray(NMETRIC, ncells1);
-  g_inv_.NewAthenaArray(NMETRIC, ncells1);
-  normal_dd_.NewAthenaArray(ncells1);
-  normal_ee_.NewAthenaArray(ncells1);
-  normal_mm_.NewAthenaArray(4,ncells1);
-  normal_bb_.NewAthenaArray(4,ncells1);
-  normal_tt_.NewAthenaArray(ncells1);
+EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) :
+    pmy_block_(pmb),
+    gamma_{pin->GetReal("hydro", "gamma")},
+    density_floor_{pin->GetOrAddReal("hydro", "dfloor", std::sqrt(1024*float_min))},
+    pressure_floor_{pin->GetOrAddReal("hydro", "pfloor", std::sqrt(1024*float_min))},
+    sigma_max_{pin->GetOrAddReal("hydro", "sigma_max",  0.0)},
+    beta_min_{pin->GetOrAddReal("hydro", "beta_min", 0.0)},
+    gamma_max_{pin->GetOrAddReal("hydro", "gamma_max", 1000.0)},
+    rho_min_{pin->GetOrAddReal("hydro", "rho_min", density_floor_)},
+    rho_pow_{pin->GetOrAddReal("hydro", "rho_pow", 0.0)},
+    pgas_min_{pin->GetOrAddReal("hydro", "pgas_min", pressure_floor_)},
+    pgas_pow_{pin->GetOrAddReal("hydro", "pgas_pow", 0.0)} {
+  int nc1 = pmb->ncells1;
+  g_.NewAthenaArray(NMETRIC, nc1);
+  g_inv_.NewAthenaArray(NMETRIC, nc1);
+  normal_dd_.NewAthenaArray(nc1);
+  normal_ee_.NewAthenaArray(nc1);
+  normal_mm_.NewAthenaArray(4,nc1);
+  normal_bb_.NewAthenaArray(4,nc1);
+  normal_tt_.NewAthenaArray(nc1);
 }
 
-//----------------------------------------------------------------------------------------
-// Destructor
-
-EquationOfState::~EquationOfState() {
-  g_.DeleteAthenaArray();
-  g_inv_.DeleteAthenaArray();
-  normal_dd_.DeleteAthenaArray();
-  normal_ee_.DeleteAthenaArray();
-  normal_mm_.DeleteAthenaArray();
-  normal_bb_.DeleteAthenaArray();
-  normal_tt_.DeleteAthenaArray();
-}
 
 //----------------------------------------------------------------------------------------
 // Variable inverter
@@ -880,8 +866,8 @@ void EquationOfState::FastMagnetosonicSpeedsGR(Real rho_h, Real pgas, Real u0, R
 }
 
 //---------------------------------------------------------------------------------------
-// \!fn void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim,
-//           int k, int j, int i)
+// \!fn void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim, int k, int j,
+//                                                 int i)
 // \brief Apply density and pressure floors to reconstructed L/R cell interface states
 
 void EquationOfState::ApplyPrimitiveFloors(AthenaArray<Real> &prim, int k, int j, int i) {
