@@ -83,6 +83,7 @@ class ParameterInput {
   void ParameterDump(std::ostream& os);
   int  DoesParameterExist(std::string block, std::string name);
   int  GetInteger(std::string block, std::string name);
+  void GetIntegerVector(std::string block, std::string name, int vec[3]);
   int  GetOrAddInteger(std::string block, std::string name, int value);
   int  SetInteger(std::string block, std::string name, int value);
   Real GetReal(std::string block, std::string name);

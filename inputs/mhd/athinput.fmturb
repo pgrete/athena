@@ -1,0 +1,128 @@
+<comment>
+problem   = Turbulence with parabolic forcing profile (using few driving modes)
+reference = to be written, see https://gitlab.com/pgrete/kathena/wikis/turbulence for now
+configure = --prob=fmturb
+
+<job>
+problem_id = Turb    # problem ID: basename of output filenames
+
+<output1>
+file_type  = hst        # History data dump
+dt         = 0.05       # time increment between outputs
+
+<output2>
+file_type  = hdf5       # Binary data dump
+variable   = prim       # variables to be output
+dt         = 0.1        # time increment between outputs
+id         = prim
+
+<output3>
+file_type  = hdf5       # Binary data dump
+variable   = uov        # variables to be output
+id         = acc
+dt         = 0.1        # time increment between outputs
+
+<output4>
+file_type  = rst        # Binary data dump
+dt         = 1.0        # time increment between outputs
+
+<time>
+cfl_number = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim       = 100000     # cycle limit
+tlim       = 5.0        # time limit
+integrator  = vl2       # time integration algorithm
+xorder      = 2         # order of spatial reconstruction
+ncycle_out  = 1         # interval for stdout summary info
+
+<mesh>
+nx1        = 64         # Number of zones in X1-direction
+x1min      = 0.0        # minimum value of X1
+x1max      = 1.0        # maximum value of X1
+ix1_bc     = periodic   # inner-X1 boundary flag
+ox1_bc     = periodic   # outer-X1 boundary flag
+
+nx2        = 64         # Number of zones in X2-direction
+x2min      = 0.0        # minimum value of X2
+x2max      = 1.0        # maximum value of X2
+ix2_bc     = periodic   # inner-X2 boundary flag
+ox2_bc     = periodic   # outer-X2 boundary flag
+
+nx3        = 64         # Number of zones in X3-direction
+x3min      = 0.0        # minimum value of X3
+x3max      = 1.0        # maximum value of X3
+ix3_bc     = periodic   # inner-X3 boundary flag
+ox3_bc     = periodic   # outer-X3 boundary flag
+
+<meshblock>
+nx1        = 64
+nx2        = 64
+nx3        = 64
+
+<hydro>
+gamma           = 1.0001         # gamma = C_p/C_v
+iso_sound_speed = 1.00           # equavalent to sqrt(gamma*p/d) 
+
+<problem>
+fmturb_flag  = 1        # enable Ornstein-Uhlenbeck driving
+rho0         = 1.0      # initial mean density
+p0           = 1.0      # initial mean pressure
+b0           = 0.01     # initial magnetic field (x-direction)
+b_config     = 0        # 0 - net flux; 1 - no net flux uniform B; 2 - non net flux sin B
+kpeak        = 2.0      # characteristic wavenumber
+corr_time    = 1.0      # autocorrelation time of the OU forcing process
+rseed        = 20190729 # random seed of the OU forcing process
+sol_weight   = 1.0      # solenoidal weight of the acceleration field
+accel_rms    = 0.5      # root mean square value of the acceleration field
+num_modes    = 50       # number of wavemodes
+
+<modes>
+k_1 = +0 -2 -1
+k_2 = +0 -2 +0
+k_3 = +0 -2 +1
+k_4 = +0 -1 -2
+k_5 = +0 -1 -1
+k_6 = +0 -1 +0
+k_7 = +0 -1 +1
+k_8 = +0 -1 +2
+k_9 = +0 +0 -2
+k_10  = +0 +0 -1
+k_11  = +0 +0 +1
+k_12  = +0 +0 +2
+k_13  = +0 +1 -2
+k_14  = +0 +1 -1
+k_15  = +0 +1 +0
+k_16  = +0 +1 +1
+k_17  = +0 +1 +2
+k_18  = +0 +2 -1
+k_19  = +0 +2 +0
+k_20  = +0 +2 +1
+k_21  = +1 -2 -1
+k_22  = +1 -2 +0
+k_23  = +1 -2 +1
+k_24  = +1 -1 -2
+k_25  = +1 -1 -1
+k_26  = +1 -1 +0
+k_27  = +1 -1 +1
+k_28  = +1 -1 +2
+k_29  = +1 +0 -2
+k_30  = +1 +0 -1
+k_31  = +1 +0 +0
+k_32  = +1 +0 +1
+k_33  = +1 +0 +2
+k_34  = +1 +1 -2
+k_35  = +1 +1 -1
+k_36  = +1 +1 +0
+k_37  = +1 +1 +1
+k_38  = +1 +1 +2
+k_39  = +1 +2 -1
+k_40  = +1 +2 +0
+k_41  = +1 +2 +1
+k_42  = +2 -1 -1
+k_43  = +2 -1 +0
+k_44  = +2 -1 +1
+k_45  = +2 +0 -1
+k_46  = +2 +0 +0
+k_47  = +2 +0 +1
+k_48  = +2 +1 -1
+k_49  = +2 +1 +0
+k_50  = +2 +1 +1

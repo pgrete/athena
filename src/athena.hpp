@@ -12,6 +12,7 @@
 
 // C++ headers
 #include <cmath>
+#include <complex>
 #include <cstdint>  // std::int64_t
 
 // Athena++ headers
@@ -30,6 +31,7 @@ using Real = double;
 #define MPI_ATHENA_REAL MPI_DOUBLE
 #endif
 #endif
+using Complex = std::complex<Real>;
 
 // for OpenMP 4.0 SIMD vectorization, control width of SIMD lanes
 #if defined(__AVX512F__)

@@ -32,6 +32,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
 #include "../fft/athena_fft.hpp"
+#include "../fft/few_modes_turbulence.hpp"
 #include "../fft/turbulence.hpp"
 #include "../field/field.hpp"
 #include "../field/field_diffusion/field_diffusion.hpp"
@@ -95,7 +96,7 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
     sts_loc(TaskType::main_int),
     muj(), nuj(), muj_tilde(), gammaj_tilde(),
     nbnew(), nbdel(),
-    step_since_lb(), gflag(), turb_flag(), amr_updated(multilevel),
+    step_since_lb(), gflag(), turb_flag(), fmturb_flag(), amr_updated(multilevel),
     // private members:
     next_phys_id_(), num_mesh_threads_(pin->GetOrAddInteger("mesh", "num_threads", 1)),
     gids_(), gide_(),
@@ -518,6 +519,8 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
 
   if (turb_flag > 0) // TurbulenceDriver depends on the MeshBlock ctor
     ptrbd = new TurbulenceDriver(this, pin);
+  if (fmturb_flag > 0) // FewModesTurbulenceDriver depends on the MeshBlock ctor
+    pfmtrbd = new FewModesTurbulenceDriver(this, pin);
 }
 
 //----------------------------------------------------------------------------------------
@@ -560,7 +563,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
     sts_loc(TaskType::main_int),
     muj(), nuj(), muj_tilde(), gammaj_tilde(),
     nbnew(), nbdel(),
-    step_since_lb(), gflag(), turb_flag(), amr_updated(multilevel),
+    step_since_lb(), gflag(), turb_flag(), fmturb_flag(), amr_updated(multilevel),
     // private members:
     next_phys_id_(), num_mesh_threads_(pin->GetOrAddInteger("mesh", "num_threads", 1)),
     gids_(), gide_(),
@@ -860,6 +863,8 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
 
   if (turb_flag > 0) // TurbulenceDriver depends on the MeshBlock ctor
     ptrbd = new TurbulenceDriver(this, pin);
+  if (fmturb_flag > 0) // FewModesTurbulenceDriver depends on the MeshBlock ctor
+    pfmtrbd = new FewModesTurbulenceDriver(this, pin, rseed_rst);
 }
 
 //----------------------------------------------------------------------------------------
@@ -876,6 +881,7 @@ Mesh::~Mesh() {
   if (SELF_GRAVITY_ENABLED == 1) delete pfgrd;
   else if (SELF_GRAVITY_ENABLED == 2) delete pmgrd;
   if (turb_flag > 0) delete ptrbd;
+  if (fmturb_flag > 0) delete pfmtrbd;
   if (adaptive) { // deallocate arrays for AMR
     delete [] nref;
     delete [] nderef;
@@ -1334,6 +1340,13 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
     // add initial perturbation for decaying or impulsive turbulence
     if (((turb_flag == 1) || (turb_flag == 2)) && (res_flag == 0))
       ptrbd->Driving();
+
+    if ((fmturb_flag == 1) && (res_flag == 0)) {
+      // generate initial perturbation using large dt so that the drift coeff is 0
+      // and the diffusion coeff (new perturbation) is effectively 1
+      pfmtrbd->Generate(1e20);
+      pfmtrbd->Perturb(1e-5); // using small dt so the actual injection isn't too large
+    }
 
     // Create send/recv MPI_Requests for all BoundaryData objects
 #pragma omp parallel for num_threads(nthreads)

@@ -26,6 +26,7 @@
 #include "../coordinates/coordinates.hpp"
 #include "../eos/eos.hpp"
 #include "../fft/athena_fft.hpp"
+#include "../fft/few_modes_turbulence.hpp"
 #include "../field/field.hpp"
 #include "../globals.hpp"
 #include "../gravity/gravity.hpp"
@@ -323,6 +324,12 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     os += pscalars->s.GetSizeInBytes();
   }
 
+  // load current rseed for few mode turb driving
+  if (pmy_mesh->fmturb_flag == 1) {
+    memcpy(&pmy_mesh->rseed_rst, &(mbdata[os]),sizeof(int64_t));
+    os += sizeof(int64_t);
+  }
+
   // load user MeshBlock data
   for (int n=0; n<nint_user_meshblock_data_; n++) {
     std::memcpy(iuser_meshblock_data[n].data(), &(mbdata[os]),
@@ -451,6 +458,11 @@ std::size_t MeshBlock::GetBlockSizeInBytes() {
     size += pgrav->phi.GetSizeInBytes();
   if (NSCALARS > 0)
     size += pscalars->s.GetSizeInBytes();
+
+  // saved rseed for few mode turbulence
+  if (pmy_mesh->fmturb_flag == 1) {
+    size += sizeof(int64_t);
+  }
 
   // calculate user MeshBlock data size
   for (int n=0; n<nint_user_meshblock_data_; n++)

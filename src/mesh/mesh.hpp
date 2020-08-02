@@ -51,6 +51,7 @@ class EquationOfState;
 class FFTDriver;
 class FFTGravityDriver;
 class TurbulenceDriver;
+class FewModesTurbulenceDriver;
 
 FluidFormulation GetFluidFormulation(const std::string& input_string);
 
@@ -195,6 +196,7 @@ class Mesh {
   friend class FFTDriver;
   friend class FFTGravityDriver;
   friend class TurbulenceDriver;
+  friend class FewModesTurbulenceDriver;
   friend class MultigridDriver;
   friend class MGGravityDriver;
   friend class Gravity;
@@ -233,12 +235,16 @@ class Mesh {
   int step_since_lb;
   int gflag;
   int turb_flag; // turbulence flag
+  int fmturb_flag; // few modes turbulence flag
+  int64_t rseed_rst; // random seed for few modes turbulence
+
   bool amr_updated;
   EosTable *peos_table;
 
   AthenaArray<MeshBlock*> my_blocks;
 
   TurbulenceDriver *ptrbd;
+  FewModesTurbulenceDriver *pfmtrbd;
   FFTGravityDriver *pfgrd;
   MGGravityDriver *pmgrd;
 
