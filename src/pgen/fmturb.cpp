@@ -34,7 +34,6 @@
 static Real hst_turbulence(MeshBlock *pmb, int iout) {
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
 
-  auto w = pmb->phydro->w;
   Real gam = pmb->peos->GetGamma();
 
   Real sum;
@@ -43,13 +42,14 @@ static Real hst_turbulence(MeshBlock *pmb, int iout) {
     for (int j = js; j <= je + 1; j++) {
       for (int i = is; i <= ie + 1; i++) {
 
-        Real vel2 =
-            (w(IVX, k, j, i) * w(IVX, k, j, i) + w(IVY, k, j, i) * w(IVY, k, j, i) +
-             w(IVZ, k, j, i) * w(IVZ, k, j, i));
+        Real vel2 = (pmb->phydro->w(IVX, k, j, i) * pmb->phydro->w(IVX, k, j, i) +
+                     pmb->phydro->w(IVY, k, j, i) * pmb->phydro->w(IVY, k, j, i) +
+                     pmb->phydro->w(IVZ, k, j, i) * pmb->phydro->w(IVZ, k, j, i));
 
-        Real c_s = std::sqrt(gam * w(IPR, k, j, i) / w(IDN, k, j, i)); // speed of sound
+        Real c_s = std::sqrt(gam * pmb->phydro->w(IPR, k, j, i) /
+                             pmb->phydro->w(IDN, k, j, i)); // speed of sound
 
-        Real e_kin = 0.5 * w(IDN, k, j, i) * vel2;
+        Real e_kin = 0.5 * pmb->phydro->w(IDN, k, j, i) * vel2;
 
         if (iout == 0) { // Ms
           sum += std::sqrt(vel2) / c_s;
@@ -69,7 +69,7 @@ static Real hst_turbulence(MeshBlock *pmb, int iout) {
           } else if (iout == 3) { // Emag
             sum += e_mag;
           } else if (iout == 4) { // plasma beta
-            sum += w(IPR, k, j, i) / e_mag;
+            sum += pmb->phydro->w(IPR, k, j, i) / e_mag;
           }
         }
       }
@@ -141,20 +141,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real Lz = pmy_mesh->mesh_size.x3max - pmy_mesh->mesh_size.x3min;
   Real kz = 2.0 * PI / Lz;
 
-  auto u = phydro->u;
-
   if (MAGNETIC_FIELDS_ENABLED) {
-    auto b_x1f = pfield->b.x1f;
-    auto b_x2f = pfield->b.x2f;
-    auto b_x3f = pfield->b.x3f;
-
-    auto x1v = pcoord->x1v;
-    auto x2v = pcoord->x2v;
-    auto x3v = pcoord->x3v;
-
-    auto x1f = pcoord->x1f;
-    auto x2f = pcoord->x2f;
-    auto x3f = pcoord->x3f;
 
     int nx1 = (ie - is) + 1 + 2 * (NGHOST);
     int nx2 = (je - js) + 1 + 2 * (NGHOST);
@@ -164,10 +151,6 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     ax.NewAthenaArray(nx3, nx2, nx1);
     ay.NewAthenaArray(nx3, nx2, nx1);
     az.NewAthenaArray(nx3, nx2, nx1);
-
-    auto dx1f = pcoord->dx1f;
-    auto dx2f = pcoord->dx2f;
-    auto dx3f = pcoord->dx3f;
 
     Real b0 = pin->GetReal("problem", "b0");
     auto b_config = pin->GetInteger("problem", "b_config");
@@ -200,8 +183,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
       for (int k = ks; k <= ke + 1; k++) {
         for (int j = js; j <= je + 1; j++) {
           for (int i = is; i <= ie + 1; i++) {
-            if ((SQR(x1f(i) - x0) + SQR(x2f(j) - y0)) < rad * rad) {
-              az(k, j, i) = (rad - std::sqrt(SQR(x1f(i) - x0) + SQR(x2f(j) - y0)));
+            if ((SQR(pcoord->x1f(i) - x0) + SQR(pcoord->x2f(j) - y0)) < rad * rad) {
+              az(k, j, i) =
+                  (rad - std::sqrt(SQR(pcoord->x1f(i) - x0) + SQR(pcoord->x2f(j) - y0)));
             }
           }
         }
@@ -213,28 +197,29 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int k = ks; k <= ke; k++) {
       for (int j = js; j <= je; j++) {
         for (int i = is; i <= ie + 1; i++) {
-          b_x1f(k, j, i) = 0.0;
+          pfield->b.x1f(k, j, i) = 0.0;
 
           if (b_config == 0) { // uniform field
-            b_x1f(k, j, i) = b0;
+            pfield->b.x1f(k, j, i) = b0;
           }
           if (b_config == 1) { // no net flux with uniform fieldi
-            if (x3v(k) < x3min + Lz / 2.0) {
-              b_x1f(k, j, i) = b0;
+            if (pcoord->x3v(k) < x3min + Lz / 2.0) {
+              pfield->b.x1f(k, j, i) = b0;
             } else {
-              b_x1f(k, j, i) = -b0;
+              pfield->b.x1f(k, j, i) = -b0;
             }
           }
           if (b_config == 2) { // no net flux with sin(z) shape
             // sqrt(0.5) is used so that resulting e_mag is approx b_0^2/2 similar to
             // other b_configs
-            b_x1f(k, j, i) = b0 / std::sqrt(0.5) * sin(kz * x3v(k));
+            pfield->b.x1f(k, j, i) = b0 / std::sqrt(0.5) * sin(kz * pcoord->x3v(k));
           }
 
-          b_x1f(k, j, i) += (az(k, j + 1, i) - az(k, j, i)) / dx2f(j) -
-                            (ay(k + 1, j, i) - ay(k, j, i)) / dx3f(k);
+          pfield->b.x1f(k, j, i) += (az(k, j + 1, i) - az(k, j, i)) / pcoord->dx2f(j) -
+                                    (ay(k + 1, j, i) - ay(k, j, i)) / pcoord->dx3f(k);
           if (NON_BAROTROPIC_EOS && i > is) {
-            local_mag_en += 0.5 * SQR(0.5 * (b_x1f(k, j, i - 1) + b_x1f(k, j, i)));
+            local_mag_en +=
+                0.5 * SQR(0.5 * (pfield->b.x1f(k, j, i - 1) + pfield->b.x1f(k, j, i)));
           }
         }
       }
@@ -242,10 +227,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int k = ks; k <= ke; k++) {
       for (int j = js; j <= je + 1; j++) {
         for (int i = is; i <= ie; i++) {
-          b_x2f(k, j, i) += (ax(k + 1, j, i) - ax(k, j, i)) / dx3f(k) -
-                            (az(k, j, i + 1) - az(k, j, i)) / dx1f(i);
+          pfield->b.x2f(k, j, i) += (ax(k + 1, j, i) - ax(k, j, i)) / pcoord->dx3f(k) -
+                                    (az(k, j, i + 1) - az(k, j, i)) / pcoord->dx1f(i);
           if (NON_BAROTROPIC_EOS && j > js) {
-            local_mag_en += 0.5 * SQR(0.5 * (b_x2f(k, j - 1, i) + b_x2f(k, j, i)));
+            local_mag_en +=
+                0.5 * SQR(0.5 * (pfield->b.x2f(k, j - 1, i) + pfield->b.x2f(k, j, i)));
           }
         }
       }
@@ -253,10 +239,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int k = ks; k <= ke + 1; k++) {
       for (int j = js; j <= je; j++) {
         for (int i = is; i <= ie; i++) {
-          b_x3f(k, j, i) += (ay(k, j, i + 1) - ay(k, j, i)) / dx1f(i) -
-                            (ax(k, j + 1, i) - ax(k, j, i)) / dx2f(j);
+          pfield->b.x3f(k, j, i) += (ay(k, j, i + 1) - ay(k, j, i)) / pcoord->dx1f(i) -
+                                    (ax(k, j + 1, i) - ax(k, j, i)) / pcoord->dx2f(j);
           if (NON_BAROTROPIC_EOS && k > ks) {
-            local_mag_en += 0.5 * SQR(0.5 * (b_x3f(k - 1, j, i) + b_x3f(k, j, i)));
+            local_mag_en +=
+                0.5 * SQR(0.5 * (pfield->b.x3f(k - 1, j, i) + pfield->b.x3f(k, j, i)));
           }
         }
       }
@@ -287,10 +274,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int k = ks; k <= ke; k++) {
       for (int j = js; j <= je; j++) {
         for (int i = is; i <= ie + 1; i++) {
-          b_x1f(k, j, i) /= b_norm;
+          pfield->b.x1f(k, j, i) /= b_norm;
           // setting cell centered energy after the right hand side face has been set
           if (NON_BAROTROPIC_EOS && i > is) {
-            u(IEN, k, j, i - 1) = 0.5 * SQR(0.5 * (b_x1f(k, j, i - 1) + b_x1f(k, j, i)));
+            phydro->u(IEN, k, j, i - 1) =
+                0.5 * SQR(0.5 * (pfield->b.x1f(k, j, i - 1) + pfield->b.x1f(k, j, i)));
           }
         }
       }
@@ -298,10 +286,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int k = ks; k <= ke; k++) {
       for (int j = js; j <= je + 1; j++) {
         for (int i = is; i <= ie; i++) {
-          b_x2f(k, j, i) /= b_norm;
+          pfield->b.x2f(k, j, i) /= b_norm;
           // setting cell centered energy after the right hand side face has been set
           if (NON_BAROTROPIC_EOS && j > js) {
-            u(IEN, k, j - 1, i) += 0.5 * SQR(0.5 * (b_x2f(k, j - 1, i) + b_x2f(k, j, i)));
+            phydro->u(IEN, k, j - 1, i) +=
+                0.5 * SQR(0.5 * (pfield->b.x2f(k, j - 1, i) + pfield->b.x2f(k, j, i)));
           }
         }
       }
@@ -309,10 +298,11 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     for (int k = ks; k <= ke + 1; k++) {
       for (int j = js; j <= je; j++) {
         for (int i = is; i <= ie; i++) {
-          b_x3f(k, j, i) /= b_norm;
+          pfield->b.x3f(k, j, i) /= b_norm;
           // setting cell centered energy after the right hand side face has been set
           if (NON_BAROTROPIC_EOS && k > ks) {
-            u(IEN, k - 1, j, i) += 0.5 * SQR(0.5 * (b_x3f(k - 1, j, i) + b_x3f(k, j, i)));
+            phydro->u(IEN, k - 1, j, i) +=
+                0.5 * SQR(0.5 * (pfield->b.x3f(k - 1, j, i) + pfield->b.x3f(k, j, i)));
           }
         }
       }
@@ -322,14 +312,14 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   for (int k = ks; k <= ke; k++) {
     for (int j = js; j <= je; j++) {
       for (int i = is; i <= ie; i++) {
-        u(IDN, k, j, i) = rho0;
+        phydro->u(IDN, k, j, i) = rho0;
 
-        u(IM1, k, j, i) = 0.0;
-        u(IM2, k, j, i) = 0.0;
-        u(IM3, k, j, i) = 0.0;
+        phydro->u(IM1, k, j, i) = 0.0;
+        phydro->u(IM2, k, j, i) = 0.0;
+        phydro->u(IM3, k, j, i) = 0.0;
 
         if (NON_BAROTROPIC_EOS) {
-          u(IEN, k, j, i) += p0 / gm1;
+          phydro->u(IEN, k, j, i) += p0 / gm1;
         }
       }
     }

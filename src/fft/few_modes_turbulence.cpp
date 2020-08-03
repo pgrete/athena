@@ -136,15 +136,10 @@ void FewModesTurbulenceDriver::RestoreFromRestart(int64_t rseed_in) {
     ran2(&rseed);
   }
 
-  // TODO(pgrete) remove unnec code
-  auto num_modes = this->num_modes;
-  auto accel_hat = this->accel_hat;
-  auto ruser_meshblock_data = pm->my_blocks(0)->ruser_meshblock_data[0];
-
   for (int n = 0; n < 3; n++) {
     for (int m = 0; m < num_modes; m++) {
-      accel_hat(n, m) =
-          Complex(ruser_meshblock_data(n, m, 0), ruser_meshblock_data(n, m, 1));
+      accel_hat(n, m) = Complex(pm->my_blocks(0)->ruser_meshblock_data[0](n, m, 0),
+                                pm->my_blocks(0)->ruser_meshblock_data[0](n, m, 1));
     }
   }
 }
@@ -155,21 +150,12 @@ void FewModesTurbulenceDriver::RestoreFromRestart(int64_t rseed_in) {
 
 void FewModesTurbulenceDriver::SetPhases(void) {
   Complex I(0.0, 1.0);
-  auto phases_i = this->phases_i;
-  auto phases_j = this->phases_j;
-  auto phases_k = this->phases_k;
-  auto gks = this->gks;
-  auto gjs = this->gjs;
-  auto gis = this->gis;
-  auto gnx1 = this->pm->mesh_size.nx1;
-  auto gnx2 = this->pm->mesh_size.nx2;
-  auto gnx3 = this->pm->mesh_size.nx3;
-  int nx1 = this->pm->my_blocks(0)->block_size.nx1;
-  int nx2 = this->pm->my_blocks(0)->block_size.nx2;
-  int nx3 = this->pm->my_blocks(0)->block_size.nx3;
-
-  auto k_vec = this->k_vec;
-  auto num_modes = this->num_modes;
+  auto gnx1 = pm->mesh_size.nx1;
+  auto gnx2 = pm->mesh_size.nx2;
+  auto gnx3 = pm->mesh_size.nx3;
+  int nx1 = pm->my_blocks(0)->block_size.nx1;
+  int nx2 = pm->my_blocks(0)->block_size.nx2;
+  int nx3 = pm->my_blocks(0)->block_size.nx3;
 
   for (int i = 0; i < nx1; i++) {
     Real gi = static_cast<Real>(i + gis);
@@ -235,18 +221,9 @@ void FewModesTurbulenceDriver::Driving(void) {
 
 void FewModesTurbulenceDriver::Generate(Real dt) {
 
-  // TODO(pgrete) remove unnec code
   int nx1 = pm->my_blocks(0)->block_size.nx1;
   int nx2 = pm->my_blocks(0)->block_size.nx2;
   int nx3 = pm->my_blocks(0)->block_size.nx3;
-  auto accel = this->accel;
-  auto accel_hat = this->accel_hat;
-  auto accel_hat_new = this->accel_hat_new;
-  auto phases_i = this->phases_i;
-  auto phases_j = this->phases_j;
-  auto phases_k = this->phases_k;
-  auto num_modes = this->num_modes;
-  auto k_vec = this->k_vec;
   Complex I(0.0, 1.0);
 
   // TODO(pgrete) move this to perm alloc
@@ -265,7 +242,6 @@ void FewModesTurbulenceDriver::Generate(Real dt) {
       random_num(n, m, 1) = v2;
     }
 
-  auto kpeak = this->kpeak;
   // generate new power spectrum (injection)
   for (int n = 0; n < 3; n++) {
     for (int m = 0; m < num_modes; m++) {
@@ -303,7 +279,6 @@ void FewModesTurbulenceDriver::Generate(Real dt) {
     }
   }
 
-  auto sol_weight = this->sol_weight;
   // project
   for (int m = 0; m < num_modes; m++) {
     Real kmag;
@@ -386,13 +361,10 @@ void FewModesTurbulenceDriver::Perturb(Real dt) {
 
   Real m[4] = {0};
 
-  auto u = pm->my_blocks(0)->phydro->u;
-  auto accel = this->accel;
-
   for (auto k = ks; k <= ke; k++)
     for (auto j = js; j <= je; j++)
       for (auto i = is; i <= ie; i++) {
-        Real den = u(IDN, k, j, i);
+        Real den = pm->my_blocks(0)->phydro->u(IDN, k, j, i);
         m[0] += den;
         m[1] += den * accel(0, k - ks, j - js, i - is);
         m[2] += den * accel(1, k - ks, j - js, i - is);
@@ -438,7 +410,7 @@ void FewModesTurbulenceDriver::Perturb(Real dt) {
       (static_cast<Real>(pm->mesh_size.nx1) * static_cast<Real>(pm->mesh_size.nx2) *
        static_cast<Real>(pm->mesh_size.nx3));
 
-  Real norm = this->accel_rms / std::sqrt(ampl_sum / gsize);
+  Real norm = accel_rms / std::sqrt(ampl_sum / gsize);
   // apply momentum perturb
   for (auto k = ks; k <= ke; k++)
     for (auto j = js; j <= je; j++)
@@ -450,20 +422,27 @@ void FewModesTurbulenceDriver::Perturb(Real dt) {
         accel(1, k - ks, j - js, i - is) *= norm;
         accel(2, k - ks, j - js, i - is) *= norm;
 
-        Real qa = dt * u(IDN, k, j, i);
+        Real qa = dt * pm->my_blocks(0)->phydro->u(IDN, k, j, i);
         if (NON_BAROTROPIC_EOS) {
-          u(IEN, k, j, i) += (u(IM1, k, j, i) * dt * accel(0, k - ks, j - js, i - is) +
-                              u(IM2, k, j, i) * dt * accel(1, k - ks, j - js, i - is) +
-                              u(IM3, k, j, i) * dt * accel(2, k - ks, j - js, i - is) +
-                              (SQR(accel(0, k - ks, j - js, i - is)) +
-                               SQR(accel(1, k - ks, j - js, i - is)) +
-                               SQR(accel(2, k - ks, j - js, i - is))) *
-                                  qa * qa / (2 * u(IDN, k, j, i)));
+          pm->my_blocks(0)->phydro->u(IEN, k, j, i) +=
+              (pm->my_blocks(0)->phydro->u(IM1, k, j, i) * dt *
+                   accel(0, k - ks, j - js, i - is) +
+               pm->my_blocks(0)->phydro->u(IM2, k, j, i) * dt *
+                   accel(1, k - ks, j - js, i - is) +
+               pm->my_blocks(0)->phydro->u(IM3, k, j, i) * dt *
+                   accel(2, k - ks, j - js, i - is) +
+               (SQR(accel(0, k - ks, j - js, i - is)) +
+                SQR(accel(1, k - ks, j - js, i - is)) +
+                SQR(accel(2, k - ks, j - js, i - is))) *
+                   qa * qa / (2 * pm->my_blocks(0)->phydro->u(IDN, k, j, i)));
         }
 
-        u(IM1, k, j, i) += qa * accel(0, k - ks, j - js, i - is);
-        u(IM2, k, j, i) += qa * accel(1, k - ks, j - js, i - is);
-        u(IM3, k, j, i) += qa * accel(2, k - ks, j - js, i - is);
+        pm->my_blocks(0)->phydro->u(IM1, k, j, i) +=
+            qa * accel(0, k - ks, j - js, i - is);
+        pm->my_blocks(0)->phydro->u(IM2, k, j, i) +=
+            qa * accel(1, k - ks, j - js, i - is);
+        pm->my_blocks(0)->phydro->u(IM3, k, j, i) +=
+            qa * accel(2, k - ks, j - js, i - is);
       }
 
   return;
@@ -489,18 +468,14 @@ void FewModesTurbulenceDriver::CopyAccelToOutputVars(AthenaArray<Real> &user_out
           user_out_var(n, k, j, i) = accel(n, k - ks, j - js, i - is);
         }
 
-  auto num_modes = this->num_modes;
-  auto accel_hat = this->accel_hat;
-  auto ruser_meshblock_data = pm->my_blocks(0)->ruser_meshblock_data[0];
-
   // Copy accel_hat to ruser_meshblock_data
   for (auto n = 0; n < 3; n++)
     for (auto m = 0; m < num_modes; m++) {
-      ruser_meshblock_data(n, m, 0) = accel_hat(n, m).real();
-      ruser_meshblock_data(n, m, 1) = accel_hat(n, m).imag();
+      pm->my_blocks(0)->ruser_meshblock_data[0](n, m, 0) = accel_hat(n, m).real();
+      pm->my_blocks(0)->ruser_meshblock_data[0](n, m, 1) = accel_hat(n, m).imag();
     }
 
-  pm->rseed_rst = this->rseed;
+  pm->rseed_rst = rseed;
 
   return;
 }
