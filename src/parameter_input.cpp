@@ -433,6 +433,47 @@ int ParameterInput::GetInteger(std::string block, std::string name) {
 }
 
 //----------------------------------------------------------------------------------------
+//! \fn void ParameterInput::GetIntegerVector(std::string block,
+//                                            std::string name,
+//                                            int vec[3])
+//  \brief fills vec with integer vector values of string stored in block/name
+
+void ParameterInput::GetIntegerVector(std::string block, std::string name, int vec[3]) {
+  InputBlock* pb;
+  InputLine* pl;
+  std::stringstream msg;
+
+  Lock();
+
+  // get pointer to node with same block name in linked list of InputBlocks
+  pb = GetPtrToBlock(block);
+  if (pb == NULL) {
+    msg << "### FATAL ERROR in function [ParameterInput::GetIntegerVector]" << std::endl
+        << "Block name '" << block << "' not found when trying to set value "
+        << "for parameter '" << name << "'";
+    ATHENA_ERROR(msg);
+  }
+
+  // get pointer to node with same parameter name in linked list of InputLines
+  pl = pb->GetPtrToLine(name);
+  if (pl == NULL) {
+    msg << "### FATAL ERROR in function [ParameterInput::GetIntegerVector]" << std::endl
+        << "Parameter name '" << name << "' not found in block '" << block << "'";
+    ATHENA_ERROR(msg);
+  }
+
+  std::string val=pl->param_value;
+  Unlock();
+
+  // Parse string
+  int pos_delim = val.find(" ");
+  int pos_delim2 = val.find(" ",pos_delim+1);
+  vec[0] = atoi(val.substr(0, pos_delim).c_str());
+  vec[1] = atoi(val.substr(pos_delim,pos_delim2).c_str());
+  vec[2] = atoi(val.substr(pos_delim2).c_str());
+}
+
+//----------------------------------------------------------------------------------------
 //! \fn Real ParameterInput::GetReal(std::string block, std::string name)
 //  \brief returns real value of string stored in block/name
 

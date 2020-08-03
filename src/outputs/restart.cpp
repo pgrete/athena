@@ -184,6 +184,12 @@ void RestartOutput::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool force_wr
     //   pdata += r.GetSizeInBytes();
     // }
 
+    // writeout restart information for few modes turbulence driving
+    if (pm->fmturb_flag == 1) {
+      std::memcpy(pdata, &pm->rseed_rst, sizeof(int64_t));
+      pdata += sizeof(int64_t);
+    }
+
     // User MeshBlock data:
     // integer data:
     for (int n=0; n<pmb->nint_user_meshblock_data_; n++) {

@@ -34,6 +34,7 @@
 
 // Athena++ headers
 #include "athena.hpp"
+#include "fft/few_modes_turbulence.hpp"
 #include "fft/turbulence.hpp"
 #include "globals.hpp"
 #include "gravity/fft_gravity.hpp"
@@ -455,6 +456,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (pmesh->turb_flag > 1) pmesh->ptrbd->Driving(); // driven turbulence
+    if (pmesh->fmturb_flag == 1) pmesh->pfmtrbd->Driving(); // few modes turbulence
 
     for (int stage=1; stage<=ptlist->nstages; ++stage) {
       ptlist->DoTaskListOneStage(pmesh, stage);
