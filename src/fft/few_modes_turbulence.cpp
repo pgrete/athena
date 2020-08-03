@@ -96,6 +96,11 @@ FewModesTurbulenceDriver::FewModesTurbulenceDriver(Mesh *pm, ParameterInput *pin
 
   // Acceleration field in Fourier space using complex to real transform.
   accel_hat.NewAthenaArray(3, num_modes);
+  for (int n = 0; n < 3; n++)
+    for (int m = 0; m < num_modes; m++)
+      accel_hat(n,m) = Complex(0., 0.);
+
+  // no need to init the following vars as they're set every cycle
   accel_hat_new.NewAthenaArray(3, num_modes);
   phases_i.NewAthenaArray(nx1, num_modes);
   phases_j.NewAthenaArray(nx2, num_modes);
@@ -103,6 +108,9 @@ FewModesTurbulenceDriver::FewModesTurbulenceDriver(Mesh *pm, ParameterInput *pin
 
   // list of wavenumber vectors
   k_vec.NewAthenaArray(num_modes, 3);
+
+  // temp storage of random numbers
+  random_num.NewAthenaArray(3, num_modes, 2);
 
   int k_vec_in[3];
   for (int i = 1; i <= num_modes; i++) {
@@ -225,9 +233,6 @@ void FewModesTurbulenceDriver::Generate(Real dt) {
   int nx2 = pm->my_blocks(0)->block_size.nx2;
   int nx3 = pm->my_blocks(0)->block_size.nx3;
   Complex I(0.0, 1.0);
-
-  // TODO(pgrete) move this to perm alloc
-  AthenaArray<Real> random_num = {3, num_modes, 2};
 
   Real v1, v2, v_sqr;
   for (int n = 0; n < 3; n++)

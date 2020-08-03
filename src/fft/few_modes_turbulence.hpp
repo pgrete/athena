@@ -38,7 +38,7 @@ class FewModesTurbulenceDriver {
   int gis, gjs, gks; // global indices
   int num_modes;
   Real tcorr, sol_weight, accel_rms;
-  AthenaArray<Real> accel, k_vec;
+  AthenaArray<Real> accel, k_vec, random_num;
   AthenaArray<Complex> accel_hat, accel_hat_new;
   AthenaArray<Complex> phases_i, phases_j, phases_k;
   Mesh *pm;
