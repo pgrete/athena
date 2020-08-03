@@ -34,7 +34,12 @@
 static Real hst_turbulence(MeshBlock *pmb, int iout) {
   int is = pmb->is, ie = pmb->ie, js = pmb->js, je = pmb->je, ks = pmb->ks, ke = pmb->ke;
 
-  Real gam = pmb->peos->GetGamma();
+  Real gam, c_s;
+  if (NON_BAROTROPIC_EOS) {
+    gam = pmb->peos->GetGamma();
+  } else {
+    c_s =  pmb->peos->GetIsoSoundSpeed();
+  }
 
   AthenaArray<Real> vol(pmb->ncells1);
   Real sum = 0;
@@ -47,8 +52,10 @@ static Real hst_turbulence(MeshBlock *pmb, int iout) {
                      pmb->phydro->w(IVY, k, j, i) * pmb->phydro->w(IVY, k, j, i) +
                      pmb->phydro->w(IVZ, k, j, i) * pmb->phydro->w(IVZ, k, j, i));
 
-        Real c_s = std::sqrt(gam * pmb->phydro->w(IPR, k, j, i) /
-                             pmb->phydro->w(IDN, k, j, i)); // speed of sound
+        if (NON_BAROTROPIC_EOS) {
+          c_s = std::sqrt(gam * pmb->phydro->w(IPR, k, j, i) /
+                          pmb->phydro->w(IDN, k, j, i)); // speed of sound
+        }
 
         Real e_kin = 0.5 * pmb->phydro->w(IDN, k, j, i) * vel2;
 
@@ -70,7 +77,11 @@ static Real hst_turbulence(MeshBlock *pmb, int iout) {
           } else if (iout == 3) { // Emag
             sum += vol(i) * e_mag;
           } else if (iout == 4) { // plasma beta
-            sum += vol(i) * pmb->phydro->w(IPR, k, j, i) / e_mag;
+            if (NON_BAROTROPIC_EOS) {
+              sum += vol(i) * pmb->phydro->w(IPR, k, j, i) / e_mag;
+            } else {
+              sum += vol(i) * pmb->phydro->w(IDN, k, j, i) * c_s * c_s / e_mag;
+            }
           }
         }
       }
