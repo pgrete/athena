@@ -36,12 +36,13 @@ static Real hst_turbulence(MeshBlock *pmb, int iout) {
 
   Real gam = pmb->peos->GetGamma();
 
-  Real sum;
+  AthenaArray<Real> vol(pmb->ncells1);
+  Real sum = 0;
 
-  for (int k = ks; k <= ke + 1; k++) {
-    for (int j = js; j <= je + 1; j++) {
-      for (int i = is; i <= ie + 1; i++) {
-
+  for (int k = ks; k <= ke; k++) {
+    for (int j = js; j <= je; j++) {
+      pmb->pcoord->CellVolume(k, j, is, ie, vol);
+      for (int i = is; i <= ie; i++) {
         Real vel2 = (pmb->phydro->w(IVX, k, j, i) * pmb->phydro->w(IVX, k, j, i) +
                      pmb->phydro->w(IVY, k, j, i) * pmb->phydro->w(IVY, k, j, i) +
                      pmb->phydro->w(IVZ, k, j, i) * pmb->phydro->w(IVZ, k, j, i));
@@ -52,9 +53,9 @@ static Real hst_turbulence(MeshBlock *pmb, int iout) {
         Real e_kin = 0.5 * pmb->phydro->w(IDN, k, j, i) * vel2;
 
         if (iout == 0) { // Ms
-          sum += std::sqrt(vel2) / c_s;
+          sum += vol(i) * std::sqrt(vel2) / c_s;
         } else if (iout == 2) { // Ekin
-          sum += e_kin;
+          sum += vol(i) * e_kin;
         }
 
         if (MAGNETIC_FIELDS_ENABLED) {
@@ -65,21 +66,16 @@ static Real hst_turbulence(MeshBlock *pmb, int iout) {
           Real e_mag = 0.5 * B2;
 
           if (iout == 1) { // Ma
-            sum += std::sqrt(e_kin / e_mag);
+            sum += vol(i) * std::sqrt(e_kin / e_mag);
           } else if (iout == 3) { // Emag
-            sum += e_mag;
+            sum += vol(i) * e_mag;
           } else if (iout == 4) { // plasma beta
-            sum += pmb->phydro->w(IPR, k, j, i) / e_mag;
+            sum += vol(i) * pmb->phydro->w(IPR, k, j, i) / e_mag;
           }
         }
       }
     }
   }
-
-  // assuming unit box size
-  sum /= (pmb->pmy_mesh->mesh_size.nx1 * pmb->pmy_mesh->mesh_size.nx2 *
-          pmb->pmy_mesh->mesh_size.nx3);
-
   return sum;
 }
 
