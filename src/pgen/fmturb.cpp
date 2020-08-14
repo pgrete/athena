@@ -249,7 +249,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
 
           pfield->b.x1f(k, j, i) += (az(k, j + 1, i) - az(k, j, i)) / pcoord->dx2f(j) -
                                     (ay(k + 1, j, i) - ay(k, j, i)) / pcoord->dx3f(k);
-          if (NON_BAROTROPIC_EOS && i > is) {
+          if (i > is) {
             local_mag_en +=
                 0.5 * SQR(0.5 * (pfield->b.x1f(k, j, i - 1) + pfield->b.x1f(k, j, i)));
           }
@@ -261,7 +261,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         for (int i = is; i <= ie; i++) {
           pfield->b.x2f(k, j, i) += (ax(k + 1, j, i) - ax(k, j, i)) / pcoord->dx3f(k) -
                                     (az(k, j, i + 1) - az(k, j, i)) / pcoord->dx1f(i);
-          if (NON_BAROTROPIC_EOS && j > js) {
+          if (j > js) {
             local_mag_en +=
                 0.5 * SQR(0.5 * (pfield->b.x2f(k, j - 1, i) + pfield->b.x2f(k, j, i)));
           }
@@ -273,7 +273,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         for (int i = is; i <= ie; i++) {
           pfield->b.x3f(k, j, i) += (ay(k, j, i + 1) - ay(k, j, i)) / pcoord->dx1f(i) -
                                     (ax(k, j + 1, i) - ax(k, j, i)) / pcoord->dx2f(j);
-          if (NON_BAROTROPIC_EOS && k > ks) {
+          if (k > ks) {
             local_mag_en +=
                 0.5 * SQR(0.5 * (pfield->b.x3f(k - 1, j, i) + pfield->b.x3f(k, j, i)));
           }
