@@ -90,6 +90,52 @@ static Real hst_turbulence(MeshBlock *pmb, int iout) {
   return sum;
 }
 
+namespace cooling {
+
+Real T_low;    // lower temperature threshold for which cooling is active
+Real c_cool;   // arbitrary cooling coeff
+Real max_diff; // max. fraction of change of internal energy density per step
+
+void Cooling(MeshBlock *pmb, const Real time, const Real dt,
+             const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
+             const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
+             AthenaArray<Real> &cons_scalar) {
+  const auto coeff = -dt * c_cool / std::sqrt(pmb->peos->GetGamma() - 1.0);
+  for (int k = pmb->ks; k <= pmb->ke; ++k) {
+    for (int j = pmb->js; j <= pmb->je; ++j) {
+      #pragma omp simd
+      for (int i = pmb->is; i <= pmb->ie; ++i) {
+        const auto T = prim(IPR,k,j,i) / prim(IDN,k,j,i); // same "units" as T_low
+        if (T > T_low) {
+          cons(IEN,k,j,i) += coeff * prim(IDN,k,j,i) * prim(IDN,k,j,i) * std::sqrt(T);
+        }
+      }
+    }
+  }
+}
+
+Real CoolDt(MeshBlock *pmb) {
+  const AthenaArray<Real> &prim = pmb->phydro->w;
+  const auto gm1 = pmb->peos->GetGamma() - 1.0;
+  const auto coeff = c_cool / std::sqrt(gm1);
+  auto min_dt = std::numeric_limits<Real>::max();
+  for (int k=pmb->ks; k<=pmb->ke; ++k) {
+    for (int j=pmb->js; j<=pmb->je; ++j) {
+      for (int i=pmb->is; i<=pmb->ie; ++i) {
+        const auto T = prim(IPR,k,j,i) / prim(IDN,k,j,i); // same "units" as T_low
+        if (T > T_low) {
+          const auto Edot = coeff * prim(IDN,k,j,i) * prim(IDN,k,j,i) * std::sqrt(T);
+          const auto E = prim(IPR,k,j,i) / gm1;
+          const Real dt = max_diff * E / Edot;
+          min_dt = std::min(min_dt, dt);
+        }
+      }
+    }
+  }
+  return min_dt;
+}
+} // namespace cooling
+
 //========================================================================================
 //! \fn void Mesh::InitUserMeshData(ParameterInput *pin)
 //  \brief
@@ -102,7 +148,21 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   EnrollUserHistoryOutput(2, hst_turbulence, "Mean Ekin");
   EnrollUserHistoryOutput(3, hst_turbulence, "Mean Emag");
   EnrollUserHistoryOutput(4, hst_turbulence, "Mean p_b");
-  return;
+
+  auto cool_flag = pin->GetOrAddInteger("problem", "cool_flag", 0);
+  if (cool_flag > 0) {
+    const auto p0 = pin->GetReal("problem", "p0");
+    const auto rho0 = pin->GetReal("problem", "rho0");
+    const auto thres = pin->GetOrAddReal("problem", "cool_threshold_ratio", 0.0);
+    // this is a proxy for the temp, which we can use given that gamma and c_V are const
+    const auto T0 = p0/rho0;
+    cooling::T_low = T0 * thres;
+    cooling::c_cool = pin->GetOrAddReal("problem", "cool_coeff", 0.0);
+    cooling::max_diff = pin->GetOrAddReal("problem", "cool_max_diff", 0.1);
+
+    EnrollUserExplicitSourceFunction(cooling::Cooling);
+    EnrollUserTimeStepFunction(cooling::CoolDt);
+  }
 }
 
 //========================================================================================
