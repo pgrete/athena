@@ -217,7 +217,7 @@ void FewModesTurbulenceDriver::Driving(void) {
     std::stringstream msg;
     msg << "### FATAL ERROR in FewModesTurbulenceDriver::Driving" << std::endl
         << "Turbulence flag " << pm->fmturb_flag << " is not supported!" << std::endl;
-    throw std::runtime_error(msg.str().c_str());
+    ATHENA_ERROR(msg);
   }
 
   return;
@@ -228,7 +228,6 @@ void FewModesTurbulenceDriver::Driving(void) {
 //  \brief Generate velocity pertubation.
 
 void FewModesTurbulenceDriver::Generate(Real dt) {
-
   int nx1 = pm->my_blocks(0)->block_size.nx1;
   int nx2 = pm->my_blocks(0)->block_size.nx2;
   int nx3 = pm->my_blocks(0)->block_size.nx3;
@@ -249,13 +248,14 @@ void FewModesTurbulenceDriver::Generate(Real dt) {
 
   // generate new power spectrum (injection)
   for (int n = 0; n < 3; n++) {
+    #pragma omp simd
     for (int m = 0; m < num_modes; m++) {
 
       Real kmag, tmp, norm, v_sqr;
 
-      Real kx = k_vec(m, 0);
-      Real ky = k_vec(m, 1);
-      Real kz = k_vec(m, 2);
+      Real &kx = k_vec(m, 0);
+      Real &ky = k_vec(m, 1);
+      Real &kz = k_vec(m, 2);
 
       kmag = std::sqrt(kx * kx + ky * ky + kz * kz);
 
