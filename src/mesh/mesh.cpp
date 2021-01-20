@@ -13,6 +13,7 @@
 // C++ headers
 #include <algorithm>
 #include <cinttypes>  // format macro "PRId64" for fixed-width integer type std::int64_t
+#include <chrono>     // std::chrono::high_resolution_clock
 #include <cmath>      // std::abs(), std::pow()
 #include <cstdint>    // std::int64_t fixed-wdith integer type alias
 #include <cstdlib>
@@ -1939,11 +1940,21 @@ FluidFormulation GetFluidFormulation(const std::string& input_string) {
 void Mesh::OutputCycleDiagnostics() {
   const int dt_precision = std::numeric_limits<Real>::max_digits10 - 1;
   const int ratio_precision = 3;
+  // Always reset (independent if whether output it printed)
+  // so that the performance is measure for the previous cycles
+  // as we use the current number of total cells (not the integrated one over
+  // all cycles since last diagnostic output).
+  const auto t_now = std::chrono::high_resolution_clock::now();
   if (ncycle_out != 0) {
     if (ncycle % ncycle_out == 0) {
+      const auto zcswsec = GetTotalCells() /
+        std::chrono::duration<double>(t_now - t_prev).count();
       std::cout << "cycle=" << ncycle << std::scientific
                 << std::setprecision(dt_precision)
-                << " time=" << time << " dt=" << dt;
+                << " time=" << time << " dt=" << dt
+                << std::setprecision(2)
+                << " zone-cycles/wsec=" << zcswsec
+                << std::setprecision(dt_precision);
       if (dt_diagnostics != -1) {
         if (STS_ENABLED) {
           if (UserTimeStep_ == nullptr)
@@ -1969,5 +1980,6 @@ void Mesh::OutputCycleDiagnostics() {
       std::cout << std::endl;
     }
   }
+  t_prev = t_now;
   return;
 }

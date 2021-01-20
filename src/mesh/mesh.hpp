@@ -14,6 +14,7 @@
 // C headers
 
 // C++ headers
+#include <chrono>
 #include <cstdint>     // int64_t
 #include <functional>  // reference_wrapper
 #include <string>
@@ -234,6 +235,8 @@ class Mesh {
   TaskType sts_loc;
   Real muj, nuj, muj_tilde, gammaj_tilde;
   int nbtotal, nblocal, nbnew, nbdel;
+  // previous time for per cycle performance log
+  std::chrono::time_point<std::chrono::high_resolution_clock> t_prev;
 
   int step_since_lb;
   int gflag;

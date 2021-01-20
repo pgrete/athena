@@ -428,6 +428,9 @@ int main(int argc, char *argv[]) {
   double omp_start_time = omp_get_wtime();
 #endif
 
+  // reset timer for per cycle output
+  pmesh->t_prev = std::chrono::high_resolution_clock::now();
+
   while ((pmesh->time < pmesh->tlim) &&
          (pmesh->nlim < 0 || pmesh->ncycle < pmesh->nlim)) {
     if (Globals::my_rank == 0)
