@@ -2,6 +2,7 @@
 // Athena++ astrophysical MHD code
 // Copyright(C) 2014 James M. Stone <jmstone@princeton.edu> and other code contributors
 // Licensed under the 3-clause BSD License, see LICENSE file for details
+// Anisotropic conduction implemented by Philipp Grete adapted from Michael Jennings
 //========================================================================================
 //! \file conduction.cpp
 //! \brief
@@ -15,9 +16,60 @@
 #include "../../athena_arrays.hpp"
 #include "../../coordinates/coordinates.hpp"
 #include "../../eos/eos.hpp"
+#include "../../field/field.hpp"
 #include "../../mesh/mesh.hpp"
 #include "../hydro.hpp"
 #include "hydro_diffusion.hpp"
+
+namespace {
+/*----------------------------------------------------------------------------*/
+/* vanleer: van Leer slope limiter
+ */
+
+inline Real vanleer(const Real A, const Real B) {
+  if (A * B > 0) {
+    return 2.0 * A * B / (A + B);
+  } else {
+    return 0.0;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+/* minmod: minmod slope limiter
+ */
+
+inline Real minmod(const Real A, const Real B) {
+  if (A * B > 0) {
+    if (A > 0) {
+      return std::min(A, B);
+    } else {
+      return std::max(A, B);
+    }
+  } else {
+    return 0.0;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+/* mc: monotonized central slope limiter
+ */
+
+inline Real mc(const Real A, const Real B) {
+  return minmod(2.0 * minmod(A, B), (A + B) / 2.0);
+}
+/*----------------------------------------------------------------------------*/
+/* limiter2 and limiter4: call slope limiters to preserve monotonicity
+ */
+
+inline Real limiter2(const Real A, const Real B) {
+  /* slope limiter */
+  return mc(A, B);
+}
+
+inline Real limiter4(const Real A, const Real B, const Real C, const Real D) {
+  return limiter2(limiter2(A, B), limiter2(C, D));
+}
+} // namespace
 
 //---------------------------------------------------------------------------------------
 //! Calculate isotropic thermal conduction
@@ -119,10 +171,182 @@ void HydroDiffusion::ThermalFluxIso(const AthenaArray<Real> &prim,
 //---------------------------------------------------------------------------------------
 //! Calculate anisotropic thermal conduction
 
-void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &p,
-                                      const AthenaArray<Real> &c,
-                                      AthenaArray<Real> *flx) {
-  return;
+void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
+                                      const AthenaArray<Real> &cons,
+                                      AthenaArray<Real> *cndflx) {
+#if MAGNETIC_FIELDS_ENABLED
+  //  Anisotropic flux only implemented (and tested) for 3D
+  const bool f3 = pmb_->pmy_mesh->f3;
+  if (!f3) {
+    std::stringstream msg;
+    msg << "Anisotropic thermal conduction only implemented and teste in 3D.";
+    ATHENA_ERROR(msg);
+  }
+  Field *pf = pmb_->pfield;
+  const auto &bcc = pf->bcc;
+  const auto &b = pf->b;
+
+  AthenaArray<Real> &x1flux = cndflx[X1DIR];
+  AthenaArray<Real> &x2flux = cndflx[X2DIR];
+  AthenaArray<Real> &x3flux = cndflx[X3DIR];
+  int il, iu, jl, ju, kl, ku;
+  int is = pmb_->is;
+  int js = pmb_->js;
+  int ks = pmb_->ks;
+  int ie = pmb_->ie;
+  int je = pmb_->je;
+  int ke = pmb_->ke;
+  Real Bx, By, Bz, B02, dTc, dTl, dTr, lim_slope, dTdx, dTdy, dTdz, bDotGradT, denf,
+      kappaf;
+
+  /* Compute heat fluxes in 1-direction  --------------------------------------*/
+  // i-direction
+  // 3D with B field limits (see iso flux above)
+  jl = js - 1, ju = je + 1, kl = ks - 1, ku = ke + 1;
+
+  for (int k = kl; k <= ku; k++) {
+    for (int j = jl; j <= ju; j++) {
+#pragma omp simd
+      for (int i = is; i <= ie + 1; i++) {
+        /* Monotonized temperature difference dT/dy */
+        dTdy = limiter4(prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
+                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                            prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
+                        prim(IPR, k, j + 1, i - 1) / prim(IDN, k, j + 1, i - 1) -
+                            prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
+                        prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1) -
+                            prim(IPR, k, j - 1, i - 1) / prim(IDN, k, j - 1, i - 1));
+        dTdy /= pco_->dx2v(j);
+
+        /* Monotonized temperature difference dT/dz, 3D problem ONLY */
+        dTdz = limiter4(prim(IPR, k + 1, j, i) / prim(IDN, k + 1, j, i) -
+                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                            prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
+                        prim(IPR, k + 1, j, i - 1) / prim(IDN, k + 1, j, i - 1) -
+                            prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
+                        prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1) -
+                            prim(IPR, k - 1, j, i - 1) / prim(IDN, k - 1, j, i - 1));
+        dTdz /= pco_->dx3v(k);
+
+        /* Add flux at x1-interface, 2D PROBLEM */
+
+        By = 0.5 * (bcc(IB2, k, j, i - 1) + bcc(IB2, k, j, i));
+        Bz = 0.5 * (bcc(IB3, k, j, i - 1) + bcc(IB3, k, j, i));
+        B02 = SQR(b.x1f(k, j, i)) + SQR(By) + SQR(Bz);
+        B02 = std::max(B02, TINY_NUMBER); /* limit in case B=0 */
+        bDotGradT = b.x1f(k, j, i) *
+                        (prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                         prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1)) /
+                        pco_->dx1v(i) +
+                    By * dTdy + Bz * dTdz;
+        kappaf = 0.5 * (kappa(DiffProcess::aniso, k, j, i) +
+                        kappa(DiffProcess::aniso, k, j, i - 1));
+        denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k, j, i - 1));
+        x1flux(k, j, i) -= kappaf * denf * (b.x1f(k, j, i) * bDotGradT) / B02;
+      } // i
+    }   // j
+  }     // k
+
+  /* Compute heat fluxes in 2-direction  --------------------------------------*/
+  // 3D with B field limits (see iso flux above)
+  il = is - 1, iu = ie + 1, kl = ks - 1, ku = ke + 1;
+
+  for (int k = kl; k <= ku; k++) {
+    for (int j = js; j <= je + 1; j++) {
+#pragma omp simd
+      for (int i = il; i <= iu; i++) {
+        /* Monotonized temperature difference dT/dx */
+        dTdx = limiter4(prim(IPR, k, j, i + 1) / prim(IDN, k, j, i + 1) -
+                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                            prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
+                        prim(IPR, k, j - 1, i + 1) / prim(IDN, k, j - 1, i + 1) -
+                            prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
+                        prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i) -
+                            prim(IPR, k, j - 1, i - 1) / prim(IDN, k, j - 1, i - 1));
+        dTdx /= pco_->dx1v(i);
+
+        /* Monotonized temperature difference dT/dz, 3D problem ONLY */
+        dTdz = limiter4(prim(IPR, k + 1, j, i) / prim(IDN, k + 1, j, i) -
+                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                            prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
+                        prim(IPR, k + 1, j - 1, i) / prim(IDN, k + 1, j - 1, i) -
+                            prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
+                        prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i) -
+                            prim(IPR, k - 1, j - 1, i) / prim(IDN, k - 1, j - 1, i));
+        dTdz /= pco_->dx3v(k);
+
+        /* Add flux at x2-interface, 3D PROBLEM */
+
+        Bx = 0.5 * (bcc(IB1, k, j - 1, i) + bcc(IB1, k, j, i));
+        Bz = 0.5 * (bcc(IB3, k, j - 1, i) + bcc(IB3, k, j, i));
+        B02 = SQR(Bx) + SQR(b.x2f(k, j, i)) + SQR(Bz);
+        B02 = std::max(B02, TINY_NUMBER); /* limit in case B=0 */
+        bDotGradT = b.x2f(k, j, i) *
+                        (prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                         prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i)) /
+                        pco_->dx2v(j) +
+                    Bx * dTdx + Bz * dTdz;
+        kappaf = 0.5 * (kappa(DiffProcess::aniso, k, j, i) +
+                        kappa(DiffProcess::aniso, k, j - 1, i));
+        denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k, j - 1, i));
+        x2flux(k, j, i) -= kappaf * denf * (b.x2f(k, j, i) * bDotGradT) / B02;
+      } // i
+    }   // j
+  }     // k
+
+  /* Compute heat fluxes in 3-direction, 3D problem ONLY  ---------------------*/
+  // 3D with B field limits (see iso flux above)
+  il = is - 1, iu = ie + 1, jl = js - 1, ju = je + 1;
+
+  for (int k = ks; k <= ke + 1; k++) {
+    for (int j = jl; j <= ju; j++) {
+#pragma omp simd
+      for (int i = il; i <= iu; i++) {
+        /* Monotonized temperature difference dT/dx */
+        dTdx = limiter4(prim(IPR, k, j, i + 1) / prim(IDN, k, j, i + 1) -
+                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                            prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
+                        prim(IPR, k - 1, j, i + 1) / prim(IDN, k - 1, j, i + 1) -
+                            prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
+                        prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i) -
+                            prim(IPR, k - 1, j, i - 1) / prim(IDN, k - 1, j, i - 1));
+        dTdx /= pco_->dx1v(i);
+
+        /* Monotonized temperature difference dT/dy */
+        dTdy = limiter4(prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
+                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                            prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
+                        prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
+                            prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
+                        prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i) -
+                            prim(IPR, k - 1, j - 1, i) / prim(IDN, k - 1, j - 1, i));
+        dTdy /= pco_->dx2v(j);
+
+        /* Add flux at x3-interface, 3D PROBLEM */
+
+        Bx = 0.5 * (bcc(IB1, k - 1, j, i) + bcc(IB1, k, j, i));
+        By = 0.5 * (bcc(IB2, k - 1, j, i) + bcc(IB2, k, j, i));
+        B02 = SQR(Bx) + SQR(By) + SQR(b.x3f(k, j, i));
+        B02 = std::max(B02, TINY_NUMBER); /* limit in case B=0 */
+        bDotGradT = b.x3f(k, j, i) *
+                        (prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                         prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i)) /
+                        pco_->dx3v(k) +
+                    Bx * dTdx + By * dTdy;
+        kappaf = 0.5 * (kappa(DiffProcess::aniso, k, j, i) +
+                        kappa(DiffProcess::aniso, k - 1, j, i));
+        denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k - 1, j, i));
+        x3flux(k, j, i) -= kappaf * denf * (b.x3f(k, j, i) * bDotGradT) / B02;
+      } // i
+    }   // j
+  }     // k
+#endif
 }
 
 //----------------------------------------------------------------------------------------
