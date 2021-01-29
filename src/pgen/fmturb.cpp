@@ -95,11 +95,16 @@ namespace cooling {
 Real T_low;    // lower temperature threshold for which cooling is active
 Real c_cool;   // arbitrary cooling coeff
 Real max_diff; // max. fraction of change of internal energy density per step
+Real cool_t_start;  // start time (in code units to turn on cooling)
 
 void Cooling(MeshBlock *pmb, const Real time, const Real dt,
              const AthenaArray<Real> &prim, const AthenaArray<Real> &prim_scalar,
              const AthenaArray<Real> &bcc, AthenaArray<Real> &cons,
              AthenaArray<Real> &cons_scalar) {
+  if (pmb->pmy_mesh->time < cool_t_start) {
+    return;
+  }
+
   const auto coeff = -dt * c_cool / std::sqrt(pmb->peos->GetGamma() - 1.0);
   for (int k = pmb->ks; k <= pmb->ke; ++k) {
     for (int j = pmb->js; j <= pmb->je; ++j) {
@@ -115,10 +120,13 @@ void Cooling(MeshBlock *pmb, const Real time, const Real dt,
 }
 
 Real CoolDt(MeshBlock *pmb) {
+  auto min_dt = std::numeric_limits<Real>::max();
+  if (pmb->pmy_mesh->time < cool_t_start) {
+    return min_dt;
+  }
   const AthenaArray<Real> &prim = pmb->phydro->w;
   const auto gm1 = pmb->peos->GetGamma() - 1.0;
   const auto coeff = c_cool / std::sqrt(gm1);
-  auto min_dt = std::numeric_limits<Real>::max();
   for (int k=pmb->ks; k<=pmb->ke; ++k) {
     for (int j=pmb->js; j<=pmb->je; ++j) {
       for (int i=pmb->is; i<=pmb->ie; ++i) {
@@ -159,6 +167,7 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
     cooling::T_low = T0 * thres;
     cooling::c_cool = pin->GetOrAddReal("problem", "cool_coeff", 0.0);
     cooling::max_diff = pin->GetOrAddReal("problem", "cool_max_diff", 0.1);
+    cooling::cool_t_start = pin->GetOrAddReal("problem", "cool_t_start", 0.0);
 
     EnrollUserExplicitSourceFunction(cooling::Cooling);
     EnrollUserTimeStepFunction(cooling::CoolDt);

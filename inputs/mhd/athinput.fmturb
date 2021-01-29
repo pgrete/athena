@@ -13,18 +13,18 @@ dt         = 0.05       # time increment between outputs
 <output2>
 file_type  = hdf5       # Binary data dump
 variable   = prim       # variables to be output
-dt         = 0.1        # time increment between outputs
+dt         = 0.5        # time increment between outputs
 id         = prim
 
 <output3>
 file_type  = hdf5       # Binary data dump
 variable   = uov        # variables to be output
 id         = acc
-dt         = 0.1        # time increment between outputs
+dt         = 0.5        # time increment between outputs
 
 <output4>
 file_type  = rst        # Binary data dump
-dt         = 1.0        # time increment between outputs
+dt         = 2.0        # time increment between outputs
 
 <time>
 cfl_number = 0.3        # The Courant, Friedrichs, & Lewy (CFL) Number
@@ -67,8 +67,9 @@ iso_sound_speed = 1.00           # equavalent to sqrt(gamma*p/d)
 fmturb_flag  = 1        # enable Ornstein-Uhlenbeck driving
 rho0         = 1.0      # initial mean density
 p0           = 0.6      # initial mean pressure
-b0           = 0.01     # initial magnetic field (x-direction)
-b_config     = 0        # 0 - net flux; 1 - no net flux uniform B; 2 - non net flux sin B
+b0           = 0.05     # initial magnetic field (x-direction)
+b_config     = 4        # 0 - net flux; 1 - no net flux uniform B; 2 - non net flux sin B; 4 - loop
+loop_rad     = 0.4      # loop radius, ensure to be smaller than domain_width/2
 kpeak        = 2.0      # characteristic wavenumber
 corr_time    = 1.0      # autocorrelation time of the OU forcing process
 rseed        = 20190729 # random seed of the OU forcing process
@@ -76,10 +77,10 @@ sol_weight   = 1.0      # solenoidal weight of the acceleration field
 accel_rms    = 0.5      # root mean square value of the acceleration field
 num_modes    = 50       # number of wavemodes
 cool_flag    = 1        # enable cooling (1 is free-free and only choice now)
-cool_coeff   = 0.125    # cooling coefficient
+cool_coeff   = 0.1      # cooling coefficient
 cool_threshold_ratio = 0.001  # cooling enabled for T > 1/1000 T_init
 cool_max_diff= 0.1      # limit timestep so that internal energy does not change more than 10% per timestep
-
+cool_t_start = 1.5      # enable cooling only after this time
 
 <modes>
 k_1 = +0 -2 -1
