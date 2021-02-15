@@ -94,6 +94,15 @@ void Reconstruction::WENOZX1(const int k, const int j, const int il, const int i
             w(n, k, j, i + 2), wl(n, i + 1), wr(n, i));
     }
   }
+  if (MAGNETIC_FIELDS_ENABLED) {
+#pragma omp simd
+    for (int i = il; i <= iu; ++i) {
+      WENOZ(bcc(IB2, k, j, i - 2), bcc(IB2, k, j, i - 1), bcc(IB2, k, j, i),
+            bcc(IB2, k, j, i + 1), bcc(IB2, k, j, i + 2), wl(IBY, i + 1), wr(IBY, i));
+      WENOZ(bcc(IB3, k, j, i - 2), bcc(IB3, k, j, i - 1), bcc(IB3, k, j, i),
+            bcc(IB3, k, j, i + 1), bcc(IB3, k, j, i + 2), wl(IBZ, i + 1), wr(IBZ, i));
+    }
+  }
 }
 
 //----------------------------------------------------------------------------------------
@@ -111,6 +120,15 @@ void Reconstruction::WENOZX2(const int k, const int j, const int il, const int i
             w(n, k, j + 2, i), wl(n, i), wr(n, i));
     }
   }
+  if (MAGNETIC_FIELDS_ENABLED) {
+#pragma omp simd
+    for (int i = il; i <= iu; ++i) {
+      WENOZ(bcc(IB3, k, j - 2, i), bcc(IB3, k, j - 1, i), bcc(IB3, k, j, i),
+            bcc(IB3, k, j + 1, i), bcc(IB3, k, j + 2, i), wl(IBY, i), wr(IBY, i));
+      WENOZ(bcc(IB1, k, j - 2, i), bcc(IB1, k, j - 1, i), bcc(IB1, k, j, i),
+            bcc(IB1, k, j + 1, i), bcc(IB1, k, j + 2, i), wl(IBZ, i), wr(IBZ, i));
+    }
+  }
 }
 
 //----------------------------------------------------------------------------------------
@@ -126,6 +144,15 @@ void Reconstruction::WENOZX3(const int k, const int j, const int il, const int i
     for (int i = il; i <= iu; ++i) {
       WENOZ(w(n, k - 2, j, i), w(n, k - 1, j, i), w(n, k, j, i), w(n, k + 1, j, i),
             w(n, k + 2, j, i), wl(n, i), wr(n, i));
+    }
+  }
+  if (MAGNETIC_FIELDS_ENABLED) {
+#pragma omp simd
+    for (int i = il; i <= iu; ++i) {
+      WENOZ(bcc(IB1, k - 2, j, i), bcc(IB1, k - 1, j, i), bcc(IB1, k, j, i),
+            bcc(IB1, k + 1, j, i), bcc(IB1, k + 2, j, i), wl(IBY, i), wr(IBY, i));
+      WENOZ(bcc(IB2, k - 2, j, i), bcc(IB2, k - 1, j, i), bcc(IB2, k, j, i),
+            bcc(IB2, k + 1, j, i), bcc(IB2, k + 2, j, i), wl(IBZ, i), wr(IBZ, i));
     }
   }
 }
