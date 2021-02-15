@@ -38,7 +38,7 @@ void DoolittleLUPSolve(Real **lu, int *pivot, Real *b, int n, Real *x);
 
 Reconstruction::Reconstruction(MeshBlock *pmb, ParameterInput *pin) :
     characteristic_projection{false}, uniform{true, true, true},
-    curvilinear{false, false},
+    curvilinear{false, false}, use_wenoz(false),
     // read fourth-order solver switches
     correct_ic{pin->GetOrAddBoolean("time", "correct_ic", false)},
     correct_err{pin->GetOrAddBoolean("time", "correct_err", false)}, pmy_block_{pmb}
@@ -61,6 +61,9 @@ Reconstruction::Reconstruction(MeshBlock *pmb, ParameterInput *pin) :
   } else if (input_recon == "3c") {
     xorder = 3;
     characteristic_projection = true;
+  } else if (input_recon == "3z") {
+    xorder = 3;
+    use_wenoz = true;
   } else if ((input_recon == "4") || (input_recon == "4c")) {
     // Full 4th-order scheme for hydro or MHD on uniform Cartesian grids
     xorder = 4;
