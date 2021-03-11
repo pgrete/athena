@@ -146,8 +146,6 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
   int ie = pmb_->ie;
   int je = pmb_->je;
   int ke = pmb_->ke;
-  Real Bx, By, Bz, B02, dTc, dTl, dTr, lim_slope, dTdx, dTdy, dTdz, bDotGradT, denf,
-      kappaf;
 
   /* Compute heat fluxes in 1-direction  --------------------------------------*/
   // i-direction
@@ -159,7 +157,7 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
 #pragma omp simd
       for (int i = is; i <= ie + 1; i++) {
         /* Monotonized temperature difference dT/dy */
-        dTdy =
+        Real dTdy =
             limiters::lim4(prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
                                prim(IPR, k, j, i) / prim(IDN, k, j, i),
                            prim(IPR, k, j, i) / prim(IDN, k, j, i) -
@@ -171,7 +169,7 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
         dTdy /= pco_->dx2v(j);
 
         /* Monotonized temperature difference dT/dz, 3D problem ONLY */
-        dTdz =
+        Real dTdz =
             limiters::lim4(prim(IPR, k + 1, j, i) / prim(IDN, k + 1, j, i) -
                                prim(IPR, k, j, i) / prim(IDN, k, j, i),
                            prim(IPR, k, j, i) / prim(IDN, k, j, i) -
@@ -184,18 +182,18 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
 
         /* Add flux at x1-interface, 2D PROBLEM */
 
-        By = 0.5 * (bcc(IB2, k, j, i - 1) + bcc(IB2, k, j, i));
-        Bz = 0.5 * (bcc(IB3, k, j, i - 1) + bcc(IB3, k, j, i));
-        B02 = SQR(b.x1f(k, j, i)) + SQR(By) + SQR(Bz);
+        Real By = 0.5 * (bcc(IB2, k, j, i - 1) + bcc(IB2, k, j, i));
+        Real Bz = 0.5 * (bcc(IB3, k, j, i - 1) + bcc(IB3, k, j, i));
+        Real B02 = SQR(b.x1f(k, j, i)) + SQR(By) + SQR(Bz);
         B02 = std::max(B02, TINY_NUMBER); /* limit in case B=0 */
-        bDotGradT = b.x1f(k, j, i) *
-                        (prim(IPR, k, j, i) / prim(IDN, k, j, i) -
-                         prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1)) /
-                        pco_->dx1v(i) +
-                    By * dTdy + Bz * dTdz;
-        kappaf = 0.5 * (kappa(DiffProcess::aniso, k, j, i) +
-                        kappa(DiffProcess::aniso, k, j, i - 1));
-        denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k, j, i - 1));
+        Real bDotGradT = b.x1f(k, j, i) *
+                             (prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                              prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1)) /
+                             pco_->dx1v(i) +
+                         By * dTdy + Bz * dTdz;
+        Real kappaf = 0.5 * (kappa(DiffProcess::aniso, k, j, i) +
+                             kappa(DiffProcess::aniso, k, j, i - 1));
+        Real denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k, j, i - 1));
         x1flux(k, j, i) -= kappaf * denf * (b.x1f(k, j, i) * bDotGradT) / B02;
       } // i
     }   // j
@@ -210,7 +208,7 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
 #pragma omp simd
       for (int i = il; i <= iu; i++) {
         /* Monotonized temperature difference dT/dx */
-        dTdx =
+        Real dTdx =
             limiters::lim4(prim(IPR, k, j, i + 1) / prim(IDN, k, j, i + 1) -
                                prim(IPR, k, j, i) / prim(IDN, k, j, i),
                            prim(IPR, k, j, i) / prim(IDN, k, j, i) -
@@ -222,7 +220,7 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
         dTdx /= pco_->dx1v(i);
 
         /* Monotonized temperature difference dT/dz, 3D problem ONLY */
-        dTdz =
+        Real dTdz =
             limiters::lim4(prim(IPR, k + 1, j, i) / prim(IDN, k + 1, j, i) -
                                prim(IPR, k, j, i) / prim(IDN, k, j, i),
                            prim(IPR, k, j, i) / prim(IDN, k, j, i) -
@@ -235,18 +233,18 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
 
         /* Add flux at x2-interface, 3D PROBLEM */
 
-        Bx = 0.5 * (bcc(IB1, k, j - 1, i) + bcc(IB1, k, j, i));
-        Bz = 0.5 * (bcc(IB3, k, j - 1, i) + bcc(IB3, k, j, i));
-        B02 = SQR(Bx) + SQR(b.x2f(k, j, i)) + SQR(Bz);
+        Real Bx = 0.5 * (bcc(IB1, k, j - 1, i) + bcc(IB1, k, j, i));
+        Real Bz = 0.5 * (bcc(IB3, k, j - 1, i) + bcc(IB3, k, j, i));
+        Real B02 = SQR(Bx) + SQR(b.x2f(k, j, i)) + SQR(Bz);
         B02 = std::max(B02, TINY_NUMBER); /* limit in case B=0 */
-        bDotGradT = b.x2f(k, j, i) *
-                        (prim(IPR, k, j, i) / prim(IDN, k, j, i) -
-                         prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i)) /
-                        pco_->dx2v(j) +
-                    Bx * dTdx + Bz * dTdz;
-        kappaf = 0.5 * (kappa(DiffProcess::aniso, k, j, i) +
-                        kappa(DiffProcess::aniso, k, j - 1, i));
-        denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k, j - 1, i));
+        Real bDotGradT = b.x2f(k, j, i) *
+                             (prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                              prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i)) /
+                             pco_->dx2v(j) +
+                         Bx * dTdx + Bz * dTdz;
+        Real kappaf = 0.5 * (kappa(DiffProcess::aniso, k, j, i) +
+                             kappa(DiffProcess::aniso, k, j - 1, i));
+        Real denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k, j - 1, i));
         x2flux(k, j, i) -= kappaf * denf * (b.x2f(k, j, i) * bDotGradT) / B02;
       } // i
     }   // j
@@ -261,7 +259,7 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
 #pragma omp simd
       for (int i = il; i <= iu; i++) {
         /* Monotonized temperature difference dT/dx */
-        dTdx =
+        Real dTdx =
             limiters::lim4(prim(IPR, k, j, i + 1) / prim(IDN, k, j, i + 1) -
                                prim(IPR, k, j, i) / prim(IDN, k, j, i),
                            prim(IPR, k, j, i) / prim(IDN, k, j, i) -
@@ -273,7 +271,7 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
         dTdx /= pco_->dx1v(i);
 
         /* Monotonized temperature difference dT/dy */
-        dTdy =
+        Real dTdy =
             limiters::lim4(prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
                                prim(IPR, k, j, i) / prim(IDN, k, j, i),
                            prim(IPR, k, j, i) / prim(IDN, k, j, i) -
@@ -286,18 +284,18 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
 
         /* Add flux at x3-interface, 3D PROBLEM */
 
-        Bx = 0.5 * (bcc(IB1, k - 1, j, i) + bcc(IB1, k, j, i));
-        By = 0.5 * (bcc(IB2, k - 1, j, i) + bcc(IB2, k, j, i));
-        B02 = SQR(Bx) + SQR(By) + SQR(b.x3f(k, j, i));
+        Real Bx = 0.5 * (bcc(IB1, k - 1, j, i) + bcc(IB1, k, j, i));
+        Real By = 0.5 * (bcc(IB2, k - 1, j, i) + bcc(IB2, k, j, i));
+        Real B02 = SQR(Bx) + SQR(By) + SQR(b.x3f(k, j, i));
         B02 = std::max(B02, TINY_NUMBER); /* limit in case B=0 */
-        bDotGradT = b.x3f(k, j, i) *
-                        (prim(IPR, k, j, i) / prim(IDN, k, j, i) -
-                         prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i)) /
-                        pco_->dx3v(k) +
-                    Bx * dTdx + By * dTdy;
-        kappaf = 0.5 * (kappa(DiffProcess::aniso, k, j, i) +
-                        kappa(DiffProcess::aniso, k - 1, j, i));
-        denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k - 1, j, i));
+        Real bDotGradT = b.x3f(k, j, i) *
+                             (prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                              prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i)) /
+                             pco_->dx3v(k) +
+                         Bx * dTdx + By * dTdy;
+        Real kappaf = 0.5 * (kappa(DiffProcess::aniso, k, j, i) +
+                             kappa(DiffProcess::aniso, k - 1, j, i));
+        Real denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k - 1, j, i));
         x3flux(k, j, i) -= kappaf * denf * (b.x3f(k, j, i) * bDotGradT) / B02;
       } // i
     }   // j
