@@ -651,19 +651,19 @@ void HydroDiffusion::ViscousFluxAniso(const AthenaArray<Real> &prim,
                                     prim(IVX, k, j, i) - prim(IVX, k, j, i - 1),
                                     prim(IVX, k, j - 1, i + 1) - prim(IVX, k, j - 1, i),
                                     prim(IVX, k, j - 1, i) - prim(IVX, k, j - 1, i - 1));
-        dVxdy /= pco_->dx1v(i);
+        dVxdx /= pco_->dx1v(i);
 
         Real dVydx = limiters::lim4(prim(IVY, k, j, i + 1) - prim(IVY, k, j, i),
                                     prim(IVY, k, j, i) - prim(IVY, k, j, i - 1),
                                     prim(IVY, k, j - 1, i + 1) - prim(IVY, k, j - 1, i),
                                     prim(IVY, k, j - 1, i) - prim(IVY, k, j - 1, i - 1));
-        dVydy /= pco_->dx1v(i);
+        dVydx /= pco_->dx1v(i);
 
         Real dVzdx = limiters::lim4(prim(IVZ, k, j, i + 1) - prim(IVZ, k, j, i),
                                     prim(IVZ, k, j, i) - prim(IVZ, k, j, i - 1),
                                     prim(IVZ, k, j - 1, i + 1) - prim(IVZ, k, j - 1, i),
                                     prim(IVZ, k, j - 1, i) - prim(IVZ, k, j - 1, i - 1));
-        dVzdy /= pco_->dx1v(i);
+        dVzdx /= pco_->dx1v(i);
 
         Real dVxdz = limiters::lim4(prim(IVX, k + 1, j, i) - prim(IVX, k, j, i),
                                     prim(IVX, k, j, i) - prim(IVX, k - 1, j, i),
@@ -718,7 +718,92 @@ void HydroDiffusion::ViscousFluxAniso(const AthenaArray<Real> &prim,
       }
     }
   }
+  // k-direction
+  // set the loop limits
+  il = is, iu = ie, jl = js, ju = je;
+  // 2D or 3D MHD limits
+  il = is - 1, iu = ie + 1, jl = js - 1, ju = je + 1;
+  // modify x3flux for 3D
+  for (int k = ks; k <= ke + 1; ++k) {
+    for (int j = jl; j <= ju; ++j) {
+#pragma omp simd
+      for (int i = il; i <= iu; i++) {
+        Real dVxdz = (prim(IVX, k, j, i) - prim(IVX, k - 1, j, i)) / pco_->dx3v(k);
+        Real dVydz = (prim(IVY, k, j, i) - prim(IVY, k - 1, j, i)) / pco_->dx3v(k);
+        Real dVzdz = (prim(IVZ, k, j, i) - prim(IVZ, k - 1, j, i)) / pco_->dx3v(k);
 
+        /* Monotonized velocity differences */
+        Real dVxdx = limiters::lim4(prim(IVX, k, j, i + 1) - prim(IVX, k, j, i),
+                                    prim(IVX, k, j, i) - prim(IVX, k, j, i - 1),
+                                    prim(IVX, k - 1, j, i + 1) - prim(IVX, k - 1, j, i),
+                                    prim(IVX, k - 1, j, i) - prim(IVX, k - 1, j, i - 1));
+        dVxdx /= pco_->dx1v(i);
+
+        Real dVydx = limiters::lim4(prim(IVY, k, j, i + 1) - prim(IVY, k, j, i),
+                                    prim(IVY, k, j, i) - prim(IVY, k, j, i - 1),
+                                    prim(IVY, k - 1, j, i + 1) - prim(IVY, k - 1, j, i),
+                                    prim(IVY, k - 1, j, i) - prim(IVY, k - 1, j, i - 1));
+        dVydx /= pco_->dx1v(i);
+
+        Real dVzdx = limiters::lim4(prim(IVZ, k, j, i + 1) - prim(IVZ, k, j, i),
+                                    prim(IVZ, k, j, i) - prim(IVZ, k, j, i - 1),
+                                    prim(IVZ, k - 1, j, i + 1) - prim(IVZ, k - 1, j, i),
+                                    prim(IVZ, k - 1, j, i) - prim(IVZ, k - 1, j, i - 1));
+        dVzdx /= pco_->dx1v(i);
+
+        Real dVxdy = limiters::lim4(prim(IVX, k, j + 1, i) - prim(IVX, k, j, i),
+                                    prim(IVX, k, j, i) - prim(IVX, k, j - 1, i),
+                                    prim(IVX, k - 1, j + 1, i) - prim(IVX, k - 1, j, i),
+                                    prim(IVX, k - 1, j, i) - prim(IVX, k - 1, j - 1, i));
+        dVxdy /= pco_->dx2v(j);
+
+        Real dVydy = limiters::lim4(prim(IVY, k, j + 1, i) - prim(IVY, k, j, i),
+                                    prim(IVY, k, j, i) - prim(IVY, k, j - 1, i),
+                                    prim(IVY, k - 1, j + 1, i) - prim(IVY, k - 1, j, i),
+                                    prim(IVY, k - 1, j, i) - prim(IVY, k - 1, j - 1, i));
+        dVydy /= pco_->dx2v(j);
+
+        Real dVzdy = limiters::lim4(prim(IVZ, k, j + 1, i) - prim(IVZ, k, j, i),
+                                    prim(IVZ, k, j, i) - prim(IVZ, k, j - 1, i),
+                                    prim(IVZ, k - 1, j + 1, i) - prim(IVZ, k - 1, j, i),
+                                    prim(IVZ, k - 1, j, i) - prim(IVZ, k - 1, j - 1, i));
+        dVzdy /= pco_->dx2v(j);
+
+        Real Bx = 0.5 * (bcc(IB1, k - 1, j, i) + bcc(IB1, k, j, i));
+        Real By = 0.5 * (bcc(IB2, k - 1, j, i) + bcc(IB2, k, j, i));
+        Real Bz = b.x3f(k, j, i);
+        Real B02 = SQR(Bx) + SQR(By) + SQR(Bz);
+        B02 = std::max(B02, TINY_NUMBER); /* limit in case B=0 */
+
+        Real BBdV = Bx * (Bx * dVxdx + By * dVxdy + Bz * dVxdz) +
+                    By * (Bx * dVydx + By * dVydy + Bz * dVydz) +
+                    Bz * (Bx * dVzdx + By * dVzdy + Bz * dVzdz);
+        BBdV /= B02;
+
+        Real divV = dVxdx + dVydy + dVzdz;
+
+        Real nu1 =
+            0.5 * (nu(DiffProcess::aniso, k, j, i) + nu(DiffProcess::aniso, k - 1, j, i));
+        Real denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k - 1, j, i));
+
+        // Currently unlimited
+        Real delta_p = nu1 * denf * (3.0 * BBdV - divV);
+
+        Real flx1 = delta_p * (Bz * Bx / B02);
+        Real flx2 = delta_p * (Bz * By / B02);
+        Real flx3 = delta_p * (Bz * Bz / B02 - ONE_3RD);
+        x1flux(IM1, k, j, i) -= flx1;
+        x1flux(IM2, k, j, i) -= flx2;
+        x1flux(IM3, k, j, i) -= flx3;
+        if (NON_BAROTROPIC_EOS) {
+          x1flux(IEN, k, j, i) -=
+              0.5 * ((prim(IM1, k - 1, j, i) + prim(IM1, k, j, i)) * flx1 +
+                     (prim(IM2, k - 1, j, i) + prim(IM2, k, j, i)) * flx2 +
+                     (prim(IM3, k - 1, j, i) + prim(IM3, k, j, i)) * flx3);
+        }
+      }
+    }
+  }
 #endif
 }
 
