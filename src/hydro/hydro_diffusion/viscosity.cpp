@@ -238,7 +238,7 @@ void HydroDiffusion::DivVelocity(const AthenaArray<Real> &prim,
     for (int j = jl; j <= ju; ++j) {
       // calculate x1-flux divergence
       pmb_->pcoord->Face1Area(k, j, il, iu + 1, x1area_);
-#pragma omp simd
+#pragma omp simd private(area_p1, area, vel_p1, vel)
       for (int i = il; i <= iu; ++i) {
         area_p1 = x1area_(i + 1);
         area = x1area_(i);
@@ -250,7 +250,7 @@ void HydroDiffusion::DivVelocity(const AthenaArray<Real> &prim,
       if (f2) {
         pmb_->pcoord->Face2Area(k, j, il, iu, x2area_);
         pmb_->pcoord->Face2Area(k, j + 1, il, iu, x2area_p1_);
-#pragma omp simd
+#pragma omp simd private(area_p1, area, vel_p1, vel)
         for (int i = il; i <= iu; ++i) {
           area_p1 = x2area_p1_(i);
           area = x2area_(i);
@@ -262,7 +262,7 @@ void HydroDiffusion::DivVelocity(const AthenaArray<Real> &prim,
       if (f3) {
         pmb_->pcoord->Face3Area(k, j, il, iu, x3area_);
         pmb_->pcoord->Face3Area(k + 1, j, il, iu, x3area_p1_);
-#pragma omp simd
+#pragma omp simd private(area_p1, area, vel_p1, vel)
         for (int i = il; i <= iu; ++i) {
           area_p1 = x3area_p1_(i);
           area = x3area_(i);
@@ -511,7 +511,122 @@ void HydroDiffusion::FaceZdz(const int k, const int j, const int il, const int i
 void HydroDiffusion::ViscousFluxAniso(const AthenaArray<Real> &prim,
                                       const AthenaArray<Real> &cons,
                                       AthenaArray<Real> *visflx) {
-  return;
+#if MAGNETIC_FIELDS_ENABLED
+  const bool f2 = pmb_->pmy_mesh->f2;
+  const bool f3 = pmb_->pmy_mesh->f3;
+  //  Anisotropic flux only implemented (and tested) for 3D
+  if (!f3) {
+    std::stringstream msg;
+    msg << "Braginskii viscosity only implemented and tested in cartesian 3D.";
+    ATHENA_ERROR(msg);
+  }
+
+  Field *pf = pmb_->pfield;
+  const auto &bcc = pf->bcc;
+  const auto &b = pf->b;
+
+  AthenaArray<Real> &x1flux = visflx[X1DIR];
+  AthenaArray<Real> &x2flux = visflx[X2DIR];
+  AthenaArray<Real> &x3flux = visflx[X3DIR];
+  int il, iu, jl, ju, kl, ku;
+  int is = pmb_->is;
+  int js = pmb_->js;
+  int ks = pmb_->ks;
+  int ie = pmb_->ie;
+  int je = pmb_->je;
+  int ke = pmb_->ke;
+  // Real nu1, denf, flx1, flx2, flx3;
+  // Real nuiso2 = -TWO_3RD;
+  // Real dVxdx, dVxdy, dVxdz, dVydx, dVydy, dVydz, dVzdx, dVzdy, dVzdz;
+  // Real Bx,By, Bz, B02;
+
+  // Calculate the flux across each face.
+  // i-direction
+  jl = js, ju = je, kl = ks, ku = ke;
+  // 3D MHD limits
+  jl = js - 1, ju = je + 1, kl = ks - 1, ku = ke + 1;
+
+  for (int k = kl; k <= ku; ++k) {
+    for (int j = jl; j <= ju; ++j) {
+#pragma omp simd
+      for (int i = is; i <= ie + 1; ++i) {
+        Real dVxdx = (prim(IVX, k, j, i) - prim(IVX, k, j, i - 1)) / pco_->dx1v(i);
+        Real dVydx = (prim(IVY, k, j, i) - prim(IVY, k, j, i - 1)) / pco_->dx1v(i);
+        Real dVzdx = (prim(IVZ, k, j, i) - prim(IVZ, k, j, i - 1)) / pco_->dx1v(i);
+
+        /* Monotonized velocity differences */
+        Real dVxdy = limiters::lim4(prim(IVX, k, j + 1, i) - prim(IVX, k, j, i),
+                                    prim(IVX, k, j, i) - prim(IVX, k, j - 1, i),
+                                    prim(IVX, k, j + 1, i - 1) - prim(IVX, k, j, i - 1),
+                                    prim(IVX, k, j, i - 1) - prim(IVX, k, j - 1, i - 1));
+        dVxdy /= pco_->dx2v(j);
+
+        Real dVydy = limiters::lim4(prim(IVY, k, j + 1, i) - prim(IVY, k, j, i),
+                                    prim(IVY, k, j, i) - prim(IVY, k, j - 1, i),
+                                    prim(IVY, k, j + 1, i - 1) - prim(IVY, k, j, i - 1),
+                                    prim(IVY, k, j, i - 1) - prim(IVY, k, j - 1, i - 1));
+        dVydy /= pco_->dx2v(j);
+
+        Real dVzdy = limiters::lim4(prim(IVZ, k, j + 1, i) - prim(IVZ, k, j, i),
+                                    prim(IVZ, k, j, i) - prim(IVZ, k, j - 1, i),
+                                    prim(IVZ, k, j + 1, i - 1) - prim(IVZ, k, j, i - 1),
+                                    prim(IVZ, k, j, i - 1) - prim(IVZ, k, j - 1, i - 1));
+        dVzdy /= pco_->dx2v(j);
+
+        Real dVxdz = limiters::lim4(prim(IVX, k + 1, j, i) - prim(IVX, k, j, i),
+                                    prim(IVX, k, j, i) - prim(IVX, k - 1, j, i),
+                                    prim(IVX, k + 1, j, i - 1) - prim(IVX, k, j, i - 1),
+                                    prim(IVX, k, j, i - 1) - prim(IVX, k - 1, j, i - 1));
+        dVxdz /= pco_->dx3v(k);
+
+        Real dVydz = limiters::lim4(prim(IVY, k + 1, j, i) - prim(IVY, k, j, i),
+                                    prim(IVY, k, j, i) - prim(IVY, k - 1, j, i),
+                                    prim(IVY, k + 1, j, i - 1) - prim(IVY, k, j, i - 1),
+                                    prim(IVY, k, j, i - 1) - prim(IVY, k - 1, j, i - 1));
+        dVydz /= pco_->dx3v(k);
+
+        Real dVzdz = limiters::lim4(prim(IVZ, k + 1, j, i) - prim(IVZ, k, j, i),
+                                    prim(IVZ, k, j, i) - prim(IVZ, k - 1, j, i),
+                                    prim(IVZ, k + 1, j, i - 1) - prim(IVZ, k, j, i - 1),
+                                    prim(IVZ, k, j, i - 1) - prim(IVZ, k - 1, j, i - 1));
+        dVzdz /= pco_->dx3v(k);
+
+        Real Bx = b.x1f(k, j, i);
+        Real By = 0.5 * (bcc(IB2, k, j, i - 1) + bcc(IB2, k, j, i));
+        Real Bz = 0.5 * (bcc(IB3, k, j, i - 1) + bcc(IB3, k, j, i));
+        Real B02 = SQR(Bx) + SQR(By) + SQR(Bz);
+        B02 = std::max(B02, TINY_NUMBER); /* limit in case B=0 */
+
+        Real BBdV = Bx * (Bx * dVxdx + By * dVxdy + Bz * dVxdz) +
+                    By * (Bx * dVydx + By * dVydy + Bz * dVydz) +
+                    Bz * (Bx * dVzdx + By * dVzdy + Bz * dVzdz);
+        BBdV /= B02;
+
+        Real divV = dVxdx + dVydy + dVzdz;
+
+        Real nu1 =
+            0.5 * (nu(DiffProcess::aniso, k, j, i) + nu(DiffProcess::aniso, k, j, i - 1));
+        Real denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k, j, i - 1));
+
+        // Currently unlimited
+        Real delta_p = nu1 * denf * (3.0 * BBdV - divV);
+
+        Real flx1 = delta_p * (Bx*Bx/B02 - ONE_3RD);
+        Real flx2 = delta_p * (Bx*By/B02);
+        Real flx3 = delta_p * (Bx*Bz/B02);
+        x1flux(IM1, k, j, i) -= flx1;
+        x1flux(IM2, k, j, i) -= flx2;
+        x1flux(IM3, k, j, i) -= flx3;
+        if (NON_BAROTROPIC_EOS)
+          x1flux(IEN, k, j, i) -=
+              0.5 * ((prim(IM1, k, j, i - 1) + prim(IM1, k, j, i)) * flx1 +
+                     (prim(IM2, k, j, i - 1) + prim(IM2, k, j, i)) * flx2 +
+                     (prim(IM3, k, j, i - 1) + prim(IM3, k, j, i)) * flx3);
+      }
+    }
+  }
+
+#endif
 }
 
 //----------------------------------------------------------------------------------------
