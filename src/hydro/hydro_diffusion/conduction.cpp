@@ -21,56 +21,6 @@
 #include "../hydro.hpp"
 #include "hydro_diffusion.hpp"
 
-namespace {
-/*----------------------------------------------------------------------------*/
-/* vanleer: van Leer slope limiter
- */
-
-inline Real vanleer(const Real A, const Real B) {
-  if (A * B > 0) {
-    return 2.0 * A * B / (A + B);
-  } else {
-    return 0.0;
-  }
-}
-
-/*----------------------------------------------------------------------------*/
-/* minmod: minmod slope limiter
- */
-
-inline Real minmod(const Real A, const Real B) {
-  if (A * B > 0) {
-    if (A > 0) {
-      return std::min(A, B);
-    } else {
-      return std::max(A, B);
-    }
-  } else {
-    return 0.0;
-  }
-}
-
-/*----------------------------------------------------------------------------*/
-/* mc: monotonized central slope limiter
- */
-
-inline Real mc(const Real A, const Real B) {
-  return minmod(2.0 * minmod(A, B), (A + B) / 2.0);
-}
-/*----------------------------------------------------------------------------*/
-/* limiter2 and limiter4: call slope limiters to preserve monotonicity
- */
-
-inline Real limiter2(const Real A, const Real B) {
-  /* slope limiter */
-  return mc(A, B);
-}
-
-inline Real limiter4(const Real A, const Real B, const Real C, const Real D) {
-  return limiter2(limiter2(A, B), limiter2(C, D));
-}
-} // namespace
-
 //---------------------------------------------------------------------------------------
 //! Calculate isotropic thermal conduction
 
@@ -209,25 +159,27 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
 #pragma omp simd
       for (int i = is; i <= ie + 1; i++) {
         /* Monotonized temperature difference dT/dy */
-        dTdy = limiter4(prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
-                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
-                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
-                            prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
-                        prim(IPR, k, j + 1, i - 1) / prim(IDN, k, j + 1, i - 1) -
-                            prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
-                        prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1) -
-                            prim(IPR, k, j - 1, i - 1) / prim(IDN, k, j - 1, i - 1));
+        dTdy =
+            limiters::lim4(prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
+                               prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                           prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                               prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
+                           prim(IPR, k, j + 1, i - 1) / prim(IDN, k, j + 1, i - 1) -
+                               prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
+                           prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1) -
+                               prim(IPR, k, j - 1, i - 1) / prim(IDN, k, j - 1, i - 1));
         dTdy /= pco_->dx2v(j);
 
         /* Monotonized temperature difference dT/dz, 3D problem ONLY */
-        dTdz = limiter4(prim(IPR, k + 1, j, i) / prim(IDN, k + 1, j, i) -
-                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
-                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
-                            prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
-                        prim(IPR, k + 1, j, i - 1) / prim(IDN, k + 1, j, i - 1) -
-                            prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
-                        prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1) -
-                            prim(IPR, k - 1, j, i - 1) / prim(IDN, k - 1, j, i - 1));
+        dTdz =
+            limiters::lim4(prim(IPR, k + 1, j, i) / prim(IDN, k + 1, j, i) -
+                               prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                           prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                               prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
+                           prim(IPR, k + 1, j, i - 1) / prim(IDN, k + 1, j, i - 1) -
+                               prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
+                           prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1) -
+                               prim(IPR, k - 1, j, i - 1) / prim(IDN, k - 1, j, i - 1));
         dTdz /= pco_->dx3v(k);
 
         /* Add flux at x1-interface, 2D PROBLEM */
@@ -258,25 +210,27 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
 #pragma omp simd
       for (int i = il; i <= iu; i++) {
         /* Monotonized temperature difference dT/dx */
-        dTdx = limiter4(prim(IPR, k, j, i + 1) / prim(IDN, k, j, i + 1) -
-                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
-                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
-                            prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
-                        prim(IPR, k, j - 1, i + 1) / prim(IDN, k, j - 1, i + 1) -
-                            prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
-                        prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i) -
-                            prim(IPR, k, j - 1, i - 1) / prim(IDN, k, j - 1, i - 1));
+        dTdx =
+            limiters::lim4(prim(IPR, k, j, i + 1) / prim(IDN, k, j, i + 1) -
+                               prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                           prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                               prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
+                           prim(IPR, k, j - 1, i + 1) / prim(IDN, k, j - 1, i + 1) -
+                               prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
+                           prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i) -
+                               prim(IPR, k, j - 1, i - 1) / prim(IDN, k, j - 1, i - 1));
         dTdx /= pco_->dx1v(i);
 
         /* Monotonized temperature difference dT/dz, 3D problem ONLY */
-        dTdz = limiter4(prim(IPR, k + 1, j, i) / prim(IDN, k + 1, j, i) -
-                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
-                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
-                            prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
-                        prim(IPR, k + 1, j - 1, i) / prim(IDN, k + 1, j - 1, i) -
-                            prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
-                        prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i) -
-                            prim(IPR, k - 1, j - 1, i) / prim(IDN, k - 1, j - 1, i));
+        dTdz =
+            limiters::lim4(prim(IPR, k + 1, j, i) / prim(IDN, k + 1, j, i) -
+                               prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                           prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                               prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
+                           prim(IPR, k + 1, j - 1, i) / prim(IDN, k + 1, j - 1, i) -
+                               prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
+                           prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i) -
+                               prim(IPR, k - 1, j - 1, i) / prim(IDN, k - 1, j - 1, i));
         dTdz /= pco_->dx3v(k);
 
         /* Add flux at x2-interface, 3D PROBLEM */
@@ -307,25 +261,27 @@ void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
 #pragma omp simd
       for (int i = il; i <= iu; i++) {
         /* Monotonized temperature difference dT/dx */
-        dTdx = limiter4(prim(IPR, k, j, i + 1) / prim(IDN, k, j, i + 1) -
-                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
-                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
-                            prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
-                        prim(IPR, k - 1, j, i + 1) / prim(IDN, k - 1, j, i + 1) -
-                            prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
-                        prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i) -
-                            prim(IPR, k - 1, j, i - 1) / prim(IDN, k - 1, j, i - 1));
+        dTdx =
+            limiters::lim4(prim(IPR, k, j, i + 1) / prim(IDN, k, j, i + 1) -
+                               prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                           prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                               prim(IPR, k, j, i - 1) / prim(IDN, k, j, i - 1),
+                           prim(IPR, k - 1, j, i + 1) / prim(IDN, k - 1, j, i + 1) -
+                               prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
+                           prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i) -
+                               prim(IPR, k - 1, j, i - 1) / prim(IDN, k - 1, j, i - 1));
         dTdx /= pco_->dx1v(i);
 
         /* Monotonized temperature difference dT/dy */
-        dTdy = limiter4(prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
-                            prim(IPR, k, j, i) / prim(IDN, k, j, i),
-                        prim(IPR, k, j, i) / prim(IDN, k, j, i) -
-                            prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
-                        prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
-                            prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
-                        prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i) -
-                            prim(IPR, k - 1, j - 1, i) / prim(IDN, k - 1, j - 1, i));
+        dTdy =
+            limiters::lim4(prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
+                               prim(IPR, k, j, i) / prim(IDN, k, j, i),
+                           prim(IPR, k, j, i) / prim(IDN, k, j, i) -
+                               prim(IPR, k, j - 1, i) / prim(IDN, k, j - 1, i),
+                           prim(IPR, k, j + 1, i) / prim(IDN, k, j + 1, i) -
+                               prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i),
+                           prim(IPR, k - 1, j, i) / prim(IDN, k - 1, j, i) -
+                               prim(IPR, k - 1, j - 1, i) / prim(IDN, k - 1, j - 1, i));
         dTdy /= pco_->dx2v(j);
 
         /* Add flux at x3-interface, 3D PROBLEM */

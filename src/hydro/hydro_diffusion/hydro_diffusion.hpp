@@ -33,6 +33,56 @@ void ConstConduction(HydroDiffusion *phdif, MeshBlock *pmb, const AthenaArray<Re
                      const AthenaArray<Real> &bc,
                      int is, int ie, int js, int je, int ks, int ke);
 
+namespace limiters {
+/*----------------------------------------------------------------------------*/
+/* vanleer: van Leer slope limiter
+ */
+
+inline Real vanleer(const Real A, const Real B) {
+  if (A * B > 0) {
+    return 2.0 * A * B / (A + B);
+  } else {
+    return 0.0;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+/* minmod: minmod slope limiter
+ */
+
+inline Real minmod(const Real A, const Real B) {
+  if (A * B > 0) {
+    if (A > 0) {
+      return std::min(A, B);
+    } else {
+      return std::max(A, B);
+    }
+  } else {
+    return 0.0;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+/* mc: monotonized central slope limiter
+ */
+
+inline Real mc(const Real A, const Real B) {
+  return minmod(2.0 * minmod(A, B), (A + B) / 2.0);
+}
+/*----------------------------------------------------------------------------*/
+/* limiter2 and limiter4: call slope limiters to preserve monotonicity
+ */
+
+inline Real lim2(const Real A, const Real B) {
+  /* slope limiter */
+  return mc(A, B);
+}
+
+inline Real lim4(const Real A, const Real B, const Real C, const Real D) {
+  return lim2(lim2(A, B), lim2(C, D));
+}
+} // namespace limiters
+
 //! \class HydroDiffusion
 //! \brief data and functions for physical diffusion processes in the hydro
 
