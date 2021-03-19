@@ -615,8 +615,14 @@ void HydroDiffusion::ViscousFluxAniso(const AthenaArray<Real> &prim,
             0.5 * (nu(DiffProcess::aniso, k, j, i) + nu(DiffProcess::aniso, k, j, i - 1));
         Real denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k, j, i - 1));
 
-        // Currently unlimited
         Real delta_p = nu1 * denf * (3.0 * BBdV - divV);
+        // limit by mirror instab.
+        if (delta_p > B02 / 2.0) {
+          delta_p = B02 / 2.0;
+          // limit by firefose instab.
+        } else if (delta_p < -B02) {
+          delta_p = -B02;
+        }
 
         Real flx1 = delta_p * (Bx * Bx / B02 - ONE_3RD);
         Real flx2 = delta_p * (Bx * By / B02);
@@ -700,8 +706,14 @@ void HydroDiffusion::ViscousFluxAniso(const AthenaArray<Real> &prim,
             0.5 * (nu(DiffProcess::aniso, k, j, i) + nu(DiffProcess::aniso, k, j - 1, i));
         Real denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k, j - 1, i));
 
-        // Currently unlimited
         Real delta_p = nu1 * denf * (3.0 * BBdV - divV);
+        // limit by mirror instab.
+        if (delta_p > B02 / 2.0) {
+          delta_p = B02 / 2.0;
+          // limit by firefose instab.
+        } else if (delta_p < -B02) {
+          delta_p = -B02;
+        }
 
         Real flx1 = delta_p * (By * Bx / B02);
         Real flx2 = delta_p * (By * By / B02 - ONE_3RD);
@@ -786,8 +798,14 @@ void HydroDiffusion::ViscousFluxAniso(const AthenaArray<Real> &prim,
             0.5 * (nu(DiffProcess::aniso, k, j, i) + nu(DiffProcess::aniso, k - 1, j, i));
         Real denf = 0.5 * (prim(IDN, k, j, i) + prim(IDN, k - 1, j, i));
 
-        // Currently unlimited
         Real delta_p = nu1 * denf * (3.0 * BBdV - divV);
+        // limit by mirror instab.
+        if (delta_p > B02 / 2.0) {
+          delta_p = B02 / 2.0;
+          // limit by firefose instab.
+        } else if (delta_p < -B02) {
+          delta_p = -B02;
+        }
 
         Real flx1 = delta_p * (Bz * Bx / B02);
         Real flx2 = delta_p * (Bz * By / B02);
