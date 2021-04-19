@@ -185,12 +185,24 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
   Real gm1 = gamma - 1.0;
   Real p0 = pin->GetOrAddReal("problem", "p0", 0.3);
   Real rho0 = pin->GetOrAddReal("problem", "rho0", 1.0);
-  Real Bx0 = pin->GetOrAddReal("problem", "Bx0", 0.056117);
+  Real Bx0 = pin->GetOrAddReal("problem", "Bx0", 0.015811388300841896);
 
   // All uniform so we can directly initialize (including face fields) with larger bounds
   for (int k = ks; k <= ke + 1; k++) {
     for (int j = js; j <= je + 1; j++) {
       for (int i = is; i <= ie + 1; i++) {
+        Real x = pcoord->x1v(i);
+        Real y = pcoord->x2v(j);
+        Real z = pcoord->x3v(k);
+        Real dist = std::sqrt(SQR(x - blasts.at(0).at(0)) + SQR(y - blasts.at(0).at(1)) +
+                              SQR(z - blasts.at(0).at(2)));
+        Real p = 0.0;
+        if (dist < 0.005) {
+          p = p_blast;
+        } else {
+          p = p0;
+        }
+
         phydro->u(IDN, k, j, i) = rho0;
 
         phydro->u(IM1, k, j, i) = 0.0;
@@ -200,7 +212,7 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         pfield->b.x2f(k, j, i) = 0.0;
         pfield->b.x3f(k, j, i) = 0.0;
 
-        phydro->u(IEN, k, j, i) = p0 / gm1 + 0.5 * SQR(Bx0);
+        phydro->u(IEN, k, j, i) = p / gm1 + 0.5 * SQR(Bx0);
       }
     }
   }
@@ -223,8 +235,8 @@ void MeshBlock::UserWorkInLoop() {
   Real time_this_blast = -1.0;
   int blast_i = -1; // numer of blast to use. Negative -> no blast
 
-  for (int i = 0; i < num_blast; i++) {
-    time_this_blast = static_cast<Real>(i + 1) * dt_between_blasts;
+  for (int i = 1; i < num_blast; i++) {
+    time_this_blast = static_cast<Real>(i) * dt_between_blasts;
     // this blast falls in intervall of current timestep
     if ((time_this_blast >= pmy_mesh->time) &&
         (time_this_blast < pmy_mesh->time + pmy_mesh->dt)) {
