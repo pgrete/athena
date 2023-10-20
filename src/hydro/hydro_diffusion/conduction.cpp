@@ -24,9 +24,7 @@
 //---------------------------------------------------------------------------------------
 //! Calculate isotropic thermal conduction
 
-void HydroDiffusion::ThermalFluxIso(const AthenaArray<Real> &prim,
-                                    const AthenaArray<Real> &cons,
-                                    AthenaArray<Real> *cndflx) {
+void HydroDiffusion::ThermalFluxIso(const AthenaArray<Real> &prim, AthenaArray<Real> *cndflx) {
   const bool f2 = pmb_->pmy_mesh->f2;
   const bool f3 = pmb_->pmy_mesh->f3;
   AthenaArray<Real> &x1flux = cndflx[X1DIR];
@@ -122,7 +120,6 @@ void HydroDiffusion::ThermalFluxIso(const AthenaArray<Real> &prim,
 //! Calculate anisotropic thermal conduction
 
 void HydroDiffusion::ThermalFluxAniso(const AthenaArray<Real> &prim,
-                                      const AthenaArray<Real> &cons,
                                       AthenaArray<Real> *cndflx) {
 #if MAGNETIC_FIELDS_ENABLED
   //  Anisotropic flux only implemented (and tested) for 3D

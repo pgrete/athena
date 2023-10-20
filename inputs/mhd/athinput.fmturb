@@ -33,7 +33,7 @@ tlim       = 5.0        # time limit
 integrator  = vl2       # time integration algorithm
 xorder      = 2         # order of spatial reconstruction
 ncycle_out  = 1         # interval for stdout summary info
-dt_diagnostics = 1      # enable more verbose output
+#dt_diagnostics = 1      # enable more verbose output
 
 <mesh>
 nx1        = 64         # Number of zones in X1-direction
@@ -56,11 +56,11 @@ ox3_bc     = periodic   # outer-X3 boundary flag
 
 <meshblock>
 nx1        = 64
-nx2        = 64
-nx3        = 64
+nx2        = 32
+nx3        = 32
 
 <hydro>
-gamma           = 1.66666666667  # gamma = C_p/C_v
+gamma           = 1.00001        # gamma = C_p/C_v
 iso_sound_speed = 1.00           # equavalent to sqrt(gamma*p/d) 
 
 <problem>
@@ -75,8 +75,8 @@ corr_time    = 1.0      # autocorrelation time of the OU forcing process
 rseed        = 20190729 # random seed of the OU forcing process
 sol_weight   = 1.0      # solenoidal weight of the acceleration field
 accel_rms    = 0.5      # root mean square value of the acceleration field
-num_modes    = 50       # number of wavemodes
-cool_flag    = 1        # enable cooling (1 is free-free and only choice now)
+num_modes    = 30       # number of wavemodes
+cool_flag    = 0        # enable cooling (1 is free-free and only choice now)
 cool_coeff   = 0.1      # cooling coefficient
 cool_threshold_ratio = 0.001  # cooling enabled for T > 1/1000 T_init
 cool_max_diff= 0.1      # limit timestep so that internal energy does not change more than 10% per timestep

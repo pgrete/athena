@@ -68,7 +68,8 @@ enum {BLOCK_BNDRY __attribute__((deprecated)) = -1,
 #else
 enum {FACE_UNDEF = -1, INNER_X1, OUTER_X1, INNER_X2, OUTER_X2, INNER_X3, OUTER_X3};
 enum {BLOCK_BNDRY = -1, BNDRY_UNDEF, REFLECTING_BNDRY, OUTFLOW_BNDRY, USER_BNDRY,
-      PERIODIC_BNDRY, POLAR_BNDRY, POLAR_BNDRY_WEDGE, SHEAR_PERIODIC_BNDRY};
+      PERIODIC_BNDRY, VACUUM_BNDRY, POLAR_BNDRY, POLAR_BNDRY_WEDGE,
+      SHEAR_PERIODIC_BNDRY};
 #endif
 
 //! identifiers for all 6 faces of a MeshBlock
@@ -81,7 +82,8 @@ enum BoundaryFace {undef=-1, inner_x1=0, outer_x1=1, inner_x2=2, outer_x2=3,
 
 //! identifiers for boundary conditions
 enum class BoundaryFlag {block=-1, undef, reflect, outflow, user, periodic,
-                         polar, polar_wedge, shear_periodic};
+                         polar, polar_wedge, vacuum, shear_periodic,
+                         mg_zerograd, mg_zerofixed, mg_multipole};
 
 //! identifiers for types of neighbor blocks (connectivity with current MeshBlock)
 enum class NeighborConnect {none, face, edge, corner}; // degenerate/shared part of block
@@ -297,6 +299,19 @@ class BoundaryPhysics {
   virtual void OutflowOuterX3(Real time, Real dt,
                               int il, int iu, int jl, int ju, int ku, int ngh) = 0;
 
+  virtual void VacuumInnerX1(Real time, Real dt,
+                              int il, int jl, int ju, int kl, int ku, int ngh) = 0;
+  virtual void VacuumOuterX1(Real time, Real dt,
+                              int iu, int jl, int ju, int kl, int ku, int ngh) = 0;
+  virtual void VacuumInnerX2(Real time, Real dt,
+                              int il, int iu, int jl, int kl, int ku, int ngh) = 0;
+  virtual void VacuumOuterX2(Real time, Real dt,
+                              int il, int iu, int ju, int kl, int ku, int ngh) = 0;
+  virtual void VacuumInnerX3(Real time, Real dt,
+                              int il, int iu, int jl, int ju, int kl, int ngh) = 0;
+  virtual void VacuumOuterX3(Real time, Real dt,
+                              int il, int iu, int jl, int ju, int ku, int ngh) = 0;
+
   virtual void PolarWedgeInnerX2(Real time, Real dt,
                                  int il, int iu, int jl, int kl, int ku, int ngh) = 0;
   virtual void PolarWedgeOuterX2(Real time, Real dt,
@@ -315,7 +330,7 @@ class BoundaryPhysics {
 class BoundaryVariable : public BoundaryCommunication, public BoundaryBuffer,
                          public BoundaryPhysics {
  public:
-  explicit BoundaryVariable(MeshBlock *pmb);
+  explicit BoundaryVariable(MeshBlock *pmb, bool fflux);
   virtual ~BoundaryVariable() = default;
 
   // (usuallly the std::size_t unsigned integer type)
@@ -341,6 +356,7 @@ class BoundaryVariable : public BoundaryCommunication, public BoundaryBuffer,
   Mesh *pmy_mesh_;
   BoundaryValues *pbval_;  // ptr to BoundaryValues that aggregates these
                            // BoundaryVariable objects
+  bool fflux_;
 
   void CopyVariableBufferSameProcess(NeighborBlock& nb, int ssize);
   void CopyFluxCorrectionBufferSameProcess(NeighborBlock& nb, int ssize);

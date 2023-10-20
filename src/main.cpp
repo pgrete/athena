@@ -40,6 +40,8 @@
 #include "gravity/fft_gravity.hpp"
 #include "gravity/mg_gravity.hpp"
 #include "mesh/mesh.hpp"
+#include "nr_radiation/implicit/radiation_implicit.hpp"
+#include "nr_radiation/radiation.hpp"
 #include "outputs/io_wrapper.hpp"
 #include "outputs/outputs.hpp"
 #include "parameter_input.hpp"
@@ -227,9 +229,10 @@ int main(int argc, char *argv[]) {
     if (res_flag == 1) {
       restartfile.Open(restart_filename, IOWrapper::FileMode::read);
       pinput->LoadFromFile(restartfile);
-      // If both -r and -i are specified, make sure next_time gets corrected.
+      // make sure next_time gets corrected in case -i input file or cmdline args change
+      // the output next_time, dt, etc.
       // This needs to be corrected on the restart file because we need the old dt.
-      if (iarg_flag == 1) pinput->RollbackNextTime();
+      pinput->RollbackNextTime();
       // leave the restart file open for later use
     }
     if (iarg_flag == 1) {
@@ -296,8 +299,9 @@ int main(int argc, char *argv[]) {
 #endif // ENABLE_EXCEPTIONS
 
   // With current mesh time possibly read from restart file, correct next_time for outputs
-  if (iarg_flag == 1 && res_flag == 1) {
-    // if both -r and -i are specified, ensure that next_time  >= mesh_time - dt
+  if (res_flag == 1) {
+    // ensure that next_time  >= mesh_time - dt, in case input file or command line
+    // overrides it
     pinput->ForwardNextTime(pmesh->time);
   }
 
@@ -469,6 +473,9 @@ int main(int argc, char *argv[]) {
         else if (SELF_GRAVITY_ENABLED == 2) // multigrid
           pmesh->pmgrd->Solve(stage);
       }
+      if (IM_RADIATION_ENABLED) {
+        pmesh->pimrad->Iteration(pmesh,ptlist,stage);
+      }
     }
 
     if (STS_ENABLED && pmesh->sts_integrator == "rkl2") {
@@ -523,8 +530,15 @@ int main(int argc, char *argv[]) {
   if (Globals::my_rank == 0 && wtlim > 0)
     SignalHandler::CancelWallTimeAlarm();
 
+
   //--- Step 9. --------------------------------------------------------------------------
-  // Make the final outputs
+  // Output the final cycle diagnostics and make the final outputs
+
+  if (Globals::my_rank == 0)
+    pmesh->OutputCycleDiagnostics();
+
+  pmesh->UserWorkAfterLoop(pinput);
+
 #ifdef ENABLE_EXCEPTIONS
   try {
 #endif
@@ -548,12 +562,10 @@ int main(int argc, char *argv[]) {
   }
 #endif // ENABLE_EXCEPTIONS
 
-  pmesh->UserWorkAfterLoop(pinput);
-
   //--- Step 10. -------------------------------------------------------------------------
   // Print diagnostic messages related to the end of the simulation
+
   if (Globals::my_rank == 0) {
-    pmesh->OutputCycleDiagnostics();
     if (SignalHandler::GetSignalFlag(SIGTERM) != 0) {
       std::cout << std::endl << "Terminating on Terminate signal" << std::endl;
     } else if (SignalHandler::GetSignalFlag(SIGINT) != 0) {

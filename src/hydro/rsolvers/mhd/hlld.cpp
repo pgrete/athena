@@ -29,9 +29,9 @@ struct Cons1D {
   Real d, mx, my, mz, e, by, bz;
 };
 
-#define SMALL_NUMBER 1.0e-8
-
 //----------------------------------------------------------------------------------------
+//! \fn void Hydro::RiemannSolver
+//! \brief The HLLD Riemann solver for adiabatic MHD
 
 void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
                           const int ivx, const AthenaArray<Real> &bx,
@@ -44,6 +44,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
   Real flxi[(NWAVE)];             // temporary variable to store flux
   Real wli[(NWAVE)],wri[(NWAVE)]; // L/R states, primitive variables (input)
   Real spd[5];                    // signal speeds, left to right
+  constexpr Real SMALL_NUMBER = 1.0e-4;
 
   Real igm1;
   EquationOfState *peos = pmy_block->peos;
@@ -374,7 +375,7 @@ void Hydro::RiemannSolver(const int k, const int j, const int il, const int iu,
     ey(k,j,i) = -flxi[IBY];
     ez(k,j,i) =  flxi[IBZ];
 
-    wct(k,j,i)=GetWeightForCT(flxi[IDN], wli[IDN], wri[IDN], dxw(i), dt);
+    wct(k,j,i) = GetWeightForCT(flxi[IDN], wli[IDN], wri[IDN], dxw(i), dt);
   }
   return;
 }

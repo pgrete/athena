@@ -49,13 +49,13 @@ int CellCenteredBoundaryVariable::LoadFluxBoundaryBufferSameLevel(Real *buf,
   if (pbval_->shearing_box == 1 && nb.shear
       && (nb.fid == BoundaryFace::inner_x1 || nb.fid == BoundaryFace::outer_x1)) {
     int i;
-    int sign;
+    //int sign;
     if (nb.fid == BoundaryFace::inner_x1) {
       i = pmb->is;
-      sign = -1;
+      //sign = -1;
     } else {
       i = pmb->ie + 1;
-      sign =  1;
+      //sign =  1;
     }
     // pack x1flux
     for (int nn=nl_; nn<=nu_; nn++) {
@@ -209,9 +209,7 @@ void CellCenteredBoundaryVariable::SetFluxBoundarySameLevel(Real *buf,
                                                            const NeighborBlock& nb) {
   MeshBlock *pmb = pmy_block_;
   int p = 0;
-  int i;
   if (nb.fid == BoundaryFace::inner_x1) {
-    i = pmb->is;
     for (int nn=nl_; nn<=nu_; nn++) {
       for (int k=pmb->ks; k<=pmb->ke; k++) {
         for (int j=pmb->js; j<=pmb->je; j++) {
@@ -220,7 +218,6 @@ void CellCenteredBoundaryVariable::SetFluxBoundarySameLevel(Real *buf,
       }
     }
   } else {
-    i = pmb->ie + 1;
     for (int nn=nl_; nn<=nu_; nn++) {
       for (int k=pmb->ks; k<=pmb->ke; k++) {
         for (int j=pmb->js; j<=pmb->je; j++) {
@@ -305,6 +302,8 @@ bool CellCenteredBoundaryVariable::ReceiveFluxCorrection() {
 #ifdef MPI_PARALLEL
       else { // NOLINT
         int test;
+        // probe MPI communications.  This is a bit of black magic that seems to promote
+        // communications to top of stack and gets them to complete more quickly
         MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &test,
                    MPI_STATUS_IGNORE);
         MPI_Test(&(bd_var_flcor_.req_recv[nb.bufid]), &test, MPI_STATUS_IGNORE);
