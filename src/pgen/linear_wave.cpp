@@ -18,6 +18,7 @@
 #include <cmath>      // sqrt()
 #include <cstdio>     // fopen(), fprintf(), freopen()
 #include <iostream>   // endl
+#include <random>
 #include <sstream>    // stringstream
 #include <stdexcept>  // runtime_error
 #include <string>     // c_str()
@@ -151,9 +152,9 @@ void Mesh::InitUserMeshData(ParameterInput *pin) {
   u0 = vflow;
   Real v0 = 0.0;
   Real w0 = 0.0;
-  bx0 = 1.0;
-  by0 = std::sqrt(2.0);
-  bz0 = 0.5;
+  bx0 = 10.0;
+  by0 = 0.0; // std::sqrt(2.0);
+  bz0 = 0.0; // 0.5;
   Real xfact = 0.0;
   Real yfact = 1.0;
   Real h0 = 0.0;
@@ -551,6 +552,9 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
     }
   }
 
+  std::random_device rd;  // Will be used to obtain a seed for the random number engine
+  std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+  std::uniform_real_distribution<> dis(0.0, 2.4);
   // initialize conserved variables
   for (int k=ks; k<=ke; k++) {
     for (int j=js; j<=je; j++) {
@@ -558,7 +562,8 @@ void MeshBlock::ProblemGenerator(ParameterInput *pin) {
         Real x = cos_a2*(pcoord->x1v(i)*cos_a3 + pcoord->x2v(j)*sin_a3) +
                  pcoord->x3v(k)*sin_a2;
         Real sn = std::sin(k_par*x);
-        phydro->u(IDN,k,j,i) = d0 + amp*sn*rem[0][wave_flag];
+        const Real perturb = 1e-4 * (dis(gen) - 0.5);
+        phydro->u(IDN,k,j,i) = d0 + amp*sn*rem[0][wave_flag] + perturb;
         Real mx = d0*vflow + amp*sn*rem[1][wave_flag];
         Real my = amp*sn*rem[2][wave_flag];
         Real mz = amp*sn*rem[3][wave_flag];
